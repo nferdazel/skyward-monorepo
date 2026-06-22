@@ -989,7 +989,7 @@ BEGIN
                 IF v_inserted THEN
                     UPDATE ai_competitors SET cash = cash - v_purchase_price WHERE id = r_bot.id;
                     INSERT INTO financial_ledger (ai_competitor_id, transaction_type, category, amount, description, game_date)
-                    VALUES (r_bot.id, 'expense', 'acquisition', -v_purchase_price, 'Aircraft purchase: ' || v_tail, r_bot.game_current_time);
+                    VALUES (r_bot.id, 'expense', 'acquisition', v_purchase_price, 'Aircraft purchase: ' || v_tail, r_bot.game_current_time);
                     v_bot_cash := v_bot_cash - v_purchase_price;
                 END IF;
             END IF;
