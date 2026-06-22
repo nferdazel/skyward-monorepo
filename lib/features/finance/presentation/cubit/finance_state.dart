@@ -10,12 +10,14 @@ class FinanceDailySnapshot {
   final double revenue;
   final double expense;
   final double net;
+  final double netWorth;
 
   const FinanceDailySnapshot({
     required this.gameDate,
     required this.revenue,
     required this.expense,
     required this.net,
+    this.netWorth = 0.0,
   });
 }
 
@@ -25,6 +27,7 @@ class FinanceMetrics {
   final FinanceSnapshot snapshot;
   final List<LedgerEntry> logs;
   final List<FinanceDailySnapshot> dailySnapshots;
+  final List<FinanceDailySnapshot> financialSnapshots;
   final double totalTicketSales;
   final double totalOperations;
   final double totalLease;
@@ -44,6 +47,7 @@ class FinanceMetrics {
     required this.snapshot,
     required this.logs,
     required this.dailySnapshots,
+    this.financialSnapshots = const [],
     required this.totalTicketSales,
     required this.totalOperations,
     required this.totalLease,
@@ -65,6 +69,7 @@ class FinanceMetrics {
       : snapshot = const FinanceSnapshot.empty(),
         logs = const [],
         dailySnapshots = const [],
+        financialSnapshots = const [],
         totalTicketSales = 0.0,
         totalOperations = 0.0,
         totalLease = 0.0,
@@ -90,6 +95,7 @@ abstract class FinanceDataState extends FinanceState {
   FinanceSnapshot get snapshot => metrics.snapshot;
   List<LedgerEntry> get logs => metrics.logs;
   List<FinanceDailySnapshot> get dailySnapshots => metrics.dailySnapshots;
+  List<FinanceDailySnapshot> get financialSnapshots => metrics.financialSnapshots;
   double get totalTicketSales => metrics.totalTicketSales;
   double get totalOperations => metrics.totalOperations;
   double get totalLease => metrics.totalLease;

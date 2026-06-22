@@ -22,6 +22,7 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
       RealtimeSubscriptionBag();
   FinanceSnapshot _cachedSnapshot = const FinanceSnapshot.empty();
   List<LedgerEntry> _cachedLogs = [];
+  List<FinanceDailySnapshot> _cachedFinancialSnapshots = [];
   Timer? _realtimeRefreshDebounce;
   Future<void>? _activeLedgerLoad;
   Future<void>? _activeSnapshotRefresh;
@@ -33,8 +34,10 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
   FinanceDataState _buildFinanceState(
     List<LedgerEntry> logs, {
     FinanceSnapshot? snapshot,
+    List<FinanceDailySnapshot>? financialSnapshots,
   }) {
     final effectiveSnapshot = snapshot ?? _cachedSnapshot;
+    final effectiveFinancialSnapshots = financialSnapshots ?? _cachedFinancialSnapshots;
     final dailyBuckets = <DateTime, ({double revenue, double expense})>{};
     double totalTicketSales = 0.0;
     double totalOperations = 0.0;
@@ -133,6 +136,7 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
         snapshot: effectiveSnapshot,
         logs: logs,
         dailySnapshots: dailySnapshots,
+        financialSnapshots: effectiveFinancialSnapshots,
         totalTicketSales: totalTicketSales,
         totalOperations: totalOperations,
         totalLease: totalLease,
@@ -204,14 +208,25 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
       final results = await Future.wait<dynamic>([
         _gateway.loadLedger(userId),
         _gateway.getFinanceSnapshot(),
+        _gateway.getFinancialSnapshots(userId),
       ]);
 
       final ledgerResponse = results[0] as List<dynamic>;
       final snapshotMap = results[1] as Map<String, dynamic>;
+      final snapshotsResponse = results[2] as List<dynamic>;
 
       final logs = ledgerResponse.map((l) => LedgerEntry.fromMap(l)).toList();
       _cachedLogs = logs;
       _cachedSnapshot = FinanceSnapshot.fromMap(snapshotMap);
+      _cachedFinancialSnapshots = snapshotsResponse
+          .map((s) => FinanceDailySnapshot(
+                gameDate: DateTime.parse(s['game_date'] as String),
+                revenue: 0,
+                expense: 0,
+                net: 0,
+                netWorth: (s['net_worth'] as num?)?.toDouble() ?? 0.0,
+              ))
+          .toList();
       PerfDebug.end(
         'finance.ledger_load',
         stopwatch,
@@ -222,7 +237,7 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
         },
       );
 
-      emit(_buildFinanceState(logs, snapshot: _cachedSnapshot));
+      emit(_buildFinanceState(logs, snapshot: _cachedSnapshot, financialSnapshots: _cachedFinancialSnapshots));
     } catch (e, stack) {
       PerfDebug.end(
         'finance.ledger_load',

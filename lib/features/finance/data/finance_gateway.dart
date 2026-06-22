@@ -15,6 +15,7 @@ class FinanceGatewayException implements Exception {
 abstract class FinanceGateway {
   Future<List<dynamic>> loadLedger(String userId);
   Future<Map<String, dynamic>> getFinanceSnapshot();
+  Future<List<dynamic>> getFinancialSnapshots(String userId);
 }
 
 class SupabaseFinanceGateway implements FinanceGateway {
@@ -63,6 +64,28 @@ class SupabaseFinanceGateway implements FinanceGateway {
     } catch (e, stack) {
       SupabaseManager.logError('getFinanceSnapshot', e, stack);
       throw FinanceGatewayException(e.toString(), 'getFinanceSnapshot');
+    }
+  }
+
+  @override
+  Future<List<dynamic>> getFinancialSnapshots(String userId) async {
+    try {
+      return await SupabaseManager.client
+          .from('financial_snapshots')
+          .select()
+          .eq('user_id', userId)
+          .order('game_date', ascending: false)
+          .limit(30);
+    } on PostgrestException catch (e) {
+      SupabaseManager.logRpcFailure(
+        'getFinancialSnapshots',
+        {'user_id': userId},
+        e.message,
+      );
+      throw FinanceGatewayException(e.message, 'getFinancialSnapshots');
+    } catch (e, stack) {
+      SupabaseManager.logError('getFinancialSnapshots', e, stack);
+      throw FinanceGatewayException(e.toString(), 'getFinancialSnapshots');
     }
   }
 }
