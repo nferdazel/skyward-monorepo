@@ -423,6 +423,13 @@ class AppStrings {
   static const String competitorIntelLoadingSubtitle =
       'Loading competitor intelligence';
   static const String fleetUnitSuffix = 'x';
+  static const String sortByNetWorth = 'NET WORTH';
+  static const String sortByFleetSize = 'FLEET SIZE';
+  static const String sortByRevenue = 'REVENUE';
+  static const String revenuePerAircraft = 'REV/AIRCRAFT';
+  static const String netWorthPerAircraft = 'NW/AIRCRAFT';
+  static const String efficiencyMetricsLabel = 'EFFICIENCY METRICS';
+  static const String rankTrendStable = '—';
 
   // Routes Screen
   static const String flightConnectionsTab = 'FLIGHT CONNECTIONS';
@@ -663,6 +670,11 @@ class AppStrings {
   static const String routesLoadFailed = 'Failed to load routes.';
   static const String routeAssignFailed = 'Aircraft assignment failed.';
   static const String routeFrequencyUpdateFailed = 'Route update failed.';
+
+  // Notifications
+  static const String notificationsTitle = 'NOTIFICATIONS';
+  static const String markAllRead = 'MARK ALL READ';
+  static const String noNotifications = 'No notifications';
 
   // Shared widgets
   static const String dialogDismissButton = 'DISMISS';

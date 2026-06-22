@@ -461,6 +461,8 @@ class LeaderboardCubit extends Cubit<LeaderboardState>
             cash: liveEntry.cash,
             netWorth: liveEntry.netWorth,
             status: liveEntry.status,
+            fleetSize: liveEntry.fleetSize,
+            monthlyRevenue: liveEntry.monthlyRevenue,
           );
         }
         return mockIns;
@@ -480,6 +482,8 @@ class LeaderboardCubit extends Cubit<LeaderboardState>
             cash: liveEntry.cash,
             netWorth: liveEntry.netWorth,
             status: liveEntry.status,
+            fleetSize: liveEntry.fleetSize,
+            monthlyRevenue: liveEntry.monthlyRevenue,
           );
         }
         return dbIns;
@@ -499,6 +503,8 @@ class LeaderboardCubit extends Cubit<LeaderboardState>
           cash: liveEntry.cash,
           netWorth: liveEntry.netWorth,
           status: liveEntry.status,
+          fleetSize: liveEntry.fleetSize,
+          monthlyRevenue: liveEntry.monthlyRevenue,
         );
       }
       return mockIns;
@@ -560,6 +566,8 @@ class LeaderboardCubit extends Cubit<LeaderboardState>
       status: bot.status,
       fleetBreakdown: fleetBreakdown,
       networkRoutes: networkRoutes,
+      fleetSize: bot.fleetSize,
+      monthlyRevenue: bot.monthlyRevenue,
     );
   }
 

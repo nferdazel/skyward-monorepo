@@ -50,6 +50,8 @@ class CompetitorInsights {
   final String status;
   final Map<String, int> fleetBreakdown;
   final List<String> networkRoutes;
+  final int fleetSize;
+  final double monthlyRevenue;
 
   const CompetitorInsights({
     required this.companyName,
@@ -59,7 +61,17 @@ class CompetitorInsights {
     required this.status,
     required this.fleetBreakdown,
     required this.networkRoutes,
+    this.fleetSize = 0,
+    this.monthlyRevenue = 0.0,
   });
+
+  /// Revenue per aircraft (monthly revenue / fleet size).
+  double get revenuePerAircraft =>
+      fleetSize > 0 ? monthlyRevenue / fleetSize : 0.0;
+
+  /// Net worth per aircraft.
+  double get netWorthPerAircraft =>
+      fleetSize > 0 ? netWorth / fleetSize : 0.0;
 
   factory CompetitorInsights.fromMap(Map<String, dynamic> map) {
     // Parse fleet breakdown map cleanly
@@ -81,6 +93,8 @@ class CompetitorInsights {
       status: map['status'] ?? 'Active',
       fleetBreakdown: parsedFleet,
       networkRoutes: parsedRoutes,
+      fleetSize: (map['fleet_size'] as num?)?.toInt() ?? 0,
+      monthlyRevenue: (map['monthly_revenue'] as num?)?.toDouble() ?? 0.0,
     );
   }
 
@@ -92,6 +106,8 @@ class CompetitorInsights {
     String? status,
     Map<String, int>? fleetBreakdown,
     List<String>? networkRoutes,
+    int? fleetSize,
+    double? monthlyRevenue,
   }) {
     return CompetitorInsights(
       companyName: companyName ?? this.companyName,
@@ -101,6 +117,8 @@ class CompetitorInsights {
       status: status ?? this.status,
       fleetBreakdown: fleetBreakdown ?? this.fleetBreakdown,
       networkRoutes: networkRoutes ?? this.networkRoutes,
+      fleetSize: fleetSize ?? this.fleetSize,
+      monthlyRevenue: monthlyRevenue ?? this.monthlyRevenue,
     );
   }
 }

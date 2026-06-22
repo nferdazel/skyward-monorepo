@@ -18,13 +18,51 @@ import '../cubit/leaderboard_cubit.dart';
 import '../cubit/leaderboard_state.dart';
 import '../widgets/leaderboard_ui_elements.dart';
 
-class LeaderboardView extends StatelessWidget {
+class LeaderboardView extends StatefulWidget {
   const LeaderboardView({super.key});
 
+  @override
+  State<LeaderboardView> createState() => _LeaderboardViewState();
+}
+
+class _LeaderboardViewState extends State<LeaderboardView> {
   static final _currencyFormat = NumberFormat.currency(
     symbol: '\$',
     decimalDigits: 0,
   );
+
+  String _sortBy = 'net_worth';
+
+  late List<LeaderboardEntry> _sortedRankings;
+
+  @override
+  void initState() {
+    super.initState();
+    _sortedRankings = [];
+  }
+
+  void _changeSort(String sortBy) {
+    setState(() {
+      _sortBy = sortBy;
+      _sortRankings();
+    });
+  }
+
+  void _sortRankings() {
+    switch (_sortBy) {
+      case 'net_worth':
+        _sortedRankings.sort((a, b) => b.netWorth.compareTo(a.netWorth));
+        break;
+      case 'fleet_size':
+        _sortedRankings.sort((a, b) => b.fleetSize.compareTo(a.fleetSize));
+        break;
+      case 'monthly_revenue':
+        _sortedRankings.sort(
+          (a, b) => b.monthlyRevenue.compareTo(a.monthlyRevenue),
+        );
+        break;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,6 +87,12 @@ class LeaderboardView extends StatelessWidget {
       builder: (context, state) {
         final cubit = context.read<LeaderboardCubit>();
 
+        // Sync sorted rankings from bloc state
+        if (state is LeaderboardLoaded) {
+          _sortedRankings = List<LeaderboardEntry>.from(state.rankings);
+          _sortRankings();
+        }
+
         return SizedBox(
           width: double.infinity,
           height: double.infinity,
@@ -58,6 +102,8 @@ class LeaderboardView extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const AppSectionHeader(title: AppStrings.globalRankingsTitle),
+                const SizedBox(height: AppSpacing.blockGap),
+                _buildSortToggle(),
                 const SizedBox(height: AppSpacing.blockGap),
                 Expanded(
                   child: RepaintBoundary(
@@ -94,7 +140,7 @@ class LeaderboardView extends StatelessWidget {
             child: RepaintBoundary(
               child: _buildDesktopRankings(
                 context,
-                state.rankings,
+                _sortedRankings,
                 state,
                 cubit,
               ),
@@ -113,6 +159,57 @@ class LeaderboardView extends StatelessWidget {
     return const SizedBox.shrink();
   }
 
+  // ── Sort Toggle ──
+
+  Widget _buildSortToggle() {
+    return Row(
+      children: [
+        Text(
+          'SORT:',
+          style: AppTypography.badgeText.copyWith(
+            color: AppTypography.textSecondary,
+            letterSpacing: 0.6,
+          ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        _buildSortButton(AppStrings.sortByNetWorth, 'net_worth'),
+        const SizedBox(width: AppSpacing.xs),
+        _buildSortButton(AppStrings.sortByFleetSize, 'fleet_size'),
+        const SizedBox(width: AppSpacing.xs),
+        _buildSortButton(AppStrings.sortByRevenue, 'monthly_revenue'),
+      ],
+    );
+  }
+
+  Widget _buildSortButton(String label, String sortKey) {
+    final isActive = _sortBy == sortKey;
+    return GestureDetector(
+      onTap: () => _changeSort(sortKey),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: isActive
+              ? AppTheme.primary.withValues(alpha: 0.15)
+              : AppTheme.surfaceRaised,
+          border: Border.all(
+            color: isActive
+                ? AppTheme.primary.withValues(alpha: 0.4)
+                : AppTheme.border,
+            width: 1.0,
+          ),
+        ),
+        child: Text(
+          label,
+          style: AppTypography.badgeText.copyWith(
+            color: isActive ? AppTheme.primary : AppTypography.textSecondary,
+            letterSpacing: 0.4,
+            fontSize: 10,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildDesktopRankings(
     BuildContext context,
     List<LeaderboardEntry> rankings,
@@ -126,12 +223,13 @@ class LeaderboardView extends StatelessWidget {
     return AppTableShell(
       child: Table(
         columnWidths: const {
-          0: FixedColumnWidth(60), // Rank
-          1: FlexColumnWidth(5), // Company + CEO
-          2: FlexColumnWidth(3), // Cash
-          3: FlexColumnWidth(3), // Net Worth
-          4: FixedColumnWidth(100), // Fleet
-          5: FlexColumnWidth(3), // Revenue
+          0: FixedColumnWidth(50), // Rank
+          1: FixedColumnWidth(30), // Trend indicator
+          2: FlexColumnWidth(5), // Company + CEO
+          3: FlexColumnWidth(3), // Cash
+          4: FlexColumnWidth(3), // Net Worth
+          5: FixedColumnWidth(100), // Fleet
+          6: FlexColumnWidth(3), // Revenue
         },
         defaultVerticalAlignment: TableCellVerticalAlignment.middle,
         children: [
@@ -140,6 +238,7 @@ class LeaderboardView extends StatelessWidget {
             decoration: BoxDecoration(color: AppTheme.surfaceRaised),
             children: [
               _buildTableHeaderCell(AppStrings.rankLabel),
+              _buildTableHeaderCell(''), // Trend column (no label)
               _buildTableHeaderCell(AppStrings.companyLabel),
               _buildTableHeaderCell(AppStrings.cashLabel),
               _buildTableHeaderCell(AppStrings.netWorthLabel),
@@ -168,6 +267,19 @@ class LeaderboardView extends StatelessWidget {
               children:
                   [
                     RankCell(rank: rank, isHuman: isHuman),
+                    // Trend indicator placeholder (stable)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      child: Center(
+                        child: Text(
+                          AppStrings.rankTrendStable,
+                          style: AppTypography.badgeText.copyWith(
+                            color: AppTheme.textMuted,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ),
+                    ),
                     Padding(
                       padding: const EdgeInsets.symmetric(
                         vertical: 6,
@@ -285,6 +397,8 @@ class LeaderboardView extends StatelessWidget {
       cash: liveCompetitor.cash,
       netWorth: liveCompetitor.netWorth,
       status: liveCompetitor.status,
+      fleetSize: liveCompetitor.fleetSize,
+      monthlyRevenue: liveCompetitor.monthlyRevenue,
     );
 
     final currentLeader = state.rankings.isNotEmpty
@@ -396,6 +510,18 @@ class LeaderboardView extends StatelessWidget {
             AppStrings.estNetWorth,
             _currencyFormat.format(liveInsights.netWorth),
             AppTheme.primary,
+          ),
+          const SizedBox(height: 8),
+          _buildSideStatRow(
+            AppStrings.revenuePerAircraft,
+            _currencyFormat.format(liveInsights.revenuePerAircraft),
+            AppTheme.info,
+          ),
+          const SizedBox(height: 8),
+          _buildSideStatRow(
+            AppStrings.netWorthPerAircraft,
+            _currencyFormat.format(liveInsights.netWorthPerAircraft),
+            AppTheme.success,
           ),
           const SizedBox(height: 8),
           AppInfoStrip(
@@ -544,6 +670,8 @@ class LeaderboardView extends StatelessWidget {
       fleetBreakdown: const {},
       networkRoutes: const [],
       status: competitor.status,
+      fleetSize: competitor.fleetSize,
+      monthlyRevenue: competitor.monthlyRevenue,
     );
   }
 
