@@ -32,7 +32,7 @@ class DashboardSidebar extends StatelessWidget {
     ];
 
     return Container(
-      width: 80,
+      width: 44,
       decoration: BoxDecoration(
         color: AppTheme.surface,
         border: Border(
@@ -48,8 +48,6 @@ class DashboardSidebar extends StatelessWidget {
             child: SkywardLogo(size: 28, showBackground: true),
           ),
           const SizedBox(height: AppSpacing.lg),
-          Divider(color: AppTheme.border, height: 1),
-          const SizedBox(height: AppSpacing.sm),
           // Nav icons
           Expanded(
             child: BlocBuilder<NavigationCubit, NavigationState>(
@@ -75,7 +73,6 @@ class DashboardSidebar extends StatelessWidget {
               },
             ),
           ),
-          Divider(color: AppTheme.border, height: 1),
           // Logout
           _buildNavIcon(
             context,
@@ -137,13 +134,14 @@ class DashboardSidebar extends StatelessWidget {
           message: label,
           child: Material(
             color: isActive ? AppTheme.accentSubtle : Colors.transparent,
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
             child: InkWell(
               onTap: onTap,
               borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
               child: Container(
-                width: 68,
-                padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                width: 36,
+                height: 36,
+                alignment: Alignment.center,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
                   border: isActive
@@ -153,25 +151,10 @@ class DashboardSidebar extends StatelessWidget {
                         )
                       : null,
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      icon,
-                      color: color ?? (isActive ? AppTheme.primary : AppTheme.textSecondary),
-                      size: 18,
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      label,
-                      style: AppTypography.microLabel.copyWith(
-                        color: isActive ? AppTheme.primary : AppTheme.textMuted,
-                        fontSize: 11,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
+                child: Icon(
+                  icon,
+                  color: color ?? (isActive ? AppTheme.primary : AppTheme.textSecondary),
+                  size: 18,
                 ),
               ),
             ),
