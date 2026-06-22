@@ -6,9 +6,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/game_constants.dart';
 import '../../../../core/database/supabase_client.dart';
-import '../../../../core/utils/app_error.dart';
 import '../../../../core/mixins/simulation_reactive_mixin.dart';
 import '../../../../core/realtime/realtime_subscription_bag.dart';
+import '../../../../core/utils/app_error.dart';
 import '../../../../core/utils/dev_mode_manager.dart';
 import '../../../../core/utils/perf_debug.dart';
 import '../../../fleet/domain/fleet_models.dart';
@@ -32,8 +32,8 @@ class RoutesCubit extends Cubit<RoutesState> with SimulationReactiveMixin {
   Future<void>? _activeLoad;
 
   RoutesCubit({RoutesGateway? gateway})
-      : _gateway = gateway ?? const SupabaseRoutesGateway(),
-        super(const RoutesInitial());
+    : _gateway = gateway ?? const SupabaseRoutesGateway(),
+      super(const RoutesInitial());
 
   RoutesDataState _snapshotState() {
     return RoutesLoaded(
@@ -295,7 +295,9 @@ class RoutesCubit extends Cubit<RoutesState> with SimulationReactiveMixin {
           : GameConstants.absoluteMinimumSafetyLimit;
 
       // 3. Fetch user's active fleet aircraft to filter unassigned ones
-      final List<dynamic> fleetResponse = await _gateway.loadAvailableFleet(userId);
+      final List<dynamic> fleetResponse = await _gateway.loadAvailableFleet(
+        userId,
+      );
 
       final allFleet = fleetResponse
           .map((f) => UserFleetAircraft.fromMap(f))
@@ -383,9 +385,7 @@ class RoutesCubit extends Cubit<RoutesState> with SimulationReactiveMixin {
   }) async {
     if (DevModeManager.isDevMode) {
       final origin = _cachedAirports.firstWhere((a) => a.iata == originIata);
-      final dest = _cachedAirports.firstWhere(
-        (a) => a.iata == destinationIata,
-      );
+      final dest = _cachedAirports.firstWhere((a) => a.iata == destinationIata);
       final newRoute = UserRoute(
         id: 'mock-route-${DateTime.now().millisecondsSinceEpoch}',
         originIata: originIata,
@@ -495,10 +495,8 @@ class RoutesCubit extends Cubit<RoutesState> with SimulationReactiveMixin {
         'p_route_id': routeId,
         'p_aircraft_id': aircraftId,
       },
-      rpcCall: () => _gateway.assignAircraft(
-        routeId: routeId,
-        aircraftId: aircraftId,
-      ),
+      rpcCall: () =>
+          _gateway.assignAircraft(routeId: routeId, aircraftId: aircraftId),
     );
   }
 
@@ -546,10 +544,7 @@ class RoutesCubit extends Cubit<RoutesState> with SimulationReactiveMixin {
       actionName: 'update_route_frequency_and_price',
       failureMessage: AppStrings.routeFrequencyUpdateFailed,
       userId: userId,
-      rpcParams: {
-        'p_user_id': userId,
-        'p_route_id': routeId,
-      },
+      rpcParams: {'p_user_id': userId, 'p_route_id': routeId},
       rpcCall: () => _gateway.updateRouteFrequencyAndPrice(
         routeId: routeId,
         ticketPrice: ticketPrice,
@@ -592,10 +587,7 @@ class RoutesCubit extends Cubit<RoutesState> with SimulationReactiveMixin {
       actionName: 'delete_route',
       failureMessage: AppStrings.routeDeleteFailed,
       userId: userId,
-      rpcParams: {
-        'p_user_id': userId,
-        'p_route_id': routeId,
-      },
+      rpcParams: {'p_user_id': userId, 'p_route_id': routeId},
       rpcCall: () => _gateway.deleteRoute(routeId: routeId),
     );
   }
