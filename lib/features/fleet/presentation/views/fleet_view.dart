@@ -21,6 +21,7 @@ import '../../../../presentation/widgets/app_snackbar.dart';
 import '../../../../presentation/widgets/app_table_cells.dart';
 import '../../../../presentation/widgets/app_table_icon_action.dart';
 import '../../../../presentation/widgets/app_table_shell.dart';
+import '../../../../presentation/widgets/app_tab_item.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
 import '../../../routes/presentation/cubit/routes_cubit.dart';
@@ -119,14 +120,16 @@ class _FleetViewState extends State<FleetView>
                 mainAxisAlignment: MainAxisAlignment.start,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildTabItem(
+                  AppTabItem(
                     label: AppStrings.activeFleetTab,
-                    index: 0,
+                    isActive: _tabController.index == 0,
+                    onTap: () => _onTabTap(0),
                   ),
                   const SizedBox(width: 24),
-                  _buildTabItem(
+                  AppTabItem(
                     label: AppStrings.acquireAircraftTab,
-                    index: 1,
+                    isActive: _tabController.index == 1,
+                    onTap: () => _onTabTap(1),
                   ),
                 ],
               ),
@@ -159,33 +162,6 @@ class _FleetViewState extends State<FleetView>
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildTabItem({
-    required String label,
-    required int index,
-  }) {
-    final isActive = _tabController.index == index;
-    return InkWell(
-      onTap: () => _onTabTap(index),
-      borderRadius: BorderRadius.circular(4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: AppTypography.sectionHeaderMedium.copyWith(
-              color: isActive ? AppTheme.primary : AppTheme.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            height: 2,
-            color: isActive ? AppTheme.primary : Colors.transparent,
-          ),
-        ],
       ),
     );
   }
@@ -338,14 +314,14 @@ class _FleetViewState extends State<FleetView>
                         aircraft.model.modelName,
                         style: AppTypography.bodyMedium.copyWith(
                           fontWeight: FontWeight.bold,
-                          color: AppTypography.textPrimary,
+                          color: AppTheme.textPrimary,
                         ),
                       ),
                       const SizedBox(height: AppSpacing.xs - 2),
                       Text(
                         aircraft.model.manufacturer.toUpperCase(),
                         style: AppTypography.badgeText.copyWith(
-                          color: AppTypography.textSecondary,
+                          color: AppTheme.textSecondary,
                           fontSize: 9,
                           letterSpacing: 0.5,
                         ),
@@ -381,7 +357,7 @@ class _FleetViewState extends State<FleetView>
                             'E $economy  B $business  F $first',
                             style: AppTypography.badgeText.copyWith(
                               fontSize: 11,
-                              color: AppTypography.textPrimary,
+                              color: AppTheme.textPrimary,
                               letterSpacing: 0.0,
                             ),
                           ),

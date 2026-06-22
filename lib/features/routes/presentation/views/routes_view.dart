@@ -169,6 +169,10 @@ class _RoutesViewState extends State<RoutesView> {
                     icon: Icons.map_outlined,
                     title: AppStrings.noActiveConnections,
                     description: AppStrings.noActiveConnectionsDesc,
+                    actionLabel: 'OPEN BLUEPRINT PLANNER',
+                    onAction: () {
+                      // Scroll to or focus the blueprint planner
+                    },
                   ),
                 ),
               ),
@@ -417,7 +421,7 @@ class _RoutesViewState extends State<RoutesView> {
                   ),
                   decoration: BoxDecoration(
                     color: AppTheme.primary.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(3),
+                    borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
                     '${routes.length}',
@@ -538,7 +542,7 @@ class _RoutesViewState extends State<RoutesView> {
                   ),
                   decoration: BoxDecoration(
                     color: statusColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(3),
+                    borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
                     statusLabel,
@@ -635,7 +639,7 @@ class _RoutesViewState extends State<RoutesView> {
       ),
       decoration: BoxDecoration(
         color: AppTheme.primary.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(3),
+        borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
         iata,
@@ -858,15 +862,15 @@ class _RoutesViewState extends State<RoutesView> {
                           vertical: 8,
                         ),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(3),
+                          borderRadius: BorderRadius.circular(4),
                           borderSide: BorderSide(color: AppTheme.border),
                         ),
                         enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(3),
+                          borderRadius: BorderRadius.circular(4),
                           borderSide: BorderSide(color: AppTheme.border),
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(3),
+                          borderRadius: BorderRadius.circular(4),
                           borderSide: BorderSide(color: AppTheme.primary),
                         ),
                       ),
@@ -1124,7 +1128,7 @@ class _RoutesViewState extends State<RoutesView> {
                           '${maintenance.maintenanceHoursPerWeek.toStringAsFixed(1)} H',
                       valueColor: maintenance.maintenanceHoursPerWeek > 0
                           ? AppTheme.info
-                          : AppTypography.textPrimary,
+                          : AppTheme.textPrimary,
                     ),
                     AppLabeledValue(
                       label: AppStrings.maintenanceImpactLabel,
@@ -1251,7 +1255,7 @@ class _RoutesViewState extends State<RoutesView> {
                     decimal: false,
                   ),
                   style: AppTypography.badgeText.copyWith(
-                    color: AppTypography.textPrimary,
+                    color: AppTheme.textPrimary,
                     letterSpacing: 0.0,
                   ),
                   decoration: InputDecoration(
@@ -1313,7 +1317,7 @@ class _RoutesViewState extends State<RoutesView> {
                                     AppStrings.weeklyFrequencyHint,
                                     style: AppTypography.captionRegular
                                         .copyWith(
-                                          color: AppTypography.textSecondary,
+                                          color: AppTheme.textSecondary,
                                         ),
                                   ),
                                   Text(
@@ -1348,7 +1352,7 @@ class _RoutesViewState extends State<RoutesView> {
                                   maxFlights,
                                 ),
                                 style: AppTypography.captionRegular.copyWith(
-                                  color: AppTypography.textSecondary,
+                                  color: AppTheme.textSecondary,
                                   height: 1.35,
                                 ),
                               ),
@@ -1500,7 +1504,7 @@ class _RoutesViewState extends State<RoutesView> {
                         assessment.weeklyFlights >=
                             (assessment.maxWeeklyFlights * 0.9)
                     ? AppTheme.warning
-                    : AppTypography.textPrimary,
+                    : AppTheme.textPrimary,
               ),
               AppStatText(
                 label: AppStrings.maintenanceImpactLabel,
@@ -1532,7 +1536,7 @@ class _RoutesViewState extends State<RoutesView> {
           content: Text(
             '${AppStrings.closeRouteConfirmPrefix}${route.originIata}${AppStrings.closeRouteConfirmMiddle}${route.destinationIata}${AppStrings.closeRouteConfirmSuffix}',
             style: AppTypography.captionRegular.copyWith(
-              color: AppTypography.textPrimary,
+              color: AppTheme.textPrimary,
               height: 1.4,
             ),
           ),

@@ -124,7 +124,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
       return Center(
         child: Text(
           state.message,
-          style: AppTypography.bodyLarge.copyWith(color: AppTheme.error),
+          style: AppTypography.buttonText.copyWith(color: AppTheme.error),
         ),
       );
     } else if (state is LeaderboardLoaded) {
@@ -162,7 +162,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
         Text(
           'SORT:',
           style: AppTypography.badgeText.copyWith(
-            color: AppTypography.textSecondary,
+            color: AppTheme.textSecondary,
             letterSpacing: 0.6,
           ),
         ),
@@ -196,7 +196,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
         child: Text(
           label,
           style: AppTypography.badgeText.copyWith(
-            color: isActive ? AppTheme.primary : AppTypography.textSecondary,
+            color: isActive ? AppTheme.primary : AppTheme.textSecondary,
             letterSpacing: 0.4,
             fontSize: 10,
           ),
@@ -434,7 +434,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: AppTypography.badgeText.copyWith(
-              color: AppTypography.textSecondary,
+              color: AppTheme.textSecondary,
             ),
           ),
           const SizedBox(height: 16),
@@ -458,10 +458,8 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                     width: 12,
                     height: 12,
                     child: CircularProgressIndicator(
+                      color: AppTheme.primary,
                       strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        AppTheme.primary,
-                      ),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -526,14 +524,14 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                 Text(
                   AppStrings.competitorDoctrineLabel,
                   style: AppTypography.badgeText.copyWith(
-                    color: AppTypography.textSecondary,
+                    color: AppTheme.textSecondary,
                   ),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   _buildDoctrineCopy(liveCompetitor.archetype),
                   style: AppTypography.captionRegular.copyWith(
-                    color: AppTypography.textPrimary,
+                    color: AppTheme.textPrimary,
                     height: 1.35,
                   ),
                 ),
@@ -577,7 +575,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                               child: Text(
                                 f.key,
                                 style: AppTypography.bodyMedium.copyWith(
-                                  color: AppTypography.textPrimary,
+                                  color: AppTheme.textPrimary,
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -639,7 +637,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: AppTypography.bodyMedium.copyWith(
-                                  color: AppTypography.textPrimary,
+                                  color: AppTheme.textPrimary,
                                 ),
                               ),
                             ),
@@ -682,12 +680,12 @@ class _LeaderboardViewState extends State<LeaderboardView> {
   }) {
     final style = isMono
         ? AppTypography.badgeText.copyWith(
-            color: color ?? AppTypography.textPrimary,
+            color: color ?? AppTheme.textPrimary,
             fontSize: 12,
             letterSpacing: 0.0,
           )
         : AppTypography.bodyMedium.copyWith(
-            color: color ?? AppTypography.textPrimary,
+            color: color ?? AppTheme.textPrimary,
             fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
           );
 
@@ -758,7 +756,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
             child: Text(
               label,
               style: AppTypography.badgeText.copyWith(
-                color: AppTypography.textSecondary,
+                color: AppTheme.textSecondary,
               ),
             ),
           ),
@@ -793,7 +791,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
             Text(
               AppStrings.gapToLeader,
               style: AppTypography.badgeText.copyWith(
-                color: AppTypography.textSecondary,
+                color: AppTheme.textSecondary,
                 letterSpacing: 0.6,
               ),
             ),

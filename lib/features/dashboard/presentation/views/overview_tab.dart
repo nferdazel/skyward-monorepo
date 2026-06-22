@@ -8,6 +8,7 @@ import '../../../../core/theme/condition_colors.dart';
 import '../../../../presentation/theme/app_spacing.dart';
 import '../../../../presentation/theme/app_typography.dart';
 import '../../../../presentation/widgets/app_card.dart';
+import '../../../../presentation/widgets/app_section_header.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
 import '../../../finance/presentation/cubit/finance_cubit.dart';
@@ -243,7 +244,7 @@ class OverviewTab extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader('RISK & COMPETITIVE SIGNALS'),
+        const AppSectionHeader(title: 'RISK & COMPETITIVE SIGNALS'),
         const SizedBox(height: AppSpacing.md),
         _buildSignalItem(
           'COMPETITIVE GAP',
@@ -312,7 +313,7 @@ class OverviewTab extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader('QUICK ACTIONS'),
+        const AppSectionHeader(title: 'QUICK ACTIONS'),
         const SizedBox(height: AppSpacing.md),
         _buildActionButton(
           context,
@@ -379,7 +380,7 @@ class OverviewTab extends StatelessWidget {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildSectionHeader('ACTION QUEUE'),
+          const AppSectionHeader(title: 'ACTION QUEUE'),
           const SizedBox(height: AppSpacing.md),
           AppCard(
             padding: const EdgeInsets.all(AppSpacing.md),
@@ -397,7 +398,7 @@ class OverviewTab extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader('ACTION QUEUE'),
+        const AppSectionHeader(title: 'ACTION QUEUE'),
         const SizedBox(height: AppSpacing.md),
         ...overview.priorities.map((p) {
           return Padding(
@@ -434,15 +435,6 @@ class OverviewTab extends StatelessWidget {
           );
         }),
       ],
-    );
-  }
-
-  // ── Section Header ──
-
-  Widget _buildSectionHeader(String title) {
-    return Text(
-      title,
-      style: AppTypography.sectionHeaderMedium.copyWith(letterSpacing: 0.08),
     );
   }
 

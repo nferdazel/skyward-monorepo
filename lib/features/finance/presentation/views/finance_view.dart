@@ -18,6 +18,7 @@ import '../../../../presentation/widgets/app_stat_text.dart';
 import '../../../../presentation/widgets/app_sparkline.dart';
 import '../../../../presentation/widgets/app_table_cells.dart';
 import '../../../../presentation/widgets/app_table_shell.dart';
+import '../../../../presentation/widgets/app_tab_item.dart';
 import '../../../../presentation/widgets/expense_breakdown_bar.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
@@ -90,14 +91,16 @@ class _FinanceViewState extends State<FinanceView>
               mainAxisAlignment: MainAxisAlignment.start,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildTabItem(
+                AppTabItem(
                   label: AppStrings.financeOverviewTab,
-                  index: 0,
+                  isActive: _tabController.index == 0,
+                  onTap: () => _onTabTap(0),
                 ),
                 const SizedBox(width: 24),
-                _buildTabItem(
+                AppTabItem(
                   label: AppStrings.financeTransactionsTab,
-                  index: 1,
+                  isActive: _tabController.index == 1,
+                  onTap: () => _onTabTap(1),
                 ),
               ],
             ),
@@ -107,10 +110,16 @@ class _FinanceViewState extends State<FinanceView>
                 builder: (context, state) {
                   if (state is FinanceInitial) {
                     return Center(
-                      child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          AppTheme.primary,
-                        ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircularProgressIndicator(color: AppTheme.primary, strokeWidth: 2),
+                          const SizedBox(height: AppSpacing.lg),
+                          Text(
+                            'LOADING FINANCIAL DATA...',
+                            style: AppTypography.microLabel.copyWith(color: AppTheme.textMuted),
+                          ),
+                        ],
                       ),
                     );
                   }
@@ -154,33 +163,6 @@ class _FinanceViewState extends State<FinanceView>
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildTabItem({
-    required String label,
-    required int index,
-  }) {
-    final isActive = _tabController.index == index;
-    return InkWell(
-      onTap: () => _onTabTap(index),
-      borderRadius: BorderRadius.circular(4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: AppTypography.sectionHeaderMedium.copyWith(
-              color: isActive ? AppTheme.primary : AppTheme.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            height: 2,
-            color: isActive ? AppTheme.primary : Colors.transparent,
-          ),
-        ],
       ),
     );
   }
