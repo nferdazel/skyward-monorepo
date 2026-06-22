@@ -179,7 +179,7 @@ class OverviewTab extends StatelessWidget {
               HelpTooltip(message: helpMessage),
             ],
           ),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: AppSpacing.sm),
           // Large value
           Text(
             value,
@@ -196,7 +196,7 @@ class OverviewTab extends StatelessWidget {
               color: trendColor ?? activeColor,
             ),
           ],
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: AppSpacing.sm),
           // 10-segment progress bar
           Row(
             children: List.generate(10, (index) {
@@ -239,7 +239,7 @@ class OverviewTab extends StatelessWidget {
               HelpTooltip(message: AppStrings.helpKpiRunway),
             ],
           ),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: AppSpacing.sm),
           // Large value
           Text(
             snapshot.runwayLabel,

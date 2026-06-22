@@ -75,27 +75,26 @@ class AircraftFinancing {
   }
 
   factory AircraftFinancing.fromMap(Map<String, dynamic> map) {
+    final termMonths = (map['term_months'] as num?)?.toInt() ?? 0;
+    final paymentsMade = (map['payments_made'] as num?)?.toInt() ?? 0;
     return AircraftFinancing(
       id: map['id']?.toString() ?? '',
       userId: map['user_id']?.toString() ?? '',
       aircraftModelId: map['aircraft_model_id']?.toString() ?? '',
-      fleetId: map['fleet_id'] as String?,
+      fleetId: map['fleet_aircraft_id'] as String?,
       downPayment: (map['down_payment'] as num?)?.toDouble() ?? 0.0,
-      financedAmount: (map['financed_amount'] as num?)?.toDouble() ?? 0.0,
+      financedAmount: (map['principal'] as num?)?.toDouble() ?? 0.0,
       interestRate: (map['interest_rate'] as num?)?.toDouble() ?? 0.07,
       monthlyPayment: (map['monthly_payment'] as num?)?.toDouble() ?? 0.0,
-      remainingPayments: (map['remaining_payments'] as num?)?.toInt() ?? 0,
-      totalPayments: (map['total_payments'] as num?)?.toInt() ?? 0,
+      remainingPayments: termMonths - paymentsMade,
+      totalPayments: termMonths,
       remainingBalance: (map['remaining_balance'] as num?)?.toDouble() ?? 0.0,
-      creditScoreAtOrigination:
-          (map['credit_score_at_origination'] as num?)?.toInt(),
+      creditScoreAtOrigination: null,
       status: map['status'] as String? ?? 'active',
       takenAt: map['taken_at'] != null
           ? DateTime.tryParse(map['taken_at'] as String)
           : null,
-      gameDateTaken: map['game_date_taken'] != null
-          ? DateTime.tryParse(map['game_date_taken'] as String)
-          : null,
+      gameDateTaken: null,
       paidOffAt: map['paid_off_at'] != null
           ? DateTime.tryParse(map['paid_off_at'] as String)
           : null,

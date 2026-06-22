@@ -89,11 +89,11 @@ class CreditScoreSnapshot {
   factory CreditScoreSnapshot.fromMap(Map<String, dynamic> map) {
     return CreditScoreSnapshot(
       score: (map['score'] as num?)?.toInt() ?? 500,
-      fleetHealth: (map['fleet_health'] as num?)?.toInt() ?? 100,
-      revenueStability: (map['revenue_stability'] as num?)?.toInt() ?? 100,
-      debtRatio: (map['debt_ratio'] as num?)?.toInt() ?? 100,
-      cashReserve: (map['cash_reserve'] as num?)?.toInt() ?? 100,
-      profitHistory: (map['profit_history'] as num?)?.toInt() ?? 100,
+      fleetHealth: (map['fleet_health_score'] as num?)?.toInt() ?? 100,
+      revenueStability: (map['revenue_stability_score'] as num?)?.toInt() ?? 100,
+      debtRatio: (map['debt_ratio_score'] as num?)?.toInt() ?? 100,
+      cashReserve: (map['cash_reserves_score'] as num?)?.toInt() ?? 100,
+      profitHistory: (map['profit_history_score'] as num?)?.toInt() ?? 100,
       gameDate: map['game_date'] != null
           ? DateTime.parse(map['game_date'] as String)
           : DateTime.now(),

@@ -47,7 +47,6 @@ class TopHud extends StatelessWidget {
             value: user.ceoName,
             color: AppTheme.textPrimary,
           ),
-          _buildDivider(),
           // Game clock
           _buildPill(
             label: AppStrings.gameClockUtc.toUpperCase(),
@@ -55,7 +54,6 @@ class TopHud extends StatelessWidget {
             color: AppTheme.primary,
             isMono: true,
           ),
-          _buildDivider(),
           // Cash balance
           _buildPill(
             label: AppStrings.cashBalanceLabel.toUpperCase(),
@@ -63,22 +61,12 @@ class TopHud extends StatelessWidget {
             color: AppTheme.success,
             isMono: true,
           ),
-          _buildDivider(),
           // Live status
           _buildLiveStatus(simState),
-          _buildDivider(),
           // Notification bell
           _buildNotificationBell(),
         ],
       ),
-    );
-  }
-
-  Widget _buildDivider() {
-    return Container(
-      width: 1,
-      height: 24,
-      color: AppTheme.border,
     );
   }
 
@@ -88,9 +76,9 @@ class TopHud extends StatelessWidget {
     required Color color,
     bool isMono = false,
   }) {
-    return Semantics(
-      label: '$label: $value',
-      child: Expanded(
+    return Expanded(
+      child: Semantics(
+        label: '$label: $value',
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
           child: Column(
@@ -128,9 +116,9 @@ class TopHud extends StatelessWidget {
         ? AppStrings.liveLabel.toUpperCase()
         : AppStrings.syncingLabel.toUpperCase();
 
-    return Semantics(
-      label: 'Status: $statusText',
-      child: Expanded(
+    return Expanded(
+      child: Semantics(
+        label: 'Status: $statusText',
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
           child: Row(

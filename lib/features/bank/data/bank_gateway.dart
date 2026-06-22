@@ -119,8 +119,8 @@ class SupabaseBankGateway implements BankGateway {
       return await SupabaseManager.client
           .from('credit_score_history')
           .select(
-            'score, fleet_health, revenue_stability, debt_ratio, '
-            'cash_reserve, profit_history, game_date',
+            'score, fleet_health_score, revenue_stability_score, debt_ratio_score, '
+            'cash_reserves_score, profit_history_score, game_date',
           )
           .order('game_date', ascending: false)
           .limit(30);
@@ -139,11 +139,10 @@ class SupabaseBankGateway implements BankGateway {
       return await SupabaseManager.client
           .from('aircraft_financing')
           .select(
-            'id, user_id, aircraft_model_id, fleet_id, down_payment, '
-            'financed_amount, interest_rate, monthly_payment, '
-            'remaining_payments, total_payments, remaining_balance, '
-            'credit_score_at_origination, status, taken_at, '
-            'game_date_taken, paid_off_at',
+            'id, user_id, aircraft_model_id, fleet_aircraft_id, '
+            'purchase_price, down_payment, principal, interest_rate, '
+            'monthly_payment, term_months, remaining_balance, '
+            'payments_made, missed_payments, status, taken_at, paid_off_at',
           )
           .order('taken_at', ascending: false);
     } on PostgrestException catch (e) {
