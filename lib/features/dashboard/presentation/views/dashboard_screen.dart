@@ -94,7 +94,7 @@ class _AuthenticatedDashboardShellState
   // ── Notification state ──
   late List<GameNotification> _notifications;
   OverlayEntry? _notificationOverlayEntry;
-  final LayerLink _notificationLayerLink = LayerLink();
+
 
   int get _unreadCount => _notifications.where((n) => !n.isRead).length;
 
@@ -248,11 +248,10 @@ class _AuthenticatedDashboardShellState
               behavior: HitTestBehavior.translucent,
               child: Container(color: Colors.transparent),
             ),
-            // Panel positioned below the bell
-            CompositedTransformFollower(
-              link: _notificationLayerLink,
-              showWhenUnlinked: false,
-              offset: const Offset(-310, 8),
+            // Panel anchored to the right edge, below the TopHud
+            Positioned(
+              right: AppSpacing.md,
+              top: 40 + AppSpacing.xs,
               child: NotificationPanel(
                 notifications: _notifications,
                 onNotificationTap: (notification) {
@@ -413,17 +412,14 @@ class _AuthenticatedDashboardShellState
                           current.fuelPricePerLiter ||
                       previous.isSyncing != current.isSyncing,
                   builder: (context, simState) {
-                    return CompositedTransformTarget(
-                      link: _notificationLayerLink,
-                      child: TopHud(
+                    return TopHud(
                         authState: authState,
                         simState: simState,
                         currencyFormat: currencyFormat,
                         dateFormat: dateFormat,
                         unreadCount: _unreadCount,
                         onNotificationTap: _toggleNotificationPanel,
-                      ),
-                    );
+                      );
                   },
                 ),
                 // Network error status bar

@@ -196,9 +196,20 @@ class _SettingsViewState extends State<SettingsView> {
           TextFormField(
             controller: _companyController,
             focusNode: _companyFocusNode,
-            decoration: const InputDecoration(
+            style: AppTypography.bodyMedium.copyWith(
+              color: AppTheme.textPrimary,
+            ),
+            decoration: InputDecoration(
               labelText: AppStrings.companyNameLabel,
-              prefixIcon: Icon(Icons.business_outlined, size: 20),
+              labelStyle: AppTypography.badgeText.copyWith(
+                color: AppTheme.textSecondary,
+              ),
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 8,
+              ),
+              prefixIcon: const Icon(Icons.business_outlined, size: 20),
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
@@ -207,7 +218,7 @@ class _SettingsViewState extends State<SettingsView> {
           Text(
             AppStrings.hqAirportLabel,
             style: AppTypography.badgeText.copyWith(
-              color: AppTypography.textPrimary,
+              color: AppTheme.textPrimary,
             ),
           ),
           const SizedBox(height: AppSpacing.xs),
@@ -274,7 +285,7 @@ class _SettingsViewState extends State<SettingsView> {
                 child: Text(
                   AppStrings.autoGroundingLabel,
                   style: AppTypography.badgeText.copyWith(
-                    color: AppTypography.textPrimary,
+                    color: AppTheme.textPrimary,
                     letterSpacing: 0.0,
                   ),
                 ),
@@ -309,7 +320,7 @@ class _SettingsViewState extends State<SettingsView> {
           Text(
             AppStrings.autoGroundingDesc,
             style: AppTypography.captionRegular.copyWith(
-              color: AppTypography.textMuted,
+              color: AppTheme.textMuted,
               height: 1.4,
             ),
           ),
@@ -326,7 +337,7 @@ class _SettingsViewState extends State<SettingsView> {
                     Text(
                       AppStrings.uiScalingLabel,
                       style: AppTypography.badgeText.copyWith(
-                        color: AppTypography.textPrimary,
+                        color: AppTheme.textPrimary,
                         letterSpacing: 0.0,
                       ),
                     ),
@@ -334,7 +345,7 @@ class _SettingsViewState extends State<SettingsView> {
                     Text(
                       AppStrings.uiScalingDesc,
                       style: AppTypography.captionRegular.copyWith(
-                        color: AppTypography.textMuted,
+                        color: AppTheme.textMuted,
                       ),
                     ),
                   ],
@@ -372,7 +383,7 @@ class _SettingsViewState extends State<SettingsView> {
           Text(
             AppStrings.defaultSeatPresetLabel,
             style: AppTypography.badgeText.copyWith(
-              color: AppTypography.textPrimary,
+              color: AppTheme.textPrimary,
               letterSpacing: 0.0,
             ),
           ),
@@ -380,17 +391,22 @@ class _SettingsViewState extends State<SettingsView> {
           Text(
             AppStrings.defaultSeatPresetDesc,
             style: AppTypography.captionRegular.copyWith(
-              color: AppTypography.textMuted,
+              color: AppTheme.textMuted,
               height: 1.4,
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
           DropdownButtonFormField<String>(
             initialValue: state.seatPreset,
-            decoration: const InputDecoration(
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-                vertical: AppSpacing.sm,
+            style: AppTypography.bodyMedium.copyWith(
+              color: AppTheme.textPrimary,
+            ),
+            dropdownColor: AppTheme.surface,
+            decoration: InputDecoration(
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 8,
               ),
             ),
             items: const [
@@ -426,7 +442,7 @@ class _SettingsViewState extends State<SettingsView> {
                     Text(
                       AppStrings.showTickerTapeLabel,
                       style: AppTypography.badgeText.copyWith(
-                        color: AppTypography.textPrimary,
+                        color: AppTheme.textPrimary,
                         letterSpacing: 0.0,
                       ),
                     ),
@@ -434,7 +450,7 @@ class _SettingsViewState extends State<SettingsView> {
                     Text(
                       AppStrings.showTickerTapeDesc,
                       style: AppTypography.captionRegular.copyWith(
-                        color: AppTypography.textMuted,
+                        color: AppTheme.textMuted,
                         height: 1.4,
                       ),
                     ),
@@ -464,7 +480,7 @@ class _SettingsViewState extends State<SettingsView> {
                     Text(
                       AppStrings.autoRepairThresholdLabel,
                       style: AppTypography.badgeText.copyWith(
-                        color: AppTypography.textPrimary,
+                        color: AppTheme.textPrimary,
                         letterSpacing: 0.0,
                       ),
                     ),
@@ -472,7 +488,7 @@ class _SettingsViewState extends State<SettingsView> {
                     Text(
                       AppStrings.autoRepairThresholdDesc,
                       style: AppTypography.captionRegular.copyWith(
-                        color: AppTypography.textMuted,
+                        color: AppTheme.textMuted,
                         height: 1.4,
                       ),
                     ),
@@ -521,7 +537,7 @@ class _SettingsViewState extends State<SettingsView> {
                     Text(
                       AppStrings.fareMultiplierLabel,
                       style: AppTypography.badgeText.copyWith(
-                        color: AppTypography.textPrimary,
+                        color: AppTheme.textPrimary,
                         letterSpacing: 0.0,
                       ),
                     ),
@@ -529,7 +545,7 @@ class _SettingsViewState extends State<SettingsView> {
                     Text(
                       AppStrings.fareMultiplierDesc,
                       style: AppTypography.captionRegular.copyWith(
-                        color: AppTypography.textMuted,
+                        color: AppTheme.textMuted,
                         height: 1.4,
                       ),
                     ),
@@ -607,7 +623,6 @@ class _SettingsViewState extends State<SettingsView> {
     }
 
     return SearchableAirportDropdown(
-      label: AppStrings.selectHqHubAirport,
       airports: domainAirports,
       selectedValue: selectedAirport,
       onSelected: (Airport? selection) {
@@ -670,7 +685,7 @@ class _SettingsViewState extends State<SettingsView> {
           Text(
             AppStrings.resetAirlineConfirmDesc.split('\n\n').first,
             style: AppTypography.captionRegular.copyWith(
-              color: AppTypography.textSecondary,
+              color: AppTheme.textSecondary,
               height: 1.4,
             ),
           ),

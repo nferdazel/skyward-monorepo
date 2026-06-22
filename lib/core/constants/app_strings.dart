@@ -16,6 +16,7 @@ class AppStrings {
   static const String loadingLabel = 'LOADING...';
   static const String loadingFleetRegistry = 'LOADING FLEET REGISTRY...';
   static const String loadingRouteNetwork = 'LOADING ROUTE NETWORK...';
+  static const String loadingFinancialData = 'LOADING FINANCIAL DATA...';
 
   // Auth Screen
   static const String authHeroTitle = 'Architect Your Global Airline Empire.';

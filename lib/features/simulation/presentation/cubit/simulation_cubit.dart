@@ -257,6 +257,7 @@ class SimulationCubit extends Cubit<SimulationState>
           fuelPricePerLiter: fuelPrice,
           gameSpeedMultiplier: gameSpeedMultiplier,
           isSyncing: false,
+          errorMessage: null,
           lastElapsedDays: elapsedGameDays,
           lastFlightsRun: flightsRun,
           operationalStatus: authoritativeUser.operationalStatus,

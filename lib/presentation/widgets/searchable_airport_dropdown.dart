@@ -10,14 +10,14 @@ import '../theme/app_typography.dart';
 
 /// A searchable dropdown for selecting airports by IATA code, city, or country.
 class SearchableAirportDropdown extends StatefulWidget {
-  final String label;
+  final String? label;
   final List<Airport> airports;
   final Airport? selectedValue;
   final ValueChanged<Airport?> onSelected;
 
   const SearchableAirportDropdown({
     super.key,
-    required this.label,
+    this.label,
     required this.airports,
     required this.selectedValue,
     required this.onSelected,
@@ -125,7 +125,7 @@ class _SearchableAirportDropdownState extends State<SearchableAirportDropdown> {
         focusNode: _focusNode,
         style: AppTypography.bodyMedium.copyWith(color: AppTheme.textPrimary),
         decoration: InputDecoration(
-          labelText: widget.label.toUpperCase(),
+          labelText: widget.label?.toUpperCase(),
           labelStyle: AppTypography.badgeText.copyWith(
             color: AppTheme.textSecondary,
           ),
