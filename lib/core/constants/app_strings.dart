@@ -1,7 +1,7 @@
 class AppStrings {
   const AppStrings._();
   // Common
-  static const String abortOperation = 'ABORT OPERATION';
+  static const String abortOperation = 'CANCEL';
   static const String confirmReset = 'CONFIRM RESET';
   static const String failed = 'FAILED';
   static const String cancelLabel = 'CANCEL';
@@ -9,7 +9,7 @@ class AppStrings {
   static const String loadingControls = 'Loading Controls...';
   static const String skyward = 'SKYWARD';
   static const String ceoPrefix = 'CEO';
-  static const String logoutOperations = 'LOGOUT OPERATIONS';
+  static const String logoutOperations = 'LOG OUT';
   static const String syncingLabel = 'SYNCING...';
   static const String liveLabel = 'LIVE';
   static const String noMatchingAirports = 'NO MATCHING AIRPORTS';
@@ -19,17 +19,17 @@ class AppStrings {
   static const String loadingFinancialData = 'LOADING FINANCIAL DATA...';
 
   // Auth Screen
-  static const String authHeroTitle = 'Architect Your Global Airline Empire.';
+  static const String authHeroTitle = 'Build Your Airline.';
   static const String authHeroBody =
-      'Acquire cutting-edge aircraft, blueprint highly lucrative routes across 200+ global hubs, and navigate a Supabase-driven world-clock economy as Chief Executive Officer.';
+      'Grow a fleet, open routes across 200+ airports, and compete in a live economy.';
   static const String authFeatureGlobalNetwork =
-      'Dense global airport network spanning 200+ hubs';
+      '200+ airports worldwide';
   static const String authFeatureFleet =
-      'Acquire, lease, and schedule realistic commercial fleets';
+      'Buy, lease, and schedule aircraft';
   static const String authFeatureSimulation =
-      'Anti-cheat PostgreSQL-driven physics & time economics';
+      'Real-time simulation with live economics';
   static const String authFeatureLedger =
-      'Detailed ledger analytics tracking absolute yields';
+      'Financial tracking and route analytics';
   static const String welcomeCeo = 'Welcome CEO';
   static const String establishAirline = 'Establish Airline';
   static const String signInCommand = 'Sign in to assume operational command.';
@@ -57,18 +57,17 @@ class AppStrings {
   static const String enterCeoName = 'Enter your CEO name';
 
   // Overview Screen
-  static const String executiveHudTitle = 'Executive Operations HUD';
-  static const String commandEstablished = 'Operational Command Established';
+  static const String executiveHudTitle = 'Executive Operations Dashboard';
+  static const String commandEstablished = 'Dashboard';
   static const String overviewWelcomePrefix = 'Welcome back, ';
   static const String overviewWelcomeBody =
       'Skyward operations are active on the shared Supabase world clock. Backend ticks reconcile routes, revenue, leases, and fleet wear while this cockpit reflects committed state.';
-  static const String cashBalanceLabel = 'Liquid Cash Balance';
-  static const String flightsCompletedLabel = 'Flights Completed (Sync)';
-  static const String timeElapsedLabel = 'Time Elapsed (Sync)';
+  static const String cashBalanceLabel = 'Cash Balance';
+  static const String flightsCompletedLabel = 'Flights Completed';
+  static const String timeElapsedLabel = 'Time Elapsed';
   static const String cyclesSuffix = ' cycles';
   static const String gameDaysSuffix = ' game days';
-  static const String strategicAdvisoryTitle =
-      'Strategic Flight Operations Advisory';
+  static const String strategicAdvisoryTitle = 'Tips';
   static const String advisoryDemandTitle = 'Demand Elasticity';
   static const String advisoryDemandBody =
       'Setting ticket pricing higher than base fare (\$50 base + \$0.12/km) decays customer booking yields exponentially. Maintain competitive pricing to guarantee 100% load factors.';
@@ -78,7 +77,7 @@ class AppStrings {
   static const String advisoryLeaseTitle = 'Lease Downpayments';
   static const String advisoryLeaseBody =
       'Leasing aircraft incurs monthly costs continuously, even if grounded. Make sure you establish flight routes immediately after leasing to cover recurring operational costs.';
-  static const String immediateActionsTitle = 'Immediate Fleet Action Paths';
+  static const String immediateActionsTitle = 'Get Started';
   static const String acquireFleetAssets = 'Acquire Fleet Assets';
   static const String acquireFleetAssetsDesc =
       'Buy or lease high-efficiency commercial aircraft to build operational hangars.';
@@ -92,7 +91,7 @@ class AppStrings {
   static const String networkPressureLabel = 'NETWORK PRESSURE';
   static const String slackCapacityLabel = 'SCHEDULE SLACK';
   static const String competitiveGapLabel = 'COMPETITIVE GAP';
-  static const String groundedAirframesLabel = 'GROUNDED AIRFRAMES';
+  static const String groundedAirframesLabel = 'GROUNDED AIRCRAFT';
   static const String leaseExposureLabel = 'LEASE EXPOSURE';
   static const String averageConditionLabel = 'AVERAGE CONDITION';
   static const String activeRoutesLabel = 'ACTIVE ROUTES';
@@ -116,29 +115,28 @@ class AppStrings {
   static const String noRoutesCoverage = 'No route network is established yet.';
   static const String runwayUnknown = 'NO DATA';
   static const String daysSuffix = ' days';
-  static const String airframesSuffix = ' airframes';
+  static const String airframesSuffix = ' aircraft';
   static const String routesSuffix = ' routes';
   static const String hoursPerWeekSuffix = ' hours / week';
-  static const String noUrgentFailures =
-      'No urgent failures detected. Keep building the network deliberately.';
+  static const String noUrgentFailures = 'All clear.';
   static const String overviewGroundedWarning =
-      'Grounded airframes are blocking revenue. Manual maintenance or reassignment is needed.';
+      "Grounded aircraft aren't earning. Repair or reassign them.";
   static const String overviewLeaseWarning =
-      'Lease burden is outrunning cash generation. Reduce idle leased capacity or improve route yield.';
+      'Lease costs exceed revenue. Assign idle aircraft or cut leases.';
   static const String overviewRouteWarning =
-      'Active routes are overcommitted. Add slack or expect higher maintenance pressure.';
+      'Routes are overbooked. Reduce frequency or add aircraft.';
   static const String overviewRunwayWarning =
-      'Cash runway is short against current operating burn.';
+      'Cash is running low.';
   static const String overviewLeaderWarning =
       'The leader has opened a large net-worth gap. Expansion pace is lagging.';
   static const String overviewDistressWarning =
-      'The airline is in distress. Negative operating days or negative cash need immediate correction.';
+      'Airline is losing money. Act now.';
   static const String overviewRecoveryWarning =
       'The airline is recovering, but one more weak cycle can reopen the same pressure.';
   static const String overviewAssignFleetAction =
-      'Assign airframes to routes with slack';
+      'Assign aircraft to routes with slack';
   static const String overviewRepairFleetAction =
-      'Repair grounded airframes above the safety floor';
+      'Repair grounded aircraft above the safety floor';
   static const String overviewTightenLeaseAction =
       'Retire weak routes or reduce leased exposure';
   static const String overviewExpandAction =
@@ -206,7 +204,7 @@ class AppStrings {
   static const String fleetPressureWarning =
       'Multiple aircraft are below the safety threshold and not earning revenue.';
   static const String idleFleetWarning =
-      'Ready airframes are sitting idle. Either assign them or reduce leased exposure.';
+      'Ready aircraft are sitting idle. Either assign them or reduce leased exposure.';
   static const String healthyFleetSignal =
       'Current hangar mix is operationally stable.';
   static const String noCatalogModelsAvailable = 'NO CATALOG MODELS AVAILABLE.';
@@ -217,7 +215,7 @@ class AppStrings {
       'FAILED TO LOAD FLEET REGISTRY. RETRY.';
   static const String yourHangarEmpty = 'YOUR FLEET AWAITS.';
   static const String yourHangarEmptyDesc =
-      'Your competitors are already flying. Every day without aircraft is lost revenue. Start by acquiring your first airframe.';
+      'Your competitors are already flying. Every day without aircraft is lost revenue. Start by acquiring your first aircraft.';
   static const String browseAircraftCta = 'BROWSE AIRCRAFT';
   static const String configureSeatAllocation = 'Configure Seat Allocation';
   static const String realisticSpaceConfiguration =
@@ -236,12 +234,12 @@ class AppStrings {
       'Purchase Aircraft & Configure Seats';
   static const String confirmLease = 'CONFIRM LEASE';
   static const String confirmBuy = 'CONFIRM BUY';
-  static const String leaseAirframe = 'LEASE AIRFRAME';
-  static const String commissionAirframe = 'COMMISSION AIRFRAME';
+  static const String leaseAirframe = 'LEASE AIRCRAFT';
+  static const String commissionAirframe = 'BUY AIRCRAFT';
   static const String leaseAirframeAndConfigureCabin =
-      'Lease Airframe & Configure Cabin';
+      'Lease Aircraft & Configure Cabin';
   static const String commissionAirframeAndConfigureCabin =
-      'Commission Airframe & Configure Cabin';
+      'Buy Aircraft & Configure Cabin';
   static const String configureSeatsTooltip = 'Configure seats';
   static const String repairTooltipPrefix = 'Repair ';
   static const String leaseAircraftTooltip = 'Lease aircraft';
@@ -303,7 +301,7 @@ class AppStrings {
   static const String disposalAssignedWarning =
       'This aircraft is still assigned to a route. Unassign it before disposal.';
   static const String disposalFinalLine =
-      '? This action removes the airframe from your fleet registry.';
+      '? This action removes the aircraft from your fleet registry.';
   static const String confirmSale = 'CONFIRM SALE';
   static const String confirmLeaseTermination = 'CONFIRM TERMINATION';
   static const String manufacturerFilterLabel = 'MANUFACTURER';
@@ -322,21 +320,20 @@ class AppStrings {
   static const String repairConfirmCostSuffix = '.';
 
   // Settings Screen
-  static const String systemSettingsTitle = 'SYSTEM SETTINGS & RADAR HUD';
+  static const String systemSettingsTitle = 'SETTINGS';
   static const String systemSettingsDesc =
-      'Customize airline parameters, configure auto-grounding hull wear policies, adjust visual HUD scaling, and view authorized CEO credentials.';
-  static const String brandingSectionTitle =
-      'AIRLINE BRANDING & HYDRAULIC Grounding Policies';
+      'Customize airline parameters, configure auto-grounding policies, adjust UI scaling, and view CEO credentials.';
+  static const String brandingSectionTitle = 'AIRLINE & SAFETY';
   static const String companyNameLabel = 'COMMERCIAL AIRLINE NAME';
   static const String hqAirportLabel = 'PRIMARY HEADQUARTERS (HQ) AIRPORT';
   static const String autoGroundingLabel = 'AUTO-GROUNDING SAFETY THRESHOLD';
   static const String autoGroundingDesc =
       'Fleet aircraft are automatically grounded if hull operational wear degrades below this safety cutoff limit. Setting a higher threshold improves flight safety margins but requires more frequent maintenance.';
-  static const String saveBrandButton = 'SAVE BRAND & SAFETY VALUE';
-  static const String uiScalingLabel = 'HUD INTERFACE SCALE MULTIPLIER';
+  static const String saveBrandButton = 'SAVE';
+  static const String uiScalingLabel = 'UI SCALE';
   static const String uiScalingDesc =
       'Optimize scaling for HiDPI/System displays';
-  static const String resetProfileButton = 'RESET AIRLINE CORPORATE PROFILE';
+  static const String resetProfileButton = 'RESET AIRLINE';
   static const String settingsSavedSuccess =
       'SYSTEM CONFIGURATIONS SAVED SUCCESSFULLY';
   static const String selectHqHubAirport = 'SELECT HQ HUB AIRPORT';
@@ -351,7 +348,7 @@ class AppStrings {
   static const String criticalOperationAuth =
       'CRITICAL OPERATION AUTHORIZATION REQUIRED';
   static const String resetAirlineConfirmDesc =
-      'This action will permanently delete all active and leased fleet aircraft, cancel your entire commercial flight route network, wipe all ledger transaction records, and reset your starting cash balance to \$15,000,000.00 cash.\n\nTHIS OPERATION IS IRREVERSIBLE. DO YOU WISH TO PROCEED?';
+      'This deletes all aircraft, routes, and transactions. Cash resets to \$15,000,000.\n\nThis cannot be undone.';
   static const String airlineResetSuccess =
       'AIRLINE PROFILE RESET SUCCESSFULLY!';
   static const String airlineResetFailedPrefix = 'AIRLINE RESET FAILED: ';
@@ -378,7 +375,7 @@ class AppStrings {
       'Multiplier applied to recommended base fares when creating new routes.';
 
   // Leaderboard Screen
-  static const String globalRankingsTitle = 'GLOBAL RANKINGS HUD';
+  static const String globalRankingsTitle = 'GLOBAL RANKINGS';
   static const String globalRankingsDesc =
       'Track global ASEAN commercial airline metrics. Rankings update dynamically based on company net worth, fleet assets, and realized last-30-day revenue.';
   static const String selectCompetitor = 'SELECT COMPETITOR';
@@ -417,7 +414,7 @@ class AppStrings {
   static const String gapToLeader = 'GAP TO LEADER';
   static const String leaderBehindSuffix = ' BEHIND #1';
   static const String worldLeaderLabel = 'CURRENT WORLD LEADER';
-  static const String dismissRadarHud = 'DISMISS RADAR HUD';
+  static const String dismissRadarHud = 'DISMISS';
   static const String failedToLoadInsights = 'Failed to load insights details';
   static const String rankingsLoadFailed = 'Failed to load rankings.';
   static const String insightsLoadFailed = 'Failed to load competitor insights.';
@@ -448,7 +445,7 @@ class AppStrings {
       'Some active routes are running with net wear or missing aircraft coverage.';
   static const String networkStableSignal =
       'Active routes currently have acceptable assignment and wear coverage.';
-  static const String blueprintNewNodeTitle = 'BLUEPRINT A NEW FLIGHT NODE';
+  static const String blueprintNewNodeTitle = 'NEW ROUTE';
   static const String blueprintNewNodeDesc =
       'Blueprint a lucrative route between global hubs. Real-time geographical coordinates, base fares, and demand elasticity are calculated dynamically.';
   static const String gpsDistanceLabel = 'GPS Distance';
@@ -475,7 +472,7 @@ class AppStrings {
   static const String plannerBlockedSignal =
       'No ready aircraft in the hangar can operate this route safely today.';
   static const String plannerFrequencyRisk =
-      'Requested schedule is pressing the airframe close to its weekly cap.';
+      'Requested schedule is pressing the aircraft close to its weekly cap.';
   static const String plannerSlackSignal =
       'Current schedule leaves enough maintenance slack to limit wear pressure.';
   static const String plannerNeedsCompatibleAircraft =
@@ -505,13 +502,13 @@ class AppStrings {
   static const String originAirportHub = 'Origin Airport Hub';
   static const String destinationAirportHub = 'Destination Airport Hub';
   static const String flightNodePhysicsProjections =
-      'FLIGHT NODE PHYSICS & ECONOMIC PROJECTIONS';
+      'ROUTE DETAILS';
   static const String passengerBookingElasticity =
-      'PASSENGER BOOKING ELASTICITY STATUS';
+      'DEMAND STATUS';
   static const String optimalLabel = 'OPTIMAL';
   static const String excessiveLabel = 'EXCESSIVE';
   static const String calibratedLabel = 'CALIBRATED';
-  static const String establishFlightConnection = 'ESTABLISH FLIGHT CONNECTION';
+  static const String establishFlightConnection = 'CREATE ROUTE';
   static const String establishingFlightConnection =
       'ESTABLISHING FLIGHT CONNECTION...';
   static const String groundedNoneLabel = 'GROUNDED / NONE';
@@ -520,7 +517,7 @@ class AppStrings {
   static const String ticketPriceInputLabel = 'TICKET PRICE (\$)';
   static const String weeklyFlightFrequencyLabel = 'WEEKLY FLIGHT FREQUENCY';
   static const String saveAdjustments = 'COMMIT SCHEDULE';
-  static const String closeActiveConnection = 'CLOSE ACTIVE CONNECTION';
+  static const String closeActiveConnection = 'CLOSE ROUTE';
   static const String deleteRoute = 'RETIRE ROUTE';
   static const String routePricingGuidance = 'Optimal base ticket fare: ';
   static const String routePricingGuidanceSuffix =
