@@ -17,6 +17,7 @@ import '../../../../presentation/widgets/app_section_header.dart';
 import '../../../../presentation/widgets/app_stat_text.dart';
 import '../../../../presentation/widgets/app_sparkline.dart';
 import '../../../../presentation/widgets/app_line_chart.dart';
+import '../../../../presentation/widgets/help_tooltip.dart';
 import '../../../../presentation/widgets/app_table_cells.dart';
 import '../../../../presentation/widgets/app_table_shell.dart';
 import '../../../../presentation/widgets/app_tab_item.dart';
@@ -465,8 +466,10 @@ class _FinanceViewState extends State<FinanceView>
     IconData icon, {
     Widget? sparkline,
   }) {
-    return AppCard(
-      customBorder: Border(
+    return Semantics(
+      label: '$label: $value',
+      child: AppCard(
+        customBorder: Border(
         top: BorderSide(color: color, width: 1.5),
         left: BorderSide(color: AppTheme.border, width: 0.5),
         right: BorderSide(color: AppTheme.border, width: 0.5),
@@ -509,6 +512,7 @@ class _FinanceViewState extends State<FinanceView>
           ),
         ],
       ),
+      ),
     );
   }
 
@@ -522,25 +526,29 @@ class _FinanceViewState extends State<FinanceView>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          AppStatText(
-            label: AppStrings.financeCashRunwayLabel,
-            value: overview.runwayLabel,
-            valueColor: overview.runwayColor,
+          _buildSignalWithHelp(
+            AppStrings.financeCashRunwayLabel,
+            overview.runwayLabel,
+            overview.runwayColor,
+            'Days until cash runs out at current expense rate',
           ),
-          AppStatText(
-            label: AppStrings.financeBurnRatioLabel,
-            value: overview.burnMixLabel,
-            valueColor: AppTypography.textPrimary,
+          _buildSignalWithHelp(
+            AppStrings.financeBurnRatioLabel,
+            overview.burnMixLabel,
+            AppTypography.textPrimary,
+            'Percentage of expenses from leases vs operations',
           ),
-          AppStatText(
-            label: AppStrings.financeLargestExpenseLabel,
-            value: overview.largestExpenseLabel,
-            valueColor: AppTheme.warning,
+          _buildSignalWithHelp(
+            AppStrings.financeLargestExpenseLabel,
+            overview.largestExpenseLabel,
+            AppTheme.warning,
+            'Your biggest cost category this period',
           ),
-          AppStatText(
-            label: AppStrings.financeRevenueCoverageLabel,
-            value: overview.coverageLabel,
-            valueColor: overview.coverageColor,
+          _buildSignalWithHelp(
+            AppStrings.financeRevenueCoverageLabel,
+            overview.coverageLabel,
+            overview.coverageColor,
+            'Revenue vs expense ratio \u2014 above 1.0 means profitable',
           ),
           AppStatText(
             label: 'CASM',
@@ -551,6 +559,44 @@ class _FinanceViewState extends State<FinanceView>
             label: 'RASM',
             value: rasmValue,
             valueColor: AppTheme.textSecondary,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSignalWithHelp(
+    String label,
+    String value,
+    Color valueColor,
+    String helpMessage,
+  ) {
+    return Semantics(
+      label: '$label: $value',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: AppTypography.badgeText.copyWith(
+                  color: AppTheme.textSecondary,
+                  letterSpacing: 0.4,
+                ),
+              ),
+              const SizedBox(width: 2),
+              HelpTooltip(message: helpMessage, iconSize: 12),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            value,
+            style: AppTypography.badgeText.copyWith(
+              color: valueColor,
+              letterSpacing: 0.0,
+            ),
           ),
         ],
       ),

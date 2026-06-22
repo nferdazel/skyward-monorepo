@@ -286,20 +286,12 @@ class _LeaderboardViewState extends State<LeaderboardView> {
             final isHuman = !entry.isBot;
             final isSelected = selectedId == entry.id;
 
-            return TableRow(
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? AppTheme.primary.withValues(alpha: 0.08)
-                    : (isHuman
-                          ? AppTheme.primary.withValues(alpha: 0.03)
-                          : null),
-                border: Border(
-                  bottom: BorderSide(color: AppTheme.border, width: 1.0),
-                ),
-              ),
-              children:
-                  [
-                    RankCell(rank: rank, isHuman: isHuman),
+            final semanticLabel = 'Rank $rank: ${entry.companyName}, Net worth ${AppFormatters.currency.format(entry.netWorth)}';
+            final rowChildren = [
+                    Semantics(
+                      label: semanticLabel,
+                      child: RankCell(rank: rank, isHuman: isHuman),
+                    ),
                     // Trend indicator: compare current rank with previous day
                     _buildRankTrendIndicator(rank, entry.previousRank),
                     Padding(
@@ -361,7 +353,21 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                       AppFormatters.currency.format(entry.monthlyRevenue),
                       isMono: true,
                     ),
-                  ].map((cell) {
+                  ];
+
+            return TableRow(
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? AppTheme.primary.withValues(alpha: 0.08)
+                    : (isHuman
+                          ? AppTheme.primary.withValues(alpha: 0.03)
+                          : null),
+                border: Border(
+                  bottom: BorderSide(color: AppTheme.border, width: 1.0),
+                ),
+              ),
+              children:
+                  rowChildren.map((cell) {
                     return TableCell(
                       child: InkWell(
                         onTap: () => cubit.selectCompetitor(entry),
