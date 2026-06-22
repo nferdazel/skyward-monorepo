@@ -77,7 +77,7 @@ void main() {
     expect(tester.takeException(), isNull);
 
     expect(find.text('FLEET READY'), findsOneWidget);
-    expect(find.text('CASH RUNWAY'), findsOneWidget);
+    expect(find.text('RUNWAY ESTIMATE'), findsOneWidget);
     expect(find.text('NETWORK HEALTH'), findsOneWidget);
     expect(find.text('AVG CONDITION'), findsOneWidget);
     expect(find.text('RISK & COMPETITIVE SIGNALS'), findsOneWidget);

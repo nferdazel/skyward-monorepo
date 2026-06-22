@@ -92,7 +92,7 @@ class OverviewTab extends StatelessWidget {
             onTap: () => context.read<NavigationCubit>().selectTab(1),
             borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
             child: _buildKPICard(
-              title: 'FLEET READY',
+              title: AppStrings.fleetReadyLabel,
               icon: Icons.check_circle_outline,
               value: '${overview.readyFleetCount}/${overview.totalFleetCount}',
               filledSegments: overview.totalFleetCount > 0
@@ -175,7 +175,7 @@ class OverviewTab extends StatelessWidget {
                   color: AppTheme.textMuted,
                 ),
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: AppSpacing.xs),
               HelpTooltip(message: helpMessage),
             ],
           ),
@@ -230,12 +230,12 @@ class OverviewTab extends StatelessWidget {
               Icon(Icons.timer_outlined, color: AppTheme.textMuted, size: 14),
               const SizedBox(width: AppSpacing.sm),
               Text(
-                'CASH RUNWAY',
+                AppStrings.runwayEstimateLabel,
                 style: AppTypography.microLabel.copyWith(
                   color: AppTheme.textMuted,
                 ),
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: AppSpacing.xs),
               HelpTooltip(message: AppStrings.helpKpiRunway),
             ],
           ),
@@ -270,22 +270,22 @@ class OverviewTab extends StatelessWidget {
         const AppSectionHeader(title: 'RISK & COMPETITIVE SIGNALS'),
         const SizedBox(height: AppSpacing.md),
         _buildSignalItem(
-          'COMPETITIVE GAP',
+          AppStrings.competitiveGapLabel,
           overview.leaderGapLabel,
           overview.leaderGapColor,
         ),
         _buildSignalItem(
-          'TOP ROUTE RISK',
+          AppStrings.topRouteRiskLabel,
           overview.topRouteRiskLabel,
           AppTheme.warning,
         ),
         _buildSignalItem(
-          'NET YIELD',
+          AppStrings.netYieldLabel,
           currencyFormat.format(overview.netYield),
           overview.netYield >= 0 ? AppTheme.success : AppTheme.error,
         ),
         _buildSignalItem(
-          'IDLE FLEET',
+          AppStrings.idleFleetLabel,
           '${overview.idleReadyFleetCount} airframes',
           overview.idleReadyFleetCount > 0 ? AppTheme.warning : AppTheme.success,
         ),
@@ -317,8 +317,8 @@ class OverviewTab extends StatelessWidget {
               ),
             ),
             Container(
-              width: 4,
-              height: 32,
+              width: AppSpacing.xs,
+              height: AppSpacing.xxxl,
               decoration: BoxDecoration(
                 color: color,
                 borderRadius: BorderRadius.circular(AppSpacing.radiusTight),
@@ -403,7 +403,7 @@ class OverviewTab extends StatelessWidget {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const AppSectionHeader(title: 'ACTION QUEUE'),
+          const AppSectionHeader(title: AppStrings.actionQueueTitle),
           const SizedBox(height: AppSpacing.md),
           AppCard(
             padding: const EdgeInsets.all(AppSpacing.md),

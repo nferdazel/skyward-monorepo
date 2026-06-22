@@ -236,7 +236,6 @@ class _LeaderboardViewState extends State<LeaderboardView> {
           style: AppTypography.badgeText.copyWith(
             color: isActive ? AppTheme.primary : AppTheme.textSecondary,
             letterSpacing: 0.4,
-            fontSize: 11,
           ),
         ),
       ),
@@ -477,7 +476,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
           if (state.isLoadingInsights) ...[
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 10),
               decoration: BoxDecoration(
                 color: AppTheme.primary.withValues(alpha: 0.08),
                 border: Border.all(
@@ -598,7 +597,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                         margin: const EdgeInsets.only(bottom: 6),
                         padding: const EdgeInsets.symmetric(
                           horizontal: 10,
-                          vertical: 8,
+                          vertical: AppSpacing.sm,
                         ),
                         backgroundColor: AppTheme.background,
                         child: Row(
@@ -653,7 +652,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                       return AppCard(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 10,
-                          vertical: 8,
+                          vertical: AppSpacing.sm,
                         ),
                         backgroundColor: AppTheme.background,
                         child: Row(
@@ -715,7 +714,6 @@ class _LeaderboardViewState extends State<LeaderboardView> {
             AppStrings.rankTrendStable,
             style: AppTypography.badgeText.copyWith(
               color: AppTheme.textMuted,
-              fontSize: 11,
             ),
           ),
         ),
@@ -733,7 +731,6 @@ class _LeaderboardViewState extends State<LeaderboardView> {
             '\u2191$delta',
             style: AppTypography.badgeText.copyWith(
               color: AppTheme.success,
-              fontSize: 11,
             ),
           ),
         ),
@@ -747,7 +744,6 @@ class _LeaderboardViewState extends State<LeaderboardView> {
             '\u2193${delta.abs()}',
             style: AppTypography.badgeText.copyWith(
               color: AppTheme.error,
-              fontSize: 11,
             ),
           ),
         ),
@@ -761,7 +757,6 @@ class _LeaderboardViewState extends State<LeaderboardView> {
             AppStrings.rankTrendStable,
             style: AppTypography.badgeText.copyWith(
               color: AppTheme.textMuted,
-              fontSize: 11,
             ),
           ),
         ),
@@ -776,9 +771,8 @@ class _LeaderboardViewState extends State<LeaderboardView> {
     bool isMono = false,
   }) {
     final style = isMono
-        ? AppTypography.badgeText.copyWith(
+        ? AppTypography.buttonText.copyWith(
             color: color ?? AppTheme.textPrimary,
-            fontSize: 12,
             letterSpacing: 0.0,
           )
         : AppTypography.bodyMedium.copyWith(
@@ -787,7 +781,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
           );
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.md, horizontal: AppSpacing.sm),
       child: Text(text, style: style),
     );
   }

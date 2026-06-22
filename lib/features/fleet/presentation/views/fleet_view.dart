@@ -308,10 +308,9 @@ class _FleetViewState extends State<FleetView>
                         Text(
                           aircraft.nickname.toUpperCase(),
                           style: AppTypography.badgeText.copyWith(
-                            fontSize: 11,
                             color: AppTheme.textSecondary,
-                          letterSpacing: 0.5,
-                        ),
+                            letterSpacing: 0.5,
+                          ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
@@ -329,22 +328,20 @@ class _FleetViewState extends State<FleetView>
                         ),
                       ),
                       const SizedBox(height: AppSpacing.xs - 2),
-                      Text(
-                        aircraft.model.manufacturer.toUpperCase(),
-                        style: AppTypography.badgeText.copyWith(
-                          color: AppTheme.textSecondary,
-                          fontSize: 11,
-                          letterSpacing: 0.5,
+                        Text(
+                          aircraft.model.manufacturer.toUpperCase(),
+                          style: AppTypography.badgeText.copyWith(
+                            color: AppTheme.textSecondary,
+                            letterSpacing: 0.5,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        '${aircraft.model.capacity} ${AppStrings.capacityPaxSuffix}',
-                        style: AppTypography.badgeText.copyWith(
-                          fontSize: 11,
-                          color: AppTheme.primary,
-                          letterSpacing: 0.0,
-                        ),
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          '${aircraft.model.capacity} ${AppStrings.capacityPaxSuffix}',
+                          style: AppTypography.badgeText.copyWith(
+                            color: AppTheme.primary,
+                            letterSpacing: 0.0,
+                          ),
                       ),
                     ],
                   ),
@@ -367,7 +364,6 @@ class _FleetViewState extends State<FleetView>
                           Text(
                             'E $economy  B $business  F $first',
                             style: AppTypography.badgeText.copyWith(
-                              fontSize: 11,
                               color: AppTheme.textPrimary,
                               letterSpacing: 0.0,
                             ),
@@ -376,7 +372,6 @@ class _FleetViewState extends State<FleetView>
                           Text(
                             '$occupied / $capacity slots',
                             style: AppTypography.badgeText.copyWith(
-                              fontSize: 11,
                               color: occupied <= capacity
                                   ? AppTheme.success
                                   : AppTheme.error,
@@ -428,8 +423,8 @@ class _FleetViewState extends State<FleetView>
                               fontSize: 11,
                               letterSpacing: 0.4,
                               padding: EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 8,
+                                horizontal: AppSpacing.sm,
+                                vertical: AppSpacing.sm,
                               ),
                             ),
                     ],
@@ -643,14 +638,12 @@ class _FleetViewState extends State<FleetView>
             Text(
               label,
               style: AppTypography.badgeText.copyWith(
-                fontSize: 11,
                 color: AppTheme.textPrimary,
               ),
             ),
             Text(
               '$value Seats',
               style: AppTypography.badgeText.copyWith(
-                fontSize: 11,
                 color: AppTheme.primary,
               ),
             ),
@@ -972,7 +965,6 @@ class _FleetViewState extends State<FleetView>
                         model.manufacturer.toUpperCase(),
                         style: AppTypography.badgeText.copyWith(
                           color: AppTheme.textSecondary,
-                          fontSize: 11,
                           letterSpacing: 0.5,
                         ),
                       ),
@@ -1427,7 +1419,7 @@ class _FleetViewState extends State<FleetView>
 
   Widget _summaryRow(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -1660,9 +1652,8 @@ class _FleetViewState extends State<FleetView>
       children: [
         Text(
           '${condition.toStringAsFixed(0)}%',
-          style: AppTypography.badgeText.copyWith(
+          style: AppTypography.buttonText.copyWith(
             color: barColor,
-            fontSize: 12,
           ),
         ),
         const SizedBox(height: 3),
@@ -1691,7 +1682,6 @@ class _FleetViewState extends State<FleetView>
           bandLabel,
           style: AppTypography.badgeText.copyWith(
             color: barColor,
-            fontSize: 11,
             letterSpacing: 0.4,
           ),
         ),

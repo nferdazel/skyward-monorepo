@@ -125,7 +125,7 @@ class _FinanceViewState extends State<FinanceView>
                           CircularProgressIndicator(color: AppTheme.primary, strokeWidth: 2),
                           const SizedBox(height: AppSpacing.lg),
                           Text(
-                            'LOADING FINANCIAL DATA...',
+                            AppStrings.loadingFinancialData,
                             style: AppTypography.microLabel.copyWith(color: AppTheme.textMuted),
                           ),
                         ],
@@ -506,7 +506,7 @@ class _FinanceViewState extends State<FinanceView>
             padding: const EdgeInsets.all(AppSpacing.sm),
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
             ),
             child: Icon(icon, color: color, size: 20),
           ),

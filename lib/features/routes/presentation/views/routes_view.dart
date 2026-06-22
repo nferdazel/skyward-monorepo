@@ -367,7 +367,7 @@ class _RoutesViewState extends State<RoutesView> {
             child: Container(
               padding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.xs,
-                vertical: 4,
+                vertical: AppSpacing.xs,
               ),
               decoration: BoxDecoration(
                 color: AppTheme.background.withValues(alpha: 0.78),
@@ -377,7 +377,6 @@ class _RoutesViewState extends State<RoutesView> {
                 'CARTO / OSM',
                 style: AppTypography.badgeText.copyWith(
                   color: AppTheme.textSecondary,
-                  fontSize: 11,
                   letterSpacing: 0.2,
                 ),
               ),
@@ -438,13 +437,12 @@ class _RoutesViewState extends State<RoutesView> {
                   ),
                   decoration: BoxDecoration(
                     color: AppTheme.primary.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
                   ),
                   child: Text(
                     '${routes.length}',
                     style: AppTypography.badgeText.copyWith(
                       color: AppTheme.primary,
-                      fontSize: 11,
                     ),
                   ),
                 ),
@@ -495,13 +493,13 @@ class _RoutesViewState extends State<RoutesView> {
     String statusLabel;
     if (isGrounded) {
       statusColor = AppTheme.error;
-      statusLabel = 'GROUNDED';
+      statusLabel = AppStrings.groundedLabel;
     } else if (maintenance.netHealthImpactPercent > 0) {
       statusColor = AppTheme.warning;
       statusLabel = 'PRESSURED';
     } else {
       statusColor = AppTheme.success;
-      statusLabel = 'ACTIVE';
+      statusLabel = AppStrings.activeState;
     }
 
     return GestureDetector(
@@ -524,7 +522,7 @@ class _RoutesViewState extends State<RoutesView> {
           color: isSelected
               ? AppTheme.accentSubtle
               : AppTheme.surface.withValues(alpha: 0.6),
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
           border: Border.all(
             color: isSelected
                 ? AppTheme.primary.withValues(alpha: 0.4)
@@ -559,13 +557,12 @@ class _RoutesViewState extends State<RoutesView> {
                   ),
                   decoration: BoxDecoration(
                     color: statusColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
                   ),
                   child: Text(
                     statusLabel,
                     style: AppTypography.badgeText.copyWith(
                       color: statusColor,
-                      fontSize: 11,
                     ),
                   ),
                 ),
@@ -648,12 +645,12 @@ class _RoutesViewState extends State<RoutesView> {
                       height: 32,
                       child: InkWell(
                         onTap: () => _confirmCloseRoute(context, route, userId),
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
                         child: Container(
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
                             color: AppTheme.error.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(4),
+                            borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
                             border: Border.all(color: AppTheme.error.withValues(alpha: 0.5), width: 1.0),
                           ),
                           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
@@ -695,13 +692,12 @@ class _RoutesViewState extends State<RoutesView> {
       ),
       decoration: BoxDecoration(
         color: AppTheme.primary.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
       ),
       child: Text(
         iata,
         style: AppTypography.monoLabel.copyWith(
           color: AppTheme.primary,
-          fontSize: 11,
         ),
       ),
     );
@@ -727,7 +723,7 @@ class _RoutesViewState extends State<RoutesView> {
       decoration: BoxDecoration(
         color: AppTheme.surface.withValues(alpha: 0.92),
         border: Border.all(color: AppTheme.border, width: 0.5),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -770,14 +766,12 @@ class _RoutesViewState extends State<RoutesView> {
             label,
             style: AppTypography.badgeText.copyWith(
               color: AppTheme.textMuted,
-              fontSize: 11,
             ),
           ),
           Text(
             value,
             style: AppTypography.badgeText.copyWith(
               color: valueColor,
-              fontSize: 11,
             ),
           ),
         ],
@@ -835,7 +829,6 @@ class _RoutesViewState extends State<RoutesView> {
                     'DIST: ${_plannerOrigin!.latitude.toStringAsFixed(2)}° ${_plannerOrigin!.longitude.toStringAsFixed(2)}°',
                     style: AppTypography.badgeText.copyWith(
                       color: AppTheme.textMuted,
-                      fontSize: 11,
                     ),
                   ),
                   const SizedBox(width: AppSpacing.md),
@@ -844,7 +837,6 @@ class _RoutesViewState extends State<RoutesView> {
                   '${airports.length} AIRPORTS',
                   style: AppTypography.badgeText.copyWith(
                     color: AppTheme.textMuted,
-                    fontSize: 11,
                   ),
                 ),
               ],
@@ -915,18 +907,18 @@ class _RoutesViewState extends State<RoutesView> {
                         isDense: true,
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: AppSpacing.sm,
-                          vertical: 8,
+                          vertical: AppSpacing.sm,
                         ),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
                           borderSide: BorderSide(color: AppTheme.border),
                         ),
                         enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
                           borderSide: BorderSide(color: AppTheme.border),
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
                           borderSide: BorderSide(color: AppTheme.primary),
                         ),
                       ),
@@ -1029,14 +1021,12 @@ class _RoutesViewState extends State<RoutesView> {
           '$label: ',
           style: AppTypography.badgeText.copyWith(
             color: AppTheme.textMuted,
-            fontSize: 11,
           ),
         ),
         Text(
           value,
           style: AppTypography.badgeText.copyWith(
             color: AppTheme.textPrimary,
-            fontSize: 11,
           ),
         ),
       ],
@@ -1356,7 +1346,7 @@ class _RoutesViewState extends State<RoutesView> {
                               color: AppTheme.border,
                               width: 0.5,
                             ),
-                            borderRadius: BorderRadius.circular(4),
+                            borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
                           ),
                           padding: const EdgeInsets.symmetric(
                             horizontal: AppSpacing.sm,
@@ -1521,7 +1511,7 @@ class _RoutesViewState extends State<RoutesView> {
           color: _viabilityColor(assessment.viability).withValues(alpha: 0.22),
           width: 0.5,
         ),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
       ),
       padding: const EdgeInsets.all(AppSpacing.sm),
       child: Column(
@@ -1963,19 +1953,18 @@ class _AirportMarker extends StatelessWidget {
       alignment: Alignment.topCenter,
       child: Container(
         padding: const EdgeInsets.symmetric(
-          horizontal: 4,
+          horizontal: AppSpacing.xs,
           vertical: 2,
         ),
         decoration: BoxDecoration(
           color: demandColor.withValues(alpha: 0.3),
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
           border: Border.all(color: demandColor.withValues(alpha: 0.5)),
         ),
         child: Text(
           label,
           style: AppTypography.microLabel.copyWith(
             color: demandColor,
-            fontSize: 11,
           ),
         ),
       ),
