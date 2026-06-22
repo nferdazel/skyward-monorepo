@@ -597,7 +597,7 @@ class _RoutesViewState extends State<RoutesView> {
                   IconButton(
                     icon: Icon(Icons.info_outline, size: 16, color: AppTheme.textSecondary),
                     padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: AppSpacing.xxxl, minHeight: AppSpacing.xxxl),
+                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                     tooltip: 'Route details',
                     onPressed: () {
                       _showRouteDetailsDialog(
@@ -609,70 +609,64 @@ class _RoutesViewState extends State<RoutesView> {
                     },
                   ),
                   const SizedBox(width: AppSpacing.xs),
-                  Flexible(
-                    fit: FlexFit.tight,
-                    child: Tooltip(
-                      message: 'Assign Aircraft',
-                      child: InkWell(
-                        onTap: () => _showAssignDialog(context, route, userId),
-                        borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
-                        child: Container(
-                          height: AppSpacing.xxxl,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
-                            border: Border.all(color: AppTheme.primary.withValues(alpha: 0.4)),
-                          ),
-                          child: Icon(Icons.link, size: 16, color: AppTheme.primary),
+                  Tooltip(
+                    message: 'Assign Aircraft',
+                    child: InkWell(
+                      onTap: () => _showAssignDialog(context, route, userId),
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
+                      child: Container(
+                        width: 32,
+                        height: 32,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
+                          border: Border.all(color: AppTheme.primary.withValues(alpha: 0.4)),
                         ),
+                        child: Icon(Icons.link, size: 16, color: AppTheme.primary),
                       ),
                     ),
                   ),
                   const SizedBox(width: AppSpacing.xs),
-                  Flexible(
-                    fit: FlexFit.tight,
-                    child: Tooltip(
-                      message: 'Adjust Route',
-                      child: InkWell(
-                        onTap: () {
-                          _showAdjustDialog(
-                            context,
-                            route,
-                            userId,
-                            AppFormatters.currency,
-                            autoGroundingThreshold,
-                          );
-                        },
-                        borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
-                        child: Container(
-                          height: AppSpacing.xxxl,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
-                            border: Border.all(color: AppTheme.primary.withValues(alpha: 0.4)),
-                          ),
-                          child: Icon(Icons.tune, size: 16, color: AppTheme.primary),
+                  Tooltip(
+                    message: 'Adjust Route',
+                    child: InkWell(
+                      onTap: () {
+                        _showAdjustDialog(
+                          context,
+                          route,
+                          userId,
+                          AppFormatters.currency,
+                          autoGroundingThreshold,
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
+                      child: Container(
+                        width: 32,
+                        height: 32,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
+                          border: Border.all(color: AppTheme.primary.withValues(alpha: 0.4)),
                         ),
+                        child: Icon(Icons.tune, size: 16, color: AppTheme.primary),
                       ),
                     ),
                   ),
                   const SizedBox(width: AppSpacing.xs),
-                  Flexible(
-                    fit: FlexFit.tight,
-                    child: Tooltip(
-                      message: 'Close Route',
-                      child: InkWell(
-                        onTap: () => _confirmCloseRoute(context, route, userId),
-                        borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
-                        child: Container(
-                          height: AppSpacing.xxxl,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
-                            border: Border.all(color: AppTheme.primary.withValues(alpha: 0.4)),
-                          ),
-                          child: Icon(Icons.close, size: 16, color: AppTheme.primary),
+                  Tooltip(
+                    message: 'Close Route',
+                    child: InkWell(
+                      onTap: () => _confirmCloseRoute(context, route, userId),
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
+                      child: Container(
+                        width: 32,
+                        height: 32,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
+                          border: Border.all(color: AppTheme.error.withValues(alpha: 0.4)),
                         ),
+                        child: Icon(Icons.close, size: 16, color: AppTheme.error),
                       ),
                     ),
                   ),
@@ -889,7 +883,6 @@ class _RoutesViewState extends State<RoutesView> {
                   // Price
                   SizedBox(
                     width: 130,
-                    height: 38,
                     child: TextFormField(
                       controller: _priceController,
                       keyboardType: const TextInputType.numberWithOptions(
@@ -900,9 +893,8 @@ class _RoutesViewState extends State<RoutesView> {
                         labelText: 'FARE',
                         labelStyle: AppTypography.microLabel.copyWith(
                           color: AppTheme.textMuted,
-                          fontSize: 10,
                         ),
-                        floatingLabelBehavior: FloatingLabelBehavior.never,
+                        floatingLabelBehavior: FloatingLabelBehavior.auto,
                         prefixText: '\$',
                         prefixStyle: AppTypography.monoValue.copyWith(
                           color: AppTheme.success,
@@ -911,7 +903,7 @@ class _RoutesViewState extends State<RoutesView> {
                         isDense: true,
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: AppSpacing.sm,
-                          vertical: 9,
+                          vertical: 10,
                         ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),

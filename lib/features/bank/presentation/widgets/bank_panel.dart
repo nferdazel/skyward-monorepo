@@ -157,7 +157,6 @@ class BankPanel extends StatelessWidget {
         const SizedBox(height: AppSpacing.md),
         AppButton(
           text: 'TAKE LOAN',
-          icon: Icons.add,
           onPressed: activeLoans.length < 3
               ? () => _showLoanDialog(context)
               : null,
@@ -201,62 +200,59 @@ class BankPanel extends StatelessWidget {
   Widget _buildCreditScoreCard(CreditReport report) {
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.lg),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
+          // Score display
+          Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              SizedBox(
-                width: 80,
-                height: 80,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    CircularProgressIndicator(
-                      value: report.currentScore / 1000.0,
-                      strokeWidth: 6,
-                      backgroundColor: AppTheme.borderSubtle,
-                      valueColor: AlwaysStoppedAnimation(_tierColor(report.creditTier)),
-                    ),
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(report.currentScore.toString(), style: AppTypography.largeKpi),
-                        Text(report.creditTier, style: AppTypography.badgeText.copyWith(color: _tierColor(report.creditTier))),
-                      ],
-                    ),
-                  ],
+              Text(
+                report.currentScore.toString(),
+                style: AppTypography.largeKpi.copyWith(
+                  color: _tierColor(report.creditTier),
                 ),
               ),
-              const SizedBox(width: AppSpacing.lg),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('CREDIT RATING', style: AppTypography.sectionHeaderLarge),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text('Max Loan: \$${_formatNumber(report.maxUnsecuredLoan)}', style: AppTypography.captionRegular),
-                    Text('Rate: ${(report.baseInterestRate * 100).toStringAsFixed(1)}% APR', style: AppTypography.captionRegular),
-                  ],
+              const SizedBox(height: AppSpacing.xs),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: _tierColor(report.creditTier).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusTight),
+                ),
+                child: Text(
+                  report.creditTier.toUpperCase(),
+                  style: AppTypography.badgeText.copyWith(
+                    color: _tierColor(report.creditTier),
+                    fontSize: 10,
+                  ),
                 ),
               ),
             ],
           ),
-          if (report.suggestions.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.md),
-            Text('IMPROVEMENTS', style: AppTypography.microLabel.copyWith(color: AppTheme.textMuted)),
-            const SizedBox(height: AppSpacing.sm),
-            ...report.suggestions.take(3).map((s) => Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-              child: Row(
-                children: [
-                  Icon(Icons.arrow_forward_ios, size: 10, color: AppTheme.primary),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(child: Text(s, style: AppTypography.captionRegular)),
+          const SizedBox(width: AppSpacing.xl),
+          // Details
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('CREDIT RATING', style: AppTypography.sectionHeaderMedium),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'Max Loan: \$${_formatNumber(report.maxUnsecuredLoan)}  ·  ${(report.baseInterestRate * 100).toStringAsFixed(1)}% APR',
+                  style: AppTypography.captionRegular,
+                ),
+                if (report.suggestions.isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    report.suggestions.first,
+                    style: AppTypography.captionLight.copyWith(color: AppTheme.textMuted),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ],
-              ),
-            )),
-          ],
+              ],
+            ),
+          ),
         ],
       ),
     );
