@@ -41,8 +41,8 @@ class AppStrings {
   static const String companyNameAuthHint = 'e.g. Garuda Pacific';
   static const String ceoDisplayNameLabel = 'CEO Display Name';
   static const String processingLabel = 'PROCESSING...';
-  static const String executeOperations = 'EXECUTE OPERATIONS';
-  static const String incorporateCompany = 'INCORPORATE COMPANY';
+  static const String executeOperations = 'SIGN IN';
+  static const String incorporateCompany = 'CREATE ACCOUNT';
   static const String needCorporatePermit = 'Need a corporate permit? ';
   static const String alreadyRegistered = 'Already registered? ';
   static const String registerNow = 'REGISTER NOW';
@@ -52,7 +52,7 @@ class AppStrings {
       'Username must be at least 4 characters';
   static const String enterValidPassword = 'Enter a valid password';
   static const String passwordMinLength =
-      'Password must be at least 6 characters';
+      'Password must be at least 8 characters';
   static const String enterCompanyName = 'Enter your airline company name';
   static const String enterCeoName = 'Enter your CEO name';
 

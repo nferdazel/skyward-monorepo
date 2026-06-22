@@ -276,7 +276,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 validator: (value) {
                   if (value == null || value.isEmpty)
                     return AppStrings.enterValidPassword;
-                  if (value.length < 6)
+                  if (value.length < 8)
                     return AppStrings.passwordMinLength;
                   return null;
                 },
@@ -318,8 +318,8 @@ class _AuthScreenState extends State<AuthScreen> {
               // Submit Button
               AppButton(
                 text: isLoginMode
-                    ? 'EXECUTE OPERATIONS'
-                    : 'INCORPORATE COMPANY',
+                    ? 'SIGN IN'
+                    : 'CREATE ACCOUNT',
                 onPressed: isLoading
                     ? null
                     : () => _submitForm(context, isLoginMode),
