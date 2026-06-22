@@ -689,10 +689,10 @@ BEGIN
         );
 
         IF r_bot.status = 'Bankrupt' OR v_bot_cash < -5000000.00 THEN
-            DELETE FROM user_routes WHERE ai_competitor_id = r_bot.id;
-            DELETE FROM user_fleet WHERE ai_competitor_id = r_bot.id;
-            DELETE FROM financial_ledger WHERE ai_competitor_id = r_bot.id;
-            DELETE FROM ai_competitors WHERE id = r_bot.id;
+            -- Soft-delete: mark as bankrupt, ground fleet, preserve data for audit
+            UPDATE ai_competitors SET status = 'Bankrupt' WHERE id = r_bot.id;
+            UPDATE user_fleet SET status = 'grounded' WHERE ai_competitor_id = r_bot.id;
+            -- Keep routes and ledger intact for historical analysis
             CONTINUE;
         END IF;
 

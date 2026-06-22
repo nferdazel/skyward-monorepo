@@ -752,7 +752,7 @@ class _SettingsViewState extends State<SettingsView> {
                           try {
                             final response = await SupabaseManager.client
                                 .from('users')
-                                .select('*')
+                                .select('id, company_name, ceo_name, cash, game_current_time, hq_airport_iata, auto_grounding_threshold, operational_status, consecutive_negative_days, recovery_streak_days')
                                 .eq('id', userId)
                                 .single();
                             final freshUser = User.fromMap(response);

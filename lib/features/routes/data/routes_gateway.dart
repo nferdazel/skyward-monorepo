@@ -106,7 +106,7 @@ class SupabaseRoutesGateway implements RoutesGateway {
     try {
       return await SupabaseManager.client
           .from('user_fleet')
-          .select('*, aircraft_models(*)')
+          .select('id, user_id, aircraft_model_id, tail_number, nickname, acquisition_type, condition, status, acquired_at, economy_seats, business_seats, first_class_seats, aircraft_models(id, manufacturer, model_name, range_km, capacity, fuel_burn_per_km, speed_kmh, purchase_price, lease_price_per_month, maintenance_cost_per_hour)')
           .eq('user_id', userId);
     } on PostgrestException catch (e) {
       SupabaseManager.logRpcFailure(
