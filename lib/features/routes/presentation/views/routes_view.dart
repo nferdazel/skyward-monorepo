@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/utils/app_formatters.dart';
 import '../../../../core/constants/game_constants.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/pulse_dot.dart';
@@ -35,11 +36,6 @@ class RoutesView extends StatefulWidget {
 }
 
 class _RoutesViewState extends State<RoutesView> {
-  static final _currencyFormat = NumberFormat.currency(
-    symbol: '\$',
-    decimalDigits: 0,
-  );
-
   static final Map<String, List<LatLng>> _arcCache = {};
 
   String? _selectedRouteId;
@@ -124,7 +120,7 @@ class _RoutesViewState extends State<RoutesView> {
           children: [
             // ── Base Layer: Full-screen Map ──
             Positioned.fill(
-              child: _buildFullMap(routes, homeAirport),
+              child: _buildFullMap(routes, homeAirport, airports),
             ),
 
             // ── Left: Route List Panel ──
@@ -186,7 +182,7 @@ class _RoutesViewState extends State<RoutesView> {
   // FULL MAP (Base Layer)
   // ══════════════════════════════════════════════
 
-  Widget _buildFullMap(List<UserRoute> routes, Airport? homeAirport) {
+  Widget _buildFullMap(List<UserRoute> routes, Airport? homeAirport, List<Airport> airports) {
     final connectedAirports = <String, Airport>{
       for (final r in routes) r.origin.iata: r.origin,
       for (final r in routes) r.destination.iata: r.destination,
@@ -227,7 +223,7 @@ class _RoutesViewState extends State<RoutesView> {
 
     return Container(
       color: AppTheme.background,
-      child: FlutterMap(
+      child: RepaintBoundary(child: FlutterMap(
         options: MapOptions(
           initialCenter: viewport.center,
           initialZoom: viewport.zoom,
@@ -240,6 +236,7 @@ class _RoutesViewState extends State<RoutesView> {
                 InteractiveFlag.flingAnimation |
                 InteractiveFlag.scrollWheelZoom,
           ),
+          onTap: (tapPosition, point) => _handleMapTap(point, airports),
         ),
         children: [
           TileLayer(
@@ -251,6 +248,7 @@ class _RoutesViewState extends State<RoutesView> {
             panBuffer: 1,
           ),
           PolylineLayer(
+            key: ValueKey('polylines-${mapRoutes.length}-$_selectedRouteId'),
             polylines: [
               for (final route in mapRoutes.where((r) => !r.highlighted))
                 Polyline(
@@ -365,7 +363,7 @@ class _RoutesViewState extends State<RoutesView> {
             ),
           ),
         ],
-      ),
+      )),
     );
   }
 
@@ -495,7 +493,7 @@ class _RoutesViewState extends State<RoutesView> {
         _showRouteDetailsDialog(
           context,
           route,
-          _currencyFormat,
+          AppFormatters.currency,
           autoGroundingThreshold,
         );
       },
@@ -563,7 +561,7 @@ class _RoutesViewState extends State<RoutesView> {
                   ),
                 ),
                 Text(
-                  _currencyFormat.format(route.ticketPrice),
+                  AppFormatters.currency.format(route.ticketPrice),
                   style: AppTypography.monoValue.copyWith(
                     color: pricingRatio <= 1.0
                         ? AppTheme.success
@@ -587,7 +585,7 @@ class _RoutesViewState extends State<RoutesView> {
                       _showRouteDetailsDialog(
                         context,
                         route,
-                        _currencyFormat,
+                        AppFormatters.currency,
                         autoGroundingThreshold,
                       );
                     },
@@ -601,7 +599,7 @@ class _RoutesViewState extends State<RoutesView> {
                           context,
                           route,
                           userId,
-                          _currencyFormat,
+                          AppFormatters.currency,
                           autoGroundingThreshold,
                         );
                       },
@@ -929,7 +927,7 @@ class _RoutesViewState extends State<RoutesView> {
                 _buildFooterStat(
                   'BASE FARE',
                   _plannerDistance > 0
-                      ? _currencyFormat.format(
+                      ? AppFormatters.currency.format(
                           GameConstants.ticketBaseFare +
                               (_plannerDistance * GameConstants.ticketPerKmRate),
                         )
@@ -1614,13 +1612,56 @@ class _RoutesViewState extends State<RoutesView> {
     }
   }
 
+  void _handleMapTap(LatLng point, List<Airport> airports) {
+    final nearest = _findNearestAirport(point, airports);
+    if (nearest == null) return;
+
+    if (_plannerOrigin == null) {
+      setState(() {
+        _plannerOrigin = nearest;
+        _updatePlannerDistance();
+      });
+      AppSnackBar.showSuccess(
+          context, 'Origin: ${nearest.iata} — ${nearest.name}');
+    } else if (_plannerDestination == null &&
+        nearest.iata != _plannerOrigin!.iata) {
+      setState(() {
+        _plannerDestination = nearest;
+        _updatePlannerDistance();
+      });
+      AppSnackBar.showSuccess(
+          context, 'Destination: ${nearest.iata} — ${nearest.name}');
+    }
+  }
+
+  Airport? _findNearestAirport(LatLng point, List<Airport> airports) {
+    if (airports.isEmpty) return null;
+    Airport? nearest;
+    double minDist = double.infinity;
+    for (final airport in airports) {
+      final dLat = (airport.latitude - point.latitude) * math.pi / 180.0;
+      final dLon = (airport.longitude - point.longitude) * math.pi / 180.0;
+      final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+          math.cos(point.latitude * math.pi / 180.0) *
+              math.cos(airport.latitude * math.pi / 180.0) *
+              math.sin(dLon / 2) *
+              math.sin(dLon / 2);
+      final d = 2 * math.asin(math.sqrt(a));
+      if (d < minDist) {
+        minDist = d;
+        nearest = airport;
+      }
+    }
+    return nearest;
+  }
+
   List<LatLng> _buildGreatCircleArc(
     Airport origin,
     Airport destination, {
     required int steps,
   }) {
     final key =
-        '${origin.latitude},${origin.longitude}-${destination.latitude},${destination.longitude}';
+        '${origin.latitude},${origin.longitude}-${destination.latitude},${destination.longitude}-$steps';
     return _arcCache.putIfAbsent(key, () => _computeArc(origin, destination, steps: steps));
   }
 

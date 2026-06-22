@@ -413,7 +413,19 @@ class RouteNetworkMap extends StatelessWidget {
     );
   }
 
+  static final Map<String, List<LatLng>> _arcCache = {};
+
   List<LatLng> _buildGreatCircleArc(
+    Airport origin,
+    Airport destination, {
+    required int steps,
+  }) {
+    final key =
+        '${origin.latitude},${origin.longitude}-${destination.latitude},${destination.longitude}-$steps';
+    return _arcCache.putIfAbsent(key, () => _computeArc(origin, destination, steps: steps));
+  }
+
+  List<LatLng> _computeArc(
     Airport origin,
     Airport destination, {
     required int steps,
