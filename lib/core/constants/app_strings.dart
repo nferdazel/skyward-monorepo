@@ -52,7 +52,7 @@ class AppStrings {
       'Username must be at least 4 characters';
   static const String enterValidPassword = 'Enter a valid password';
   static const String passwordMinLength =
-      'Password must be at least 8 characters';
+      'Password must be at least 6 characters';
   static const String enterCompanyName = 'Enter your airline company name';
   static const String enterCeoName = 'Enter your CEO name';
 

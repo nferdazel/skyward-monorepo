@@ -155,17 +155,10 @@ Deno.serve(async (request) => {
     }, request);
   }
 
-  if (!password || password.length < 8) {
+  if (!password || password.length < 6) {
     return jsonResponse(400, {
       success: false,
-      message: "Password must be at least 8 characters.",
-    }, request);
-  }
-
-  if (!/[A-Z]/.test(password) && !/[0-9]/.test(password)) {
-    return jsonResponse(400, {
-      success: false,
-      message: "Password must contain at least one uppercase letter or one number.",
+      message: "Password must be at least 6 characters.",
     }, request);
   }
 
