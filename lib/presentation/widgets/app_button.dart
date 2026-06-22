@@ -71,34 +71,37 @@ class AppButton extends StatelessWidget {
               border: getBorder(),
             ),
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-            child: isLoading
-                ? SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(getTextColor()),
-                    ),
-                  )
-                : Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (icon != null) ...[
-                        Icon(icon, size: 18, color: getTextColor()),
-                        const SizedBox(width: AppSpacing.sm),
-                      ],
-                      Flexible(
-                        child: Text(
-                          text,
-                          style: AppTypography.buttonText.copyWith(
-                            color: getTextColor(),
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
+            child: Opacity(
+              opacity: isEnabled ? 1.0 : 0.4,
+              child: isLoading
+                  ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(getTextColor()),
                       ),
-                    ],
-                  ),
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (icon != null) ...[
+                          Icon(icon, size: 18, color: getTextColor()),
+                          const SizedBox(width: AppSpacing.sm),
+                        ],
+                        Flexible(
+                          child: Text(
+                            text,
+                            style: AppTypography.buttonText.copyWith(
+                              color: getTextColor(),
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
           ),
         ),
       ),

@@ -58,7 +58,7 @@ class ExpenseBreakdownBar extends StatelessWidget {
                     child: Container(
                       color: segment.color,
                       margin: EdgeInsets.only(
-                        right: segment == visibleSegments.last ? 0 : 1,
+                        right: segment == visibleSegments.last ? 0 : 2,
                       ),
                     ),
                   );

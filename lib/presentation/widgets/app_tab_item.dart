@@ -32,7 +32,7 @@ class AppTabItem extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           Container(
             height: 2,
-            width: 40,
+            constraints: const BoxConstraints(minWidth: 20),
             decoration: BoxDecoration(
               color: isActive ? AppTheme.primary : Colors.transparent,
               borderRadius: BorderRadius.circular(1),

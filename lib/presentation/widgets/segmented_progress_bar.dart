@@ -35,7 +35,7 @@ class SegmentedProgressBar extends StatelessWidget {
       barColor = activeColor ?? AppTheme.error;
     }
 
-    final inactive = inactiveColor ?? const Color(0x14FFFFFF); // rgba(255,255,255,0.08)
+    final inactive = inactiveColor ?? AppTheme.borderSubtle; // rgba(255,255,255,0.08)
 
     return Semantics(
       label: 'Progress: ${value.round()}%',

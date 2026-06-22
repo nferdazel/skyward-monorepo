@@ -37,7 +37,7 @@ class AppDropdownField<T> extends StatelessWidget {
           final dropdownChild = Container(
             padding: contentPadding,
             decoration: BoxDecoration(
-              color: AppTheme.background,
+              color: AppTheme.surfaceRaised,
               borderRadius: BorderRadius.circular(4),
               border: Border.all(color: AppTheme.border),
             ),

@@ -75,7 +75,9 @@ class AppDialogShell extends StatelessWidget {
                   ),
                 ],
                 const SizedBox(height: AppSpacing.lg),
-                content,
+                Flexible(
+                  child: SingleChildScrollView(child: content),
+                ),
                 if (actions != null) ...[
                   const SizedBox(height: AppSpacing.xl),
                   actions!,
