@@ -11,6 +11,7 @@ class LeaderboardEntry {
   final String status;
   final int consecutiveNegativeDays;
   final int? previousRank;
+  final String? creditTier;
 
   const LeaderboardEntry({
     required this.id,
@@ -25,6 +26,7 @@ class LeaderboardEntry {
     required this.status,
     this.consecutiveNegativeDays = 0,
     this.previousRank,
+    this.creditTier,
   });
 
   factory LeaderboardEntry.fromMap(Map<String, dynamic> map) {
@@ -41,6 +43,7 @@ class LeaderboardEntry {
       status: map['status'] ?? 'Active',
       consecutiveNegativeDays: (map['consecutive_negative_days'] as num?)?.toInt() ?? 0,
       previousRank: (map['previous_rank'] as num?)?.toInt(),
+      creditTier: map['credit_tier'] as String?,
     );
   }
 }

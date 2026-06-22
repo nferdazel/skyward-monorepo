@@ -321,6 +321,22 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                                 const SizedBox(width: AppSpacing.xs),
                                 const AIBadge(),
                               ],
+                              if (entry.creditTier != null && entry.creditTier != 'Standard')
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                  margin: const EdgeInsets.only(left: 4),
+                                  decoration: BoxDecoration(
+                                    color: _tierColor(entry.creditTier).withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(2),
+                                  ),
+                                  child: Text(
+                                    entry.creditTier!,
+                                    style: AppTypography.badgeText.copyWith(
+                                      color: _tierColor(entry.creditTier),
+                                      fontSize: 9,
+                                    ),
+                                  ),
+                                ),
                             ],
                           ),
                           const SizedBox(height: AppSpacing.xs),
@@ -861,6 +877,19 @@ class _LeaderboardViewState extends State<LeaderboardView> {
         ],
       ),
     );
+  }
+
+  // ── Tier Color Helper ──
+
+  static Color _tierColor(String? tier) {
+    switch (tier) {
+      case 'Platinum': return const Color(0xFFE5E4E2);
+      case 'Gold': return const Color(0xFFFFD700);
+      case 'Silver': return AppTheme.textSecondary;
+      case 'Standard': return AppTheme.textMuted;
+      case 'Subprime': return AppTheme.error;
+      default: return AppTheme.textMuted;
+    }
   }
 
   Widget _buildGapProgress(

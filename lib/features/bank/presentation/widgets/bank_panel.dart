@@ -319,6 +319,23 @@ class _LoanCard extends StatelessWidget {
                     color: AppTheme.textPrimary,
                   ),
                 ),
+                if (loan.aiCompetitorId != null) ...[
+                  const SizedBox(width: AppSpacing.xs),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: AppTheme.warning.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                    child: Text(
+                      'BOT',
+                      style: AppTypography.badgeText.copyWith(
+                        color: AppTheme.warning,
+                        fontSize: 9,
+                      ),
+                    ),
+                  ),
+                ],
                 const Spacer(),
                 AppBadge(
                   label: '${(loan.interestRate * 100).toStringAsFixed(0)}% APR',

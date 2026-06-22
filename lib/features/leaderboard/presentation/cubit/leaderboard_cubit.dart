@@ -593,6 +593,7 @@ class LeaderboardCubit extends Cubit<LeaderboardState>
         fleetSize: fleetSize,
         monthlyRevenue: monthlyRevenue,
         status: AppStrings.statusActive,
+        creditTier: 'Standard',
       ),
       LeaderboardEntry(
         id: 'mock-bot-1',
@@ -605,6 +606,7 @@ class LeaderboardCubit extends Cubit<LeaderboardState>
         fleetSize: 1,
         monthlyRevenue: 350000.00,
         status: AppStrings.statusActive,
+        creditTier: 'Gold',
       ),
       LeaderboardEntry(
         id: 'mock-bot-2',
@@ -617,6 +619,7 @@ class LeaderboardCubit extends Cubit<LeaderboardState>
         fleetSize: 2,
         monthlyRevenue: 550000.00,
         status: AppStrings.statusActive,
+        creditTier: 'Platinum',
       ),
       LeaderboardEntry(
         id: 'mock-bot-3',
@@ -629,6 +632,7 @@ class LeaderboardCubit extends Cubit<LeaderboardState>
         fleetSize: 1,
         monthlyRevenue: 220000.00,
         status: AppStrings.statusActive,
+        creditTier: 'Silver',
       ),
       LeaderboardEntry(
         id: 'mock-bot-4',
@@ -641,6 +645,7 @@ class LeaderboardCubit extends Cubit<LeaderboardState>
         fleetSize: 1,
         monthlyRevenue: 310000.00,
         status: AppStrings.statusActive,
+        creditTier: 'Subprime',
       ),
       LeaderboardEntry(
         id: 'mock-bot-5',
@@ -653,6 +658,7 @@ class LeaderboardCubit extends Cubit<LeaderboardState>
         fleetSize: 1,
         monthlyRevenue: 280000.00,
         status: AppStrings.statusActive,
+        creditTier: 'Standard',
       ),
     ];
 
