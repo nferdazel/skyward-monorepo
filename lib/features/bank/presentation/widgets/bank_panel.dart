@@ -290,14 +290,7 @@ class BankPanel extends StatelessWidget {
     }
   }
 
-  static String _formatNumber(double value) {
-    if (value >= 1000000) {
-      return '${(value / 1000000).toStringAsFixed(1)}M';
-    } else if (value >= 1000) {
-      return '${(value / 1000).toStringAsFixed(0)}K';
-    }
-    return value.toStringAsFixed(0);
-  }
+  static String _formatNumber(double value) => AppFormatters.compactNumber(value);
 
   // ── Loan Dialog ─────────────────────────────────────────────────────────
 
@@ -332,13 +325,8 @@ class _LoanCard extends StatelessWidget {
 
     return Semantics(
       label: 'Loan ${AppFormatters.currency.format(loan.principal)}',
-      child: Container(
+      child: AppCard(
         padding: const EdgeInsets.all(AppSpacing.sm),
-        decoration: BoxDecoration(
-          color: AppTheme.surfaceRaised,
-          borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
-          border: Border.all(color: AppTheme.border, width: 0.5),
-        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
@@ -500,7 +488,7 @@ class _TakeLoanDialogState extends State<_TakeLoanDialog> {
             controller: _principalController,
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            style: AppTypography.hudValue.copyWith(color: AppTheme.textPrimary),
+            style: AppTypography.bodyMedium.copyWith(color: AppTheme.textPrimary),
             decoration: InputDecoration(
               prefixText: '\$ ',
               prefixStyle: AppTypography.hudValue.copyWith(
@@ -527,7 +515,7 @@ class _TakeLoanDialogState extends State<_TakeLoanDialog> {
               inactiveTrackColor: AppTheme.border,
               thumbColor: AppTheme.primary,
               overlayColor: AppTheme.primary.withValues(alpha: 0.1),
-              trackHeight: 3,
+              trackHeight: 2,
             ),
             child: Slider(
               value: _principal,

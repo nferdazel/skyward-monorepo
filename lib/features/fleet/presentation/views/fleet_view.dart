@@ -304,7 +304,7 @@ class _FleetViewState extends State<FleetView>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       AppBadge.primary(label: aircraft.tailNumber),
-                      const SizedBox(height: AppSpacing.sm - 2),
+                      const SizedBox(height: AppSpacing.sm),
                         Text(
                           aircraft.nickname.toUpperCase(),
                           style: AppTypography.badgeText.copyWith(
@@ -327,7 +327,7 @@ class _FleetViewState extends State<FleetView>
                           color: AppTheme.textPrimary,
                         ),
                       ),
-                      const SizedBox(height: AppSpacing.xs - 2),
+                      const SizedBox(height: AppSpacing.xs),
                         Text(
                           aircraft.model.manufacturer.toUpperCase(),
                           style: AppTypography.badgeText.copyWith(
@@ -960,7 +960,7 @@ class _FleetViewState extends State<FleetView>
                           color: AppTheme.textPrimary,
                         ),
                       ),
-                      const SizedBox(height: AppSpacing.xs - 2),
+                      const SizedBox(height: AppSpacing.xs),
                       Text(
                         model.manufacturer.toUpperCase(),
                         style: AppTypography.badgeText.copyWith(
@@ -1656,7 +1656,7 @@ class _FleetViewState extends State<FleetView>
             color: barColor,
           ),
         ),
-        const SizedBox(height: 3),
+        const SizedBox(height: AppSpacing.xs),
         SizedBox(
           width: 64,
           height: 6,
@@ -1670,14 +1670,14 @@ class _FleetViewState extends State<FleetView>
                   margin: EdgeInsets.only(right: index < 9 ? 1 : 0),
                   decoration: BoxDecoration(
                     color: isActive ? barColor : AppTheme.borderSubtle,
-                    borderRadius: BorderRadius.circular(1),
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusTight),
                   ),
                 ),
               );
             }),
           ),
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: AppSpacing.xs),
         Text(
           bandLabel,
           style: AppTypography.badgeText.copyWith(
@@ -1716,14 +1716,7 @@ class _FleetViewState extends State<FleetView>
     return [];
   }
 
-  String _formatNumber(double value) {
-    if (value >= 1000000) {
-      return '${(value / 1000000).toStringAsFixed(1)}M';
-    } else if (value >= 1000) {
-      return '${(value / 1000).toStringAsFixed(0)}K';
-    }
-    return value.toStringAsFixed(0);
-  }
+  String _formatNumber(double value) => AppFormatters.compactNumber(value);
 
   Widget _tableHeaderCell(String label) {
     return AppTableHeaderCell(label: label, color: AppTheme.textSecondary);

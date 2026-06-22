@@ -21,4 +21,14 @@ class AppFormatters {
   
   /// Compact number format (1.2M, 3.4K)
   static final NumberFormat compact = NumberFormat.compact();
+
+  /// Compact number format: 1.2M, 3.4K, 500
+  static String compactNumber(double value) {
+    if (value >= 1000000) {
+      return '${(value / 1000000).toStringAsFixed(1)}M';
+    } else if (value >= 1000) {
+      return '${(value / 1000).toStringAsFixed(0)}K';
+    }
+    return value.toStringAsFixed(0);
+  }
 }
