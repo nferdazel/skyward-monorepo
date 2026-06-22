@@ -12,8 +12,10 @@ import 'package:skyward/features/finance/presentation/cubit/finance_state.dart';
 class MockFinanceGateway implements FinanceGateway {
   List<dynamic> ledgerToReturn = [];
   Map<String, dynamic> snapshotToReturn = {};
+  List<dynamic> financialSnapshotsToReturn = [];
   bool shouldThrowOnLedger = false;
   bool shouldThrowOnSnapshot = false;
+  bool shouldThrowOnFinancialSnapshots = false;
 
   @override
   Future<List<dynamic>> loadLedger(String userId) async {
@@ -25,6 +27,14 @@ class MockFinanceGateway implements FinanceGateway {
   Future<Map<String, dynamic>> getFinanceSnapshot() async {
     if (shouldThrowOnSnapshot) throw Exception('Test snapshot error');
     return snapshotToReturn;
+  }
+
+  @override
+  Future<List<dynamic>> getFinancialSnapshots(String userId) async {
+    if (shouldThrowOnFinancialSnapshots) {
+      throw Exception('Test financial snapshots error');
+    }
+    return financialSnapshotsToReturn;
   }
 }
 

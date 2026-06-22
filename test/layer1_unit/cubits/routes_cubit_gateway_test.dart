@@ -117,6 +117,19 @@ class ThrowingDeleteRouteGateway extends MockRoutesGateway {
   }
 }
 
+/// Gateway that only throws on updateRouteFrequencyAndPrice; all other methods
+/// delegate to the base mock so loadRoutesAndData can succeed first.
+class ThrowingUpdateRouteGateway extends MockRoutesGateway {
+  @override
+  Future<List<dynamic>> updateRouteFrequencyAndPrice({
+    required String routeId,
+    required double ticketPrice,
+    required int flightsPerWeek,
+  }) async {
+    throw Exception('Update route service unavailable');
+  }
+}
+
 // =============================================================================
 // Test Data
 // =============================================================================
@@ -637,6 +650,140 @@ void main() {
     });
 
     // =========================================================================
+    // updateRouteFrequencyAndPrice
+    // =========================================================================
+
+    group('updateRouteFrequencyAndPrice', () {
+      blocTest<RoutesCubit, RoutesState>(
+        'success: emits RoutesActionLoading → RoutesActionSuccess → RoutesLoaded',
+        build: () {
+          return RoutesCubit(
+            gateway: gateway
+              ..rpcToReturn = [
+                <String, dynamic>{
+                  'success': true,
+                  'message': 'Route frequency and pricing adjusted!',
+                },
+              ],
+          );
+        },
+        act: (cubit) async {
+          await cubit.loadRoutesAndData('user-1');
+          await cubit.updateRouteFrequencyAndPrice(
+            routeId: 'route-1',
+            ticketPrice: 200.00,
+            flightsPerWeek: 21,
+            userId: 'user-1',
+          );
+        },
+        expect: () => [
+          const RoutesLoading(),
+          isA<RoutesLoaded>(),
+          isA<RoutesActionLoading>(),
+          isA<RoutesActionSuccess>().having(
+            (s) => s.message,
+            'message',
+            'Route frequency and pricing adjusted!',
+          ),
+          isA<RoutesLoaded>(),
+        ],
+      );
+
+      blocTest<RoutesCubit, RoutesState>(
+        'failure (success=false): emits RoutesActionLoading → RoutesError → RoutesLoaded',
+        build: () {
+          return RoutesCubit(
+            gateway: gateway
+              ..rpcToReturn = [
+                <String, dynamic>{
+                  'success': false,
+                  'message': 'Invalid frequency value',
+                },
+              ],
+          );
+        },
+        act: (cubit) async {
+          await cubit.loadRoutesAndData('user-1');
+          await cubit.updateRouteFrequencyAndPrice(
+            routeId: 'route-1',
+            ticketPrice: 200.00,
+            flightsPerWeek: -1,
+            userId: 'user-1',
+          );
+        },
+        expect: () => [
+          const RoutesLoading(),
+          isA<RoutesLoaded>(),
+          isA<RoutesActionLoading>(),
+          isA<RoutesError>().having(
+            (s) => s.message,
+            'message',
+            'Invalid frequency value',
+          ),
+          isA<RoutesLoaded>(),
+        ],
+      );
+
+      blocTest<RoutesCubit, RoutesState>(
+        'exception: emits RoutesActionLoading → RoutesError → RoutesLoaded when gateway throws',
+        build: () {
+          return RoutesCubit(gateway: ThrowingUpdateRouteGateway()
+            ..airportsToReturn = [_mockAirportCgk, _mockAirportSin]
+            ..routesToReturn = [_mockRouteMap]
+            ..fleetToReturn = [_mockFleetEntry]);
+        },
+        act: (cubit) async {
+          await cubit.loadRoutesAndData('user-1');
+          await cubit.updateRouteFrequencyAndPrice(
+            routeId: 'route-1',
+            ticketPrice: 200.00,
+            flightsPerWeek: 21,
+            userId: 'user-1',
+          );
+        },
+        expect: () => [
+          const RoutesLoading(),
+          isA<RoutesLoaded>(),
+          isA<RoutesActionLoading>(),
+          isA<RoutesError>().having(
+            (s) => s.message,
+            'message',
+            contains('Exception:'),
+          ),
+          isA<RoutesLoaded>(),
+        ],
+      );
+    });
+
+    // =========================================================================
+    // Silent refresh
+    // =========================================================================
+
+    group('silent refresh', () {
+      blocTest<RoutesCubit, RoutesState>(
+        'silent=true does not emit RoutesLoading',
+        build: () => RoutesCubit(gateway: gateway),
+        act: (cubit) => cubit.loadRoutesAndData('user-1', silent: true),
+        expect: () => [
+          // Should NOT contain RoutesLoading — only the final RoutesLoaded
+          isA<RoutesLoaded>()
+              .having((s) => s.airports.length, 'airports length', 2)
+              .having((s) => s.routes.length, 'routes length', 1),
+        ],
+      );
+
+      blocTest<RoutesCubit, RoutesState>(
+        'silent=false emits RoutesLoading before RoutesLoaded',
+        build: () => RoutesCubit(gateway: gateway),
+        act: (cubit) => cubit.loadRoutesAndData('user-1', silent: false),
+        expect: () => [
+          const RoutesLoading(),
+          isA<RoutesLoaded>(),
+        ],
+      );
+    });
+
+    // =========================================================================
     // Dev mode fallback
     // =========================================================================
 
@@ -681,6 +828,87 @@ void main() {
         expect(cubit.state, isA<RoutesLoaded>());
         final loaded = cubit.state as RoutesLoaded;
         expect(loaded.routes.length, routesBefore + 1);
+
+        await cubit.close();
+      });
+
+      test('dev mode assignAircraft works without gateway', () async {
+        SupabaseManager.enableDevMode();
+        final cubit = RoutesCubit();
+
+        await cubit.loadRoutesAndData('dev-user');
+        final loadedBefore = cubit.state as RoutesLoaded;
+        final availableBefore = loadedBefore.availableAircraft.length;
+        final routeId = loadedBefore.routes.first.id;
+
+        // Assign the first available aircraft to the first route
+        final aircraftId = loadedBefore.availableAircraft.first.id;
+        final result = await cubit.assignAircraft(
+          routeId: routeId,
+          aircraftId: aircraftId,
+          userId: 'dev-user',
+        );
+
+        expect(result, isTrue);
+        expect(cubit.state, isA<RoutesLoaded>());
+        final loadedAfter = cubit.state as RoutesLoaded;
+        // Available aircraft should decrease by 1
+        expect(loadedAfter.availableAircraft.length, availableBefore - 1);
+        // The route should now have the aircraft assigned
+        final updatedRoute = loadedAfter.routes.firstWhere(
+          (r) => r.id == routeId,
+        );
+        expect(updatedRoute.assignedAircraftId, aircraftId);
+
+        await cubit.close();
+      });
+
+      test('dev mode updateRouteFrequencyAndPrice works without gateway',
+          () async {
+        SupabaseManager.enableDevMode();
+        final cubit = RoutesCubit();
+
+        await cubit.loadRoutesAndData('dev-user');
+        final loadedBefore = cubit.state as RoutesLoaded;
+        final routeId = loadedBefore.routes.first.id;
+
+        final result = await cubit.updateRouteFrequencyAndPrice(
+          routeId: routeId,
+          ticketPrice: 250.00,
+          flightsPerWeek: 21,
+          userId: 'dev-user',
+        );
+
+        expect(result, isTrue);
+        expect(cubit.state, isA<RoutesLoaded>());
+        final loadedAfter = cubit.state as RoutesLoaded;
+        final updatedRoute = loadedAfter.routes.firstWhere(
+          (r) => r.id == routeId,
+        );
+        expect(updatedRoute.ticketPrice, 250.00);
+        expect(updatedRoute.flightsPerWeek, 21);
+
+        await cubit.close();
+      });
+
+      test('dev mode deleteRoute works without gateway', () async {
+        SupabaseManager.enableDevMode();
+        final cubit = RoutesCubit();
+
+        await cubit.loadRoutesAndData('dev-user');
+        final loadedBefore = cubit.state as RoutesLoaded;
+        final routesBefore = loadedBefore.routes.length;
+        final routeId = loadedBefore.routes.first.id;
+
+        final result = await cubit.deleteRoute(
+          routeId: routeId,
+          userId: 'dev-user',
+        );
+
+        expect(result, isTrue);
+        expect(cubit.state, isA<RoutesLoaded>());
+        final loadedAfter = cubit.state as RoutesLoaded;
+        expect(loadedAfter.routes.length, routesBefore - 1);
 
         await cubit.close();
       });

@@ -499,6 +499,385 @@ void main() {
           ),
         ],
       );
+
+      blocTest<SettingsCubit, SettingsState>(
+        'setShowTickerTape updates showTickerTape',
+        build: () => SettingsCubit(gateway: MockSettingsGateway()),
+        act: (cubit) => cubit.setShowTickerTape(false),
+        expect: () => [
+          isA<SettingsState>().having(
+            (s) => s.showTickerTape,
+            'showTickerTape',
+            false,
+          ),
+        ],
+      );
+
+      blocTest<SettingsCubit, SettingsState>(
+        'setShowTickerTape toggles from default true to false',
+        build: () => SettingsCubit(gateway: MockSettingsGateway()),
+        act: (cubit) {
+          expect(cubit.state.showTickerTape, isTrue);
+          cubit.setShowTickerTape(false);
+        },
+        expect: () => [
+          isA<SettingsState>().having(
+            (s) => s.showTickerTape,
+            'showTickerTape',
+            false,
+          ),
+        ],
+      );
+
+      blocTest<SettingsCubit, SettingsState>(
+        'setAutoRepairThreshold updates autoRepairThreshold',
+        build: () => SettingsCubit(gateway: MockSettingsGateway()),
+        act: (cubit) => cubit.setAutoRepairThreshold(75.0),
+        expect: () => [
+          isA<SettingsState>().having(
+            (s) => s.autoRepairThreshold,
+            'autoRepairThreshold',
+            75.0,
+          ),
+        ],
+      );
+
+      blocTest<SettingsCubit, SettingsState>(
+        'setAutoRepairThreshold changes from default 50.0',
+        build: () => SettingsCubit(gateway: MockSettingsGateway()),
+        act: (cubit) {
+          expect(cubit.state.autoRepairThreshold, 50.0);
+          cubit.setAutoRepairThreshold(80.0);
+        },
+        expect: () => [
+          isA<SettingsState>().having(
+            (s) => s.autoRepairThreshold,
+            'autoRepairThreshold',
+            80.0,
+          ),
+        ],
+      );
+    });
+
+    // =========================================================================
+    // saveSettings concurrent behavior
+    // =========================================================================
+
+    group('saveSettings concurrent behavior', () {
+      blocTest<SettingsCubit, SettingsState>(
+        'sequential saveSettings calls produce correct state transitions',
+        build: () {
+          final gateway = MockSettingsGateway()
+            ..rpcToReturn = [
+              <String, dynamic>{'success': true, 'message': 'OK'},
+            ];
+          return SettingsCubit(gateway: gateway);
+        },
+        act: (cubit) async {
+          await cubit.saveSettings(
+            userId: 'user-1',
+            companyName: 'First Airline',
+            autoGroundingThreshold: 30.0,
+            hqAirportIata: 'CGK',
+            onSyncBalance: () async {},
+          );
+          await cubit.saveSettings(
+            userId: 'user-1',
+            companyName: 'Second Airline',
+            autoGroundingThreshold: 40.0,
+            hqAirportIata: 'SIN',
+            onSyncBalance: () async {},
+          );
+        },
+        expect: () => [
+          // First save: isSaving true
+          isA<SettingsState>().having((s) => s.isSaving, 'saving 1', true),
+          // First save: isSaving false, isSaveSuccess true
+          isA<SettingsState>()
+              .having((s) => s.isSaving, 'saving 2', false)
+              .having((s) => s.isSaveSuccess, 'success 1', true),
+          // Second save: isSaving true
+          isA<SettingsState>().having((s) => s.isSaving, 'saving 3', true),
+          // Second save: isSaving false, isSaveSuccess true
+          isA<SettingsState>()
+              .having((s) => s.isSaving, 'saving 4', false)
+              .having((s) => s.isSaveSuccess, 'success 2', true),
+        ],
+      );
+
+      test('saveSettings sets error on failure then succeeds on retry',
+          () async {
+        final gateway = MockSettingsGateway();
+        final cubit = SettingsCubit(gateway: gateway);
+
+        // First call fails
+        gateway.shouldThrow = true;
+        gateway.throwMessage = 'Network timeout';
+        await cubit.saveSettings(
+          userId: 'user-1',
+          companyName: 'Test',
+          autoGroundingThreshold: 30.0,
+          hqAirportIata: 'CGK',
+          onSyncBalance: () async {},
+        );
+        expect(cubit.state.isSaving, false);
+        expect(cubit.state.errorMessage, isNotNull);
+
+        // Second call succeeds
+        gateway.shouldThrow = false;
+        gateway.rpcToReturn = [
+          <String, dynamic>{'success': true, 'message': 'Saved'},
+        ];
+        await cubit.saveSettings(
+          userId: 'user-1',
+          companyName: 'Test',
+          autoGroundingThreshold: 30.0,
+          hqAirportIata: 'CGK',
+          onSyncBalance: () async {},
+        );
+        expect(cubit.state.isSaving, false);
+        expect(cubit.state.isSaveSuccess, true);
+
+        await cubit.close();
+      });
+
+      blocTest<SettingsCubit, SettingsState>(
+        'saveSettings always resets isSaving even on exception',
+        build: () {
+          final gateway = MockSettingsGateway()
+            ..shouldThrow = true
+            ..throwMessage = 'Connection refused';
+          return SettingsCubit(gateway: gateway);
+        },
+        act: (cubit) => cubit.saveSettings(
+          userId: 'user-1',
+          companyName: 'Test',
+          autoGroundingThreshold: 30.0,
+          hqAirportIata: 'CGK',
+          onSyncBalance: () async {},
+        ),
+        verify: (cubit) {
+          // isSaving must be false even after an exception
+          expect(cubit.state.isSaving, false);
+          expect(cubit.state.errorMessage, isNotNull);
+        },
+      );
+    });
+
+    // =========================================================================
+    // resetAirline state verification
+    // =========================================================================
+
+    group('resetAirline state verification', () {
+      blocTest<SettingsCubit, SettingsState>(
+        'resetAirline emits isSaveSuccess true and clears errorMessage',
+        build: () {
+          final gateway = MockSettingsGateway()
+            ..rpcToReturn = [
+              <String, dynamic>{'success': true, 'message': 'Reset done'},
+            ];
+          return SettingsCubit(gateway: gateway);
+        },
+        act: (cubit) async {
+          final result = await cubit.resetAirline(
+            userId: 'user-1',
+            onResetComplete: () async {},
+          );
+          expect(result, isTrue);
+        },
+        verify: (cubit) {
+          expect(cubit.state.isSaving, false);
+          expect(cubit.state.isSaveSuccess, true);
+          expect(cubit.state.errorMessage, isNull);
+        },
+      );
+
+      blocTest<SettingsCubit, SettingsState>(
+        'resetAirline calls onResetComplete callback before emitting success',
+        build: () {
+          final gateway = MockSettingsGateway()
+            ..rpcToReturn = [
+              <String, dynamic>{'success': true, 'message': 'Reset done'},
+            ];
+          return SettingsCubit(gateway: gateway);
+        },
+        act: (cubit) async {
+          final callOrder = <String>[];
+          await cubit.resetAirline(
+            userId: 'user-1',
+            onResetComplete: () async {
+              callOrder.add('resetComplete');
+            },
+          );
+          // onResetComplete should have been called
+          expect(callOrder, contains('resetComplete'));
+        },
+        verify: (cubit) {
+          expect(cubit.state.isSaveSuccess, true);
+        },
+      );
+
+      blocTest<SettingsCubit, SettingsState>(
+        'resetAirline returns false and emits error on gateway failure',
+        build: () {
+          final gateway = MockSettingsGateway()
+            ..rpcToReturn = [
+              <String, dynamic>{
+                'success': false,
+                'message': 'Reset not allowed',
+              },
+            ];
+          return SettingsCubit(gateway: gateway);
+        },
+        act: (cubit) async {
+          final result = await cubit.resetAirline(
+            userId: 'user-1',
+            onResetComplete: () async {},
+          );
+          expect(result, isFalse);
+        },
+        verify: (cubit) {
+          expect(cubit.state.isSaving, false);
+          expect(cubit.state.errorMessage, 'Reset not allowed');
+        },
+      );
+
+      test(
+          'resetAirline does not call onResetComplete when gateway returns failure',
+          () async {
+        final gateway = MockSettingsGateway()
+          ..rpcToReturn = [
+            <String, dynamic>{
+              'success': false,
+              'message': 'Not allowed',
+            },
+          ];
+        final cubit = SettingsCubit(gateway: gateway);
+
+        bool callbackCalled = false;
+        final result = await cubit.resetAirline(
+          userId: 'user-1',
+          onResetComplete: () async {
+            callbackCalled = true;
+          },
+        );
+
+        expect(result, isFalse);
+        // onResetComplete should NOT be called when RPC fails
+        expect(callbackCalled, isFalse);
+
+        await cubit.close();
+      });
+    });
+
+    // =========================================================================
+    // loadAirports dropdown data
+    // =========================================================================
+
+    group('loadAirports dropdown data', () {
+      blocTest<SettingsCubit, SettingsState>(
+        'populates airports with correct dropdown structure (iata, name, city, country)',
+        build: () {
+          final gateway = MockSettingsGateway()
+            ..airportsToReturn = _mockAirports;
+          return SettingsCubit(gateway: gateway);
+        },
+        act: (cubit) => cubit.loadAirports('CGK'),
+        verify: (cubit) {
+          final airports = cubit.state.airports;
+          expect(airports, isNotEmpty);
+          // Each airport must have all dropdown keys
+          for (final airport in airports) {
+            expect(airport.containsKey('iata'), isTrue);
+            expect(airport.containsKey('name'), isTrue);
+            expect(airport.containsKey('city'), isTrue);
+            expect(airport.containsKey('country'), isTrue);
+          }
+          expect(airports.first['iata'], 'CGK');
+          expect(airports.first['name'], 'Soekarno-Hatta International');
+          expect(airports.first['city'], 'Jakarta');
+          expect(airports.first['country'], 'Indonesia');
+          expect(cubit.state.selectedHq, 'CGK');
+          expect(cubit.state.isLoadingAirports, false);
+        },
+      );
+
+      blocTest<SettingsCubit, SettingsState>(
+        'loadAirports sets selectedHq from currentHq parameter',
+        build: () {
+          final gateway = MockSettingsGateway()
+            ..airportsToReturn = _mockAirports;
+          return SettingsCubit(gateway: gateway);
+        },
+        act: (cubit) => cubit.loadAirports('SIN'),
+        verify: (cubit) {
+          expect(cubit.state.selectedHq, 'SIN');
+          expect(cubit.state.airports, isNotEmpty);
+          expect(cubit.state.isLoadingAirports, false);
+        },
+      );
+
+      blocTest<SettingsCubit, SettingsState>(
+        'loadAirports with large dataset populates all entries',
+        build: () {
+          final largeAirports = List.generate(
+            50,
+            (i) => {
+              'iata': 'APT${i.toString().padLeft(2, '0')}',
+              'name': 'Airport $i',
+              'city': 'City $i',
+              'country': 'Country $i',
+            },
+          );
+          final gateway = MockSettingsGateway()
+            ..airportsToReturn = largeAirports;
+          return SettingsCubit(gateway: gateway);
+        },
+        act: (cubit) => cubit.loadAirports('APT00'),
+        verify: (cubit) {
+          expect(cubit.state.airports.length, 50);
+          expect(cubit.state.selectedHq, 'APT00');
+          expect(cubit.state.isLoadingAirports, false);
+          // Verify first and last entries
+          expect(cubit.state.airports.first['iata'], 'APT00');
+          expect(cubit.state.airports.last['iata'], 'APT49');
+        },
+      );
+
+      blocTest<SettingsCubit, SettingsState>(
+        'loadAirports emits loading state before fetching',
+        build: () {
+          final gateway = MockSettingsGateway()
+            ..airportsToReturn = _mockAirports;
+          return SettingsCubit(gateway: gateway);
+        },
+        act: (cubit) => cubit.loadAirports('CGK'),
+        expect: () => [
+          isA<SettingsState>().having(
+            (s) => s.isLoadingAirports,
+            'isLoadingAirports',
+            true,
+          ),
+          isA<SettingsState>()
+              .having((s) => s.isLoadingAirports, 'isLoadingAirports', false)
+              .having((s) => s.airports, 'airports', isNotEmpty),
+        ],
+      );
+
+      blocTest<SettingsCubit, SettingsState>(
+        'loadAirports error preserves selectedHq and sets errorMessage',
+        build: () {
+          final gateway = MockSettingsGateway()..shouldThrow = true;
+          return SettingsCubit(gateway: gateway);
+        },
+        act: (cubit) => cubit.loadAirports('CGK'),
+        verify: (cubit) {
+          expect(cubit.state.isLoadingAirports, false);
+          expect(cubit.state.errorMessage, isNotNull);
+          // selectedHq should still be set from the loading emission
+          expect(cubit.state.selectedHq, 'CGK');
+        },
+      );
     });
   });
 }
