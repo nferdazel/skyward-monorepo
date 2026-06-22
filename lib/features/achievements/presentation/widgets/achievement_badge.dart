@@ -55,7 +55,7 @@ class AchievementBadge extends StatelessWidget {
       child: Tooltip(
         message: definition.description,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
             color: bgColor,
             borderRadius: BorderRadius.circular(4),
@@ -71,7 +71,7 @@ class AchievementBadge extends StatelessWidget {
                   color: isLocked ? AppTheme.textMuted : null,
                 ),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 8),
               Flexible(
                 child: Text(
                   definition.name.toUpperCase(),
