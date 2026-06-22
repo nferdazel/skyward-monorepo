@@ -530,7 +530,7 @@ class _AirportMarker extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.xs,
-          vertical: 2,
+          vertical: AppSpacing.xs,
         ),
         decoration: BoxDecoration(
           color: AppTheme.surface.withValues(alpha: 0.92),

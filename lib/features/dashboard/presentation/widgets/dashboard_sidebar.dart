@@ -126,8 +126,8 @@ class DashboardSidebar extends StatelessWidget {
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(
-        horizontal: 6,
-        vertical: 2,
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
       ),
       child: Semantics(
         label: label,
@@ -140,12 +140,12 @@ class DashboardSidebar extends StatelessWidget {
             borderRadius: BorderRadius.circular(4),
             child: InkWell(
               onTap: onTap,
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
               child: Container(
                 width: 68,
-                padding: const EdgeInsets.symmetric(vertical: 6),
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
                   border: isActive
                       ? Border.all(
                           color: AppTheme.primary.withValues(alpha: 0.3),
@@ -161,12 +161,12 @@ class DashboardSidebar extends StatelessWidget {
                       color: color ?? (isActive ? AppTheme.primary : AppTheme.textSecondary),
                       size: 18,
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: AppSpacing.xs),
                     Text(
                       label,
                       style: AppTypography.microLabel.copyWith(
                         color: isActive ? AppTheme.primary : AppTheme.textMuted,
-                        fontSize: 9,
+                        fontSize: 11,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,

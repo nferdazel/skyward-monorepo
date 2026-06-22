@@ -240,10 +240,10 @@ class _OnboardingOverlayState extends State<OnboardingOverlay> {
           duration: _kDotAnimationDuration,
           width: active ? AppSpacing.xxl : AppSpacing.sm,
           height: AppSpacing.sm,
-          margin: const EdgeInsets.symmetric(horizontal: 2),
+          margin: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
           decoration: BoxDecoration(
             color: active ? AppTheme.primary : AppTheme.border,
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
           ),
         );
       }),

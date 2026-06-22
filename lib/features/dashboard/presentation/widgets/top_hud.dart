@@ -139,10 +139,10 @@ class TopHud extends StatelessWidget {
               PulseDot(color: statusColor, size: 6),
               const SizedBox(width: AppSpacing.sm),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
                 decoration: BoxDecoration(
                   color: statusColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(3),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
                 ),
                 child: Text(
                   statusText,

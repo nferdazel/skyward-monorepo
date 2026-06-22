@@ -38,7 +38,7 @@ class AppTableBodyCell extends StatelessWidget {
   const AppTableBodyCell({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 6),
+    this.padding = const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.sm),
   });
 
   @override

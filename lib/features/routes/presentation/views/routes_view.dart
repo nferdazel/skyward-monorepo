@@ -432,7 +432,7 @@ class _RoutesViewState extends State<RoutesView> {
                 const Spacer(),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
+                    horizontal: AppSpacing.sm,
                     vertical: 1,
                   ),
                   decoration: BoxDecoration(
@@ -552,7 +552,7 @@ class _RoutesViewState extends State<RoutesView> {
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
+                    horizontal: AppSpacing.sm,
                     vertical: 1,
                   ),
                   decoration: BoxDecoration(
@@ -597,7 +597,7 @@ class _RoutesViewState extends State<RoutesView> {
                   IconButton(
                     icon: Icon(Icons.info_outline, size: 16, color: AppTheme.textSecondary),
                     padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    constraints: const BoxConstraints(minWidth: AppSpacing.xxxl, minHeight: AppSpacing.xxxl),
                     tooltip: 'Route details',
                     onPressed: () {
                       _showRouteDetailsDialog(
@@ -616,7 +616,7 @@ class _RoutesViewState extends State<RoutesView> {
                       onPressed: () => _showAssignDialog(context, route, userId),
                       icon: Icons.link,
                       type: AppButtonType.secondary,
-                      height: 32,
+                      height: AppSpacing.xxxl,
                     ),
                   ),
                   const SizedBox(width: AppSpacing.xs),
@@ -635,14 +635,14 @@ class _RoutesViewState extends State<RoutesView> {
                       },
                       icon: Icons.tune,
                       type: AppButtonType.secondary,
-                      height: 32,
+                      height: AppSpacing.xxxl,
                     ),
                   ),
                   const SizedBox(width: AppSpacing.xs),
                   Flexible(
                     fit: FlexFit.tight,
                     child: SizedBox(
-                      height: 32,
+                      height: AppSpacing.xxxl,
                       child: InkWell(
                         onTap: () => _confirmCloseRoute(context, route, userId),
                         borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
@@ -688,7 +688,7 @@ class _RoutesViewState extends State<RoutesView> {
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.xs,
-        vertical: 2,
+        vertical: AppSpacing.xs,
       ),
       decoration: BoxDecoration(
         color: AppTheme.primary.withValues(alpha: 0.12),
@@ -758,7 +758,7 @@ class _RoutesViewState extends State<RoutesView> {
 
   Widget _buildMonitorLine(String label, String value, Color valueColor) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 3),
+      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -1036,7 +1036,7 @@ class _RoutesViewState extends State<RoutesView> {
   Widget _buildFooterDivider() {
     return Container(
       width: 1,
-      height: 14,
+      height: AppSpacing.lg,
       margin: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
       color: AppTheme.border,
     );
@@ -1308,8 +1308,8 @@ class _RoutesViewState extends State<RoutesView> {
                     labelText: AppStrings.ticketPriceInputLabel,
                     labelStyle: AppTypography.captionRegular,
                     contentPadding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.md - 2,
-                      vertical: AppSpacing.md - 2,
+                      horizontal: AppSpacing.md,
+                      vertical: AppSpacing.md,
                     ),
                     isDense: true,
                   ),
@@ -1954,7 +1954,7 @@ class _AirportMarker extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.xs,
-          vertical: 2,
+          vertical: AppSpacing.xs,
         ),
         decoration: BoxDecoration(
           color: demandColor.withValues(alpha: 0.3),

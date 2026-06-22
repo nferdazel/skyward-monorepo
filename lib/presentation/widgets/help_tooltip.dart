@@ -46,7 +46,7 @@ class HowToPlayOverlay extends StatelessWidget {
     return Dialog(
       backgroundColor: AppTheme.surface,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
         side: BorderSide(color: AppTheme.border),
       ),
       child: ConstrainedBox(
@@ -139,12 +139,12 @@ class HowToPlayOverlay extends StatelessWidget {
     required String body,
   }) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.only(bottom: AppSpacing.lg),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, size: 16, color: AppTheme.primary),
-          const SizedBox(width: 10),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -156,7 +156,7 @@ class HowToPlayOverlay extends StatelessWidget {
                     color: AppTheme.textPrimary,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: AppSpacing.xs),
                 Text(
                   body,
                   style: AppTypography.captionRegular.copyWith(

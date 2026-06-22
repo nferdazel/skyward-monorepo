@@ -31,11 +31,11 @@ class AppTabItem extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
           Container(
-            height: 2,
+            height: AppSpacing.xs,
             constraints: const BoxConstraints(minWidth: AppSpacing.xl),
             decoration: BoxDecoration(
               color: isActive ? AppTheme.primary : Colors.transparent,
-              borderRadius: BorderRadius.circular(1),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusTight),
             ),
           ),
         ],

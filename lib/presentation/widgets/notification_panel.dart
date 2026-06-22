@@ -197,7 +197,7 @@ class _NotificationTile extends StatelessWidget {
                         color: AppTheme.textPrimary,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: AppSpacing.xs),
                     Text(
                       notification.message,
                       style: AppTypography.captionRegular.copyWith(

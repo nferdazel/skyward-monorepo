@@ -703,8 +703,8 @@ class _BlueprintPlannerFormState extends State<BlueprintPlannerForm> {
             ),
             Container(
               padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.sm - 2,
-                vertical: 2,
+                horizontal: AppSpacing.sm,
+                vertical: AppSpacing.xs,
               ),
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.1),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../theme/app_spacing.dart';
 
 /// A segmented OLED-style progress bar rendered as discrete rectangles with gaps.
 class SegmentedProgressBar extends StatelessWidget {
@@ -50,7 +51,7 @@ class SegmentedProgressBar extends StatelessWidget {
                 margin: EdgeInsets.only(right: index < segments - 1 ? 1 : 0),
                 decoration: BoxDecoration(
                   color: isActive ? barColor : inactive,
-                  borderRadius: BorderRadius.circular(1),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusTight),
                 ),
               ),
             );

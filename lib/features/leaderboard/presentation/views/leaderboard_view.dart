@@ -295,8 +295,8 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                     _buildRankTrendIndicator(rank, entry.previousRank),
                     Padding(
                       padding: const EdgeInsets.symmetric(
-                        vertical: 6,
-                        horizontal: 6,
+                        vertical: AppSpacing.sm,
+                        horizontal: AppSpacing.sm,
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -494,7 +494,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                       strokeWidth: 2,
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: Text(
                       AppStrings.updatingCompetitorIntel,

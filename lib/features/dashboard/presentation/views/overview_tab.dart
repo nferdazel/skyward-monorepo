@@ -203,11 +203,11 @@ class OverviewTab extends StatelessWidget {
               final isActive = index < filledSegments;
               return Expanded(
                 child: Container(
-                  height: 3,
-                  margin: EdgeInsets.only(right: index < 9 ? 2 : 0),
+                  height: AppSpacing.xs,
+                  margin: EdgeInsets.only(right: index < 9 ? AppSpacing.xs : 0),
                   decoration: BoxDecoration(
                     color: isActive ? activeColor : inactiveColor,
-                    borderRadius: BorderRadius.circular(1),
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusTight),
                   ),
                 ),
               );

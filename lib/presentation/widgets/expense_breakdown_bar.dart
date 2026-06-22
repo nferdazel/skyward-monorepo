@@ -58,7 +58,7 @@ class ExpenseBreakdownBar extends StatelessWidget {
                     child: Container(
                       color: segment.color,
                       margin: EdgeInsets.only(
-                        right: segment == visibleSegments.last ? 0 : 2,
+                        right: segment == visibleSegments.last ? 0 : AppSpacing.xs,
                       ),
                     ),
                   );
@@ -80,7 +80,7 @@ class ExpenseBreakdownBar extends StatelessWidget {
                     height: AppSpacing.sm,
                     decoration: BoxDecoration(
                       color: segment.color,
-                      borderRadius: BorderRadius.circular(1),
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusTight),
                     ),
                   ),
                   const SizedBox(width: AppSpacing.xs),
