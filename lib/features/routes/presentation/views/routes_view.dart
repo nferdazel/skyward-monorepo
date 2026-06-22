@@ -159,7 +159,7 @@ class _RoutesViewState extends State<RoutesView> {
                     description: AppStrings.noActiveConnectionsDesc,
                     actionLabel: 'OPEN BLUEPRINT PLANNER',
                     onAction: () {
-                      AppSnackBar.showSuccess(context, 'Use the Blueprint Planner panel below to create your first route.');
+                      AppSnackBar.showSuccess(context, 'Use the Blueprint Planner panel below to create your first route between two airports.');
                     },
                   ),
                 ),
