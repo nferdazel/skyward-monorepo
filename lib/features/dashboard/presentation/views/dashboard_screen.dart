@@ -8,7 +8,6 @@ import '../../../../core/utils/app_formatters.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/lazy_tab_cubit.dart';
 import '../../../../core/utils/perf_debug.dart';
-import '../../../../core/widgets/ticker_tape.dart';
 import '../../../../presentation/theme/app_spacing.dart';
 import '../../../../presentation/theme/app_typography.dart';
 import '../../../../presentation/widgets/notification_panel.dart';
@@ -33,7 +32,6 @@ import '../../../settings/presentation/cubit/settings_cubit.dart';
 import '../../../settings/presentation/views/settings_view.dart';
 import '../../../simulation/presentation/cubit/simulation_cubit.dart';
 import '../../../simulation/presentation/cubit/simulation_state.dart';
-import '../../domain/overview_snapshot.dart';
 import '../widgets/dashboard_sidebar.dart';
 import '../widgets/top_hud.dart';
 import 'overview_tab.dart';
@@ -523,31 +521,6 @@ class _AuthenticatedDashboardShellState
     );
   }
 
-  List<String> _buildTickerMessages(
-    BuildContext context,
-    AuthAuthenticated authState,
-  ) {
-    final overview = OverviewSnapshot.fromStates(
-      user: authState.user,
-      simState: context.read<SimulationCubit>().state,
-      fleetState: context.read<FleetCubit>().state,
-      routesState: context.read<RoutesCubit>().state,
-      financeState: context.read<FinanceCubit>().state,
-      leaderboardState: context.read<LeaderboardCubit>().state,
-    );
-
-    return [
-      'FLEET: ${overview.readyFleetCount}/${overview.totalFleetCount} READY',
-      'ROUTES: ${overview.activeRoutes} ACTIVE',
-      'CASH RUNWAY: ${overview.runwayLabel}',
-      if (overview.leaderGapLabel.isNotEmpty &&
-          overview.leaderGapLabel != AppStrings.loadingLabel)
-        overview.leaderGapLabel,
-      'STATUS: ${overview.operationalStatus.toUpperCase()}',
-      'SEASON CLOCK RUNNING',
-    ];
-  }
-
   Widget _buildNetworkStatusBar(SimulationState simState) {
     if (simState.errorMessage == null || simState.errorMessage!.isEmpty) {
       return const SizedBox.shrink();
@@ -609,13 +582,8 @@ class _AuthenticatedDashboardShellState
                   buildWhen: (previous, current) =>
                       previous.gameTime != current.gameTime ||
                       previous.cashBalance != current.cashBalance ||
-                      previous.fuelPricePerLiter !=
-                          current.fuelPricePerLiter ||
                       previous.isSyncing != current.isSyncing,
                   builder: (context, simState) {
-                    final creditScore = _bankCubit.state is BankLoaded
-                        ? (_bankCubit.state as BankLoaded).creditReport?.currentScore
-                        : null;
                     return TopHud(
                         authState: authState,
                         simState: simState,
@@ -623,7 +591,6 @@ class _AuthenticatedDashboardShellState
                         dateFormat: dateFormat,
                         unreadCount: _unreadCount,
                         onNotificationTap: _toggleNotificationPanel,
-                        creditScore: creditScore,
                       );
                   },
                 ),
@@ -669,19 +636,7 @@ class _AuthenticatedDashboardShellState
                         ),
                       ),
                     ),
-                    // Ticker at bottom
-                    BlocBuilder<SimulationCubit, SimulationState>(
-                      buildWhen: (prev, curr) =>
-                          prev.gameTime != curr.gameTime ||
-                          prev.cashBalance != curr.cashBalance,
-                      builder: (context, simState) {
-                        final messages = _buildTickerMessages(
-                          context,
-                          authState,
-                        );
-                        return TickerTape(messages: messages);
-                      },
-                    ),
+                    // Ticker removed — redundant with Overview tab
                   ],
                 ),
               ),

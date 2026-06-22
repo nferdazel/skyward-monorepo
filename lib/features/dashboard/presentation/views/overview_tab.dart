@@ -9,6 +9,8 @@ import '../../../../presentation/theme/app_spacing.dart';
 import '../../../../presentation/theme/app_typography.dart';
 import '../../../../presentation/widgets/app_card.dart';
 import '../../../../presentation/widgets/app_section_header.dart';
+import '../../../../presentation/widgets/app_sparkline.dart';
+import '../../../../presentation/widgets/help_tooltip.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
 import '../../../finance/presentation/cubit/finance_cubit.dart';
@@ -97,6 +99,8 @@ class OverviewTab extends StatelessWidget {
                   ? 10
                   : 0,
               activeColor: AppTheme.success,
+              helpMessage: AppStrings.helpKpiFleetReady,
+              sparkData: null, // 7-day trend pipeline pending
             ),
           ),
         ),
@@ -112,6 +116,8 @@ class OverviewTab extends StatelessWidget {
               value: '${overview.activeRoutes} ${AppStrings.routesSuffix.trim()}',
               filledSegments: overview.activeRoutes.clamp(0, 10),
               activeColor: AppTheme.primary,
+              helpMessage: AppStrings.helpKpiNetworkHealth,
+              sparkData: null, // 7-day trend pipeline pending
             ),
           ),
         ),
@@ -124,6 +130,8 @@ class OverviewTab extends StatelessWidget {
             value: '${overview.averageCondition.toStringAsFixed(1)}%',
             filledSegments: overview.averageCondition ~/ 10,
             activeColor: ConditionColors.colorFor(overview.averageCondition),
+            helpMessage: AppStrings.helpKpiCondition,
+            sparkData: null, // 7-day trend pipeline pending
           ),
         ),
         const SizedBox(width: AppSpacing.md),
@@ -145,6 +153,9 @@ class OverviewTab extends StatelessWidget {
     required String value,
     required int filledSegments,
     required Color activeColor,
+    required String helpMessage,
+    List<double>? sparkData,
+    Color? trendColor,
   }) {
     final inactiveColor = AppTheme.textMuted.withValues(alpha: 0.25);
 
@@ -164,6 +175,8 @@ class OverviewTab extends StatelessWidget {
                   color: AppTheme.textMuted,
                 ),
               ),
+              const SizedBox(width: 4),
+              HelpTooltip(message: helpMessage),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
@@ -174,6 +187,15 @@ class OverviewTab extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
+          if (sparkData != null && sparkData.length >= 3) ...[
+            const SizedBox(height: AppSpacing.xs),
+            AppSparkline(
+              data: sparkData,
+              width: 60,
+              height: 20,
+              color: trendColor ?? activeColor,
+            ),
+          ],
           const SizedBox(height: AppSpacing.md),
           // 10-segment progress bar
           Row(
@@ -213,6 +235,8 @@ class OverviewTab extends StatelessWidget {
                   color: AppTheme.textMuted,
                 ),
               ),
+              const SizedBox(width: 4),
+              HelpTooltip(message: AppStrings.helpKpiRunway),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
@@ -223,6 +247,11 @@ class OverviewTab extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
+          // Sparkline placeholder (7-day trend pipeline pending)
+          // if (sparkData != null && sparkData.length >= 3) ...[
+          //   const SizedBox(height: AppSpacing.xs),
+          //   AppSparkline(data: sparkData, width: 60, height: 20, color: snapshot.runwayColor),
+          // ],
         ],
       ),
     );

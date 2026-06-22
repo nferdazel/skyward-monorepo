@@ -32,7 +32,7 @@ class DashboardSidebar extends StatelessWidget {
     ];
 
     return Container(
-      width: 44,
+      width: 80,
       decoration: BoxDecoration(
         color: AppTheme.surface,
         border: Border(
@@ -142,8 +142,8 @@ class DashboardSidebar extends StatelessWidget {
               onTap: onTap,
               borderRadius: BorderRadius.circular(4),
               child: Container(
-                width: 32,
-                height: 32,
+                width: 68,
+                padding: const EdgeInsets.symmetric(vertical: 6),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(4),
                   border: isActive
@@ -153,10 +153,25 @@ class DashboardSidebar extends StatelessWidget {
                         )
                       : null,
                 ),
-                child: Icon(
-                  icon,
-                  color: color ?? (isActive ? AppTheme.primary : AppTheme.textSecondary),
-                  size: 18,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      icon,
+                      color: color ?? (isActive ? AppTheme.primary : AppTheme.textSecondary),
+                      size: 18,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      label,
+                      style: AppTypography.microLabel.copyWith(
+                        color: isActive ? AppTheme.primary : AppTheme.textMuted,
+                        fontSize: 9,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
               ),
             ),
