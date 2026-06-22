@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/condition_colors.dart';
 import '../../../../presentation/theme/app_spacing.dart';
 import '../../../../presentation/theme/app_typography.dart';
 import '../../../../presentation/widgets/app_card.dart';
@@ -113,9 +114,7 @@ class OverviewTab extends StatelessWidget {
             icon: Icons.shield_outlined,
             value: '${overview.averageCondition.toStringAsFixed(1)}%',
             filledSegments: overview.averageCondition ~/ 10,
-            activeColor: overview.averageCondition >= 70
-                ? AppTheme.success
-                : AppTheme.warning,
+            activeColor: ConditionColors.colorFor(overview.averageCondition),
           ),
         ),
         const SizedBox(width: AppSpacing.md),

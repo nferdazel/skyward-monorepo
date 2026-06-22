@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/condition_colors.dart';
 import '../../../../core/utils/lazy_tab_cubit.dart';
 import '../../../../core/utils/perf_debug.dart';
 import '../../../../presentation/theme/app_spacing.dart';
@@ -1556,14 +1557,8 @@ class _FleetViewState extends State<FleetView>
   }
 
   Widget _buildWearConditionCell(double condition) {
-    Color barColor;
-    if (condition >= 75.0) {
-      barColor = AppTheme.success;
-    } else if (condition >= 50.0) {
-      barColor = AppTheme.warning;
-    } else {
-      barColor = AppTheme.error;
-    }
+    final barColor = ConditionColors.colorFor(condition);
+    final bandLabel = ConditionColors.labelFor(condition);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1576,14 +1571,34 @@ class _FleetViewState extends State<FleetView>
             fontSize: 12,
           ),
         ),
-        const SizedBox(height: AppSpacing.xs),
+        const SizedBox(height: 3),
         SizedBox(
-          width: 60,
-          child: LinearProgressIndicator(
-            value: condition / 100.0,
-            minHeight: 3,
-            backgroundColor: AppTheme.borderSubtle,
-            valueColor: AlwaysStoppedAnimation<Color>(barColor),
+          width: 64,
+          height: 6,
+          child: Row(
+            children: List.generate(10, (index) {
+              final segmentThreshold = (index + 1) * 10.0;
+              final isActive = condition >= segmentThreshold;
+              return Expanded(
+                child: Container(
+                  height: 6,
+                  margin: EdgeInsets.only(right: index < 9 ? 1 : 0),
+                  decoration: BoxDecoration(
+                    color: isActive ? barColor : AppTheme.borderSubtle,
+                    borderRadius: BorderRadius.circular(1),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          bandLabel,
+          style: AppTypography.badgeText.copyWith(
+            color: barColor,
+            fontSize: 8,
+            letterSpacing: 0.4,
           ),
         ),
       ],
