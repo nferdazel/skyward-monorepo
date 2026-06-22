@@ -14,8 +14,8 @@ class AppTypography {
   static Color get textMuted => AppTheme.textMuted;
   static Color get primaryAccent => AppTheme.primary;
 
-  // ── DISPLAY / SCREEN TITLES (IBM Plex Mono) ──
-  static final TextStyle screenTitleLarge = GoogleFonts.ibmPlexMono(
+  // ── DISPLAY / SCREEN TITLES (IBM Plex Sans) ──
+  static final TextStyle screenTitleLarge = GoogleFonts.ibmPlexSans(
     fontSize: 15,
     fontWeight: FontWeight.w600,
     color: textPrimary,
@@ -23,7 +23,7 @@ class AppTypography {
     letterSpacing: 0.06,
   );
 
-  static final TextStyle screenTitleMedium = GoogleFonts.ibmPlexMono(
+  static final TextStyle screenTitleMedium = GoogleFonts.ibmPlexSans(
     fontSize: 13,
     fontWeight: FontWeight.w600,
     color: textPrimary,
@@ -31,8 +31,8 @@ class AppTypography {
     letterSpacing: 0.06,
   );
 
-  // ── SECTION HEADERS (IBM Plex Mono, ALL CAPS) ──
-  static final TextStyle sectionHeaderLarge = GoogleFonts.ibmPlexMono(
+  // ── SECTION HEADERS (IBM Plex Sans, ALL CAPS) ──
+  static final TextStyle sectionHeaderLarge = GoogleFonts.ibmPlexSans(
     fontSize: 12,
     fontWeight: FontWeight.w600,
     color: textSecondary,
@@ -40,7 +40,7 @@ class AppTypography {
     letterSpacing: 0.1,
   );
 
-  static final TextStyle sectionHeaderMedium = GoogleFonts.ibmPlexMono(
+  static final TextStyle sectionHeaderMedium = GoogleFonts.ibmPlexSans(
     fontSize: 11,
     fontWeight: FontWeight.w600,
     color: textSecondary,
@@ -63,8 +63,8 @@ class AppTypography {
     height: 1.4,
   );
 
-  // ── MICRO LABELS (IBM Plex Mono, ALL CAPS) ──
-  static final TextStyle microLabel = GoogleFonts.ibmPlexMono(
+  // ── MICRO LABELS (IBM Plex Sans, ALL CAPS) ──
+  static final TextStyle microLabel = GoogleFonts.ibmPlexSans(
     fontSize: 11,
     fontWeight: FontWeight.w600,
     color: textSecondary,
@@ -95,8 +95,8 @@ class AppTypography {
     letterSpacing: 0.08,
   );
 
-  // ── BUTTON TEXT (IBM Plex Mono) ──
-  static final TextStyle buttonText = GoogleFonts.ibmPlexMono(
+  // ── BUTTON TEXT (IBM Plex Sans) ──
+  static final TextStyle buttonText = GoogleFonts.ibmPlexSans(
     fontSize: 12,
     fontWeight: FontWeight.w600,
     color: Colors.black,
@@ -145,7 +145,7 @@ class AppTypography {
   );
 
   // ── CONVENIENCE STYLES (avoid copyWith abuse) ──
-  static final TextStyle labelSecondary = GoogleFonts.ibmPlexMono(
+  static final TextStyle labelSecondary = GoogleFonts.ibmPlexSans(
     fontSize: 11,
     fontWeight: FontWeight.w600,
     color: textSecondary,
