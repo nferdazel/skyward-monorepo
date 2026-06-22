@@ -857,7 +857,7 @@ class _RoutesViewState extends State<RoutesView> {
                         isDense: true,
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: AppSpacing.sm,
-                          vertical: AppSpacing.sm,
+                          vertical: 8,
                         ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(3),
