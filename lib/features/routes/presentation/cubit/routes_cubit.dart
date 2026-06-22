@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/game_constants.dart';
 import '../../../../core/database/supabase_client.dart';
+import '../../../../core/utils/app_error.dart';
 import '../../../../core/mixins/simulation_reactive_mixin.dart';
 import '../../../../core/realtime/realtime_subscription_bag.dart';
 import '../../../../core/utils/dev_mode_manager.dart';
@@ -346,7 +347,7 @@ class RoutesCubit extends Cubit<RoutesState> with SimulationReactiveMixin {
       SupabaseManager.logError('loadRoutesAndData', e, stack);
       emit(
         RoutesError(
-          message: '${AppStrings.routesLoadFailed}${e.toString()}',
+          message: AppError.extractMessage(e, AppStrings.routesLoadFailed),
           hasData: _cachedRoutes.isNotEmpty || _cachedAirports.isNotEmpty,
           routes: List<UserRoute>.from(_cachedRoutes),
           airports: List<Airport>.from(_cachedAirports),

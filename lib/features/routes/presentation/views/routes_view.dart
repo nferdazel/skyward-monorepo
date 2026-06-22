@@ -159,7 +159,7 @@ class _RoutesViewState extends State<RoutesView> {
                     description: AppStrings.noActiveConnectionsDesc,
                     actionLabel: 'OPEN BLUEPRINT PLANNER',
                     onAction: () {
-                      // Scroll to or focus the blueprint planner
+                      AppSnackBar.showSuccess(context, 'Use the Blueprint Planner panel below to create your first route.');
                     },
                   ),
                 ),
@@ -303,6 +303,28 @@ class _RoutesViewState extends State<RoutesView> {
                 ),
             ],
           ),
+          // All airports as small muted dots
+          MarkerLayer(
+            markers: [
+              for (final airport in airports)
+                if (!connectedAirports.containsKey(airport.iata))
+                  Marker(
+                    point: LatLng(airport.latitude, airport.longitude),
+                    width: 6,
+                    height: 6,
+                    alignment: Alignment.center,
+                    child: Container(
+                      width: 3,
+                      height: 3,
+                      decoration: BoxDecoration(
+                        color: AppTheme.textMuted.withValues(alpha: 0.5),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+            ],
+          ),
+          // Connected airports with labels
           if (!ultraDense)
             MarkerLayer(
               markers: [
@@ -589,16 +611,19 @@ class _RoutesViewState extends State<RoutesView> {
                     },
                   ),
                   const SizedBox(width: AppSpacing.xs),
-                  Expanded(
+                  Flexible(
+                    fit: FlexFit.tight,
                     child: AppButton(
                       text: route.assignedAircraftId != null ? 'Reassign' : 'Assign',
                       onPressed: () => _showAssignDialog(context, route, userId),
+                      icon: Icons.link,
                       type: AppButtonType.secondary,
                       height: 32,
                     ),
                   ),
                   const SizedBox(width: AppSpacing.xs),
-                  Expanded(
+                  Flexible(
+                    fit: FlexFit.tight,
                     child: AppButton(
                       text: 'Adjust',
                       onPressed: () {
@@ -610,19 +635,46 @@ class _RoutesViewState extends State<RoutesView> {
                           autoGroundingThreshold,
                         );
                       },
+                      icon: Icons.tune,
                       type: AppButtonType.secondary,
                       height: 32,
                     ),
                   ),
                   const SizedBox(width: AppSpacing.xs),
-                  Expanded(
-                    child: AppButton(
-                      text: 'Close',
-                      onPressed: () {
-                        _confirmCloseRoute(context, route, userId);
-                      },
-                      type: AppButtonType.secondary,
+                  Flexible(
+                    fit: FlexFit.tight,
+                    child: SizedBox(
                       height: 32,
+                      child: InkWell(
+                        onTap: () => _confirmCloseRoute(context, route, userId),
+                        borderRadius: BorderRadius.circular(4),
+                        child: Container(
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: AppTheme.error.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: AppTheme.error.withValues(alpha: 0.5), width: 1.0),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.close, size: 14, color: AppTheme.error),
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  'Close Route',
+                                  style: AppTypography.buttonText.copyWith(
+                                    color: AppTheme.error,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -692,8 +744,6 @@ class _RoutesViewState extends State<RoutesView> {
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
-          _buildMonitorLine('RADAR', 'OPERATIONAL', AppTheme.success),
-          _buildMonitorLine('SATCOM', 'LINK ACTIVE', AppTheme.info),
           _buildMonitorLine(
             'FLEET',
             '$assignedCount/${routes.length} ASSIGNED',
@@ -894,7 +944,7 @@ class _RoutesViewState extends State<RoutesView> {
                     builder: (context, routesState) {
                       final isLoading = routesState is RoutesActionLoading;
                       return AppButton(
-                        text: isLoading ? 'CREATING...' : 'ESTABLISH',
+                        text: isLoading ? 'CREATING...' : 'CREATE ROUTE',
                         isLoading: isLoading,
                         icon: Icons.add_location_alt_outlined,
                         height: 38,
@@ -942,7 +992,7 @@ class _RoutesViewState extends State<RoutesView> {
                 ),
                 _buildFooterDivider(),
                 _buildFooterStat(
-                  'EET',
+                  'TIME',
                   _plannerDistance > 0
                       ? '${(_plannerDistance / 850 + GameConstants.aircraftTurnaroundHours).toStringAsFixed(1)}H'
                       : '--',
