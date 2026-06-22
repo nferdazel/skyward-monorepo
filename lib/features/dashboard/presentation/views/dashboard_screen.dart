@@ -8,6 +8,7 @@ import '../../../../core/utils/lazy_tab_cubit.dart';
 import '../../../../core/utils/perf_debug.dart';
 import '../../../../core/widgets/ticker_tape.dart';
 import '../../../../presentation/theme/app_spacing.dart';
+import '../../../../presentation/widgets/notification_panel.dart';
 import '../../../auth/domain/user_model.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
@@ -88,6 +89,13 @@ class _AuthenticatedDashboardShellState
   late final FinanceCubit _financeCubit;
   late final LazyTabCubit _lazyTabCubit;
 
+  // ── Notification state ──
+  late List<GameNotification> _notifications;
+  OverlayEntry? _notificationOverlayEntry;
+  final LayerLink _notificationLayerLink = LayerLink();
+
+  int get _unreadCount => _notifications.where((n) => !n.isRead).length;
+
   @override
   void initState() {
     super.initState();
@@ -98,6 +106,7 @@ class _AuthenticatedDashboardShellState
     _leaderboardCubit = LeaderboardCubit();
     _financeCubit = FinanceCubit();
     _lazyTabCubit = LazyTabCubit();
+    _notifications = generateSampleNotifications();
     _bootstrapForUser(widget.initialUser);
   }
 
@@ -199,6 +208,7 @@ class _AuthenticatedDashboardShellState
 
   @override
   void dispose() {
+    _removeNotificationOverlay();
     _navigationCubit.close();
     _simulationCubit.close();
     _fleetCubit.close();
@@ -207,6 +217,65 @@ class _AuthenticatedDashboardShellState
     _financeCubit.close();
     _lazyTabCubit.close();
     super.dispose();
+  }
+
+  void _toggleNotificationPanel() {
+    if (_notificationOverlayEntry != null) {
+      _removeNotificationOverlay();
+    } else {
+      _showNotificationOverlay();
+    }
+  }
+
+  void _showNotificationOverlay() {
+    _notificationOverlayEntry = OverlayEntry(
+      builder: (context) {
+        return Stack(
+          children: [
+            // Dismiss barrier
+            GestureDetector(
+              onTap: _removeNotificationOverlay,
+              behavior: HitTestBehavior.translucent,
+              child: Container(color: Colors.transparent),
+            ),
+            // Panel positioned below the bell
+            CompositedTransformFollower(
+              link: _notificationLayerLink,
+              showWhenUnlinked: false,
+              offset: const Offset(-310, 8),
+              child: NotificationPanel(
+                notifications: _notifications,
+                onNotificationTap: (notification) {
+                  setState(() {
+                    final idx = _notifications.indexOf(notification);
+                    if (idx != -1) {
+                      _notifications[idx] = notification.copyWith(isRead: true);
+                    }
+                  });
+                },
+                onMarkAllRead: _markAllRead,
+                onClose: _removeNotificationOverlay,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    Overlay.of(context).insert(_notificationOverlayEntry!);
+  }
+
+  void _removeNotificationOverlay() {
+    _notificationOverlayEntry?.remove();
+    _notificationOverlayEntry = null;
+  }
+
+  void _markAllRead() {
+    setState(() {
+      _notifications = [
+        for (final n in _notifications) n.copyWith(isRead: true),
+      ];
+    });
   }
 
   @override
@@ -294,11 +363,16 @@ class _AuthenticatedDashboardShellState
                           current.fuelPricePerLiter ||
                       previous.isSyncing != current.isSyncing,
                   builder: (context, simState) {
-                    return TopHud(
-                      authState: authState,
-                      simState: simState,
-                      currencyFormat: currencyFormat,
-                      dateFormat: dateFormat,
+                    return CompositedTransformTarget(
+                      link: _notificationLayerLink,
+                      child: TopHud(
+                        authState: authState,
+                        simState: simState,
+                        currencyFormat: currencyFormat,
+                        dateFormat: dateFormat,
+                        unreadCount: _unreadCount,
+                        onNotificationTap: _toggleNotificationPanel,
+                      ),
                     );
                   },
                 ),

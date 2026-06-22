@@ -86,4 +86,67 @@ class GameConstants {
 
   /// Fuel price per liter in USD.
   static const double fuelPricePerLiter = 0.85;
+
+  // ==========================================
+  // GAME BALANCE – ROUTE HEALTH
+  // ==========================================
+
+  /// Minimum flights per week for a route to be considered active.
+  static const int minFlightsPerWeek = 1;
+
+  /// Maximum consecutive negative days before distress status.
+  static const int maxConsecutiveNegativeDays = 3;
+
+  /// Cash threshold for distress status (absolute value).
+  static const double distressCashThreshold = 0.0;
+
+  /// Bankruptcy threshold (negative cash).
+  static const double bankruptcyCashThreshold = -5000000.0;
+
+  /// Subsidy activation threshold (player net worth as fraction of leader).
+  static const double subsidyActivationThreshold = 0.30;
+
+  /// Maximum subsidy as fraction of daily revenue.
+  static const double maxSubsidyRate = 0.10;
+
+  // ==========================================
+  // GAME BALANCE – AIRPORT CONGESTION
+  // ==========================================
+
+  /// Airport congestion threshold (flights/week before demand reduction).
+  static const int airportCongestionThreshold = 50;
+
+  /// Congestion demand reduction per flight above threshold.
+  static const double congestionDemandReductionPerFlight = 0.005;
+
+  /// Minimum demand factor under congestion.
+  static const double minCongestionDemandFactor = 0.5;
+
+  // ==========================================
+  // GAME BALANCE – EVENTS
+  // ==========================================
+
+  /// Event probability per world tick (0.0 to 1.0).
+  static const double eventProbabilityPerTick = 0.05;
+
+  /// Event duration in game hours.
+  static const int fuelShockDurationHours = 72;
+  static const int demandSurgeDurationHours = 48;
+  static const int weatherDisruptionDurationHours = 24;
+  static const int regulatoryChangeDurationHours = 168;
+
+  // ==========================================
+  // BOT ARCHETYPE CONSTANTS
+  // ==========================================
+
+  /// Bot seat configuration presets (economy/business/first ratios).
+  static const List<double> regionalBotCabinSplit = [0.80, 0.15, 0.05];
+  static const List<double> aggressiveBotCabinSplit = [0.70, 0.20, 0.10];
+  static const List<double> premiumBotCabinSplit = [0.50, 0.30, 0.20];
+
+  /// Bot competitive response discount rate.
+  static const double botCompetitiveDiscount = 0.03;
+
+  /// Minimum bot price as fraction of base fare.
+  static const double botMinPriceRatio = 0.85;
 }

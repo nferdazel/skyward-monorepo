@@ -14,6 +14,8 @@ class TopHud extends StatelessWidget {
   final SimulationState simState;
   final NumberFormat currencyFormat;
   final DateFormat dateFormat;
+  final int unreadCount;
+  final VoidCallback? onNotificationTap;
 
   const TopHud({
     super.key,
@@ -21,6 +23,8 @@ class TopHud extends StatelessWidget {
     required this.simState,
     required this.currencyFormat,
     required this.dateFormat,
+    this.unreadCount = 0,
+    this.onNotificationTap,
   });
 
   @override
@@ -70,6 +74,9 @@ class TopHud extends StatelessWidget {
           _buildDivider(),
           // Live status
           _buildLiveStatus(simState),
+          _buildDivider(),
+          // Notification bell
+          _buildNotificationBell(),
         ],
       ),
     );
@@ -148,6 +155,53 @@ class TopHud extends StatelessWidget {
                 ),
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNotificationBell() {
+    return GestureDetector(
+      onTap: onNotificationTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Icon(
+              Icons.notifications_outlined,
+              size: 18,
+              color: AppTheme.textSecondary,
+            ),
+            if (unreadCount > 0)
+              Positioned(
+                top: -4,
+                right: -6,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 1,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppTheme.error,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  constraints: const BoxConstraints(
+                    minWidth: 14,
+                    minHeight: 14,
+                  ),
+                  child: Text(
+                    unreadCount > 9 ? '9+' : '$unreadCount',
+                    style: AppTypography.captionLight.copyWith(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
           ],
         ),
       ),
