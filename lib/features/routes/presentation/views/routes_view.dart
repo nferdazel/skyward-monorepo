@@ -325,7 +325,7 @@ class _RoutesViewState extends State<RoutesView> {
                   ),
             ],
           ),
-          // Connected airports with labels
+          // Connected airports — dot + hover label
           if (!ultraDense)
             MarkerLayer(
               markers: [
@@ -335,8 +335,8 @@ class _RoutesViewState extends State<RoutesView> {
                   Marker(
                     point: LatLng(airport.latitude, airport.longitude),
                     width: 50,
-                    height: 20,
-                    alignment: Alignment.topCenter,
+                    height: 30,
+                    alignment: Alignment.center,
                     child: _AirportMarker(
                       label: airport.iata,
                       highlighted: false,
@@ -1941,7 +1941,7 @@ class _MapViewport {
   }
 }
 
-class _AirportMarker extends StatelessWidget {
+class _AirportMarker extends StatefulWidget {
   final String label;
   final bool highlighted;
   final int demandIndex;
@@ -1953,30 +1953,62 @@ class _AirportMarker extends StatelessWidget {
   });
 
   @override
+  State<_AirportMarker> createState() => _AirportMarkerState();
+}
+
+class _AirportMarkerState extends State<_AirportMarker> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
-    final demandColor = demandIndex >= 80
+    final demandColor = widget.demandIndex >= 80
         ? AppTheme.success
-        : demandIndex >= 50
+        : widget.demandIndex >= 50
             ? AppTheme.warning
             : AppTheme.error;
-    return Align(
-      alignment: Alignment.topCenter,
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.xs,
-          vertical: AppSpacing.xs,
-        ),
-        decoration: BoxDecoration(
-          color: demandColor.withValues(alpha: 0.3),
-          borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
-          border: Border.all(color: demandColor.withValues(alpha: 0.5)),
-        ),
-        child: Text(
-          label,
-          style: AppTypography.microLabel.copyWith(
-            color: demandColor,
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: Stack(
+        alignment: Alignment.topCenter,
+        children: [
+          // Dot (always visible)
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: demandColor.withValues(alpha: _hovered ? 0.8 : 0.5),
+              shape: BoxShape.circle,
+              border: _hovered
+                  ? Border.all(color: demandColor, width: 1)
+                  : null,
+            ),
           ),
-        ),
+          // Label (only on hover)
+          if (_hovered)
+            Positioned(
+              bottom: 12,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.xs,
+                  vertical: 2,
+                ),
+                decoration: BoxDecoration(
+                  color: AppTheme.surface.withValues(alpha: 0.9),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
+                  border: Border.all(color: demandColor.withValues(alpha: 0.5)),
+                ),
+                child: Text(
+                  widget.label,
+                  style: AppTypography.badgeText.copyWith(
+                    color: demandColor,
+                    fontSize: 10,
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
