@@ -21,6 +21,7 @@ import '../../../../presentation/widgets/app_info_strip.dart';
 import '../../../../presentation/widgets/app_labeled_value.dart';
 import '../../../../presentation/widgets/app_snackbar.dart';
 import '../../../../presentation/widgets/app_stat_text.dart';
+import '../../../../presentation/widgets/help_tooltip.dart';
 import '../../../../presentation/widgets/searchable_airport_dropdown.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
@@ -826,6 +827,8 @@ class _RoutesViewState extends State<RoutesView> {
                     color: AppTheme.textSecondary,
                   ),
                 ),
+                const SizedBox(width: 4),
+                HelpTooltip(message: 'Create new routes between airports. Select origin, destination, and set a ticket fare near the recommended base fare for optimal demand.'),
                 const Spacer(),
                 if (_plannerOrigin != null && _plannerDestination != null) ...[
                   Text(

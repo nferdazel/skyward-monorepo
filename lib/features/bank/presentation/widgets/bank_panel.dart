@@ -356,7 +356,7 @@ class _LoanCard extends StatelessWidget {
                 AppBadge(
                   label: '${(loan.interestRate * 100).toStringAsFixed(0)}% APR',
                   color: AppTheme.textSecondary,
-                  fontSize: 10,
+                  fontSize: 11,
                 ),
               ],
             ),
@@ -395,7 +395,7 @@ class _LoanCard extends StatelessWidget {
                   '${(progress * 100).toStringAsFixed(0)}%',
                   style: AppTypography.badgeText.copyWith(
                     color: progressColor,
-                    fontSize: 10,
+                    fontSize: 11,
                   ),
                 ),
               ],
@@ -437,7 +437,7 @@ class _HistoricalLoanRow extends StatelessWidget {
         AppBadge(
           label: loan.status.toUpperCase(),
           color: loan.isPaidOff ? AppTheme.success : AppTheme.error,
-          fontSize: 10,
+          fontSize: 11,
         ),
       ],
     );
