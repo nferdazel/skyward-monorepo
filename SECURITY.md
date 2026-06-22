@@ -6,7 +6,7 @@ If you discover a security vulnerability in Skyward, please report it responsibl
 
 **Do NOT open a public GitHub issue for security vulnerabilities.**
 
-Instead, please email: [INSERT YOUR EMAIL]
+Instead, please email: fredinix@proton.me
 
 ### What to include:
 - Description of the vulnerability
