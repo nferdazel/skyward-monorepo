@@ -11,6 +11,7 @@ class User {
   final int consecutiveNegativeDays;
   final int recoveryStreakDays;
   final bool onboardingCompleted;
+  final int creditScore;
 
   User({
     required this.id,
@@ -25,6 +26,7 @@ class User {
     this.consecutiveNegativeDays = 0,
     this.recoveryStreakDays = 0,
     this.onboardingCompleted = false,
+    this.creditScore = 500,
   });
 
   factory User.fromMap(Map<String, dynamic> map) {
@@ -47,6 +49,7 @@ class User {
           (map['consecutive_negative_days'] as num?)?.toInt() ?? 0,
       recoveryStreakDays: (map['recovery_streak_days'] as num?)?.toInt() ?? 0,
       onboardingCompleted: map['onboarding_completed'] as bool? ?? false,
+      creditScore: (map['credit_score'] as num?)?.toInt() ?? 500,
     );
   }
 
@@ -63,6 +66,7 @@ class User {
     int? consecutiveNegativeDays,
     int? recoveryStreakDays,
     bool? onboardingCompleted,
+    int? creditScore,
   }) {
     return User(
       id: id ?? this.id,
@@ -79,6 +83,7 @@ class User {
           consecutiveNegativeDays ?? this.consecutiveNegativeDays,
       recoveryStreakDays: recoveryStreakDays ?? this.recoveryStreakDays,
       onboardingCompleted: onboardingCompleted ?? this.onboardingCompleted,
+      creditScore: creditScore ?? this.creditScore,
     );
   }
 }

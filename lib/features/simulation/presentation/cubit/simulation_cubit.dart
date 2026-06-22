@@ -69,6 +69,7 @@ class SimulationCubit extends Cubit<SimulationState>
     String initialOperationalStatus = AppStrings.statusActive,
     int initialConsecutiveNegativeDays = 0,
     int initialRecoveryStreakDays = 0,
+    int initialCreditScore = 500,
   }) async {
     _currentUserId = userId;
 
@@ -84,6 +85,7 @@ class SimulationCubit extends Cubit<SimulationState>
         operationalStatus: initialOperationalStatus,
         consecutiveNegativeDays: initialConsecutiveNegativeDays,
         recoveryStreakDays: initialRecoveryStreakDays,
+        creditScore: initialCreditScore,
       ),
     );
 
@@ -160,6 +162,7 @@ class SimulationCubit extends Cubit<SimulationState>
         operationalStatus: updatedUser.operationalStatus,
         consecutiveNegativeDays: updatedUser.consecutiveNegativeDays,
         recoveryStreakDays: updatedUser.recoveryStreakDays,
+        creditScore: updatedUser.creditScore,
       ),
     );
   }
@@ -263,6 +266,7 @@ class SimulationCubit extends Cubit<SimulationState>
           operationalStatus: authoritativeUser.operationalStatus,
           consecutiveNegativeDays: authoritativeUser.consecutiveNegativeDays,
           recoveryStreakDays: authoritativeUser.recoveryStreakDays,
+          creditScore: authoritativeUser.creditScore,
         ),
       );
 

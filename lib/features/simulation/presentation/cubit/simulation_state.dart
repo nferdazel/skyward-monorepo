@@ -12,6 +12,7 @@ class SimulationState {
   final String operationalStatus;
   final int consecutiveNegativeDays;
   final int recoveryStreakDays;
+  final int creditScore;
   final String? errorMessage;
 
   const SimulationState({
@@ -25,6 +26,7 @@ class SimulationState {
     this.operationalStatus = AppStrings.statusActive,
     this.consecutiveNegativeDays = 0,
     this.recoveryStreakDays = 0,
+    this.creditScore = 500,
     this.errorMessage,
   });
 
@@ -37,6 +39,7 @@ class SimulationState {
       operationalStatus: AppStrings.statusActive,
       consecutiveNegativeDays: 0,
       recoveryStreakDays: 0,
+      creditScore: 500,
     );
   }
 
@@ -51,6 +54,7 @@ class SimulationState {
     String? operationalStatus,
     int? consecutiveNegativeDays,
     int? recoveryStreakDays,
+    int? creditScore,
     Object? errorMessage = _unset,
   }) {
     return SimulationState(
@@ -65,6 +69,7 @@ class SimulationState {
       consecutiveNegativeDays:
           consecutiveNegativeDays ?? this.consecutiveNegativeDays,
       recoveryStreakDays: recoveryStreakDays ?? this.recoveryStreakDays,
+      creditScore: creditScore ?? this.creditScore,
       errorMessage: identical(errorMessage, _unset)
           ? this.errorMessage
           : errorMessage as String?,
