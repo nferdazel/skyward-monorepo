@@ -23,6 +23,7 @@ import '../../../../presentation/widgets/app_tab_item.dart';
 import '../../../../presentation/widgets/expense_breakdown_bar.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
+import '../../../bank/presentation/widgets/bank_panel.dart';
 import '../../domain/finance_snapshot.dart';
 import '../../domain/ledger_model.dart';
 import '../cubit/finance_cubit.dart';
@@ -48,7 +49,7 @@ class _FinanceViewState extends State<FinanceView>
   void initState() {
     super.initState();
     _lazyTabCubit = LazyTabCubit();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) return;
       final index = _tabController.index;
@@ -102,6 +103,12 @@ class _FinanceViewState extends State<FinanceView>
                   label: AppStrings.financeTransactionsTab,
                   isActive: _tabController.index == 1,
                   onTap: () => _onTabTap(1),
+                ),
+                const SizedBox(width: AppSpacing.xxl),
+                AppTabItem(
+                  label: 'BANK',
+                  isActive: _tabController.index == 2,
+                  onTap: () => _onTabTap(2),
                 ),
               ],
             ),
@@ -180,6 +187,11 @@ class _FinanceViewState extends State<FinanceView>
                                   ? _buildTransactionsTab(context, state)
                                   : const SizedBox.shrink(),
                             ),
+                            RepaintBoundary(
+                              child: tabState.loadedIndexes.contains(2)
+                                  ? const BankPanel()
+                                  : const SizedBox.shrink(),
+                            ),
                           ],
                         );
                       },
@@ -216,7 +228,7 @@ class _FinanceViewState extends State<FinanceView>
           const SizedBox(height: AppSpacing.blockGap),
           _buildExecutiveSummary(context, state, AppFormatters.currencyDetailed),
           const SizedBox(height: AppSpacing.blockGap),
-          _buildFinanceSignals(overview),
+          _buildFinanceSignals(overview, state),
           const SizedBox(height: AppSpacing.sectionGap),
           _buildExpenseBreakdownBar(state, AppFormatters.currencyDetailed),
           const SizedBox(height: AppSpacing.sectionGap),
@@ -500,7 +512,12 @@ class _FinanceViewState extends State<FinanceView>
     );
   }
 
-  Widget _buildFinanceSignals(_FinanceOverview overview) {
+  Widget _buildFinanceSignals(_FinanceOverview overview, FinanceDataState state) {
+    // CASM/RASM require totalSeats, averageDistance, and flightsPerWeek
+    // which are not available in the current FinanceSnapshot.
+    const String casmValue = 'N/A';
+    const String rasmValue = 'N/A';
+
     return AppInfoStrip(
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -524,6 +541,16 @@ class _FinanceViewState extends State<FinanceView>
             label: AppStrings.financeRevenueCoverageLabel,
             value: overview.coverageLabel,
             valueColor: overview.coverageColor,
+          ),
+          AppStatText(
+            label: 'CASM',
+            value: casmValue,
+            valueColor: AppTheme.textSecondary,
+          ),
+          AppStatText(
+            label: 'RASM',
+            value: rasmValue,
+            valueColor: AppTheme.textSecondary,
           ),
         ],
       ),
