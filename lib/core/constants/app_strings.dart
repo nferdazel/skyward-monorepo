@@ -339,7 +339,7 @@ class AppStrings {
   static const String settingsSavedSuccess =
       'SYSTEM CONFIGURATIONS SAVED SUCCESSFULLY';
   static const String selectHqHubAirport = 'SELECT HQ HUB AIRPORT';
-  static const String visualInterfaceConfig = 'VISUAL INTERFACE CONFIGURATIONS';
+  static const String operationsConfig = 'OPERATIONS CONFIG';
   static const String ceoSecurityAuthorization = 'CEO SECURITY AUTHORIZATION';
   static const String chiefExecutive = 'CHIEF EXECUTIVE';
   static const String companyRegistry = 'COMPANY REGISTRY';
@@ -359,6 +359,21 @@ class AppStrings {
   static const String airportsLoadFailed = 'Failed to load airports.';
   static const String settingsSaveFailed = 'Failed to save settings.';
   static const String airlineResetFailed = 'Failed to reset airline.';
+  static const String defaultSeatPresetLabel = 'DEFAULT SEAT CONFIGURATION PRESET';
+  static const String defaultSeatPresetDesc =
+      'Default seat allocation applied when acquiring new aircraft.';
+  static const String seatPresetMaxEconomy = 'Max Economy';
+  static const String seatPresetBalanced = 'Balanced';
+  static const String seatPresetPremium = 'Premium';
+  static const String showTickerTapeLabel = 'SHOW TICKER TAPE';
+  static const String showTickerTapeDesc =
+      'Toggle visibility of the bottom ticker tape on the dashboard.';
+  static const String autoRepairThresholdLabel = 'AUTO-REPAIR THRESHOLD';
+  static const String autoRepairThresholdDesc =
+      'Aircraft dropping below this condition are flagged for priority repair.';
+  static const String fareMultiplierLabel = 'DEFAULT FARE MULTIPLIER';
+  static const String fareMultiplierDesc =
+      'Multiplier applied to recommended base fares when creating new routes.';
 
   // Leaderboard Screen
   static const String globalRankingsTitle = 'GLOBAL RANKINGS HUD';

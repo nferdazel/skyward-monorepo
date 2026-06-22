@@ -17,6 +17,10 @@ class SettingsState {
   final bool isSaving;
   final String? errorMessage;
   final bool isSaveSuccess;
+  final String seatPreset;
+  final bool showTickerTape;
+  final double autoRepairThreshold;
+  final double fareMultiplier;
 
   const SettingsState({
     this.uiScale = 1.0,
@@ -27,6 +31,10 @@ class SettingsState {
     this.isSaving = false,
     this.errorMessage,
     this.isSaveSuccess = false,
+    this.seatPreset = 'max_economy',
+    this.showTickerTape = true,
+    this.autoRepairThreshold = 50.0,
+    this.fareMultiplier = 1.0,
   });
 
   SettingsState copyWith({
@@ -38,6 +46,10 @@ class SettingsState {
     bool? isSaving,
     Object? errorMessage = _unset,
     Object? isSaveSuccess = _unset,
+    String? seatPreset,
+    bool? showTickerTape,
+    double? autoRepairThreshold,
+    double? fareMultiplier,
   }) {
     return SettingsState(
       uiScale: uiScale ?? this.uiScale,
@@ -54,6 +66,10 @@ class SettingsState {
       isSaveSuccess: identical(isSaveSuccess, _unset)
           ? this.isSaveSuccess
           : isSaveSuccess as bool,
+      seatPreset: seatPreset ?? this.seatPreset,
+      showTickerTape: showTickerTape ?? this.showTickerTape,
+      autoRepairThreshold: autoRepairThreshold ?? this.autoRepairThreshold,
+      fareMultiplier: fareMultiplier ?? this.fareMultiplier,
     );
   }
 }
@@ -75,6 +91,22 @@ class SettingsCubit extends Cubit<SettingsState> {
 
   void setGroundingThreshold(double threshold) {
     emit(state.copyWith(groundingThreshold: threshold));
+  }
+
+  void setSeatPreset(String preset) {
+    emit(state.copyWith(seatPreset: preset));
+  }
+
+  void setShowTickerTape(bool value) {
+    emit(state.copyWith(showTickerTape: value));
+  }
+
+  void setAutoRepairThreshold(double value) {
+    emit(state.copyWith(autoRepairThreshold: value));
+  }
+
+  void setFareMultiplier(double value) {
+    emit(state.copyWith(fareMultiplier: value));
   }
 
   Future<void> loadAirports(String currentHq) async {

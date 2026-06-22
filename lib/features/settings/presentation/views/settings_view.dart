@@ -90,14 +90,9 @@ class _SettingsViewState extends State<SettingsView> {
         }
       },
       builder: (context, state) {
-        return Container(
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: AppTheme.surface,
-            border: Border.all(color: AppTheme.border, width: 1.0),
-          ),
-          padding: const EdgeInsets.all(AppSpacing.cardPadding),
-          child: SingleChildScrollView(
+        return Scaffold(
+          backgroundColor: Colors.transparent,
+          body: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -188,11 +183,14 @@ class _SettingsViewState extends State<SettingsView> {
 
     return AppCard(
       backgroundColor: AppTheme.background,
-      padding: const EdgeInsets.all(AppSpacing.cardPadding),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(AppStrings.brandingSectionTitle, style: AppTypography.badgeText),
+          Text(
+            AppStrings.brandingSectionTitle,
+            style: AppTypography.microLabel.copyWith(color: AppTheme.textMuted),
+          ),
           const SizedBox(height: AppSpacing.md),
 
           TextFormField(
@@ -265,8 +263,8 @@ class _SettingsViewState extends State<SettingsView> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            AppStrings.visualInterfaceConfig,
-            style: AppTypography.badgeText,
+            AppStrings.operationsConfig,
+            style: AppTypography.microLabel.copyWith(color: AppTheme.textMuted),
           ),
           const SizedBox(height: AppSpacing.lg),
           Row(
@@ -366,6 +364,205 @@ class _SettingsViewState extends State<SettingsView> {
               onChanged: cubit.setUiScale,
             ),
           ),
+          const SizedBox(height: AppSpacing.lg),
+          Divider(color: AppTheme.border),
+          const SizedBox(height: AppSpacing.lg),
+
+          // Default Seat Configuration Preset
+          Text(
+            AppStrings.defaultSeatPresetLabel,
+            style: AppTypography.badgeText.copyWith(
+              color: AppTypography.textPrimary,
+              letterSpacing: 0.0,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            AppStrings.defaultSeatPresetDesc,
+            style: AppTypography.captionRegular.copyWith(
+              color: AppTypography.textMuted,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          DropdownButtonFormField<String>(
+            initialValue: state.seatPreset,
+            decoration: const InputDecoration(
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.sm,
+              ),
+            ),
+            items: const [
+              DropdownMenuItem(
+                value: 'max_economy',
+                child: Text(AppStrings.seatPresetMaxEconomy),
+              ),
+              DropdownMenuItem(
+                value: 'balanced',
+                child: Text(AppStrings.seatPresetBalanced),
+              ),
+              DropdownMenuItem(
+                value: 'premium',
+                child: Text(AppStrings.seatPresetPremium),
+              ),
+            ],
+            onChanged: (value) {
+              if (value != null) cubit.setSeatPreset(value);
+            },
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Divider(color: AppTheme.border),
+          const SizedBox(height: AppSpacing.lg),
+
+          // Ticker Tape Toggle
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      AppStrings.showTickerTapeLabel,
+                      style: AppTypography.badgeText.copyWith(
+                        color: AppTypography.textPrimary,
+                        letterSpacing: 0.0,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      AppStrings.showTickerTapeDesc,
+                      style: AppTypography.captionRegular.copyWith(
+                        color: AppTypography.textMuted,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Switch(
+                value: state.showTickerTape,
+                onChanged: cubit.setShowTickerTape,
+                activeThumbColor: AppTheme.primary,
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Divider(color: AppTheme.border),
+          const SizedBox(height: AppSpacing.lg),
+
+          // Auto-Repair Threshold
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      AppStrings.autoRepairThresholdLabel,
+                      style: AppTypography.badgeText.copyWith(
+                        color: AppTypography.textPrimary,
+                        letterSpacing: 0.0,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      AppStrings.autoRepairThresholdDesc,
+                      style: AppTypography.captionRegular.copyWith(
+                        color: AppTypography.textMuted,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Text(
+                '${state.autoRepairThreshold.toStringAsFixed(0)}%',
+                style: AppTypography.badgeText.copyWith(
+                  color: AppTheme.warning,
+                  letterSpacing: 0.0,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              trackHeight: 2.0,
+              activeTrackColor: AppTheme.warning,
+              inactiveTrackColor: AppTheme.border,
+              thumbColor: AppTheme.warning,
+              overlayColor: AppTheme.warning.withValues(alpha: 0.1),
+            ),
+            child: Slider(
+              value: state.autoRepairThreshold,
+              min: 20.0,
+              max: 80.0,
+              divisions: 12,
+              onChanged: cubit.setAutoRepairThreshold,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Divider(color: AppTheme.border),
+          const SizedBox(height: AppSpacing.lg),
+
+          // Default Fare Multiplier
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      AppStrings.fareMultiplierLabel,
+                      style: AppTypography.badgeText.copyWith(
+                        color: AppTypography.textPrimary,
+                        letterSpacing: 0.0,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      AppStrings.fareMultiplierDesc,
+                      style: AppTypography.captionRegular.copyWith(
+                        color: AppTypography.textMuted,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Text(
+                '${state.fareMultiplier.toStringAsFixed(2)}x',
+                style: AppTypography.badgeText.copyWith(
+                  color: AppTheme.primary,
+                  letterSpacing: 0.0,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              trackHeight: 2.0,
+              activeTrackColor: AppTheme.primary,
+              inactiveTrackColor: AppTheme.border,
+              thumbColor: AppTheme.primary,
+              overlayColor: AppTheme.primary.withValues(alpha: 0.1),
+            ),
+            child: Slider(
+              value: state.fareMultiplier,
+              min: 0.8,
+              max: 1.5,
+              divisions: 7,
+              onChanged: cubit.setFareMultiplier,
+            ),
+          ),
         ],
       ),
     );
@@ -432,7 +629,7 @@ class _SettingsViewState extends State<SettingsView> {
         children: [
           Text(
             AppStrings.ceoSecurityAuthorization,
-            style: AppTypography.badgeText,
+            style: AppTypography.microLabel.copyWith(color: AppTheme.textMuted),
           ),
           const SizedBox(height: AppSpacing.lg),
 
@@ -467,7 +664,7 @@ class _SettingsViewState extends State<SettingsView> {
         children: [
           Text(
             AppStrings.criticalOperationAuth,
-            style: AppTypography.badgeText.copyWith(color: AppTheme.error),
+            style: AppTypography.microLabel.copyWith(color: AppTheme.error),
           ),
           const SizedBox(height: AppSpacing.md),
           Text(
@@ -480,26 +677,13 @@ class _SettingsViewState extends State<SettingsView> {
           const SizedBox(height: AppSpacing.lg),
           SizedBox(
             width: double.infinity,
-            child: OutlinedButton(
+            child: AppButton(
+              text: AppStrings.resetProfileButton,
               onPressed: state.isSaving
                   ? null
                   : () => _showResetConfirmation(context, userId),
-              style: OutlinedButton.styleFrom(
-                side: BorderSide(color: AppTheme.error, width: 1.0),
-                shape: const RoundedRectangleBorder(
-                  borderRadius: BorderRadius.zero,
-                ),
-                foregroundColor: AppTheme.error,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.sm,
-                  vertical: AppSpacing.md,
-                ),
-              ),
-              child: Text(
-                AppStrings.resetProfileButton,
-                textAlign: TextAlign.center,
-                style: AppTypography.buttonText.copyWith(color: AppTheme.error),
-              ),
+              type: AppButtonType.secondary,
+              width: double.infinity,
             ),
           ),
         ],
