@@ -204,14 +204,14 @@ class SimulationCubit extends Cubit<SimulationState>
 
       // Fetch global settings dynamically to retrieve live fuel price (Pillar 3.2)
       // Cached for 5 minutes to avoid redundant round-trips.
-      double fuelPrice = 0.85;
+      double fuelPrice = GameConstants.fuelPricePerLiter;
       double gameSpeedMultiplier = GameConstants.defaultGameSpeedMultiplier;
 
       if (_cachedGameSettings != null && _cachedSettingsTime != null &&
           DateTime.now().difference(_cachedSettingsTime!) < const Duration(minutes: 5)) {
         fuelPrice =
             (_cachedGameSettings!['fuel_price_per_liter'] as num?)?.toDouble() ??
-            0.85;
+            GameConstants.fuelPricePerLiter;
         gameSpeedMultiplier =
             (_cachedGameSettings!['time_scale_multiplier'] as num?)
                 ?.toDouble() ??
@@ -224,7 +224,7 @@ class SimulationCubit extends Cubit<SimulationState>
           _cachedSettingsTime = DateTime.now();
           fuelPrice =
               (_cachedGameSettings!['fuel_price_per_liter'] as num?)?.toDouble() ??
-              0.85;
+              GameConstants.fuelPricePerLiter;
           gameSpeedMultiplier =
               (_cachedGameSettings!['time_scale_multiplier'] as num?)
                   ?.toDouble() ??

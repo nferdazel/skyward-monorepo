@@ -1,6 +1,7 @@
 // ignore_for_file: avoid_print
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/constants/game_constants.dart';
 import '../../../../core/database/supabase_client.dart';
 import '../../../../core/utils/dev_mode_manager.dart';
 import '../../data/auth_gateway.dart';
@@ -51,7 +52,7 @@ class AuthCubit extends Cubit<AuthState> {
           username: username,
           companyName: companyName,
           ceoName: ceoName,
-          cashBalance: 10000000.00,
+          cashBalance: GameConstants.startingCash,
           gameCurrentTime: DateTime.parse('2020-01-01T00:00:00Z'),
         );
         emit(AuthAuthenticated(user: mockUser, token: 'mock-dev-token'));
@@ -84,7 +85,7 @@ class AuthCubit extends Cubit<AuthState> {
           username: username,
           companyName: '$username Airlines',
           ceoName: 'CEO $username',
-          cashBalance: 10000000.00,
+          cashBalance: GameConstants.startingCash,
           gameCurrentTime: DateTime.parse('2020-01-01T00:00:00Z'),
         );
         emit(AuthAuthenticated(user: mockUser, token: 'mock-dev-token'));
@@ -132,7 +133,7 @@ class AuthCubit extends Cubit<AuthState> {
       username: 'devmode',
       companyName: 'Skyward Star Airlines',
       ceoName: 'Fredianto',
-      cashBalance: 10000000.00,
+      cashBalance: GameConstants.startingCash,
       gameCurrentTime: DateTime.parse('2020-01-01T00:00:00Z'),
     );
     emit(AuthAuthenticated(user: mockUser, token: token));
