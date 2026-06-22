@@ -25,6 +25,8 @@ import '../../../../presentation/widgets/searchable_airport_dropdown.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
 import '../../../fleet/domain/fleet_models.dart';
+import '../../../fleet/presentation/cubit/fleet_cubit.dart';
+import '../../../fleet/presentation/cubit/fleet_state.dart';
 import '../../domain/route_models.dart';
 import '../cubit/routes_cubit.dart';
 import '../cubit/routes_state.dart';
@@ -240,7 +242,8 @@ class _RoutesViewState extends State<RoutesView> {
             panBuffer: 1,
           ),
           PolylineLayer(
-            key: ValueKey('polylines-${mapRoutes.length}-$_selectedRouteId'),
+            key: ValueKey('polylines-${mapRoutes.length}-$_selectedRouteId'
+                '-${_plannerOrigin?.iata}-${_plannerDestination?.iata}'),
             polylines: [
               for (final route in mapRoutes.where((r) => !r.highlighted))
                 Polyline(
@@ -283,6 +286,8 @@ class _RoutesViewState extends State<RoutesView> {
                   borderStrokeWidth: ultraDense ? 0 : (denseNetwork ? 4 : 8),
                   borderColor: AppTheme.primary.withValues(alpha: 0.3),
                 ),
+              // Preview line for route being planned
+              ..._buildPreviewLine(arcSteps),
             ],
           ),
           CircleLayer(
@@ -582,6 +587,15 @@ class _RoutesViewState extends State<RoutesView> {
                         autoGroundingThreshold,
                       );
                     },
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Expanded(
+                    child: AppButton(
+                      text: route.assignedAircraftId != null ? 'Reassign' : 'Assign',
+                      onPressed: () => _showAssignDialog(context, route, userId),
+                      type: AppButtonType.secondary,
+                      height: 32,
+                    ),
                   ),
                   const SizedBox(width: AppSpacing.xs),
                   Expanded(
@@ -1560,6 +1574,84 @@ class _RoutesViewState extends State<RoutesView> {
     );
   }
 
+  void _showAssignDialog(BuildContext context, UserRoute route, String userId) {
+    final fleetState = context.read<FleetCubit>().state;
+    if (fleetState is! FleetLoaded) return;
+
+    final routesState = context.read<RoutesCubit>().state;
+    final assignedIds = routesState is RoutesDataState
+        ? routesState.routes
+              .map((r) => r.assignedAircraftId)
+              .whereType<String>()
+              .toSet()
+        : <String>{};
+
+    final available = fleetState.fleet
+        .where((a) =>
+            a.status == 'active' &&
+            (!assignedIds.contains(a.id) || a.id == route.assignedAircraftId))
+        .toList();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AppDialogShell(
+        title: 'ASSIGN AIRCRAFT',
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (route.assignedAircraft != null)
+              ListTile(
+                leading: Icon(Icons.link_off, color: AppTheme.warning),
+                title: Text(
+                  'Unassign current aircraft',
+                  style: AppTypography.bodyMedium,
+                ),
+                onTap: () {
+                  context.read<RoutesCubit>().assignAircraft(
+                        routeId: route.id,
+                        aircraftId: null,
+                        userId: userId,
+                      );
+                  Navigator.pop(ctx);
+                },
+              ),
+            if (route.assignedAircraft != null)
+              Divider(color: AppTheme.border),
+            ...available.map((aircraft) => ListTile(
+                  leading: Icon(Icons.flight, color: AppTheme.primary),
+                  title: Text(
+                    '${aircraft.tailNumber} — ${aircraft.model.modelName}',
+                    style: AppTypography.bodyMedium,
+                  ),
+                  subtitle: Text(
+                    'Condition: ${aircraft.condition.toStringAsFixed(0)}% • ${aircraft.acquisitionType}',
+                    style: AppTypography.captionLight,
+                  ),
+                  onTap: () {
+                    context.read<RoutesCubit>().assignAircraft(
+                          routeId: route.id,
+                          aircraftId: aircraft.id,
+                          userId: userId,
+                        );
+                    Navigator.pop(ctx);
+                  },
+                )),
+            if (available.isEmpty && route.assignedAircraft == null)
+              Padding(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: Text(
+                  'No available aircraft. Acquire one in the Fleet tab first.',
+                  style: AppTypography.bodyMedium
+                      .copyWith(color: AppTheme.textMuted),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // ══════════════════════════════════════════════
   // HELPERS
   // ══════════════════════════════════════════════
@@ -1613,6 +1705,28 @@ class _RoutesViewState extends State<RoutesView> {
       case RouteViabilityBand.blocked:
         return AppStrings.viabilityBlockedLabel;
     }
+  }
+
+  List<Polyline> _buildPreviewLine(int arcSteps) {
+    final origin = _plannerOrigin;
+    final dest = _plannerDestination;
+
+    if (origin == null || dest == null || origin.iata == dest.iata) {
+      return [];
+    }
+
+    return [
+      Polyline(
+        points: [
+          LatLng(origin.latitude, origin.longitude),
+          ..._buildGreatCircleArc(origin, dest, steps: arcSteps),
+          LatLng(dest.latitude, dest.longitude),
+        ],
+        strokeWidth: 2,
+        color: AppTheme.primary.withValues(alpha: 0.5),
+        pattern: const StrokePattern.dotted(),
+      ),
+    ];
   }
 
   void _handleMapTap(LatLng point, List<Airport> airports) {
