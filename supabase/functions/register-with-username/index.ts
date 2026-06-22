@@ -7,18 +7,63 @@ type RegisterPayload = {
   ceoName?: string;
 };
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+// Rate limiting — simple in-memory per-IP counter
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const RATE_LIMIT_MAX = 5; // max 5 registrations per minute per IP
 
-function jsonResponse(status: number, body: Record<string, unknown>) {
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
+    return true;
+  }
+
+  if (entry.count >= RATE_LIMIT_MAX) {
+    return false;
+  }
+
+  entry.count++;
+  return true;
+}
+
+// CORS — restrict to allowed origins
+const allowedOrigins = [
+  Deno.env.get("APP_URL") || "",
+  "http://localhost:3000",
+  "http://localhost:5173",
+].filter(Boolean);
+
+if (!Deno.env.get("APP_URL")) {
+  console.warn(
+    "register-with-username: APP_URL is not set; CORS will fall back to wildcard."
+  );
+}
+
+function getCorsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get("origin") || "";
+  const corsOrigin =
+    allowedOrigins.includes(origin) ? origin : allowedOrigins[0] || "*";
+  return {
+    "Access-Control-Allow-Origin": corsOrigin,
+    "Access-Control-Allow-Headers":
+      "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+  };
+}
+
+function jsonResponse(
+  status: number,
+  body: Record<string, unknown>,
+  req?: Request,
+) {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
-      ...corsHeaders,
+      ...(req ? getCorsHeaders(req) : {}),
       "Content-Type": "application/json",
     },
   });
@@ -58,14 +103,24 @@ function resolveServiceRoleKey(): string | null {
 
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers: getCorsHeaders(request) });
+  }
+
+  // Rate limiting
+  const ip = request.headers.get("x-forwarded-for") ||
+    request.headers.get("x-real-ip") || "unknown";
+  if (!checkRateLimit(ip)) {
+    return jsonResponse(429, {
+      success: false,
+      message: "Too many registration attempts. Please try again later.",
+    }, request);
   }
 
   if (request.method !== "POST") {
     return jsonResponse(405, {
       success: false,
       message: "Method not allowed.",
-    });
+    }, request);
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -75,7 +130,7 @@ Deno.serve(async (request) => {
     return jsonResponse(500, {
       success: false,
       message: "Supabase server credentials are not configured for this function.",
-    });
+    }, request);
   }
 
   let payload: RegisterPayload;
@@ -85,7 +140,7 @@ Deno.serve(async (request) => {
     return jsonResponse(400, {
       success: false,
       message: "Invalid JSON payload.",
-    });
+    }, request);
   }
 
   const username = normalizeUsername(payload.username ?? "");
@@ -97,28 +152,35 @@ Deno.serve(async (request) => {
     return jsonResponse(400, {
       success: false,
       message: "Username must be at least 4 characters.",
-    });
+    }, request);
   }
 
-  if (!password || password.length < 6) {
+  if (!password || password.length < 8) {
     return jsonResponse(400, {
       success: false,
-      message: "Password must be at least 6 characters.",
-    });
+      message: "Password must be at least 8 characters.",
+    }, request);
+  }
+
+  if (!/[A-Z]/.test(password) && !/[0-9]/.test(password)) {
+    return jsonResponse(400, {
+      success: false,
+      message: "Password must contain at least one uppercase letter or one number.",
+    }, request);
   }
 
   if (!companyName) {
     return jsonResponse(400, {
       success: false,
       message: "Company name is required.",
-    });
+    }, request);
   }
 
   if (!ceoName) {
     return jsonResponse(400, {
       success: false,
       message: "CEO name is required.",
-    });
+    }, request);
   }
 
   const authEmail = buildSyntheticAuthEmail(username);
@@ -151,13 +213,8 @@ Deno.serve(async (request) => {
     const status = /already|registered|exists/i.test(error.message) ? 409 : 400;
     return jsonResponse(status, {
       success: false,
-      message: error.message,
-      debug: {
-        name: error.name,
-        status: error.status ?? null,
-        code: "code" in error ? error.code : null,
-      },
-    });
+      message: error.message || "Registration failed. Please try again.",
+    }, request);
   }
 
   return jsonResponse(200, {
@@ -165,5 +222,5 @@ Deno.serve(async (request) => {
     auth_user_id: data.user?.id ?? null,
     username,
     auth_email: authEmail,
-  });
+  }, request);
 });
