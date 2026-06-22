@@ -58,6 +58,7 @@ class _FleetViewState extends State<FleetView>
       }
       PerfDebug.event('fleet.tab_switch', fields: {'tab': index});
       _lazyTabCubit.activate(index);
+      setState(() {});
     });
   }
 
