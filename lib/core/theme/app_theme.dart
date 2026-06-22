@@ -21,7 +21,7 @@ class AppTheme {
   static const Color errorSubtle = SkywardColors.darkRedSubtle;
   static const Color warning = SkywardColors.darkAmber;
   static const Color warningSubtle = SkywardColors.darkAmberSubtle;
-  static const Color info = SkywardColors.darkAccent;
+  static const Color info = SkywardColors.darkTeal;
   static const Color neutral = SkywardColors.darkNeutral;
 
   // ── TEXT COLORS ──
@@ -247,7 +247,7 @@ class AppTheme {
         onSecondary: Colors.black,
         onSurface: SkywardColors.lightTextPri,
       ),
-      textTheme: GoogleFonts.ibmPlexSansTextTheme(
+      textTheme: GoogleFonts.interTextTheme(
         const TextTheme(
           displayLarge: TextStyle(
             fontSize: 22,

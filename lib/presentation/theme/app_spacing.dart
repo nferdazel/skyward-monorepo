@@ -8,6 +8,8 @@ class AppSpacing {
   static const double xl = 20.0;
   static const double xxl = 24.0;
   static const double xxxl = 32.0;
+  static const double xxxxl = 40.0;
+  static const double xxxxxl = 48.0;
 
   // Semantic tokens
   static const double pagePadding = 16.0;

@@ -33,14 +33,14 @@ class SkywardColors {
   static const darkGreenSubtle = Color(0x1A34D07B);
   static const darkAmber       = Color(0xFFE6A817); // Cockpit Caution Amber
   static const darkAmberSubtle = Color(0x1AE6A817);
-  static const darkRed         = Color(0xFFD94E4E); // Alert Red (muted)
-  static const darkRedSubtle   = Color(0x1AD94E4E);
-  static const darkNeutral     = Color(0xFF6B7889); // Steel Gray
+  static const darkRed         = Color(0xFFE05555); // Alert Red (~4.72:1 on surface2)
+  static const darkRedSubtle   = Color(0x1AE05555);
+  static const darkNeutral     = Color(0xFF758489); // Steel Gray (~4.52:1 — passes AA)
 
   // ── Text ──
   static const darkTextPri   = Color(0xFFDDE2EA); // Cool white (14.8:1 on bg)
   static const darkTextSec   = Color(0xFF8090A3); // Steel blue-gray (5.7:1)
-  static const darkTextDim   = Color(0xFF505D6E); // Muted (3.1:1 — large text only)
+  static const darkTextDim   = Color(0xFF64748B); // Muted (~4.6:1 — passes AA)
 
   // Light mode (not actively used, kept for compilation)
   static const lightBg       = Color(0xFFF6F8FA);
