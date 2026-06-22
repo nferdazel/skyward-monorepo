@@ -16,6 +16,7 @@ class TopHud extends StatelessWidget {
   final DateFormat dateFormat;
   final int unreadCount;
   final VoidCallback? onNotificationTap;
+  final int? creditScore;
 
   const TopHud({
     super.key,
@@ -25,6 +26,7 @@ class TopHud extends StatelessWidget {
     required this.dateFormat,
     this.unreadCount = 0,
     this.onNotificationTap,
+    this.creditScore,
   });
 
   @override
@@ -71,6 +73,9 @@ class TopHud extends StatelessWidget {
             color: AppTheme.warning,
             isMono: true,
           ),
+          _buildDivider(),
+          // Credit score
+          _buildCreditPill(creditScore),
           _buildDivider(),
           // Live status
           _buildLiveStatus(simState),
@@ -122,6 +127,38 @@ class TopHud extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildCreditPill(int? creditScore) {
+    if (creditScore == null) return const SizedBox.shrink();
+
+    final tier = creditScore >= 900 ? 'AAA'
+        : creditScore >= 800 ? 'AA'
+        : creditScore >= 700 ? 'A'
+        : creditScore >= 600 ? 'BBB'
+        : creditScore >= 500 ? 'BB'
+        : 'B';
+
+    final color = creditScore >= 700 ? AppTheme.success
+        : creditScore >= 500 ? AppTheme.warning
+        : AppTheme.error;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.account_balance, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text('$tier $creditScore', style: AppTypography.badgeText.copyWith(color: color, fontSize: 10)),
+        ],
       ),
     );
   }

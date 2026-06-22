@@ -16,6 +16,8 @@ import '../../../../presentation/widgets/onboarding_overlay.dart';
 import '../../../auth/domain/user_model.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
+import '../../../bank/presentation/cubit/bank_cubit.dart';
+import '../../../bank/presentation/cubit/bank_state.dart';
 import '../../../finance/presentation/cubit/finance_cubit.dart';
 import '../../../finance/presentation/views/finance_view.dart';
 import '../../../fleet/presentation/cubit/fleet_cubit.dart';
@@ -89,6 +91,7 @@ class _AuthenticatedDashboardShellState
   late final RoutesCubit _routesCubit;
   late final LeaderboardCubit _leaderboardCubit;
   late final FinanceCubit _financeCubit;
+  late final BankCubit _bankCubit;
   late final LazyTabCubit _lazyTabCubit;
 
   // ── Onboarding state ──
@@ -97,6 +100,9 @@ class _AuthenticatedDashboardShellState
   // ── Notification state ──
   late List<GameNotification> _notifications;
   OverlayEntry? _notificationOverlayEntry;
+
+  // ── Credit tier tracking for milestone notifications ──
+  String? _lastCreditTier;
 
 
   int get _unreadCount => _notifications.where((n) => !n.isRead).length;
@@ -110,6 +116,7 @@ class _AuthenticatedDashboardShellState
     _routesCubit = RoutesCubit();
     _leaderboardCubit = LeaderboardCubit();
     _financeCubit = FinanceCubit();
+    _bankCubit = BankCubit();
     _lazyTabCubit = LazyTabCubit();
     _notifications = [];
     _bootstrapForUser(widget.initialUser);
@@ -151,6 +158,7 @@ class _AuthenticatedDashboardShellState
       initialOperationalStatus: user.operationalStatus,
       initialConsecutiveNegativeDays: user.consecutiveNegativeDays,
       initialRecoveryStreakDays: user.recoveryStreakDays,
+      initialCreditScore: user.creditScore,
     );
 
     _fleetCubit
@@ -159,6 +167,10 @@ class _AuthenticatedDashboardShellState
 
     _routesCubit
       ..loadRoutesAndData(user.id)
+      ..setupReactivity(_simulationCubit, user.id);
+
+    _bankCubit
+      ..loadBankData(user.id)
       ..setupReactivity(_simulationCubit, user.id);
   }
 
@@ -244,6 +256,7 @@ class _AuthenticatedDashboardShellState
     _routesCubit.close();
     _leaderboardCubit.close();
     _financeCubit.close();
+    _bankCubit.close();
     _lazyTabCubit.close();
     super.dispose();
   }
@@ -357,6 +370,66 @@ class _AuthenticatedDashboardShellState
       }
     }
 
+    // Credit tier milestone notifications
+    final bankState = _bankCubit.state;
+    final creditScore = bankState is BankLoaded
+        ? bankState.creditReport?.currentScore
+        : null;
+    if (creditScore != null) {
+      final currentTier = creditScore >= 900 ? 'AAA'
+          : creditScore >= 800 ? 'AA'
+          : creditScore >= 700 ? 'A'
+          : creditScore >= 600 ? 'BBB'
+          : creditScore >= 500 ? 'BB'
+          : 'B';
+
+      if (_lastCreditTier != null && currentTier != _lastCreditTier) {
+        final tierIndex = ['B', 'BB', 'BBB', 'A', 'AA', 'AAA'].indexOf(currentTier);
+        final lastTierIndex = ['B', 'BB', 'BBB', 'A', 'AA', 'AAA'].indexOf(_lastCreditTier!);
+
+        if (tierIndex > lastTierIndex) {
+          // Tier upgraded
+          final messages = {
+            'AAA': ('CREDIT UPGRADE', 'You reached AAA tier! Lowest interest rates unlocked.', NotificationType.success),
+            'AA': ('CREDIT UPGRADE', 'You reached AA tier! Improved loan terms available.', NotificationType.success),
+            'A': ('CREDIT UPGRADE', 'You reached A tier! Better financing options unlocked.', NotificationType.success),
+            'BBB': ('CREDIT UPGRADE', 'You reached BBB tier. Keep building your credit.', NotificationType.info),
+            'BB': ('CREDIT UPGRADE', 'You reached BB tier. Continue improving operations.', NotificationType.info),
+          };
+          final msg = messages[currentTier];
+          if (msg != null) {
+            newNotifications.add(GameNotification(
+              title: msg.$1,
+              message: msg.$2,
+              type: msg.$3,
+              timestamp: now,
+            ));
+          }
+        } else if (tierIndex < lastTierIndex) {
+          // Tier downgraded
+          newNotifications.add(GameNotification(
+            title: 'CREDIT DOWNGRADE',
+            message: 'Credit tier dropped to $currentTier. Review financial health.',
+            type: NotificationType.warning,
+            timestamp: now,
+          ));
+        }
+      }
+      _lastCreditTier = currentTier;
+    }
+
+    // Loan default warnings
+    if (bankState is BankLoaded) {
+      for (final loan in bankState.loans.where((l) => l.isActive && l.missedPayments > 0)) {
+        newNotifications.add(GameNotification(
+          title: loan.missedPayments >= 3 ? 'LOAN DEFAULT RISK' : 'LOAN PAYMENT MISSED',
+          message: 'Loan of \$${AppFormatters.currency.format(loan.principal)} has ${loan.missedPayments} missed payment(s). Late fees accumulating.',
+          type: loan.missedPayments >= 3 ? NotificationType.error : NotificationType.warning,
+          timestamp: now,
+        ));
+      }
+    }
+
     // Sort by severity (error first, then warning, then info)
     newNotifications.sort((a, b) => a.type.index.compareTo(b.type.index));
 
@@ -410,6 +483,7 @@ class _AuthenticatedDashboardShellState
         BlocProvider<RoutesCubit>.value(value: _routesCubit),
         BlocProvider<LeaderboardCubit>.value(value: _leaderboardCubit),
         BlocProvider<FinanceCubit>.value(value: _financeCubit),
+        BlocProvider<BankCubit>.value(value: _bankCubit),
         BlocProvider<LazyTabCubit>.value(value: _lazyTabCubit),
       ],
       child: MultiBlocListener(
@@ -431,6 +505,11 @@ class _AuthenticatedDashboardShellState
           BlocListener<RoutesCubit, RoutesState>(
             listener: (context, state) {
               if (state is RoutesLoaded) _refreshNotifications();
+            },
+          ),
+          BlocListener<BankCubit, BankState>(
+            listener: (context, state) {
+              _refreshNotifications();
             },
           ),
         ],
@@ -534,6 +613,9 @@ class _AuthenticatedDashboardShellState
                           current.fuelPricePerLiter ||
                       previous.isSyncing != current.isSyncing,
                   builder: (context, simState) {
+                    final creditScore = _bankCubit.state is BankLoaded
+                        ? (_bankCubit.state as BankLoaded).creditReport?.currentScore
+                        : null;
                     return TopHud(
                         authState: authState,
                         simState: simState,
@@ -541,6 +623,7 @@ class _AuthenticatedDashboardShellState
                         dateFormat: dateFormat,
                         unreadCount: _unreadCount,
                         onNotificationTap: _toggleNotificationPanel,
+                        creditScore: creditScore,
                       );
                   },
                 ),
