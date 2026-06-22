@@ -676,6 +676,22 @@ class AppStrings {
   static const String markAllRead = 'MARK ALL READ';
   static const String noNotifications = 'No notifications';
 
+  // Network error recovery
+  static const String connectionLost = 'Connection lost — retrying automatically';
+  static const String retryNow = 'RETRY NOW';
+  static const String syncFailed = 'Sync failed';
+  static const String reconnecting = 'Reconnecting...';
+
+  // Help tooltips
+  static const String helpKpiFleetReady = 'Aircraft ready to fly (not grounded or in maintenance)';
+  static const String helpKpiNetworkHealth = 'Percentage of routes with assigned aircraft';
+  static const String helpKpiCondition = 'Average fleet condition — repair aircraft before they ground';
+  static const String helpKpiRunway = 'Days of cash remaining at current burn rate';
+  static const String helpSeatSlots = 'Economy: 1 slot, Business: 2 slots, First: 3 slots';
+  static const String helpPricing = 'Price above base fare reduces demand. Optimal: 0.95-1.05x base.';
+  static const String helpCashRunway = 'Days until cash runs out at current expense rate';
+  static const String helpBurnRatio = 'Percentage of expenses from leases vs operations';
+
   // Shared widgets
   static const String dialogDismissButton = 'DISMISS';
 }

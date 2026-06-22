@@ -20,6 +20,7 @@ class SimulationCubit extends Cubit<SimulationState>
     with WidgetsBindingObserver {
   Timer? _uiTimer;
   Timer? _syncTimer;
+  Timer? _retryTimer;
   String? _currentUserId;
   final RealtimeSubscriptionBag _realtimeSubscriptions =
       RealtimeSubscriptionBag();
@@ -27,6 +28,10 @@ class SimulationCubit extends Cubit<SimulationState>
   bool _lifecycleObserverRegistered = false;
   Future<User?>? _activeSync;
   final SimulationGateway _gateway;
+
+  // Retry with exponential backoff
+  int _retryCount = 0;
+  static const int _maxRetries = 5;
 
   // Cache for global_game_settings to avoid redundant fetches
   static Map<String, dynamic>? _cachedGameSettings;
@@ -244,6 +249,7 @@ class SimulationCubit extends Cubit<SimulationState>
       }
 
       // 3. Update local simulation state from backend-owned actor state.
+      _retryCount = 0; // Reset on successful sync
       _safeEmit(
         state.copyWith(
           gameTime: authoritativeUser.gameCurrentTime,
@@ -269,14 +275,30 @@ class SimulationCubit extends Cubit<SimulationState>
           errorMessage: AppError.extractMessage(e, AppStrings.simulationSyncFailed),
         ),
       );
+      _retrySync();
       return null;
     }
+  }
+
+  /// Schedule a retry with exponential backoff: 2s, 4s, 6s, 8s, 10s
+  void _retrySync() {
+    if (_retryCount >= _maxRetries) return;
+    _retryCount++;
+    final delay = Duration(seconds: _retryCount * 2);
+    _retryTimer?.cancel();
+    _retryTimer = Timer(delay, () {
+      if (!isClosed && _loopRunning) {
+        unawaited(syncWithDatabase());
+      }
+    });
   }
 
   // Clean up timers
   void stopLoop() {
     _loopRunning = false;
     _stopTimers();
+    _retryTimer?.cancel();
+    _retryTimer = null;
   }
 
   @override
@@ -300,6 +322,8 @@ class SimulationCubit extends Cubit<SimulationState>
   @override
   Future<void> close() async {
     stopLoop();
+    _retryTimer?.cancel();
+    _retryTimer = null;
     if (_lifecycleObserverRegistered) {
       _maybeBinding()?.removeObserver(this);
       _lifecycleObserverRegistered = false;
