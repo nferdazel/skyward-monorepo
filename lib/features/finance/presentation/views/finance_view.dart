@@ -311,8 +311,8 @@ class FinanceView extends StatelessWidget {
                   ),
                 ),
                 if (sparkline != null) ...[
-                  const SizedBox(height: 4),
-                  sparkline,
+                  const SizedBox(height: 2),
+                  SizedBox(height: 16, child: sparkline),
                 ],
               ],
             ),
