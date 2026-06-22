@@ -62,14 +62,14 @@ class AppButton extends StatelessWidget {
                   onPressed!();
                 }
               : null,
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
           hoverColor: AppTheme.primary.withValues(alpha: 0.08),
           highlightColor: AppTheme.primary.withValues(alpha: 0.12),
           child: Container(
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: getBgColor(),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
               border: getBorder(),
             ),
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),

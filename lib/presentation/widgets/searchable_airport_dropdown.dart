@@ -145,7 +145,7 @@ class _SearchableAirportDropdownState extends State<SearchableAirportDropdown> {
           isDense: true,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.sm,
-            vertical: 8,
+            vertical: AppSpacing.sm,
           ),
           prefixIcon: Icon(
             Icons.flight_takeoff,
@@ -218,12 +218,12 @@ class _SearchableAirportDropdownState extends State<SearchableAirportDropdown> {
       width: overlayWidth,
       child: Material(
         elevation: 8,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
         color: AppTheme.surface,
         child: Container(
           constraints: const BoxConstraints(maxHeight: overlayMaxHeight),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
             border: Border.all(color: AppTheme.border, width: 1.0),
           ),
           child: filtered.isEmpty
@@ -266,7 +266,7 @@ class _SearchableAirportDropdownState extends State<SearchableAirportDropdown> {
                                 color: AppTheme.primary.withValues(
                                   alpha: 0.1,
                                 ),
-                                borderRadius: BorderRadius.circular(4),
+                                borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
                                 border: Border.all(
                                   color: AppTheme.primary,
                                   width: 1.0,

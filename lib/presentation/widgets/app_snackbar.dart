@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/services/sound_service.dart';
 import '../../core/theme/app_theme.dart';
+import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 
 /// Utility for displaying themed success, error, info, and warning snackbars.
@@ -42,7 +43,7 @@ class AppSnackBar {
         ),
         backgroundColor: backgroundColor,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.radiusDefault)),
         duration: const Duration(seconds: 4),
       ),
     );

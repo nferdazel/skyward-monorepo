@@ -14,6 +14,10 @@ import 'app_button.dart';
 // ── Persistence key ──
 const _kOnboardingCompleteKey = 'onboarding_complete';
 
+// ── Animation durations ──
+const _kStepTransitionDuration = Duration(milliseconds: 250);
+const _kDotAnimationDuration = Duration(milliseconds: 200);
+
 /// Returns `true` if the onboarding has already been completed.
 Future<bool> isOnboardingComplete() async {
   final prefs = await SharedPreferences.getInstance();
@@ -150,7 +154,7 @@ class _OnboardingOverlayState extends State<OnboardingOverlay> {
     final step = _steps[_currentStep];
 
     return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 250),
+      duration: _kStepTransitionDuration,
       child: Material(
         key: ValueKey(_currentStep),
         color: Colors.black.withValues(alpha: 0.85),
@@ -233,9 +237,9 @@ class _OnboardingOverlayState extends State<OnboardingOverlay> {
       children: List.generate(_steps.length, (i) {
         final active = i == _currentStep;
         return AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          width: active ? 24 : 8,
-          height: 8,
+          duration: _kDotAnimationDuration,
+          width: active ? AppSpacing.xxl : AppSpacing.sm,
+          height: AppSpacing.sm,
           margin: const EdgeInsets.symmetric(horizontal: 2),
           decoration: BoxDecoration(
             color: active ? AppTheme.primary : AppTheme.border,

@@ -25,7 +25,7 @@ class ExpenseBreakdownBar extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             color: AppTheme.borderSubtle,
-            borderRadius: BorderRadius.circular(2),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusTight),
           ),
         ),
       );
@@ -48,7 +48,7 @@ class ExpenseBreakdownBar extends StatelessWidget {
           SizedBox(
             height: height,
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(2),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusTight),
               child: Row(
                 children: visibleSegments.map((segment) {
                   final ratio = segment.amount / total;
@@ -76,8 +76,8 @@ class ExpenseBreakdownBar extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    width: 8,
-                    height: 8,
+                    width: AppSpacing.sm,
+                    height: AppSpacing.sm,
                     decoration: BoxDecoration(
                       color: segment.color,
                       borderRadius: BorderRadius.circular(1),

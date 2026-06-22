@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../theme/app_spacing.dart';
 
 /// A compact icon button used for inline table row actions.
 class AppTableIconAction extends StatelessWidget {
@@ -28,14 +29,14 @@ class AppTableIconAction extends StatelessWidget {
         message: tooltip,
         child: InkWell(
           onTap: onPressed,
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
           child: Container(
             width: 44,
             height: 44,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: foreground.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
               border: Border.all(
                 color: foreground.withValues(alpha: 0.24),
                 width: 1.0,

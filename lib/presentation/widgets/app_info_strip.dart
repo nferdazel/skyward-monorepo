@@ -30,7 +30,7 @@ class AppInfoStrip extends StatelessWidget {
         padding: padding,
         decoration: BoxDecoration(
           color: backgroundColor ?? AppTheme.surfaceRaised,
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
           border: Border.all(
             color: borderColor ?? AppTheme.border,
             width: 1.0,

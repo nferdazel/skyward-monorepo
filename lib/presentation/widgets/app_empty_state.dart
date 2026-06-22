@@ -21,7 +21,7 @@ class AppEmptyState extends StatelessWidget {
     required this.description,
     this.actionLabel,
     this.onAction,
-    this.padding = const EdgeInsets.symmetric(vertical: 40),
+    this.padding = const EdgeInsets.symmetric(vertical: AppSpacing.xxxxl),
   });
 
   @override

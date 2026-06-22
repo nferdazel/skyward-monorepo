@@ -45,7 +45,7 @@ class AppDialogShell extends StatelessWidget {
             child: Material(
               color: AppTheme.surface,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(AppSpacing.radiusSoft),
                 side: BorderSide(color: AppTheme.border, width: 1.0),
               ),
               child: Container(

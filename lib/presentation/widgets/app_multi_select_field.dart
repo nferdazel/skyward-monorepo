@@ -34,7 +34,7 @@ class AppMultiSelectField extends StatelessWidget {
       label: 'Select $label',
       child: InkWell(
         onTap: () => _showPicker(context),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
         child: Container(
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.md,
@@ -42,7 +42,7 @@ class AppMultiSelectField extends StatelessWidget {
           ),
           decoration: BoxDecoration(
             color: AppTheme.background,
-            borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
             border: Border.all(color: AppTheme.border),
           ),
           child: Row(

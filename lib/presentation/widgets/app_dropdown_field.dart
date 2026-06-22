@@ -38,7 +38,7 @@ class AppDropdownField<T> extends StatelessWidget {
             padding: contentPadding,
             decoration: BoxDecoration(
               color: AppTheme.surfaceRaised,
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
               border: Border.all(color: AppTheme.border),
             ),
             child: DropdownButtonHideUnderline(

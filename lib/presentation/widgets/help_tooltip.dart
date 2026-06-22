@@ -24,7 +24,7 @@ class HelpTooltip extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         color: AppTheme.surfaceElevated,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
         border: Border.all(color: AppTheme.border),
       ),
       padding: const EdgeInsets.all(AppSpacing.sm),
@@ -76,8 +76,8 @@ class HowToPlayOverlay extends StatelessWidget {
                     icon: Icon(Icons.close, size: 16, color: AppTheme.textMuted),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(
-                      minWidth: 32,
-                      minHeight: 32,
+                      minWidth: AppSpacing.xxxl,
+                      minHeight: AppSpacing.xxxl,
                     ),
                     onPressed: () => Navigator.pop(context),
                   ),

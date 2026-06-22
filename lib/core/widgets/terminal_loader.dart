@@ -30,7 +30,7 @@ class TerminalLoader extends StatelessWidget {
         const SizedBox(height: AppSpacing.md),
         SizedBox(
           width: width,
-          height: 4,
+          height: AppSpacing.xs,
           child: LinearProgressIndicator(
             color: AppTheme.primary,
             backgroundColor: AppTheme.borderSubtle,

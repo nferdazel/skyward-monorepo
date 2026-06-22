@@ -19,7 +19,7 @@ class AppTabItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(4),
+      borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -32,7 +32,7 @@ class AppTabItem extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           Container(
             height: 2,
-            constraints: const BoxConstraints(minWidth: 20),
+            constraints: const BoxConstraints(minWidth: AppSpacing.xl),
             decoration: BoxDecoration(
               color: isActive ? AppTheme.primary : Colors.transparent,
               borderRadius: BorderRadius.circular(1),

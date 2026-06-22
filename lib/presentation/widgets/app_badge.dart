@@ -21,7 +21,7 @@ class AppBadge extends StatelessWidget {
     this.backgroundColor,
     this.fontSize = 11.0,
     this.letterSpacing = 0.08,
-    this.padding = const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.0),
+    this.padding = const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 2.0),
     this.showDot = false,
   });
 
@@ -57,7 +57,7 @@ class AppBadge extends StatelessWidget {
         padding: padding,
         decoration: BoxDecoration(
           color: backgroundColor ?? color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(2),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusTight),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,

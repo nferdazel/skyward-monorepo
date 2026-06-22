@@ -105,7 +105,7 @@ class NotificationPanel extends StatelessWidget {
               label: 'Mark all notifications as read',
               child: InkWell(
                 onTap: onMarkAllRead,
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
                 hoverColor: AppTheme.primary.withValues(alpha: 0.08),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
@@ -127,7 +127,7 @@ class NotificationPanel extends StatelessWidget {
             label: 'Close notifications',
             child: InkWell(
               onTap: onClose,
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
               hoverColor: AppTheme.textMuted.withValues(alpha: 0.08),
               child: Padding(
                 padding: const EdgeInsets.all(AppSpacing.xs),
@@ -178,9 +178,9 @@ class _NotificationTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 8,
-                height: 8,
-                margin: const EdgeInsets.only(top: 4),
+                width: AppSpacing.sm,
+                height: AppSpacing.sm,
+                margin: const EdgeInsets.only(top: AppSpacing.xs),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: notification.isRead ? AppTheme.border : color,

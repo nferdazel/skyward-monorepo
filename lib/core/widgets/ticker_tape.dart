@@ -11,7 +11,7 @@ class TickerTape extends StatefulWidget {
   const TickerTape({
     super.key,
     this.messages = const ['SYSTEM INITIALIZING...'],
-    this.height = 24,
+    this.height = AppSpacing.xxl,
   });
 
   static final TextStyle _monoStyle = GoogleFonts.ibmPlexMono(

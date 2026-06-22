@@ -42,7 +42,7 @@ class AppCard extends StatelessWidget {
             ? BoxDecoration(border: cardBorder)
             : BoxDecoration(
                 color: backgroundColor ?? AppTheme.surface,
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
                 border: cardBorder,
               ),
         child: LayoutBuilder(
@@ -54,7 +54,7 @@ class AppCard extends StatelessWidget {
               children: [
                 if (header != null)
                   Container(
-                    height: 32,
+                    height: AppSpacing.xxxl,
                     padding: const EdgeInsets.symmetric(
                       horizontal: AppSpacing.cardPadding,
                     ),
@@ -86,7 +86,7 @@ class AppCard extends StatelessWidget {
     );
 
     if (customBorder != null) {
-      return ClipRRect(borderRadius: BorderRadius.circular(4), child: card);
+      return ClipRRect(borderRadius: BorderRadius.circular(AppSpacing.radiusDefault), child: card);
     }
     return card;
   }
