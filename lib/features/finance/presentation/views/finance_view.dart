@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/lazy_tab_cubit.dart';
+import '../../../../core/utils/perf_debug.dart';
 import '../../../../presentation/theme/app_spacing.dart';
 import '../../../../presentation/theme/app_typography.dart';
 import '../../../../presentation/widgets/app_badge.dart';
@@ -23,9 +25,15 @@ import '../../domain/ledger_model.dart';
 import '../cubit/finance_cubit.dart';
 import '../cubit/finance_state.dart';
 
-class FinanceView extends StatelessWidget {
+class FinanceView extends StatefulWidget {
   const FinanceView({super.key});
 
+  @override
+  State<FinanceView> createState() => _FinanceViewState();
+}
+
+class _FinanceViewState extends State<FinanceView>
+    with SingleTickerProviderStateMixin {
   static final _currencyFormat = NumberFormat.currency(
     symbol: '\$',
     decimalDigits: 2,
@@ -34,6 +42,38 @@ class FinanceView extends StatelessWidget {
   static final _dateOnlyFormat = DateFormat('yyyy-MM-dd');
   static final _timeOnlyFormat = DateFormat('HH:mm');
 
+  late final TabController _tabController;
+  late final LazyTabCubit _lazyTabCubit;
+
+  @override
+  void initState() {
+    super.initState();
+    _lazyTabCubit = LazyTabCubit();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (_tabController.indexIsChanging) return;
+      final index = _tabController.index;
+      if (!_lazyTabCubit.state.loadedIndexes.contains(index)) {
+        PerfDebug.event('finance.tab_init', fields: {'tab': index});
+      }
+      PerfDebug.event('finance.tab_switch', fields: {'tab': index});
+      _lazyTabCubit.activate(index);
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _lazyTabCubit.close();
+    super.dispose();
+  }
+
+  void _onTabTap(int index) {
+    if (_tabController.index != index) {
+      _tabController.animateTo(index);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final authState = context.read<AuthCubit>().state;
@@ -41,74 +81,160 @@ class FinanceView extends StatelessWidget {
       return const Center(child: Text(AppStrings.unauthorized));
     }
 
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: BlocBuilder<FinanceCubit, FinanceState>(
-        builder: (context, state) {
-          if (state is FinanceInitial) {
-            return Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primary),
-              ),
-            );
-          }
-
-          if (state is FinanceError && !state.hasData) {
-            return Center(
-              child: Text(
-                AppStrings.failedToLoadLedgerLogs,
-                style: AppTypography.buttonText.copyWith(
-                  color: AppTheme.error,
+    return BlocProvider<LazyTabCubit>.value(
+      value: _lazyTabCubit,
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildTabItem(
+                  label: AppStrings.financeOverviewTab,
+                  index: 0,
                 ),
-              ),
-            );
-          }
-
-          if (state is FinanceDataState) {
-            final overview = _FinanceOverview.fromState(state);
-            return RepaintBoundary(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const AppSectionHeader(title: AppStrings.currentPositionTitle),
-                    const SizedBox(height: AppSpacing.blockGap),
-                    _buildCurrentPositionGrid(state.snapshot, _currencyFormat, state.dailySnapshots),
-                    const SizedBox(height: AppSpacing.sectionGap),
-                    const AppSectionHeader(title: AppStrings.rollingOperationsTitle),
-                    const SizedBox(height: AppSpacing.blockGap),
-                    _buildExecutiveSummary(context, state, _currencyFormat),
-                    const SizedBox(height: AppSpacing.blockGap),
-                    _buildFinanceSignals(overview, _currencyFormat),
-                    const SizedBox(height: AppSpacing.sectionGap),
-                    _buildExpenseBreakdownBar(state, _currencyFormat),
-                    const SizedBox(height: AppSpacing.sectionGap),
-
-                    const AppSectionHeader(
-                      title: AppStrings.ledgerCategoryAnalytics,
-                    ),
-                    const SizedBox(height: AppSpacing.blockGap),
-                    _buildCategoryAnalyticsGrid(state, _currencyFormat),
-                    const SizedBox(height: AppSpacing.sectionGap),
-
-                    const AppSectionHeader(
-                      title: AppStrings.auditedTransactionLogs,
-                    ),
-                    const SizedBox(height: AppSpacing.blockGap),
-                    _buildLedgerLogs(
-                      context,
-                      state,
-                      _currencyFormat,
-                      _dateTimeFormat,
-                    ),
-                  ],
+                const SizedBox(width: 24),
+                _buildTabItem(
+                  label: AppStrings.financeTransactionsTab,
+                  index: 1,
                 ),
-              ),
-            );
-          }
+              ],
+            ),
+            const SizedBox(height: AppSpacing.tabContentGap),
+            Expanded(
+              child: BlocBuilder<FinanceCubit, FinanceState>(
+                builder: (context, state) {
+                  if (state is FinanceInitial) {
+                    return Center(
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          AppTheme.primary,
+                        ),
+                      ),
+                    );
+                  }
 
-          return const Center(child: Text(AppStrings.loadingControls));
-        },
+                  if (state is FinanceError && !state.hasData) {
+                    return Center(
+                      child: Text(
+                        AppStrings.failedToLoadLedgerLogs,
+                        style: AppTypography.buttonText.copyWith(
+                          color: AppTheme.error,
+                        ),
+                      ),
+                    );
+                  }
+
+                  if (state is FinanceDataState) {
+                    return BlocBuilder<LazyTabCubit, LazyTabState>(
+                      builder: (context, tabState) {
+                        return IndexedStack(
+                          index: tabState.activeIndex,
+                          children: [
+                            RepaintBoundary(
+                              child: tabState.loadedIndexes.contains(0)
+                                  ? _buildOverviewTab(state)
+                                  : const SizedBox.shrink(),
+                            ),
+                            RepaintBoundary(
+                              child: tabState.loadedIndexes.contains(1)
+                                  ? _buildTransactionsTab(context, state)
+                                  : const SizedBox.shrink(),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  }
+
+                  return const Center(child: Text(AppStrings.loadingControls));
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTabItem({
+    required String label,
+    required int index,
+  }) {
+    final isActive = _tabController.index == index;
+    return InkWell(
+      onTap: () => _onTabTap(index),
+      borderRadius: BorderRadius.circular(4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: AppTypography.sectionHeaderMedium.copyWith(
+              color: isActive ? AppTheme.primary : AppTheme.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            height: 2,
+            color: isActive ? AppTheme.primary : Colors.transparent,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOverviewTab(FinanceDataState state) {
+    final overview = _FinanceOverview.fromState(state, _currencyFormat);
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const AppSectionHeader(title: AppStrings.currentPositionTitle),
+          const SizedBox(height: AppSpacing.blockGap),
+          _buildCurrentPositionGrid(
+            state.snapshot,
+            _currencyFormat,
+            state.dailySnapshots,
+          ),
+          const SizedBox(height: AppSpacing.sectionGap),
+          const AppSectionHeader(title: AppStrings.rollingOperationsTitle),
+          const SizedBox(height: AppSpacing.blockGap),
+          _buildExecutiveSummary(context, state, _currencyFormat),
+          const SizedBox(height: AppSpacing.blockGap),
+          _buildFinanceSignals(overview, _currencyFormat),
+          const SizedBox(height: AppSpacing.sectionGap),
+          _buildExpenseBreakdownBar(state, _currencyFormat),
+          const SizedBox(height: AppSpacing.sectionGap),
+          const AppSectionHeader(
+            title: AppStrings.ledgerCategoryAnalytics,
+          ),
+          const SizedBox(height: AppSpacing.blockGap),
+          _buildCategoryAnalyticsGrid(state, _currencyFormat),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTransactionsTab(BuildContext context, FinanceDataState state) {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const AppSectionHeader(
+            title: AppStrings.auditedTransactionLogs,
+          ),
+          const SizedBox(height: AppSpacing.blockGap),
+          _buildLedgerLogs(
+            context,
+            state,
+            _currencyFormat,
+            _dateTimeFormat,
+          ),
+        ],
       ),
     );
   }
@@ -685,6 +811,7 @@ class _FinanceOverview {
 
   static _FinanceOverview fromState(
     FinanceDataState state,
+    NumberFormat currencyFormat,
   ) {
     final rollingExpense = state.snapshot.rollingExpense30d;
     final rollingRevenue = state.snapshot.rollingRevenue30d;
@@ -749,15 +876,15 @@ class _FinanceOverview {
                 ? AppStrings.financeCoverageWeak
                 : AppStrings.financeNoExpenseHistory),
       coverageColor: coverageHealthy ? AppTheme.success : AppTheme.warning,
-      latestDayLabel: FinanceView._currencyFormat.format(state.latestDailyNet),
+      latestDayLabel: currencyFormat.format(state.latestDailyNet),
       latestDayColor: latestDayColor,
       latestDayNote: latestDayNote,
-      averageDayLabel: FinanceView._currencyFormat.format(
+      averageDayLabel: currencyFormat.format(
         state.averageDailyNet,
       ),
       averageDayColor: averageDayColor,
       averageDayNote: averageDayNote,
-      worstDayLabel: FinanceView._currencyFormat.format(state.worstDailyNet),
+      worstDayLabel: currencyFormat.format(state.worstDailyNet),
       worstDayColor: worstDayColor,
       worstDayNote: worstDayNote,
     );

@@ -575,6 +575,8 @@ class AppStrings {
       'Fare is suppressing bookings harder than the network can absorb.';
 
   // Finance Screen
+  static const String financeOverviewTab = 'OVERVIEW';
+  static const String financeTransactionsTab = 'TRANSACTIONS';
   static const String failedToLoadLedgerLogs = 'Failed to load ledger logs.';
   static const String ledgerLoadFailed = 'Failed to load ledger.';
   static const String snapshotRefreshFailed = 'Failed to refresh finance snapshot.';
