@@ -58,6 +58,7 @@ class _FinanceViewState extends State<FinanceView>
       }
       PerfDebug.event('finance.tab_switch', fields: {'tab': index});
       _lazyTabCubit.activate(index);
+      setState(() {});
     });
   }
 
