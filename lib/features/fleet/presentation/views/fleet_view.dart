@@ -1094,7 +1094,6 @@ class _FleetViewState extends State<FleetView>
     bool isLease,
   ) {
     final fleetCubit = context.read<FleetCubit>();
-    final simCubit = context.read<SimulationCubit>();
     int economy = model.capacity; // Default to max economy
     int business = 0;
     int firstClass = 0;
@@ -1262,21 +1261,8 @@ class _FleetViewState extends State<FleetView>
                                   economy: economy,
                                   business: business,
                                   firstClass: firstClass,
-                                  onBalanceChanged: (newCash) {
-                                    simCubit.applyImmediateCashBalance(newCash);
-                                    final authState = context
-                                        .read<AuthCubit>()
-                                        .state;
-                                    if (authState is AuthAuthenticated) {
-                                      context
-                                          .read<AuthCubit>()
-                                          .updateActiveUser(
-                                            authState.user.copyWith(
-                                              cashBalance: newCash,
-                                            ),
-                                          );
-                                    }
-                                  },
+                                  onBalanceChanged: (newCash) =>
+                                      _applyCashBalance(context, newCash),
                                 );
                               } else {
                                 await fleetCubit.purchaseAircraft(
@@ -1286,21 +1272,8 @@ class _FleetViewState extends State<FleetView>
                                   economy: economy,
                                   business: business,
                                   firstClass: firstClass,
-                                  onBalanceChanged: (newCash) {
-                                    simCubit.applyImmediateCashBalance(newCash);
-                                    final authState = context
-                                        .read<AuthCubit>()
-                                        .state;
-                                    if (authState is AuthAuthenticated) {
-                                      context
-                                          .read<AuthCubit>()
-                                          .updateActiveUser(
-                                            authState.user.copyWith(
-                                              cashBalance: newCash,
-                                            ),
-                                          );
-                                    }
-                                  },
+                                  onBalanceChanged: (newCash) =>
+                                      _applyCashBalance(context, newCash),
                                 );
                               }
                             },
@@ -1323,7 +1296,6 @@ class _FleetViewState extends State<FleetView>
     String userId,
     NumberFormat currencyFormat,
   ) {
-    final simCubit = context.read<SimulationCubit>();
     final fleetCubit = context.read<FleetCubit>();
 
     showDialog(
@@ -1356,15 +1328,8 @@ class _FleetViewState extends State<FleetView>
                     await fleetCubit.repairAircraft(
                       userId: userId,
                       fleetId: aircraft.id,
-                      onBalanceChanged: (newCash) {
-                        simCubit.applyImmediateCashBalance(newCash);
-                        final authState = context.read<AuthCubit>().state;
-                        if (authState is AuthAuthenticated) {
-                          context.read<AuthCubit>().updateActiveUser(
-                            authState.user.copyWith(cashBalance: newCash),
-                          );
-                        }
-                      },
+                      onBalanceChanged: (newCash) =>
+                          _applyCashBalance(context, newCash),
                     );
                   },
                   type: AppButtonType.primary,
@@ -1419,7 +1384,6 @@ class _FleetViewState extends State<FleetView>
     }
 
     final isLease = aircraft.acquisitionType == 'lease';
-    final simCubit = context.read<SimulationCubit>();
     final fleetCubit = context.read<FleetCubit>();
     final exposureAmount = isLease
         ? aircraft.leaseTerminationFee
@@ -1491,29 +1455,15 @@ class _FleetViewState extends State<FleetView>
                       await fleetCubit.terminateLease(
                         userId: userId,
                         fleetId: aircraft.id,
-                        onBalanceChanged: (newCash) {
-                          simCubit.applyImmediateCashBalance(newCash);
-                          final authState = context.read<AuthCubit>().state;
-                          if (authState is AuthAuthenticated) {
-                            context.read<AuthCubit>().updateActiveUser(
-                              authState.user.copyWith(cashBalance: newCash),
-                            );
-                          }
-                        },
+                        onBalanceChanged: (newCash) =>
+                            _applyCashBalance(context, newCash),
                       );
                     } else {
                       await fleetCubit.sellAircraft(
                         userId: userId,
                         fleetId: aircraft.id,
-                        onBalanceChanged: (newCash) {
-                          simCubit.applyImmediateCashBalance(newCash);
-                          final authState = context.read<AuthCubit>().state;
-                          if (authState is AuthAuthenticated) {
-                            context.read<AuthCubit>().updateActiveUser(
-                              authState.user.copyWith(cashBalance: newCash),
-                            );
-                          }
-                        },
+                        onBalanceChanged: (newCash) =>
+                            _applyCashBalance(context, newCash),
                       );
                     }
                   },
@@ -1526,6 +1476,17 @@ class _FleetViewState extends State<FleetView>
         );
       },
     );
+  }
+
+  void _applyCashBalance(BuildContext context, double newCash) {
+    final simCubit = context.read<SimulationCubit>();
+    simCubit.applyImmediateCashBalance(newCash);
+    final authState = context.read<AuthCubit>().state;
+    if (authState is AuthAuthenticated) {
+      context.read<AuthCubit>().updateActiveUser(
+        authState.user.copyWith(cashBalance: newCash),
+      );
+    }
   }
 
   // WIDGET HELPERS

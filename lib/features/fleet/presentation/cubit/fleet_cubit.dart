@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/database/supabase_client.dart';
+import '../../../../core/utils/app_error.dart';
 import '../../../../core/mixins/simulation_reactive_mixin.dart';
 import '../../../../core/realtime/realtime_subscription_bag.dart';
 import '../../../../core/utils/dev_mode_manager.dart';
@@ -146,7 +147,7 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
       SupabaseManager.logError(actionName, e, stack);
       emit(
         FleetError(
-          message: '$errorPrefix${e.toString()}',
+          message: AppError.extractMessage(e, errorPrefix),
           hasData: true,
           fleet: snapshot.fleet,
           catalog: snapshot.catalog,
@@ -251,7 +252,7 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
       SupabaseManager.logError('loadFleetAndCatalog', e, stack);
       emit(
         FleetError(
-          message: '${AppStrings.fleetLoadFailed}${e.toString()}',
+          message: AppError.extractMessage(e, AppStrings.fleetLoadFailed),
           hasData: _cachedFleet.isNotEmpty || _cachedCatalog.isNotEmpty,
           fleet: List<UserFleetAircraft>.from(_cachedFleet),
           catalog: List<AircraftModel>.from(_cachedCatalog),

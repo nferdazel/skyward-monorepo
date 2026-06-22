@@ -177,7 +177,7 @@ class _SettingsViewState extends State<SettingsView> {
   Widget _buildProfileFormSection(
     BuildContext context,
     SettingsState state,
-    dynamic user,
+    User user,
   ) {
     final cubit = context.read<SettingsCubit>();
 
@@ -259,7 +259,7 @@ class _SettingsViewState extends State<SettingsView> {
   Widget _buildGameSettingsSection(
     BuildContext context,
     SettingsState state,
-    dynamic user,
+    User user,
   ) {
     final cubit = context.read<SettingsCubit>();
     final currentThreshold =
@@ -634,7 +634,7 @@ class _SettingsViewState extends State<SettingsView> {
   Widget _buildCredentialsSection(
     BuildContext context,
     SettingsState state,
-    dynamic user,
+    User user,
   ) {
     return AppCard(
       backgroundColor: AppTheme.borderSubtle,
