@@ -18,11 +18,13 @@ import '../../../auth/presentation/cubit/auth_state.dart';
 import '../../../finance/presentation/cubit/finance_cubit.dart';
 import '../../../finance/presentation/views/finance_view.dart';
 import '../../../fleet/presentation/cubit/fleet_cubit.dart';
+import '../../../fleet/presentation/cubit/fleet_state.dart';
 import '../../../fleet/presentation/views/fleet_view.dart';
 import '../../../leaderboard/presentation/cubit/leaderboard_cubit.dart';
 import '../../../leaderboard/presentation/views/leaderboard_view.dart';
 import '../../../navigation/presentation/cubit/navigation_cubit.dart';
 import '../../../routes/presentation/cubit/routes_cubit.dart';
+import '../../../routes/presentation/cubit/routes_state.dart';
 import '../../../routes/presentation/views/routes_view.dart';
 import '../../../settings/presentation/cubit/settings_cubit.dart';
 import '../../../settings/presentation/views/settings_view.dart';
@@ -108,7 +110,7 @@ class _AuthenticatedDashboardShellState
     _leaderboardCubit = LeaderboardCubit();
     _financeCubit = FinanceCubit();
     _lazyTabCubit = LazyTabCubit();
-    _notifications = generateSampleNotifications();
+    _notifications = [];
     _bootstrapForUser(widget.initialUser);
     _checkOnboarding();
   }
@@ -287,6 +289,67 @@ class _AuthenticatedDashboardShellState
     });
   }
 
+  void _refreshNotifications() {
+    final newNotifications = <GameNotification>[];
+    final now = DateTime.now();
+
+    // Fleet condition warnings
+    final fleetState = _fleetCubit.state;
+    if (fleetState is FleetLoaded) {
+      for (final aircraft in fleetState.fleet) {
+        if (aircraft.condition < 40) {
+          newNotifications.add(GameNotification(
+            title: 'FLEET CONDITION CRITICAL',
+            message: '${aircraft.nickname} (${aircraft.model.modelName}) at ${aircraft.condition.toStringAsFixed(0)}% — immediate repair needed.',
+            type: NotificationType.error,
+            timestamp: now,
+          ));
+        } else if (aircraft.condition < 60) {
+          newNotifications.add(GameNotification(
+            title: 'FLEET CONDITION WARNING',
+            message: '${aircraft.nickname} (${aircraft.model.modelName}) at ${aircraft.condition.toStringAsFixed(0)}% — schedule maintenance.',
+            type: NotificationType.warning,
+            timestamp: now,
+          ));
+        }
+      }
+    }
+
+    // Cash runway warnings
+    final simState = _simulationCubit.state;
+    if (simState.cashBalance < 0) {
+      newNotifications.add(GameNotification(
+        title: 'NEGATIVE CASH BALANCE',
+        message: 'Cash at \$${AppFormatters.currency.format(simState.cashBalance)}. Distress status imminent.',
+        type: NotificationType.error,
+        timestamp: now,
+      ));
+    }
+
+    // Route warnings
+    final routesState = _routesCubit.state;
+    if (routesState is RoutesLoaded) {
+      final unassigned = routesState.routes.where((r) => r.assignedAircraftId == null).length;
+      if (unassigned > 0) {
+        newNotifications.add(GameNotification(
+          title: 'UNASSIGNED ROUTES',
+          message: '$unassigned route(s) have no aircraft assigned.',
+          type: NotificationType.warning,
+          timestamp: now,
+        ));
+      }
+    }
+
+    // Sort by severity (error first, then warning, then info)
+    newNotifications.sort((a, b) => a.type.index.compareTo(b.type.index));
+
+    if (mounted) {
+      setState(() {
+        _notifications = newNotifications;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final authState = context.read<AuthCubit>().state;
@@ -304,14 +367,28 @@ class _AuthenticatedDashboardShellState
         BlocProvider<FinanceCubit>.value(value: _financeCubit),
         BlocProvider<LazyTabCubit>.value(value: _lazyTabCubit),
       ],
-      child: BlocListener<NavigationCubit, NavigationState>(
-        listener: (context, navState) {
-          _ensureTabReady(
-            navState.activeIndex,
-            authState.user,
-            _simulationCubit.state,
-          );
-        },
+      child: MultiBlocListener(
+        listeners: [
+          BlocListener<NavigationCubit, NavigationState>(
+            listener: (context, navState) {
+              _ensureTabReady(
+                navState.activeIndex,
+                authState.user,
+                _simulationCubit.state,
+              );
+            },
+          ),
+          BlocListener<FleetCubit, FleetState>(
+            listener: (context, state) {
+              if (state is FleetLoaded) _refreshNotifications();
+            },
+          ),
+          BlocListener<RoutesCubit, RoutesState>(
+            listener: (context, state) {
+              if (state is RoutesLoaded) _refreshNotifications();
+            },
+          ),
+        ],
         child: _buildDesktopLayout(
           context,
           authState,
