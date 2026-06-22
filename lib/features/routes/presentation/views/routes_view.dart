@@ -611,66 +611,67 @@ class _RoutesViewState extends State<RoutesView> {
                   const SizedBox(width: AppSpacing.xs),
                   Flexible(
                     fit: FlexFit.tight,
-                    child: AppButton(
-                      text: route.assignedAircraftId != null ? 'Reassign' : 'Assign',
-                      onPressed: () => _showAssignDialog(context, route, userId),
-                      icon: Icons.link,
-                      type: AppButtonType.secondary,
-                      height: AppSpacing.xxxl,
+                    child: Tooltip(
+                      message: 'Assign Aircraft',
+                      child: InkWell(
+                        onTap: () => _showAssignDialog(context, route, userId),
+                        borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
+                        child: Container(
+                          height: AppSpacing.xxxl,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
+                            border: Border.all(color: AppTheme.primary.withValues(alpha: 0.4)),
+                          ),
+                          child: Icon(Icons.link, size: 16, color: AppTheme.primary),
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: AppSpacing.xs),
                   Flexible(
                     fit: FlexFit.tight,
-                    child: AppButton(
-                      text: 'Adjust',
-                      onPressed: () {
-                        _showAdjustDialog(
-                          context,
-                          route,
-                          userId,
-                          AppFormatters.currency,
-                          autoGroundingThreshold,
-                        );
-                      },
-                      icon: Icons.tune,
-                      type: AppButtonType.secondary,
-                      height: AppSpacing.xxxl,
+                    child: Tooltip(
+                      message: 'Adjust Route',
+                      child: InkWell(
+                        onTap: () {
+                          _showAdjustDialog(
+                            context,
+                            route,
+                            userId,
+                            AppFormatters.currency,
+                            autoGroundingThreshold,
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
+                        child: Container(
+                          height: AppSpacing.xxxl,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
+                            border: Border.all(color: AppTheme.primary.withValues(alpha: 0.4)),
+                          ),
+                          child: Icon(Icons.tune, size: 16, color: AppTheme.primary),
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: AppSpacing.xs),
                   Flexible(
                     fit: FlexFit.tight,
-                    child: SizedBox(
-                      height: AppSpacing.xxxl,
+                    child: Tooltip(
+                      message: 'Close Route',
                       child: InkWell(
                         onTap: () => _confirmCloseRoute(context, route, userId),
                         borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
                         child: Container(
+                          height: AppSpacing.xxxl,
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
-                            color: AppTheme.error.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
-                            border: Border.all(color: AppTheme.error.withValues(alpha: 0.5), width: 1.0),
+                            border: Border.all(color: AppTheme.primary.withValues(alpha: 0.4)),
                           ),
-                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.close, size: 14, color: AppTheme.error),
-                              const SizedBox(width: 4),
-                              Flexible(
-                                child: Text(
-                                  'Close Route',
-                                  style: AppTypography.buttonText.copyWith(
-                                    color: AppTheme.error,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
+                          child: Icon(Icons.close, size: 16, color: AppTheme.primary),
                         ),
                       ),
                     ),
@@ -888,6 +889,7 @@ class _RoutesViewState extends State<RoutesView> {
                   // Price
                   SizedBox(
                     width: 130,
+                    height: 38,
                     child: TextFormField(
                       controller: _priceController,
                       keyboardType: const TextInputType.numberWithOptions(
@@ -898,7 +900,9 @@ class _RoutesViewState extends State<RoutesView> {
                         labelText: 'FARE',
                         labelStyle: AppTypography.microLabel.copyWith(
                           color: AppTheme.textMuted,
+                          fontSize: 10,
                         ),
+                        floatingLabelBehavior: FloatingLabelBehavior.never,
                         prefixText: '\$',
                         prefixStyle: AppTypography.monoValue.copyWith(
                           color: AppTheme.success,
@@ -907,7 +911,7 @@ class _RoutesViewState extends State<RoutesView> {
                         isDense: true,
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: AppSpacing.sm,
-                          vertical: AppSpacing.sm,
+                          vertical: 9,
                         ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
@@ -941,7 +945,6 @@ class _RoutesViewState extends State<RoutesView> {
                       return AppButton(
                         text: isLoading ? 'CREATING...' : 'CREATE ROUTE',
                         isLoading: isLoading,
-                        icon: Icons.add_location_alt_outlined,
                         height: 38,
                         onPressed: isLoading
                             ? null
@@ -1194,6 +1197,15 @@ class _RoutesViewState extends State<RoutesView> {
                     AppLabeledValue(
                       label: AppStrings.rpkLabel,
                       value: NumberFormat.compact().format(route.weeklyRPK),
+                    ),
+                    AppLabeledValue(
+                      label: AppStrings.loadFactorLabel,
+                      value: '${route.loadFactor.toStringAsFixed(1)}%',
+                      valueColor: route.loadFactor >= 65.0
+                          ? AppTheme.success
+                          : (route.loadFactor >= 40.0
+                              ? AppTheme.warning
+                              : AppTheme.error),
                     ),
                   ],
                 ),

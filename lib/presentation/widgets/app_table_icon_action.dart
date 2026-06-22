@@ -9,6 +9,8 @@ class AppTableIconAction extends StatelessWidget {
   final IconData icon;
   final VoidCallback? onPressed;
   final Color? color;
+  final double size;
+  final double iconSize;
 
   const AppTableIconAction({
     super.key,
@@ -16,7 +18,9 @@ class AppTableIconAction extends StatelessWidget {
     required this.icon,
     required this.onPressed,
     this.color,
-  });
+    this.size = 44,
+    double? iconSize,
+  }) : iconSize = iconSize ?? 18;
 
   @override
   Widget build(BuildContext context) {
@@ -31,8 +35,8 @@ class AppTableIconAction extends StatelessWidget {
           onTap: onPressed,
           borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
           child: Container(
-            width: 44,
-            height: 44,
+            width: size,
+            height: size,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: foreground.withValues(alpha: 0.08),
@@ -44,7 +48,7 @@ class AppTableIconAction extends StatelessWidget {
             ),
             child: Icon(
               icon,
-              size: 18,
+              size: iconSize,
               color: onPressed == null ? AppTheme.textMuted : foreground,
             ),
           ),

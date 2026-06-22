@@ -200,15 +200,13 @@ class _FleetViewState extends State<FleetView>
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: AppSpacing.lg),
-                OutlinedButton.icon(
+                AppButton(
+                  text: 'RETRY',
+                  icon: Icons.refresh,
                   onPressed: () =>
                       context.read<FleetCubit>().loadFleetAndCatalog(userId),
-                  icon: const Icon(Icons.refresh, size: 16),
-                  label: Text('RETRY', style: AppTypography.badgeText),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppTheme.primary,
-                    side: BorderSide(color: AppTheme.primary),
-                  ),
+                  type: AppButtonType.secondary,
+                  height: 40,
                 ),
               ],
             ),
@@ -399,6 +397,8 @@ class _FleetViewState extends State<FleetView>
                       AppTableIconAction(
                         tooltip: AppStrings.configureSeatsTooltip,
                         icon: Icons.tune,
+                        size: 28,
+                        iconSize: 14,
                         onPressed: () =>
                             _showSeatConfigDialog(context, aircraft, userId),
                       ),
@@ -408,6 +408,8 @@ class _FleetViewState extends State<FleetView>
                               tooltip:
                                   '${AppStrings.repairTooltipPrefix}${currencyFormat.format(aircraft.repairCost)}',
                               icon: Icons.build_outlined,
+                              size: 28,
+                              iconSize: 14,
                               onPressed: isActionLoading
                                   ? null
                                   : () => _confirmRepair(
@@ -1048,7 +1050,9 @@ class _FleetViewState extends State<FleetView>
                     children: [
                       AppTableIconAction(
                         tooltip: AppStrings.leaseAircraftTooltip,
-                        icon: Icons.schedule,
+                        icon: Icons.access_time,
+                        size: 28,
+                        iconSize: 14,
                         onPressed: isActionLoading
                             ? null
                             : () => _showAcquireSeatConfigDialog(
@@ -1061,7 +1065,9 @@ class _FleetViewState extends State<FleetView>
                       const SizedBox(width: AppSpacing.xs),
                       AppTableIconAction(
                         tooltip: AppStrings.buyAircraftTooltip,
-                        icon: Icons.shopping_cart_checkout,
+                        icon: Icons.shopping_cart,
+                        size: 28,
+                        iconSize: 14,
                         onPressed: isActionLoading
                             ? null
                             : () => _showAcquireSeatConfigDialog(
@@ -1075,6 +1081,8 @@ class _FleetViewState extends State<FleetView>
                       AppTableIconAction(
                         tooltip: 'Finance Aircraft',
                         icon: Icons.credit_card,
+                        size: 28,
+                        iconSize: 14,
                         onPressed: isActionLoading
                             ? null
                             : () => _showFinanceDialog(
@@ -1387,25 +1395,31 @@ class _FleetViewState extends State<FleetView>
 
                 // Confirm
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    AppButton(
-                      text: 'Cancel',
-                      onPressed: () => Navigator.pop(ctx),
-                      type: AppButtonType.secondary,
+                    Expanded(
+                      child: AppButton(
+                        text: 'Cancel',
+                        onPressed: () => Navigator.pop(ctx),
+                        type: AppButtonType.secondary,
+                        height: 40,
+                      ),
                     ),
                     const SizedBox(width: AppSpacing.sm),
-                    AppButton(
-                      text: 'Finance Aircraft',
-                      onPressed: () {
-                        context.read<BankCubit>().financeAircraft(
-                              model.id,
-                              userId,
-                              termMonths,
-                              downPaymentPct,
-                            );
-                        Navigator.pop(ctx);
-                      },
+                    Expanded(
+                      child: AppButton(
+                        text: 'Finance Aircraft',
+                        onPressed: () {
+                          context.read<BankCubit>().financeAircraft(
+                                model.id,
+                                userId,
+                                termMonths,
+                                downPaymentPct,
+                              );
+                          Navigator.pop(ctx);
+                        },
+                        type: AppButtonType.primary,
+                        height: 40,
+                      ),
                     ),
                   ],
                 ),
@@ -1503,6 +1517,8 @@ class _FleetViewState extends State<FleetView>
                 ? AppStrings.terminateLeaseTooltip
                 : AppStrings.sellAircraftTooltip),
       icon: isLease ? Icons.assignment_return_outlined : Icons.sell_outlined,
+      size: 28,
+      iconSize: 14,
       onPressed: isActionLoading || isAssigned
           ? null
           : () => _confirmDisposal(
