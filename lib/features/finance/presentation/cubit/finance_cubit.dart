@@ -23,7 +23,6 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
   FinanceSnapshot _cachedSnapshot = const FinanceSnapshot.empty();
   List<LedgerEntry> _cachedLogs = [];
   Timer? _realtimeRefreshDebounce;
-  bool _pendingFullReload = false;
   Future<void>? _activeLedgerLoad;
   Future<void>? _activeSnapshotRefresh;
 
@@ -281,21 +280,14 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
     }
   }
 
-  void _scheduleRealtimeRefresh(String userId, {required bool fullReload}) {
+  void _scheduleRealtimeRefresh(String userId) {
     PerfDebug.event(
       'finance.realtime_refresh_scheduled',
-      fields: {'user': userId, 'fullReload': fullReload},
+      fields: {'user': userId},
     );
-    _pendingFullReload = _pendingFullReload || fullReload;
     _realtimeRefreshDebounce?.cancel();
     _realtimeRefreshDebounce = Timer(const Duration(milliseconds: 150), () {
-      final shouldFullReload = _pendingFullReload;
-      _pendingFullReload = false;
-      if (shouldFullReload) {
-        unawaited(loadLedger(userId, silent: true));
-      } else {
-        unawaited(refreshSnapshot(userId, silent: true));
-      }
+      unawaited(loadLedger(userId, silent: true));
     });
   }
 
@@ -377,6 +369,8 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
     if (DevModeManager.isDevMode || SupabaseManager.hasMockClient) return;
     unawaited(_realtimeSubscriptions.clear());
 
+    // Only subscribe to financial_ledger — user/fleet/routes changes
+    // are covered by SimulationReactiveMixin.
     final ledgerChannel = SupabaseManager.client
         .channel('public:financial_ledger:user_id=eq.$userId')
         .onPostgresChanges(
@@ -388,58 +382,10 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
             column: 'user_id',
             value: userId,
           ),
-          callback: (_) => _scheduleRealtimeRefresh(userId, fullReload: true),
-        )
-        .subscribe();
-
-    final userChannel = SupabaseManager.client
-        .channel('public:users:finance:$userId')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'users',
-          filter: PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq,
-            column: 'id',
-            value: userId,
-          ),
-          callback: (_) => _scheduleRealtimeRefresh(userId, fullReload: false),
-        )
-        .subscribe();
-
-    final fleetChannel = SupabaseManager.client
-        .channel('public:user_fleet:finance:$userId')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'user_fleet',
-          filter: PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq,
-            column: 'user_id',
-            value: userId,
-          ),
-          callback: (_) => _scheduleRealtimeRefresh(userId, fullReload: false),
-        )
-        .subscribe();
-
-    final routesChannel = SupabaseManager.client
-        .channel('public:user_routes:finance:$userId')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'user_routes',
-          filter: PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq,
-            column: 'user_id',
-            value: userId,
-          ),
-          callback: (_) => _scheduleRealtimeRefresh(userId, fullReload: false),
+          callback: (_) => _scheduleRealtimeRefresh(userId),
         )
         .subscribe();
 
     _realtimeSubscriptions.add(ledgerChannel);
-    _realtimeSubscriptions.add(userChannel);
-    _realtimeSubscriptions.add(fleetChannel);
-    _realtimeSubscriptions.add(routesChannel);
   }
 }
