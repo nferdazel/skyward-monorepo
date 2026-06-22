@@ -67,6 +67,10 @@ Operational/reference docs:
 UI/UX docs:
 - `architecture/ui-design-system.md`
 
+Standards:
+- `standards/maintainer-standard.md`
+- `standards/security.md`
+
 ## Migration Bands
 
 Apply migrations in numeric order.

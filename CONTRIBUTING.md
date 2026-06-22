@@ -24,7 +24,7 @@ flutter run
 
 ## Code Style
 
-- Follow the [MAINTAINER_STANDARD.md](MAINTAINER_STANDARD.md)
+- Follow the [maintainer-standard.md](docs/standards/maintainer-standard.md)
 - Cubit-only state management
 - Feature-first architecture with gateway pattern for data access
 - Desktop web only (no mobile responsive)
