@@ -69,7 +69,7 @@ class SimulationCubit extends Cubit<SimulationState>
     String initialOperationalStatus = AppStrings.statusActive,
     int initialConsecutiveNegativeDays = 0,
     int initialRecoveryStreakDays = 0,
-    int initialCreditScore = 500,
+    int initialCreditScore = GameConstants.defaultCreditScore,
   }) async {
     _currentUserId = userId;
 
@@ -191,7 +191,7 @@ class SimulationCubit extends Cubit<SimulationState>
           state.copyWith(
             isSyncing: false,
             gameSpeedMultiplier: GameConstants.defaultGameSpeedMultiplier,
-            lastElapsedDays: 0.04, // ~1 game hour
+            lastElapsedDays: GameConstants.devElapsedDaysPerSync, // ~1 game hour
             lastFlightsRun: 0,
             operationalStatus: AppStrings.statusActive,
             consecutiveNegativeDays: 0,
@@ -227,7 +227,7 @@ class SimulationCubit extends Cubit<SimulationState>
       double gameSpeedMultiplier = GameConstants.defaultGameSpeedMultiplier;
 
       if (_cachedGameSettings != null && _cachedSettingsTime != null &&
-          DateTime.now().difference(_cachedSettingsTime!) < const Duration(minutes: 5)) {
+          DateTime.now().difference(_cachedSettingsTime!) < GameConstants.settingsCacheTtl) {
         fuelPrice =
             (_cachedGameSettings!['fuel_price_per_liter'] as num?)?.toDouble() ??
             GameConstants.fuelPricePerLiter;

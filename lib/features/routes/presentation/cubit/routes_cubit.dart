@@ -147,7 +147,7 @@ class RoutesCubit extends Cubit<RoutesState> with SimulationReactiveMixin {
     final currentFlights =
         flightsPerWeek ??
         _plannerMaintenancePreview?.allocatedFlightsPerWeek ??
-        7;
+        GameConstants.defaultWeeklyFlights;
     final nextPreview = UserRoute.buildMaintenancePreviewForSchedule(
       distanceKm: distanceKm,
       flightsPerWeek: currentFlights,
@@ -488,7 +488,7 @@ class RoutesCubit extends Cubit<RoutesState> with SimulationReactiveMixin {
 
     return _executeRouteAction(
       actionName: 'assign_aircraft_to_route',
-      failureMessage: 'Aircraft assignment failed.',
+      failureMessage: AppStrings.routeAssignFailed,
       userId: userId,
       rpcParams: {
         'p_user_id': userId,
@@ -528,7 +528,7 @@ class RoutesCubit extends Cubit<RoutesState> with SimulationReactiveMixin {
       }
       emit(
         RoutesActionSuccess(
-          message: 'Route frequency and pricing adjusted!',
+          message: AppStrings.routeFrequencyUpdateSuccess,
           routes: List<UserRoute>.from(_cachedRoutes),
           airports: List<Airport>.from(_cachedAirports),
           availableAircraft: List<UserFleetAircraft>.from(
@@ -544,7 +544,7 @@ class RoutesCubit extends Cubit<RoutesState> with SimulationReactiveMixin {
 
     return _executeRouteAction(
       actionName: 'update_route_frequency_and_price',
-      failureMessage: 'Route frequency and pricing update failed.',
+      failureMessage: AppStrings.routeFrequencyUpdateFailed,
       userId: userId,
       rpcParams: {
         'p_user_id': userId,

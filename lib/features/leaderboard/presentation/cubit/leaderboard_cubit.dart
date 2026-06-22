@@ -747,7 +747,7 @@ class LeaderboardCubit extends Cubit<LeaderboardState>
       ceoName: fallbackCeo ?? 'Your Name',
       cash: fallbackCash ?? GameConstants.startingCash,
       netWorth: fallbackNetWorth ?? GameConstants.startingCash,
-      status: 'Active',
+      status: AppStrings.statusActive,
       fleetBreakdown: {'Airbus A320neo (lease)': 1},
       networkRoutes: ['CGK-SIN'],
     );

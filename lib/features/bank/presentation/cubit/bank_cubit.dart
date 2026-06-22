@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'
     show PostgresChangeEvent, PostgresChangeFilter, PostgresChangeFilterType;
 
+import '../../../../core/constants/app_strings.dart';
 import '../../../../core/database/supabase_client.dart';
 import '../../../../core/mixins/simulation_reactive_mixin.dart';
 import '../../../../core/realtime/realtime_subscription_bag.dart';
@@ -92,7 +93,7 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
       if (!silent) {
         emit(
           BankError(
-            message: AppError.extractMessage(e, 'Failed to load bank data.'),
+            message: AppError.extractMessage(e, AppStrings.bankDataLoadFailed),
             hasData: _cachedLoans.isNotEmpty,
             loans: _cachedLoans,
           ),
@@ -166,7 +167,7 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
       AppError.log('takeLoan', e, stack);
       emit(
         BankError(
-          message: AppError.extractMessage(e, 'Failed to process loan.'),
+          message: AppError.extractMessage(e, AppStrings.loanProcessFailed),
           hasData: _cachedLoans.isNotEmpty,
           loans: _cachedLoans,
         ),
@@ -216,7 +217,7 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
       AppError.log('financeAircraft', e, stack);
       emit(
         BankError(
-          message: AppError.extractMessage(e, 'Failed to process financing.'),
+          message: AppError.extractMessage(e, AppStrings.financingProcessFailed),
           hasData: _cachedLoans.isNotEmpty,
           loans: _cachedLoans,
         ),
@@ -236,7 +237,7 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
       emit(
         BankError(
           message:
-              AppError.extractMessage(e, 'Failed to load credit report.'),
+              AppError.extractMessage(e, AppStrings.creditReportLoadFailed),
           hasData: _cachedLoans.isNotEmpty,
           loans: _cachedLoans,
         ),
@@ -258,7 +259,7 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
         BankError(
           message: AppError.extractMessage(
             e,
-            'Failed to load aircraft financing.',
+            AppStrings.aircraftFinancingLoadFailed,
           ),
           hasData: _cachedLoans.isNotEmpty,
           loans: _cachedLoans,
@@ -298,7 +299,7 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
       AppError.log('refinanceLoan', e, stack);
       emit(
         BankError(
-          message: AppError.extractMessage(e, 'Failed to refinance loan.'),
+          message: AppError.extractMessage(e, AppStrings.loanRefinanceFailed),
           hasData: _cachedLoans.isNotEmpty,
           loans: _cachedLoans,
         ),

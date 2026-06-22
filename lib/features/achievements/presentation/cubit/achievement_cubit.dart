@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'
     show PostgresChangeEvent, PostgresChangeFilter, PostgresChangeFilterType;
 
+import '../../../../core/constants/app_strings.dart';
 import '../../../../core/database/supabase_client.dart';
 import '../../../../core/mixins/simulation_reactive_mixin.dart';
 import '../../../../core/realtime/realtime_subscription_bag.dart';
@@ -72,7 +73,7 @@ class AchievementCubit extends Cubit<AchievementState>
       if (!silent) {
         emit(
           AchievementError(
-            message: AppError.extractMessage(e, 'Failed to load achievements.'),
+            message: AppError.extractMessage(e, AppStrings.achievementsLoadFailed),
           ),
         );
       }

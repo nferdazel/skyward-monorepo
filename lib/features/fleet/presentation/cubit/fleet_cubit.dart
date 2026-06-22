@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/constants/game_constants.dart';
 import '../../../../core/database/supabase_client.dart';
 import '../../../../core/utils/app_error.dart';
 import '../../../../core/mixins/simulation_reactive_mixin.dart';
@@ -289,7 +290,7 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
         id: 'mock-aircraft-${DateTime.now().millisecondsSinceEpoch}',
         nickname: nickname,
         acquisitionType: 'purchase',
-        condition: 100.00,
+        condition: GameConstants.maxCondition,
         status: 'active',
         acquiredAt: DateTime.now(),
         model: model,
@@ -374,7 +375,7 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
         id: 'mock-aircraft-${DateTime.now().millisecondsSinceEpoch}',
         nickname: nickname,
         acquisitionType: 'lease',
-        condition: 100.00,
+        condition: GameConstants.maxCondition,
         status: 'active',
         acquiredAt: DateTime.now(),
         model: model,
@@ -457,7 +458,7 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
           id: target.id,
           nickname: target.nickname,
           acquisitionType: target.acquisitionType,
-          condition: 100.00,
+          condition: GameConstants.maxCondition,
           status: 'active',
           acquiredAt: target.acquiredAt,
           model: target.model,
@@ -469,7 +470,7 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
       }
       emit(
         FleetActionSuccess(
-          message: 'Aircraft repaired successfully!',
+          message: AppStrings.repairSuccess,
           fleet: List<UserFleetAircraft>.from(_cachedFleet),
           catalog: List<AircraftModel>.from(_cachedCatalog),
           selectedManufacturers: _selectedManufacturers,
@@ -545,7 +546,7 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
       _cachedFleet.removeAt(index);
       emit(
         FleetActionSuccess(
-          message: 'Aircraft sold successfully!',
+          message: AppStrings.saleSuccess,
           fleet: List<UserFleetAircraft>.from(_cachedFleet),
           catalog: List<AircraftModel>.from(_cachedCatalog),
           selectedManufacturers: _selectedManufacturers,
@@ -561,7 +562,7 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
     return _executeFleetAction(
       actionName: 'sell_aircraft',
       failureMessage: AppStrings.saleFailed,
-      errorPrefix: 'Failed to sell aircraft: ',
+      errorPrefix: AppStrings.saleFailedPrefix,
       rpcParams: {'p_user_id': userId, 'p_fleet_id': fleetId},
       rpcCall: () => _gateway.sellAircraft({'p_fleet_id': fleetId}),
       onSuccess: (result, snapshot) async {
@@ -621,7 +622,7 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
       _cachedFleet.removeAt(index);
       emit(
         FleetActionSuccess(
-          message: 'Lease terminated successfully!',
+          message: AppStrings.leaseTerminationSuccess,
           fleet: List<UserFleetAircraft>.from(_cachedFleet),
           catalog: List<AircraftModel>.from(_cachedCatalog),
           selectedManufacturers: _selectedManufacturers,
@@ -637,7 +638,7 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
     return _executeFleetAction(
       actionName: 'terminate_aircraft_lease',
       failureMessage: AppStrings.leaseTerminationFailed,
-      errorPrefix: 'Failed to terminate lease: ',
+      errorPrefix: AppStrings.leaseTerminationFailedPrefix,
       rpcParams: {'p_user_id': userId, 'p_fleet_id': fleetId},
       rpcCall: () => _gateway.terminateLease({'p_fleet_id': fleetId}),
       onSuccess: (result, snapshot) async {
@@ -711,8 +712,8 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
 
     return _executeFleetAction(
       actionName: 'configure_seats',
-      failureMessage: 'Failed to update seat configuration.',
-      errorPrefix: 'Failed to configure seats: ',
+      failureMessage: AppStrings.seatConfigFailed,
+      errorPrefix: AppStrings.seatConfigUpdateFailedPrefix,
       rpcCall: () => _gateway.configureSeats({
         'p_fleet_id': aircraftId,
         'p_economy_seats': economy,
@@ -722,7 +723,7 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
       onSuccess: (result, snapshot) async {
         emit(
           FleetActionSuccess(
-            message: 'Successfully updated seat configuration!',
+            message: AppStrings.seatConfigSuccess,
             fleet: snapshot.fleet,
             catalog: snapshot.catalog,
             selectedManufacturers: snapshot.selectedManufacturers,

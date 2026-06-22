@@ -84,20 +84,17 @@ class BlueprintPlannerFormCubit extends Cubit<BlueprintPlannerFormState> {
   ) {
     if (dist == 0.0) return 0.0;
 
-    const fuelBurn = 4.16;
-    const capacity = 186;
-    const targetLoadFactor = 0.75;
-    const maintCostPerHour = 820.00;
-    const speedKmh = 830.00;
-
     final flightDuration =
-        (dist / speedKmh) + GameConstants.aircraftTurnaroundHours;
-    final fuelCost = dist * fuelBurn * GameConstants.fuelPricePerLiter;
-    final maintCost = flightDuration * maintCostPerHour;
+        (dist / GameConstants.plannerReferenceSpeedKmh) +
+        GameConstants.aircraftTurnaroundHours;
+    final fuelCost =
+        dist * GameConstants.plannerReferenceFuelBurnPerKm * GameConstants.fuelPricePerLiter;
+    final maintCost = flightDuration * GameConstants.plannerReferenceMaintCostPerHour;
     final airportTaxes = org.airportTax + dest.airportTax;
 
     return ((fuelCost + maintCost + airportTaxes) /
-            (capacity * targetLoadFactor)) *
-        1.35;
+            (GameConstants.plannerReferenceCapacity *
+                GameConstants.plannerReferenceTargetLoadFactor)) *
+        GameConstants.plannerMarkupMultiplier;
   }
 }
