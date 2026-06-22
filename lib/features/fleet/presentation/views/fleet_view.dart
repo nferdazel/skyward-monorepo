@@ -15,8 +15,8 @@ import '../../../../presentation/theme/app_spacing.dart';
 import '../../../../presentation/theme/app_typography.dart';
 import '../../../../presentation/widgets/app_badge.dart';
 import '../../../../presentation/widgets/app_button.dart';
-import '../../../../presentation/widgets/app_card.dart';
 import '../../../../presentation/widgets/app_dialog_shell.dart';
+import '../../../../presentation/widgets/app_dropdown_field.dart';
 import '../../../../presentation/widgets/app_empty_state.dart';
 import '../../../../presentation/widgets/app_info_strip.dart';
 import '../../../../presentation/widgets/app_labeled_value.dart';
@@ -1352,29 +1352,31 @@ class _FleetViewState extends State<FleetView>
                 const SizedBox(height: AppSpacing.lg),
 
                 // Term selector
-                Text('Term', style: AppTypography.microLabel),
-                Row(
-                  children: [
-                    for (final term in [36, 60, 120])
-                      Padding(
-                        padding:
-                            const EdgeInsets.only(right: AppSpacing.sm),
-                        child: ChoiceChip(
-                          label: Text('${term ~/ 12}yr'),
-                          selected: termMonths == term,
-                          onSelected: (v) =>
-                              setDialogState(() => termMonths = term),
-                        ),
-                      ),
-                  ],
+                AppDropdownField<int>(
+                  label: 'FINANCING TERM',
+                  value: termMonths,
+                  items: [36, 60, 120]
+                      .map((m) => DropdownMenuItem(
+                            value: m,
+                            child: Text(
+                              '${m ~/ 12} months (${(m ~/ 12)} yr)',
+                              style: AppTypography.badgeText.copyWith(
+                                color: AppTheme.textPrimary,
+                              ),
+                            ),
+                          ))
+                      .toList(),
+                  onChanged: (v) {
+                    if (v != null) setDialogState(() => termMonths = v);
+                  },
                 ),
 
                 const SizedBox(height: AppSpacing.lg),
 
                 // Summary
-                AppCard(
-                  padding: const EdgeInsets.all(AppSpacing.md),
+                AppInfoStrip(
                   child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       _summaryRow('Aircraft Price',
                           '\$${_formatNumber(model.purchasePrice)}'),

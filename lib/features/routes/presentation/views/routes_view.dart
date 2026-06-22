@@ -593,22 +593,30 @@ class _RoutesViewState extends State<RoutesView> {
             if (isSelected) ...[
               const SizedBox(height: AppSpacing.sm),
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  IconButton(
-                    icon: Icon(Icons.info_outline, size: 16, color: AppTheme.textSecondary),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                    tooltip: 'Route details',
-                    onPressed: () {
-                      _showRouteDetailsDialog(
+                  Tooltip(
+                    message: 'Route details',
+                    child: InkWell(
+                      onTap: () => _showRouteDetailsDialog(
                         context,
                         route,
                         AppFormatters.currency,
                         autoGroundingThreshold,
-                      );
-                    },
+                      ),
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
+                      child: Container(
+                        width: 32,
+                        height: 32,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
+                          border: Border.all(color: AppTheme.textSecondary.withValues(alpha: 0.3)),
+                        ),
+                        child: Icon(Icons.info_outline, size: 16, color: AppTheme.textSecondary),
+                      ),
+                    ),
                   ),
-                  const SizedBox(width: AppSpacing.xs),
                   Tooltip(
                     message: 'Assign Aircraft',
                     child: InkWell(
@@ -626,7 +634,6 @@ class _RoutesViewState extends State<RoutesView> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: AppSpacing.xs),
                   Tooltip(
                     message: 'Adjust Route',
                     child: InkWell(
@@ -652,7 +659,6 @@ class _RoutesViewState extends State<RoutesView> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: AppSpacing.xs),
                   Tooltip(
                     message: 'Close Route',
                     child: InkWell(
