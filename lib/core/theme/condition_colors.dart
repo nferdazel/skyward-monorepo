@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'app_theme.dart';
 
 /// 5-band aviation condition system.
@@ -19,7 +20,11 @@ class ConditionColors {
   const ConditionColors._();
 
   static const bands = [
-    ConditionBand(label: 'PRISTINE', color: AppTheme.success, minThreshold: 90.0),
+    ConditionBand(
+      label: 'PRISTINE',
+      color: AppTheme.success,
+      minThreshold: 90.0,
+    ),
     ConditionBand(label: 'GOOD', color: AppTheme.primary, minThreshold: 70.0),
     ConditionBand(label: 'FAIR', color: AppTheme.warning, minThreshold: 50.0),
     ConditionBand(label: 'POOR', color: Color(0xFFD98E4E), minThreshold: 25.0),
