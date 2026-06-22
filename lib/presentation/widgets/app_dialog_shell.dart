@@ -4,6 +4,7 @@ import '../../core/theme/app_theme.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 
+/// A standardized dialog shell with title, optional subtitle, content, and actions.
 class AppDialogShell extends StatelessWidget {
   final String title;
   final Color? titleColor;
@@ -36,7 +37,7 @@ class AppDialogShell extends StatelessWidget {
         child: Material(
           color: AppTheme.surface,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(8),
             side: BorderSide(color: AppTheme.border, width: 1.0),
           ),
           child: Container(

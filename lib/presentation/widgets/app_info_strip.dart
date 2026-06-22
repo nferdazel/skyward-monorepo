@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import '../theme/app_spacing.dart';
 
+/// A compact inline strip for displaying supplementary information.
 class AppInfoStrip extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
@@ -22,18 +23,21 @@ class AppInfoStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: padding,
-      decoration: BoxDecoration(
-        color: backgroundColor ?? AppTheme.background,
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(
-          color: borderColor ?? AppTheme.border,
-          width: 1.0,
+    return Semantics(
+      container: true,
+      child: Container(
+        width: double.infinity,
+        padding: padding,
+        decoration: BoxDecoration(
+          color: backgroundColor ?? AppTheme.background,
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(
+            color: borderColor ?? AppTheme.border,
+            width: 1.0,
+          ),
         ),
+        child: child,
       ),
-      child: child,
     );
   }
 }

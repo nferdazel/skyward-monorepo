@@ -6,6 +6,7 @@ import '../theme/app_typography.dart';
 import 'app_button.dart';
 import 'app_dialog_shell.dart';
 
+/// A multi-select field that opens a checkbox picker dialog.
 class AppMultiSelectField extends StatelessWidget {
   final String label;
   final List<String> options;
@@ -28,46 +29,50 @@ class AppMultiSelectField extends StatelessWidget {
         ? selectedValues.first.toUpperCase()
         : '${selectedValues.length} SELECTED';
 
-    return InkWell(
-      onTap: () => _showPicker(context),
-      borderRadius: BorderRadius.circular(4),
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.xs,
-        ),
-        decoration: BoxDecoration(
-          color: AppTheme.background,
-          borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: AppTheme.border),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    label,
-                    style: AppTypography.captionRegular.copyWith(
-                      color: AppTypography.textSecondary,
+    return Semantics(
+      button: true,
+      label: 'Select $label',
+      child: InkWell(
+        onTap: () => _showPicker(context),
+        borderRadius: BorderRadius.circular(4),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.xs,
+          ),
+          decoration: BoxDecoration(
+            color: AppTheme.background,
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: AppTheme.border),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      label,
+                      style: AppTypography.captionRegular.copyWith(
+                        color: AppTypography.textSecondary,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    summary,
-                    style: AppTypography.badgeText.copyWith(
-                      color: AppTypography.textPrimary,
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      summary,
+                      style: AppTypography.badgeText.copyWith(
+                        color: AppTypography.textPrimary,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(width: AppSpacing.xs),
-            Icon(Icons.expand_more, color: AppTheme.primary, size: 18),
-          ],
+              const SizedBox(width: AppSpacing.xs),
+              Icon(Icons.expand_more, color: AppTheme.primary, size: 18),
+            ],
+          ),
         ),
       ),
     );

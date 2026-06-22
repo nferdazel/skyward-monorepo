@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
 
-/// Segmented OLED-style progress bar.
-/// ~20 discrete rectangles with 1px gaps.
+/// A segmented OLED-style progress bar rendered as discrete rectangles with gaps.
 class SegmentedProgressBar extends StatelessWidget {
   final double value;
   final int segments;
@@ -38,22 +37,25 @@ class SegmentedProgressBar extends StatelessWidget {
 
     final inactive = inactiveColor ?? const Color(0x14FFFFFF); // rgba(255,255,255,0.08)
 
-    return SizedBox(
-      width: width,
-      height: height,
-      child: Row(
-        children: List.generate(segments, (index) {
-          final isActive = index < filledSegments;
-          return Expanded(
-            child: Container(
-              margin: EdgeInsets.only(right: index < segments - 1 ? 1 : 0),
-              decoration: BoxDecoration(
-                color: isActive ? barColor : inactive,
-                borderRadius: BorderRadius.circular(1),
+    return Semantics(
+      label: 'Progress: ${value.round()}%',
+      child: SizedBox(
+        width: width,
+        height: height,
+        child: Row(
+          children: List.generate(segments, (index) {
+            final isActive = index < filledSegments;
+            return Expanded(
+              child: Container(
+                margin: EdgeInsets.only(right: index < segments - 1 ? 1 : 0),
+                decoration: BoxDecoration(
+                  color: isActive ? barColor : inactive,
+                  borderRadius: BorderRadius.circular(1),
+                ),
               ),
-            ),
-          );
-        }),
+            );
+          }),
+        ),
       ),
     );
   }

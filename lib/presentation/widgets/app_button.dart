@@ -6,6 +6,7 @@ import '../theme/app_typography.dart';
 
 enum AppButtonType { primary, secondary }
 
+/// A pressable button with primary/secondary styles, icon support, and loading state.
 class AppButton extends StatelessWidget {
   final String text;
   final VoidCallback? onPressed;
@@ -50,45 +51,49 @@ class AppButton extends StatelessWidget {
     return SizedBox(
       width: width,
       height: height,
-      child: InkWell(
-        onTap: isEnabled ? onPressed : null,
-        borderRadius: BorderRadius.circular(4),
-        child: Container(
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: getBgColor(),
-            borderRadius: BorderRadius.circular(4),
-            border: getBorder(),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-          child: isLoading
-              ? SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(getTextColor()),
-                  ),
-                )
-              : Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (icon != null) ...[
-                      Icon(icon, size: 18, color: getTextColor()),
-                      const SizedBox(width: AppSpacing.sm),
-                    ],
-                    Flexible(
-                      child: Text(
-                        text,
-                        style: AppTypography.buttonText.copyWith(
-                          color: getTextColor(),
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
+      child: Semantics(
+        button: true,
+        label: text,
+        child: InkWell(
+          onTap: isEnabled ? onPressed : null,
+          borderRadius: BorderRadius.circular(4),
+          child: Container(
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: getBgColor(),
+              borderRadius: BorderRadius.circular(4),
+              border: getBorder(),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            child: isLoading
+                ? SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(getTextColor()),
                     ),
-                  ],
-                ),
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (icon != null) ...[
+                        Icon(icon, size: 18, color: getTextColor()),
+                        const SizedBox(width: AppSpacing.sm),
+                      ],
+                      Flexible(
+                        child: Text(
+                          text,
+                          style: AppTypography.buttonText.copyWith(
+                            color: getTextColor(),
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
         ),
       ),
     );

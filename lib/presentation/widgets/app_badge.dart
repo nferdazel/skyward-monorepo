@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import '../theme/app_typography.dart';
 
+/// A badge displaying a status label with semantic color coding.
 class AppBadge extends StatelessWidget {
   final String label;
   final Color color;
@@ -49,36 +50,39 @@ class AppBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: padding,
-      decoration: BoxDecoration(
-        color: backgroundColor ?? color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(3),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (showDot) ...[
-            Container(
-              width: 6,
-              height: 6,
-              decoration: BoxDecoration(
+    return Semantics(
+      label: '$label status badge',
+      child: Container(
+        padding: padding,
+        decoration: BoxDecoration(
+          color: backgroundColor ?? color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(2),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (showDot) ...[
+              Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: color,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 4),
+            ],
+            Text(
+              label.toUpperCase(),
+              style: AppTypography.badgeText.copyWith(
+                fontSize: fontSize,
                 color: color,
-                shape: BoxShape.circle,
+                letterSpacing: letterSpacing,
+                height: 1.0,
               ),
             ),
-            const SizedBox(width: 4),
           ],
-          Text(
-            label.toUpperCase(),
-            style: AppTypography.badgeText.copyWith(
-              fontSize: fontSize,
-              color: color,
-              letterSpacing: letterSpacing,
-              height: 1.0,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

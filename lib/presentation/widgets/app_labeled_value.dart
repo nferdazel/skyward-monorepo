@@ -4,6 +4,7 @@ import '../../core/theme/app_theme.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 
+/// A vertically stacked label and value pair for read-only data display.
 class AppLabeledValue extends StatelessWidget {
   final String label;
   final String value;
@@ -20,28 +21,31 @@ class AppLabeledValue extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          label,
-          style: AppTypography.badgeText.copyWith(
-            color: AppTheme.textSecondary,
-            letterSpacing: 0.6,
+    return Semantics(
+      label: '$label: $value',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: AppTypography.badgeText.copyWith(
+              color: AppTheme.textSecondary,
+              letterSpacing: 0.6,
+            ),
           ),
-        ),
-        const SizedBox(height: AppSpacing.xs),
-        Text(
-          value,
-          style: AppTypography.badgeText.copyWith(
-            color: valueColor ?? (emphasize ? AppTheme.primary : AppTheme.textPrimary),
-            letterSpacing: 0.0,
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            value,
+            style: AppTypography.badgeText.copyWith(
+              color: valueColor ?? (emphasize ? AppTheme.primary : AppTheme.textPrimary),
+              letterSpacing: 0.0,
+            ),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
           ),
-          overflow: TextOverflow.ellipsis,
-          maxLines: 1,
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

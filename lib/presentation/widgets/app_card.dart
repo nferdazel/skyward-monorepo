@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import '../theme/app_spacing.dart';
 
+/// A bordered surface card with optional header and flexible layout.
 class AppCard extends StatelessWidget {
   final Widget child;
   final Widget? header;
@@ -33,51 +34,54 @@ class AppCard extends StatelessWidget {
           width: borderWidth,
         );
 
-    final card = Container(
-      margin: margin,
-      decoration: customBorder != null
-          ? BoxDecoration(border: cardBorder)
-          : BoxDecoration(
-              color: backgroundColor ?? AppTheme.surface,
-              borderRadius: BorderRadius.circular(4),
-              border: cardBorder,
-            ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final fitsHeight = constraints.hasBoundedHeight;
-          return Column(
-            mainAxisSize: fitsHeight ? MainAxisSize.max : MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (header != null)
-                Container(
-                  height: 32,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.cardPadding,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppTheme.surfaceRaised,
-                    border: Border(
-                      bottom: BorderSide(color: AppTheme.border, width: 0.5),
+    final card = Semantics(
+      container: true,
+      child: Container(
+        margin: margin,
+        decoration: customBorder != null
+            ? BoxDecoration(border: cardBorder)
+            : BoxDecoration(
+                color: backgroundColor ?? AppTheme.surface,
+                borderRadius: BorderRadius.circular(4),
+                border: cardBorder,
+              ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final fitsHeight = constraints.hasBoundedHeight;
+            return Column(
+              mainAxisSize: fitsHeight ? MainAxisSize.max : MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (header != null)
+                  Container(
+                    height: 32,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.cardPadding,
                     ),
+                    decoration: BoxDecoration(
+                      color: AppTheme.surfaceRaised,
+                      border: Border(
+                        bottom: BorderSide(color: AppTheme.border, width: 0.5),
+                      ),
+                    ),
+                    child: header,
                   ),
-                  child: header,
-                ),
-              if (fitsHeight)
-                Expanded(
-                  child: Padding(
+                if (fitsHeight)
+                  Expanded(
+                    child: Padding(
+                      padding: padding,
+                      child: child,
+                    ),
+                  )
+                else
+                  Padding(
                     padding: padding,
                     child: child,
                   ),
-                )
-              else
-                Padding(
-                  padding: padding,
-                  child: child,
-                ),
-            ],
-          );
-        },
+              ],
+            );
+          },
+        ),
       ),
     );
 

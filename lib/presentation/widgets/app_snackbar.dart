@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import '../theme/app_typography.dart';
 
+/// Utility for displaying themed success, error, info, and warning snackbars.
 class AppSnackBar {
   static void showSuccess(BuildContext context, String message) {
     _show(context, message, AppTheme.success, Colors.black);
@@ -38,7 +39,7 @@ class AppSnackBar {
         ),
         backgroundColor: backgroundColor,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         duration: const Duration(seconds: 4),
       ),
     );

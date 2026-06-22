@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 
+/// A section header with title, optional description, and trailing widget.
 class AppSectionHeader extends StatelessWidget {
   final String title;
   final String? description;
@@ -17,32 +18,36 @@ class AppSectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Text(
-                title,
-                style: AppTypography.sectionHeaderLarge,
+    return Semantics(
+      header: true,
+      label: title,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: AppTypography.sectionHeaderLarge,
+                ),
               ),
-            ),
-            if (trailing != null) ...[
-              const SizedBox(width: AppSpacing.sm),
-              trailing!,
+              if (trailing != null) ...[
+                const SizedBox(width: AppSpacing.sm),
+                trailing!,
+              ],
             ],
-          ],
-        ),
-        if (description != null) ...[
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            description!,
-            style: AppTypography.captionRegular,
           ),
+          if (description != null) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              description!,
+              style: AppTypography.captionRegular,
+            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 }

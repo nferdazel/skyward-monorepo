@@ -5,6 +5,7 @@ import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 import 'app_control_label.dart';
 
+/// A themed dropdown form field with optional label and tooltip.
 class AppDropdownField<T> extends StatelessWidget {
   final String? label;
   final T value;
@@ -27,38 +28,42 @@ class AppDropdownField<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dropdown = LayoutBuilder(
-      builder: (context, constraints) {
-        final hasBoundedWidth = constraints.hasBoundedWidth && constraints.maxWidth.isFinite;
-        final dropdownChild = Container(
-          padding: contentPadding,
-          decoration: BoxDecoration(
-            color: AppTheme.background,
-            borderRadius: BorderRadius.circular(4),
-            border: Border.all(color: AppTheme.border),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<T>(
-              value: value,
-              items: items,
-              onChanged: onChanged,
-              dropdownColor: AppTheme.surface,
-              isExpanded: hasBoundedWidth ? isExpanded : false,
-              icon: Icon(Icons.arrow_drop_down, color: AppTheme.primary, size: 18),
-              style: AppTypography.badgeText.copyWith(
-                color: AppTheme.textPrimary,
-                letterSpacing: 0.4,
+    final dropdown = Semantics(
+      button: true,
+      label: 'Select ${label ?? "option"}',
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final hasBoundedWidth = constraints.hasBoundedWidth && constraints.maxWidth.isFinite;
+          final dropdownChild = Container(
+            padding: contentPadding,
+            decoration: BoxDecoration(
+              color: AppTheme.background,
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: AppTheme.border),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<T>(
+                value: value,
+                items: items,
+                onChanged: onChanged,
+                dropdownColor: AppTheme.surface,
+                isExpanded: hasBoundedWidth ? isExpanded : false,
+                icon: Icon(Icons.arrow_drop_down, color: AppTheme.primary, size: 18),
+                style: AppTypography.badgeText.copyWith(
+                  color: AppTheme.textPrimary,
+                  letterSpacing: 0.4,
+                ),
               ),
             ),
-          ),
-        );
+          );
 
-        if (hasBoundedWidth) {
-          return dropdownChild;
-        }
+          if (hasBoundedWidth) {
+            return dropdownChild;
+          }
 
-        return IntrinsicWidth(child: dropdownChild);
-      },
+          return IntrinsicWidth(child: dropdownChild);
+        },
+      ),
     );
 
     if (label == null) {

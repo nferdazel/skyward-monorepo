@@ -4,6 +4,7 @@ import '../../core/theme/app_theme.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 
+/// A statistic display with a small label and a prominent value.
 class AppStatText extends StatelessWidget {
   final String label;
   final String value;
@@ -24,27 +25,30 @@ class AppStatText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: crossAxisAlignment,
-      children: [
-        Text(
-          label,
-          textAlign: textAlign,
-          style: AppTypography.badgeText.copyWith(
-            color: labelColor ?? AppTheme.textSecondary,
-            letterSpacing: 0.4,
+    return Semantics(
+      label: '$label: $value',
+      child: Column(
+        crossAxisAlignment: crossAxisAlignment,
+        children: [
+          Text(
+            label,
+            textAlign: textAlign,
+            style: AppTypography.badgeText.copyWith(
+              color: labelColor ?? AppTheme.textSecondary,
+              letterSpacing: 0.4,
+            ),
           ),
-        ),
-        const SizedBox(height: AppSpacing.xs),
-        Text(
-          value,
-          textAlign: textAlign,
-          style: AppTypography.badgeText.copyWith(
-            color: valueColor ?? AppTheme.textPrimary,
-            letterSpacing: 0.0,
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            value,
+            textAlign: textAlign,
+            style: AppTypography.badgeText.copyWith(
+              color: valueColor ?? AppTheme.textPrimary,
+              letterSpacing: 0.0,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

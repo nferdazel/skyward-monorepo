@@ -8,6 +8,7 @@ import '../../features/routes/domain/route_models.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 
+/// A searchable dropdown for selecting airports by IATA code, city, or country.
 class SearchableAirportDropdown extends StatefulWidget {
   final String label;
   final List<Airport> airports;
@@ -117,49 +118,53 @@ class _SearchableAirportDropdownState extends State<SearchableAirportDropdown> {
 
   @override
   Widget build(BuildContext context) {
-    return CompositedTransformTarget(
-      link: _layerLink,
-      child: TextFormField(
-        controller: _textController,
-        focusNode: _focusNode,
-        style: AppTypography.bodyMedium.copyWith(color: AppTheme.textPrimary),
-        decoration: InputDecoration(
-          labelText: widget.label.toUpperCase(),
-          labelStyle: AppTypography.badgeText.copyWith(
-            color: AppTheme.textSecondary,
+    return Semantics(
+      textField: true,
+      label: widget.label,
+      child: CompositedTransformTarget(
+        link: _layerLink,
+        child: TextFormField(
+          controller: _textController,
+          focusNode: _focusNode,
+          style: AppTypography.bodyMedium.copyWith(color: AppTheme.textPrimary),
+          decoration: InputDecoration(
+            labelText: widget.label.toUpperCase(),
+            labelStyle: AppTypography.badgeText.copyWith(
+              color: AppTheme.textSecondary,
+            ),
+            prefixIcon: Icon(
+              Icons.flight_takeoff,
+              size: 20,
+              color: AppTheme.primary,
+            ),
+            suffixIcon: _textController.text.isNotEmpty
+                ? IconButton(
+                    icon: Icon(
+                      Icons.clear,
+                      size: 18,
+                      color: AppTheme.textSecondary,
+                    ),
+                    onPressed: () {
+                      _textController.clear();
+                      widget.onSelected(null);
+                      setState(() {});
+                    },
+                  )
+                : Icon(Icons.arrow_drop_down, color: AppTheme.textSecondary),
           ),
-          prefixIcon: Icon(
-            Icons.flight_takeoff,
-            size: 20,
-            color: AppTheme.primary,
-          ),
-          suffixIcon: _textController.text.isNotEmpty
-              ? IconButton(
-                  icon: Icon(
-                    Icons.clear,
-                    size: 18,
-                    color: AppTheme.textSecondary,
-                  ),
-                  onPressed: () {
-                    _textController.clear();
-                    widget.onSelected(null);
-                    setState(() {});
-                  },
-                )
-              : Icon(Icons.arrow_drop_down, color: AppTheme.textSecondary),
+          onChanged: (value) {
+            _query = value;
+            if (_focusNode.hasFocus) {
+              _removeOverlay();
+              _showOverlay();
+            }
+          },
+          onTap: () {
+            if (!_focusNode.hasFocus) {
+              _focusNode.requestFocus();
+            }
+          },
         ),
-        onChanged: (value) {
-          _query = value;
-          if (_focusNode.hasFocus) {
-            _removeOverlay();
-            _showOverlay();
-          }
-        },
-        onTap: () {
-          if (!_focusNode.hasFocus) {
-            _focusNode.requestFocus();
-          }
-        },
       ),
     );
   }
