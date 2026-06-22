@@ -8,6 +8,7 @@ import '../../../../presentation/theme/app_spacing.dart';
 import '../../../../presentation/theme/app_typography.dart';
 import '../../../../presentation/widgets/app_button.dart';
 import '../../../../presentation/widgets/app_snackbar.dart';
+import '../../../../presentation/widgets/skyward_logo.dart';
 import '../cubit/auth_cubit.dart';
 import '../cubit/auth_state.dart';
 
@@ -117,6 +118,9 @@ class _AuthScreenState extends State<AuthScreen> {
       mainAxisAlignment: MainAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
       children: [
+        // Logo
+        SkywardLogo(size: 64, showBackground: true),
+        const SizedBox(height: AppSpacing.lg),
         // Wordmark
         Text(
           AppStrings.skyward,

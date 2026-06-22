@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../presentation/theme/app_spacing.dart';
+import '../../../../presentation/widgets/skyward_logo.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../navigation/presentation/cubit/navigation_cubit.dart';
 
@@ -43,19 +44,7 @@ class DashboardSidebar extends StatelessWidget {
           // Logo mark
           Tooltip(
             message: 'Skyward Ops',
-            child: Container(
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(
-                color: AppTheme.primary,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: const Icon(
-                Icons.flight,
-                color: Colors.black,
-                size: 16,
-              ),
-            ),
+            child: SkywardLogo(size: 28, showBackground: true),
           ),
           const SizedBox(height: AppSpacing.lg),
           Divider(color: AppTheme.border, height: 1),
