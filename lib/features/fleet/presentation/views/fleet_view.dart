@@ -88,6 +88,25 @@ class _FleetViewState extends State<FleetView>
         listener: (context, state) {
           if (state is FleetActionSuccess) {
             AppSnackBar.showSuccess(context, state.message);
+            if (state.fleet.length == 1) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        '✈ YOUR FIRST AIRFRAME IS OPERATIONAL. Build your first route to start generating revenue.',
+                        style: AppTypography.badgeText.copyWith(
+                          color: AppTheme.success,
+                        ),
+                      ),
+                      backgroundColor: AppTheme.surface,
+                      duration: const Duration(seconds: 6),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              });
+            }
           } else if (state is FleetError) {
             AppSnackBar.showError(context, state.message);
           }
@@ -181,7 +200,24 @@ class _FleetViewState extends State<FleetView>
       buildWhen: (previous, current) => current is! FleetActionSuccess,
       builder: (context, state) {
         if (state is FleetLoading) {
-          return const Center(child: CircularProgressIndicator());
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(
+                  color: AppTheme.primary,
+                  strokeWidth: 2,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  AppStrings.loadingFleetRegistry,
+                  style: AppTypography.microLabel.copyWith(
+                    color: AppTheme.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          );
         }
 
         if (state is FleetError && _isEmptyState(state)) {
@@ -422,11 +458,13 @@ class _FleetViewState extends State<FleetView>
   }
 
   Widget _buildEmptyFleetView() {
-    return const Center(
+    return Center(
       child: AppEmptyState(
         icon: Icons.flight_outlined,
         title: AppStrings.yourHangarEmpty,
         description: AppStrings.yourHangarEmptyDesc,
+        actionLabel: AppStrings.browseAircraftCta,
+        onAction: () => _onTabTap(1),
       ),
     );
   }
@@ -675,7 +713,24 @@ class _FleetViewState extends State<FleetView>
       buildWhen: (previous, current) => current is! FleetActionSuccess,
       builder: (context, state) {
         if (state is FleetLoading) {
-          return const Center(child: CircularProgressIndicator());
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(
+                  color: AppTheme.primary,
+                  strokeWidth: 2,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  AppStrings.loadingFleetRegistry,
+                  style: AppTypography.microLabel.copyWith(
+                    color: AppTheme.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          );
         }
 
         final catalog = _getCatalogList(state);

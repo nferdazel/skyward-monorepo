@@ -70,6 +70,25 @@ class _RoutesViewState extends State<RoutesView> {
       listener: (context, state) {
         if (state is RoutesActionSuccess) {
           AppSnackBar.showSuccess(context, state.message);
+          if (state.routes.length == 1) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      '🛫 YOUR FIRST ROUTE IS LIVE. Revenue will flow after the next simulation tick.',
+                      style: AppTypography.badgeText.copyWith(
+                        color: AppTheme.success,
+                      ),
+                    ),
+                    backgroundColor: AppTheme.surface,
+                    duration: const Duration(seconds: 6),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            });
+          }
         } else if (state is RoutesError) {
           AppSnackBar.showError(context, state.message);
         }
@@ -77,7 +96,24 @@ class _RoutesViewState extends State<RoutesView> {
       buildWhen: (prev, cur) => cur is! RoutesActionSuccess,
       builder: (context, state) {
         if (state is RoutesLoading) {
-          return const Center(child: CircularProgressIndicator());
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(
+                  color: AppTheme.primary,
+                  strokeWidth: 2,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  AppStrings.loadingRouteNetwork,
+                  style: AppTypography.microLabel.copyWith(
+                    color: AppTheme.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          );
         }
 
         final routes = _getRoutes(state);

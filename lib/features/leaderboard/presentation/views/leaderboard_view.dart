@@ -577,18 +577,17 @@ class LeaderboardView extends StatelessWidget {
   Widget _buildSkeletonLoader() {
     return Center(
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primary),
+            color: AppTheme.primary,
             strokeWidth: 2,
           ),
           const SizedBox(height: 16),
           Text(
-            AppStrings.loadingLabel,
-            style: AppTypography.badgeText.copyWith(
+            AppStrings.updatingCompetitorIntel,
+            style: AppTypography.microLabel.copyWith(
               color: AppTheme.textMuted,
-              letterSpacing: 0.8,
             ),
           ),
         ],

@@ -14,6 +14,8 @@ class AppStrings {
   static const String liveLabel = 'LIVE';
   static const String noMatchingAirports = 'NO MATCHING AIRPORTS';
   static const String loadingLabel = 'LOADING...';
+  static const String loadingFleetRegistry = 'LOADING FLEET REGISTRY...';
+  static const String loadingRouteNetwork = 'LOADING ROUTE NETWORK...';
 
   // Auth Screen
   static const String authHeroTitle = 'Architect Your Global Airline Empire.';
@@ -212,9 +214,10 @@ class AppStrings {
       'NO AIRCRAFT MATCH YOUR FILTER CRITERIA.';
   static const String failedToLoadFleetRegistry =
       'FAILED TO LOAD FLEET REGISTRY. RETRY.';
-  static const String yourHangarEmpty = 'YOUR HANGAR IS CURRENTLY EMPTY.';
+  static const String yourHangarEmpty = 'YOUR FLEET AWAITS.';
   static const String yourHangarEmptyDesc =
-      'Acquire high-efficiency commercial aircraft to establish operational command.';
+      'Your competitors are already flying. Every day without aircraft is lost revenue. Start by acquiring your first airframe.';
+  static const String browseAircraftCta = 'BROWSE AIRCRAFT';
   static const String configureSeatAllocation = 'Configure Seat Allocation';
   static const String realisticSpaceConfiguration =
       'Realistic Space Configuration';
@@ -459,9 +462,9 @@ class AppStrings {
   static const String ticketPriceLabel = 'PROPOSED TICKET PRICE';
   static const String weeklyFreqLabel = 'WEEKLY FLIGHT FREQ';
 
-  static const String noActiveConnections = 'NO ACTIVE FLIGHT CONNECTIONS.';
+  static const String noActiveConnections = 'YOUR NETWORK IS CLEAR.';
   static const String noActiveConnectionsDesc =
-      'Use the Blueprint Planner below to establish routes between airport hubs.';
+      'Your first route is the most important. Start with a short-haul connection from your HQ airport using the Blueprint Planner below.';
   static const String routeHeader = 'ROUTE';
   static const String scheduleHeader = 'SCHEDULE';
   static const String fareHeader = 'FARE';
