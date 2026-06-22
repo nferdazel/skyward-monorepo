@@ -360,6 +360,7 @@ class AppStrings {
   static const String airportsLoadFailed = 'Failed to load airports.';
   static const String settingsSaveFailed = 'Failed to save settings.';
   static const String airlineResetFailed = 'Failed to reset airline.';
+  static const String airlineWipeFailed = 'Wipe failed';
   static const String defaultSeatPresetLabel = 'DEFAULT SEAT CONFIGURATION PRESET';
   static const String defaultSeatPresetDesc =
       'Default seat allocation applied when acquiring new aircraft.';
@@ -652,14 +653,20 @@ class AppStrings {
   static const String purchaseFailed = 'Purchase failed';
   static const String leaseFailed = 'Lease failed';
   static const String repairFailed = 'Repair failed';
+  static const String repairSuccess = 'Aircraft repaired successfully!';
   static const String saleFailed = 'Aircraft sale failed.';
+  static const String saleSuccess = 'Aircraft sold successfully!';
   static const String leaseTerminationFailed = 'Lease termination failed.';
+  static const String leaseTerminationSuccess = 'Lease terminated successfully!';
   static const String aircraftNotFound = 'Aircraft not found.';
   static const String dbConnectionFailed = 'Database connection failed: ';
   static const String dbEmptyResponse =
       'Database transaction returned an empty response.';
   static const String fleetLoadFailed = 'Failed to load fleet.';
   static const String seatConfigFailed = 'Seat configuration failed.';
+  static const String seatConfigUpdateFailedPrefix = 'Failed to configure seats: ';
+  static const String saleFailedPrefix = 'Failed to sell aircraft: ';
+  static const String leaseTerminationFailedPrefix = 'Failed to terminate lease: ';
 
   // Route operation messages
   static const String routeCreatedSuccess = 'Route established successfully!';
@@ -671,6 +678,7 @@ class AppStrings {
   static const String routesLoadFailed = 'Failed to load routes.';
   static const String routeAssignFailed = 'Aircraft assignment failed.';
   static const String routeFrequencyUpdateFailed = 'Route update failed.';
+  static const String routeFrequencyUpdateSuccess = 'Route frequency and pricing adjusted!';
 
   // Notifications
   static const String notificationsTitle = 'NOTIFICATIONS';
@@ -692,6 +700,17 @@ class AppStrings {
   static const String helpPricing = 'Price above base fare reduces demand. Optimal: 0.95-1.05x base.';
   static const String helpCashRunway = 'Days until cash runs out at current expense rate';
   static const String helpBurnRatio = 'Percentage of expenses from leases vs operations';
+
+  // Bank error messages
+  static const String bankDataLoadFailed = 'Failed to load bank data.';
+  static const String loanProcessFailed = 'Failed to process loan.';
+  static const String financingProcessFailed = 'Failed to process financing.';
+  static const String creditReportLoadFailed = 'Failed to load credit report.';
+  static const String aircraftFinancingLoadFailed = 'Failed to load aircraft financing.';
+  static const String loanRefinanceFailed = 'Failed to refinance loan.';
+
+  // Achievement error messages
+  static const String achievementsLoadFailed = 'Failed to load achievements.';
 
   // Shared widgets
   static const String dialogDismissButton = 'DISMISS';

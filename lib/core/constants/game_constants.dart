@@ -149,4 +149,48 @@ class GameConstants {
 
   /// Minimum bot price as fraction of base fare.
   static const double botMinPriceRatio = 0.85;
+
+  // ==========================================
+  // SIMULATION & SYSTEM PARAMETERS
+  // ==========================================
+
+  /// Maximum aircraft operational condition (fully repaired).
+  static const double maxCondition = 100.0;
+
+  /// Default credit score for new players.
+  static const int defaultCreditScore = 500;
+
+  /// TTL for cached global game settings to avoid redundant Supabase fetches.
+  static const Duration settingsCacheTtl = Duration(minutes: 5);
+
+  /// Simulated elapsed game days per dev-mode sync tick (~1 game hour).
+  static const double devElapsedDaysPerSync = 0.04;
+
+  /// Default auto-repair condition threshold.
+  static const double defaultAutoRepairThreshold = 50.0;
+
+  /// Default fare multiplier applied to recommended base fares.
+  static const double defaultFareMultiplier = 1.0;
+
+  // ==========================================
+  // BLUEPRINT PLANNER REFERENCE AIRCRAFT
+  // ==========================================
+
+  /// Reference aircraft fuel burn per km (A320neo-class) for planner cost estimates.
+  static const double plannerReferenceFuelBurnPerKm = 4.16;
+
+  /// Reference aircraft passenger capacity for planner cost estimates.
+  static const int plannerReferenceCapacity = 186;
+
+  /// Target load factor used in planner pricing calculations.
+  static const double plannerReferenceTargetLoadFactor = 0.75;
+
+  /// Reference aircraft maintenance cost per hour for planner estimates.
+  static const double plannerReferenceMaintCostPerHour = 820.0;
+
+  /// Reference aircraft speed for planner duration calculations.
+  static const double plannerReferenceSpeedKmh = 830.0;
+
+  /// Markup multiplier applied to cost-based fare calculation.
+  static const double plannerMarkupMultiplier = 1.35;
 }
