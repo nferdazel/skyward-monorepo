@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/utils/app_formatters.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/lazy_tab_cubit.dart';
 import '../../../../core/utils/perf_debug.dart';
@@ -78,10 +79,6 @@ class _AuthenticatedDashboardShell extends StatefulWidget {
 
 class _AuthenticatedDashboardShellState
     extends State<_AuthenticatedDashboardShell> {
-  static final _currencyFormat = NumberFormat.currency(
-    symbol: '\$',
-    decimalDigits: 2,
-  );
   static final _dateFormat = DateFormat('yyyy-MM-dd HH:mm');
   late final NavigationCubit _navigationCubit;
   late final SimulationCubit _simulationCubit;
@@ -319,7 +316,7 @@ class _AuthenticatedDashboardShellState
         child: _buildDesktopLayout(
           context,
           authState,
-          _currencyFormat,
+          AppFormatters.currencyDetailed,
           _dateFormat,
         ),
       ),

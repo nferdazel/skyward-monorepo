@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/utils/app_formatters.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/lazy_tab_cubit.dart';
 import '../../../../core/utils/perf_debug.dart';
@@ -34,10 +35,6 @@ class FinanceView extends StatefulWidget {
 
 class _FinanceViewState extends State<FinanceView>
     with SingleTickerProviderStateMixin {
-  static final _currencyFormat = NumberFormat.currency(
-    symbol: '\$',
-    decimalDigits: 2,
-  );
   static final _dateTimeFormat = DateFormat('yyyy-MM-dd HH:mm');
   static final _dateOnlyFormat = DateFormat('yyyy-MM-dd');
   static final _timeOnlyFormat = DateFormat('HH:mm');
@@ -189,7 +186,7 @@ class _FinanceViewState extends State<FinanceView>
   }
 
   Widget _buildOverviewTab(FinanceDataState state) {
-    final overview = _FinanceOverview.fromState(state, _currencyFormat);
+    final overview = _FinanceOverview.fromState(state);
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -198,23 +195,23 @@ class _FinanceViewState extends State<FinanceView>
           const SizedBox(height: AppSpacing.blockGap),
           _buildCurrentPositionGrid(
             state.snapshot,
-            _currencyFormat,
+            AppFormatters.currencyDetailed,
             state.dailySnapshots,
           ),
           const SizedBox(height: AppSpacing.sectionGap),
           const AppSectionHeader(title: AppStrings.rollingOperationsTitle),
           const SizedBox(height: AppSpacing.blockGap),
-          _buildExecutiveSummary(context, state, _currencyFormat),
+          _buildExecutiveSummary(context, state, AppFormatters.currencyDetailed),
           const SizedBox(height: AppSpacing.blockGap),
-          _buildFinanceSignals(overview, _currencyFormat),
+          _buildFinanceSignals(overview),
           const SizedBox(height: AppSpacing.sectionGap),
-          _buildExpenseBreakdownBar(state, _currencyFormat),
+          _buildExpenseBreakdownBar(state, AppFormatters.currencyDetailed),
           const SizedBox(height: AppSpacing.sectionGap),
           const AppSectionHeader(
             title: AppStrings.ledgerCategoryAnalytics,
           ),
           const SizedBox(height: AppSpacing.blockGap),
-          _buildCategoryAnalyticsGrid(state, _currencyFormat),
+          _buildCategoryAnalyticsGrid(state, AppFormatters.currencyDetailed),
         ],
       ),
     );
@@ -232,7 +229,7 @@ class _FinanceViewState extends State<FinanceView>
           _buildLedgerLogs(
             context,
             state,
-            _currencyFormat,
+            AppFormatters.currencyDetailed,
             _dateTimeFormat,
           ),
         ],
@@ -460,10 +457,7 @@ class _FinanceViewState extends State<FinanceView>
     );
   }
 
-  Widget _buildFinanceSignals(
-    _FinanceOverview overview,
-    NumberFormat currencyFormat,
-  ) {
+  Widget _buildFinanceSignals(_FinanceOverview overview) {
     return AppInfoStrip(
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -782,15 +776,6 @@ class _FinanceOverview {
   final String largestExpenseLabel;
   final String coverageLabel;
   final Color coverageColor;
-  final String latestDayLabel;
-  final Color latestDayColor;
-  final String latestDayNote;
-  final String averageDayLabel;
-  final Color averageDayColor;
-  final String averageDayNote;
-  final String worstDayLabel;
-  final Color worstDayColor;
-  final String worstDayNote;
 
   const _FinanceOverview({
     required this.runwayLabel,
@@ -799,21 +784,9 @@ class _FinanceOverview {
     required this.largestExpenseLabel,
     required this.coverageLabel,
     required this.coverageColor,
-    required this.latestDayLabel,
-    required this.latestDayColor,
-    required this.latestDayNote,
-    required this.averageDayLabel,
-    required this.averageDayColor,
-    required this.averageDayNote,
-    required this.worstDayLabel,
-    required this.worstDayColor,
-    required this.worstDayNote,
   });
 
-  static _FinanceOverview fromState(
-    FinanceDataState state,
-    NumberFormat currencyFormat,
-  ) {
+  static _FinanceOverview fromState(FinanceDataState state) {
     final rollingExpense = state.snapshot.rollingExpense30d;
     final rollingRevenue = state.snapshot.rollingRevenue30d;
     final runwayDays = rollingExpense > 0
@@ -845,26 +818,6 @@ class _FinanceOverview {
         : '${((state.totalLease / state.totalExpense) * 100).toStringAsFixed(0)}% lease / ${((state.totalOperations / state.totalExpense) * 100).toStringAsFixed(0)}% ops';
 
     final coverageHealthy = rollingRevenue >= rollingExpense;
-    final latestDayColor = state.latestDailyNet >= 0
-        ? AppTheme.success
-        : AppTheme.error;
-    final averageDayColor = state.averageDailyNet >= 0
-        ? AppTheme.success
-        : AppTheme.warning;
-    final worstDayColor = state.worstDailyNet >= 0
-        ? AppTheme.success
-        : AppTheme.error;
-    final latestDayNote = state.leaseExpenseShare >= 0.45
-        ? AppStrings.financeLeasePressureNote
-        : (state.repairExpenseShare >= 0.15
-              ? AppStrings.financeRepairPressureNote
-              : AppStrings.financeRecentDayStableNote);
-    final averageDayNote = state.averageDailyNet >= 0
-        ? AppStrings.financeAverageDayHealthyNote
-        : AppStrings.financeAverageDayWeakNote;
-    final worstDayNote = state.expenseConcentration >= 0.55
-        ? AppStrings.financeConcentrationWarning
-        : AppStrings.financeWorstDayNote;
 
     return _FinanceOverview(
       runwayLabel: runwayLabel,
@@ -877,17 +830,6 @@ class _FinanceOverview {
                 ? AppStrings.financeCoverageWeak
                 : AppStrings.financeNoExpenseHistory),
       coverageColor: coverageHealthy ? AppTheme.success : AppTheme.warning,
-      latestDayLabel: currencyFormat.format(state.latestDailyNet),
-      latestDayColor: latestDayColor,
-      latestDayNote: latestDayNote,
-      averageDayLabel: currencyFormat.format(
-        state.averageDailyNet,
-      ),
-      averageDayColor: averageDayColor,
-      averageDayNote: averageDayNote,
-      worstDayLabel: currencyFormat.format(state.worstDailyNet),
-      worstDayColor: worstDayColor,
-      worstDayNote: worstDayNote,
     );
   }
 }

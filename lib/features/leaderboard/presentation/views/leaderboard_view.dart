@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/utils/app_formatters.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../presentation/theme/app_spacing.dart';
 import '../../../../presentation/theme/app_typography.dart';
@@ -26,11 +26,6 @@ class LeaderboardView extends StatefulWidget {
 }
 
 class _LeaderboardViewState extends State<LeaderboardView> {
-  static final _currencyFormat = NumberFormat.currency(
-    symbol: '\$',
-    decimalDigits: 0,
-  );
-
   String _sortBy = 'net_worth';
 
   late List<LeaderboardEntry> _sortedRankings;
@@ -321,11 +316,11 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                       ),
                     ),
                     _buildTableCell(
-                      _currencyFormat.format(entry.cash),
+                      AppFormatters.currency.format(entry.cash),
                       isMono: true,
                     ),
                     _buildTableCell(
-                      _currencyFormat.format(entry.netWorth),
+                      AppFormatters.currency.format(entry.netWorth),
                       color: AppTheme.success,
                       isBold: true,
                       isMono: true,
@@ -336,7 +331,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                       isMono: true,
                     ),
                     _buildTableCell(
-                      _currencyFormat.format(entry.monthlyRevenue),
+                      AppFormatters.currency.format(entry.monthlyRevenue),
                       isMono: true,
                     ),
                   ].map((cell) {
@@ -502,25 +497,25 @@ class _LeaderboardViewState extends State<LeaderboardView> {
           const SizedBox(height: 12),
           _buildSideStatRow(
             AppStrings.liquidCash,
-            _currencyFormat.format(liveInsights.cash),
+            AppFormatters.currency.format(liveInsights.cash),
             liveInsights.cash >= 0 ? AppTheme.success : AppTheme.error,
           ),
           const SizedBox(height: 8),
           _buildSideStatRow(
             AppStrings.estNetWorth,
-            _currencyFormat.format(liveInsights.netWorth),
+            AppFormatters.currency.format(liveInsights.netWorth),
             AppTheme.primary,
           ),
           const SizedBox(height: 8),
           _buildSideStatRow(
             AppStrings.revenuePerAircraft,
-            _currencyFormat.format(liveInsights.revenuePerAircraft),
+            AppFormatters.currency.format(liveInsights.revenuePerAircraft),
             AppTheme.info,
           ),
           const SizedBox(height: 8),
           _buildSideStatRow(
             AppStrings.netWorthPerAircraft,
-            _currencyFormat.format(liveInsights.netWorthPerAircraft),
+            AppFormatters.currency.format(liveInsights.netWorthPerAircraft),
             AppTheme.success,
           ),
           const SizedBox(height: 8),
@@ -830,7 +825,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
         if (gap > 0) ...[
           const SizedBox(height: 6),
           Text(
-            '-${_currencyFormat.format(gap)}${AppStrings.leaderBehindSuffix}',
+            '-${AppFormatters.currency.format(gap)}${AppStrings.leaderBehindSuffix}',
             style: AppTypography.badgeText.copyWith(
               color: AppTheme.error,
               letterSpacing: 0.0,

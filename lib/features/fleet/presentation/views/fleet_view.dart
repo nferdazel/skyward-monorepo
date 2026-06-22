@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/utils/app_formatters.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/condition_colors.dart';
 import '../../../../core/utils/lazy_tab_cubit.dart';
@@ -38,10 +39,6 @@ class FleetView extends StatefulWidget {
 
 class _FleetViewState extends State<FleetView>
     with SingleTickerProviderStateMixin {
-  static final _currencyFormat = NumberFormat.currency(
-    symbol: '\$',
-    decimalDigits: 0,
-  );
   late final TabController _tabController;
   late final LazyTabCubit _lazyTabCubit;
 
@@ -144,14 +141,14 @@ class _FleetViewState extends State<FleetView>
                           child: tabState.loadedIndexes.contains(0)
                               ? _buildActiveFleetTab(
                                   userId,
-                                  _currencyFormat,
+                                  AppFormatters.currency,
                                   autoGroundingThreshold,
                                 )
                               : const SizedBox.shrink(),
                         ),
                         RepaintBoundary(
                           child: tabState.loadedIndexes.contains(1)
-                              ? _buildAcquireTab(userId, _currencyFormat)
+                              ? _buildAcquireTab(userId, AppFormatters.currency)
                               : const SizedBox.shrink(),
                         ),
                       ],
@@ -1142,8 +1139,8 @@ class _FleetViewState extends State<FleetView>
                 children: [
                   Text(
                     isLease
-                        ? '${AppStrings.leaseDownPaymentPrefix}${_currencyFormat.format(model.leasePricePerMonth)}${AppStrings.leaseDownPaymentSuffix}'
-                        : '${AppStrings.purchaseDeductionPrefix}${_currencyFormat.format(model.purchasePrice)}${AppStrings.purchaseDeductionSuffix}',
+                        ? '${AppStrings.leaseDownPaymentPrefix}${AppFormatters.currency.format(model.leasePricePerMonth)}${AppStrings.leaseDownPaymentSuffix}'
+                        : '${AppStrings.purchaseDeductionPrefix}${AppFormatters.currency.format(model.purchasePrice)}${AppStrings.purchaseDeductionSuffix}',
                     style: AppTypography.captionRegular.copyWith(
                       color: AppTheme.textMuted,
                       height: 1.4,
