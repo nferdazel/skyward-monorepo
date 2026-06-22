@@ -419,7 +419,7 @@ class LeaderboardCubit extends Cubit<LeaderboardState>
               humanNetWorth: humanEntry.netWorth,
               humanFleetSize: humanEntry.fleetSize,
               humanMonthlyRevenue: humanEntry.monthlyRevenue,
-              force: true,
+              force: false,
             );
           },
         )
