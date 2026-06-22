@@ -1411,9 +1411,8 @@ class _FleetViewState extends State<FleetView>
                         onPressed: () {
                           context.read<BankCubit>().financeAircraft(
                                 model.id,
-                                userId,
-                                termMonths,
                                 downPaymentPct,
+                                termMonths,
                               );
                           Navigator.pop(ctx);
                         },

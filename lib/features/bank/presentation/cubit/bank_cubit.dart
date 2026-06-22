@@ -178,18 +178,16 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
   /// Finance an aircraft purchase.
   Future<void> financeAircraft(
     String aircraftModelId,
-    String fleetId,
-    int termMonths,
     double downPaymentPct,
+    int termMonths,
   ) async {
     emit(const BankLoading());
 
     try {
       final response = await _gateway.financeAircraft(
         aircraftModelId,
-        fleetId,
-        termMonths,
         downPaymentPct,
+        termMonths,
       );
 
       if (response.isNotEmpty) {

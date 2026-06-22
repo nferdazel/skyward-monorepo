@@ -25,9 +25,8 @@ abstract class BankGateway {
   Future<List<dynamic>> getAircraftFinancing();
   Future<List<dynamic>> financeAircraft(
     String aircraftModelId,
-    String fleetId,
-    int termMonths,
     double downPaymentPct,
+    int termMonths,
   );
   Future<Map<String, dynamic>> refinanceLoan(String loanId);
 }
@@ -157,18 +156,16 @@ class SupabaseBankGateway implements BankGateway {
   @override
   Future<List<dynamic>> financeAircraft(
     String aircraftModelId,
-    String fleetId,
-    int termMonths,
     double downPaymentPct,
+    int termMonths,
   ) async {
     try {
       final response = await SupabaseManager.client.rpc(
         'finance_aircraft',
         params: {
           'p_aircraft_model_id': aircraftModelId,
-          'p_fleet_id': fleetId,
-          'p_term_months': termMonths,
           'p_down_payment_pct': downPaymentPct,
+          'p_term_months': termMonths,
         },
       );
       return response as List<dynamic>;
@@ -177,7 +174,8 @@ class SupabaseBankGateway implements BankGateway {
         'finance_aircraft',
         {
           'p_aircraft_model_id': aircraftModelId,
-          'p_fleet_id': fleetId,
+          'p_down_payment_pct': downPaymentPct,
+          'p_term_months': termMonths,
         },
         e.message,
       );
