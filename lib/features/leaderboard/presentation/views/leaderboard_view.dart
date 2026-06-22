@@ -8,11 +8,13 @@ import '../../../../presentation/theme/app_spacing.dart';
 import '../../../../presentation/theme/app_typography.dart';
 import '../../../../presentation/widgets/app_badge.dart';
 import '../../../../presentation/widgets/app_card.dart';
+import '../../../../presentation/widgets/app_empty_state.dart';
 import '../../../../presentation/widgets/app_info_strip.dart';
 import '../../../../presentation/widgets/app_section_header.dart';
 import '../../../../presentation/widgets/app_table_shell.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
+import '../../../simulation/presentation/cubit/simulation_cubit.dart';
 import '../../domain/leaderboard_models.dart';
 import '../cubit/leaderboard_cubit.dart';
 import '../cubit/leaderboard_state.dart';
@@ -122,12 +124,48 @@ class _LeaderboardViewState extends State<LeaderboardView> {
       return _buildSkeletonLoader();
     } else if (state is LeaderboardError) {
       return Center(
-        child: Text(
-          state.message,
-          style: AppTypography.buttonText.copyWith(color: AppTheme.error),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline, size: 32, color: AppTheme.error),
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              state.message,
+              style: AppTypography.buttonText.copyWith(color: AppTheme.error),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            OutlinedButton.icon(
+              onPressed: () {
+                final authState = context.read<AuthCubit>().state;
+                if (authState is AuthAuthenticated) {
+                  final simState = context.read<SimulationCubit>().state;
+                  context.read<LeaderboardCubit>().loadRankings(
+                    humanUserId: authState.user.id,
+                    humanCompanyName: authState.user.companyName,
+                    humanCeoName: authState.user.ceoName,
+                    humanCash: simState.cashBalance,
+                  );
+                }
+              },
+              icon: const Icon(Icons.refresh, size: 16),
+              label: Text('RETRY', style: AppTypography.badgeText),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.primary,
+                side: BorderSide(color: AppTheme.primary),
+              ),
+            ),
+          ],
         ),
       );
     } else if (state is LeaderboardLoaded) {
+      if (_sortedRankings.isEmpty) {
+        return AppEmptyState(
+          icon: Icons.leaderboard_outlined,
+          title: 'NO COMPETITORS YET',
+          description: 'The leaderboard will populate as airlines begin operations.',
+        );
+      }
       return Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

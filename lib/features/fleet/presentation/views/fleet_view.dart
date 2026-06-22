@@ -87,26 +87,10 @@ class _FleetViewState extends State<FleetView>
       child: BlocListener<FleetCubit, FleetState>(
         listener: (context, state) {
           if (state is FleetActionSuccess) {
-            AppSnackBar.showSuccess(context, state.message);
-            if (state.fleet.length == 1) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        '✈ YOUR FIRST AIRFRAME IS OPERATIONAL. Build your first route to start generating revenue.',
-                        style: AppTypography.badgeText.copyWith(
-                          color: AppTheme.success,
-                        ),
-                      ),
-                      backgroundColor: AppTheme.surface,
-                      duration: const Duration(seconds: 6),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                }
-              });
-            }
+            final message = state.fleet.length == 1
+                ? '${state.message} Your first airframe is operational!'
+                : state.message;
+            AppSnackBar.showSuccess(context, message);
           } else if (state is FleetError) {
             AppSnackBar.showError(context, state.message);
           }
@@ -197,9 +181,30 @@ class _FleetViewState extends State<FleetView>
 
         if (state is FleetError && _isEmptyState(state)) {
           return Center(
-            child: Text(
-              AppStrings.failedToLoadFleetRegistry,
-              style: AppTypography.buttonText.copyWith(color: AppTheme.error),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.error_outline, size: 32, color: AppTheme.error),
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  AppStrings.failedToLoadFleetRegistry,
+                  style: AppTypography.buttonText.copyWith(
+                    color: AppTheme.error,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                OutlinedButton.icon(
+                  onPressed: () =>
+                      context.read<FleetCubit>().loadFleetAndCatalog(userId),
+                  icon: const Icon(Icons.refresh, size: 16),
+                  label: Text('RETRY', style: AppTypography.badgeText),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.primary,
+                    side: BorderSide(color: AppTheme.primary),
+                  ),
+                ),
+              ],
             ),
           );
         }

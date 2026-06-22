@@ -16,6 +16,7 @@ import '../../../../presentation/widgets/app_info_strip.dart';
 import '../../../../presentation/widgets/app_section_header.dart';
 import '../../../../presentation/widgets/app_stat_text.dart';
 import '../../../../presentation/widgets/app_sparkline.dart';
+import '../../../../presentation/widgets/app_line_chart.dart';
 import '../../../../presentation/widgets/app_table_cells.dart';
 import '../../../../presentation/widgets/app_table_shell.dart';
 import '../../../../presentation/widgets/app_tab_item.dart';
@@ -125,12 +126,40 @@ class _FinanceViewState extends State<FinanceView>
                   }
 
                   if (state is FinanceError && !state.hasData) {
+                    final userId = authState.user.id;
                     return Center(
-                      child: Text(
-                        AppStrings.failedToLoadLedgerLogs,
-                        style: AppTypography.buttonText.copyWith(
-                          color: AppTheme.error,
-                        ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.error_outline,
+                            size: 32,
+                            color: AppTheme.error,
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          Text(
+                            AppStrings.failedToLoadLedgerLogs,
+                            style: AppTypography.buttonText.copyWith(
+                              color: AppTheme.error,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: AppSpacing.lg),
+                          OutlinedButton.icon(
+                            onPressed: () => context
+                                .read<FinanceCubit>()
+                                .loadLedger(userId),
+                            icon: const Icon(Icons.refresh, size: 16),
+                            label: Text(
+                              'RETRY',
+                              style: AppTypography.badgeText,
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppTheme.primary,
+                              side: BorderSide(color: AppTheme.primary),
+                            ),
+                          ),
+                        ],
                       ),
                     );
                   }
@@ -180,6 +209,8 @@ class _FinanceViewState extends State<FinanceView>
             AppFormatters.currencyDetailed,
             state.dailySnapshots,
           ),
+          const SizedBox(height: AppSpacing.blockGap),
+          _buildNetWorthTrend(state.financialSnapshots),
           const SizedBox(height: AppSpacing.sectionGap),
           const AppSectionHeader(title: AppStrings.rollingOperationsTitle),
           const SizedBox(height: AppSpacing.blockGap),
@@ -305,6 +336,36 @@ class _FinanceViewState extends State<FinanceView>
           ],
         );
       },
+    );
+  }
+
+  Widget _buildNetWorthTrend(List<FinanceDailySnapshot> snapshots) {
+    if (snapshots.length < 3) return const SizedBox.shrink();
+
+    final data =
+        snapshots.take(30).map((s) => s.netWorth).toList().reversed.toList();
+
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'NET WORTH TREND',
+            style: AppTypography.microLabel.copyWith(
+              color: AppTheme.textMuted,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          AppLineChart(
+            data: data,
+            width: double.infinity,
+            height: 60,
+            lineColor:
+                data.last >= data.first ? AppTheme.success : AppTheme.error,
+          ),
+        ],
+      ),
     );
   }
 
