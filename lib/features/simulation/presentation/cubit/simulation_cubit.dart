@@ -32,6 +32,17 @@ class SimulationCubit extends Cubit<SimulationState>
   static Map<String, dynamic>? _cachedGameSettings;
   static DateTime? _cachedSettingsTime;
 
+  /// Test-only: set user ID without booting the full simulation loop.
+  @visibleForTesting
+  void setTestUserId(String userId) => _currentUserId = userId;
+
+  /// Test-only: clear the static game-settings cache between tests.
+  @visibleForTesting
+  static void clearSettingsCache() {
+    _cachedGameSettings = null;
+    _cachedSettingsTime = null;
+  }
+
   SimulationCubit({SimulationGateway? gateway})
     : _gateway = gateway ?? const SupabaseSimulationGateway(),
       super(
