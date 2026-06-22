@@ -113,7 +113,7 @@ class AppStrings {
   static const String noYieldSignalLabel = 'No route yield history yet.';
   static const String noFleetCoverage = 'No active fleet coverage yet.';
   static const String noRoutesCoverage = 'No route network is established yet.';
-  static const String runwayUnknown = 'Awaiting operating expense history';
+  static const String runwayUnknown = 'NO DATA';
   static const String daysSuffix = ' days';
   static const String airframesSuffix = ' airframes';
   static const String routesSuffix = ' routes';

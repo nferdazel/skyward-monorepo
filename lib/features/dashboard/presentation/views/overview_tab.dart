@@ -159,6 +159,8 @@ class OverviewTab extends StatelessWidget {
           Text(
             value,
             style: AppTypography.largeKpi.copyWith(color: AppTheme.textPrimary),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: AppSpacing.md),
           // 10-segment progress bar
@@ -208,6 +210,8 @@ class OverviewTab extends StatelessWidget {
           Text(
             snapshot.runwayLabel,
             style: AppTypography.largeKpi.copyWith(color: snapshot.runwayColor),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: AppSpacing.md),
           // 10-segment progress bar (all inactive — raw days not available)
