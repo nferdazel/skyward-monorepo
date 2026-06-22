@@ -69,7 +69,14 @@ class GameConstants {
   static const double ticketPerKmRate = 0.12;
 
   /// Base route demand load factor before airport-demand and pricing elasticity are applied.
-  static const double routeBaseLoadFactor = 0.95;
+  /// Reduced from 0.95 to 0.85 to make route selection and pricing strategy more impactful.
+  static const double routeBaseLoadFactor = 0.85;
+
+  /// Revenue multiplier for business class seats relative to economy.
+  static const double businessClassMultiplier = 2.5;
+
+  /// Revenue multiplier for first class seats relative to economy.
+  static const double firstClassMultiplier = 4.0;
 
   /// Minimum multiplier contributed by the route's average airport demand.
   static const double minAirportDemandFactor = 0.55;
