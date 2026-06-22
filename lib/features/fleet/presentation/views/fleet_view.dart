@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/services/sound_service.dart';
 import '../../../../core/utils/app_formatters.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/condition_colors.dart';
@@ -90,6 +91,7 @@ class _FleetViewState extends State<FleetView>
             final message = state.fleet.length == 1
                 ? '${state.message} Your first airframe is operational!'
                 : state.message;
+            SoundService.playCashRegister();
             AppSnackBar.showSuccess(context, message);
           } else if (state is FleetError) {
             AppSnackBar.showError(context, state.message);
@@ -109,7 +111,7 @@ class _FleetViewState extends State<FleetView>
                     isActive: _tabController.index == 0,
                     onTap: () => _onTabTap(0),
                   ),
-                  const SizedBox(width: 24),
+                  const SizedBox(width: AppSpacing.xxl),
                   AppTabItem(
                     label: AppStrings.acquireAircraftTab,
                     isActive: _tabController.index == 1,
@@ -167,7 +169,7 @@ class _FleetViewState extends State<FleetView>
                   color: AppTheme.primary,
                   strokeWidth: 2,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
                 Text(
                   AppStrings.loadingFleetRegistry,
                   style: AppTypography.microLabel.copyWith(
@@ -299,11 +301,11 @@ class _FleetViewState extends State<FleetView>
                     children: [
                       AppBadge.primary(label: aircraft.tailNumber),
                       const SizedBox(height: AppSpacing.sm - 2),
-                      Text(
-                        aircraft.nickname.toUpperCase(),
-                        style: AppTypography.badgeText.copyWith(
-                          fontSize: 9,
-                          color: AppTheme.textSecondary,
+                        Text(
+                          aircraft.nickname.toUpperCase(),
+                          style: AppTypography.badgeText.copyWith(
+                            fontSize: 11,
+                            color: AppTheme.textSecondary,
                           letterSpacing: 0.5,
                         ),
                         overflow: TextOverflow.ellipsis,
@@ -327,7 +329,7 @@ class _FleetViewState extends State<FleetView>
                         aircraft.model.manufacturer.toUpperCase(),
                         style: AppTypography.badgeText.copyWith(
                           color: AppTheme.textSecondary,
-                          fontSize: 9,
+                          fontSize: 11,
                           letterSpacing: 0.5,
                         ),
                       ),
@@ -335,7 +337,7 @@ class _FleetViewState extends State<FleetView>
                       Text(
                         '${aircraft.model.capacity} ${AppStrings.capacityPaxSuffix}',
                         style: AppTypography.badgeText.copyWith(
-                          fontSize: 9,
+                          fontSize: 11,
                           color: AppTheme.primary,
                           letterSpacing: 0.0,
                         ),
@@ -370,7 +372,7 @@ class _FleetViewState extends State<FleetView>
                           Text(
                             '$occupied / $capacity slots',
                             style: AppTypography.badgeText.copyWith(
-                              fontSize: 9,
+                              fontSize: 11,
                               color: occupied <= capacity
                                   ? AppTheme.success
                                   : AppTheme.error,
@@ -701,7 +703,7 @@ class _FleetViewState extends State<FleetView>
                   color: AppTheme.primary,
                   strokeWidth: 2,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
                 Text(
                   AppStrings.loadingFleetRegistry,
                   style: AppTypography.microLabel.copyWith(
@@ -966,7 +968,7 @@ class _FleetViewState extends State<FleetView>
                         model.manufacturer.toUpperCase(),
                         style: AppTypography.badgeText.copyWith(
                           color: AppTheme.textSecondary,
-                          fontSize: 9,
+                          fontSize: 11,
                           letterSpacing: 0.5,
                         ),
                       ),
@@ -1158,7 +1160,7 @@ class _FleetViewState extends State<FleetView>
                     },
                     maxPossible: capacity,
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.lg),
                   _buildSeatAdjustmentRow(
                     ctx,
                     AppStrings.businessClassSlots,
@@ -1170,7 +1172,7 @@ class _FleetViewState extends State<FleetView>
                     },
                     maxPossible: (capacity / 2).floor(),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.lg),
                   _buildSeatAdjustmentRow(
                     ctx,
                     AppStrings.firstClassSlots,
@@ -1182,7 +1184,7 @@ class _FleetViewState extends State<FleetView>
                     },
                     maxPossible: (capacity / 3).floor(),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: AppSpacing.xxl),
 
                   // Slots progress bar
                   Row(
@@ -1202,7 +1204,7 @@ class _FleetViewState extends State<FleetView>
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.sm),
                   Container(
                     height: 8,
                     width: double.infinity,
@@ -1215,7 +1217,7 @@ class _FleetViewState extends State<FleetView>
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.sm),
                   if (!isValid)
                     Text(
                       '${AppStrings.slotsExceededPrefix}${occupiedSlots - capacity}${AppStrings.slotsExceededSuffix}',
@@ -1576,7 +1578,7 @@ class _FleetViewState extends State<FleetView>
           bandLabel,
           style: AppTypography.badgeText.copyWith(
             color: barColor,
-            fontSize: 8,
+            fontSize: 11,
             letterSpacing: 0.4,
           ),
         ),

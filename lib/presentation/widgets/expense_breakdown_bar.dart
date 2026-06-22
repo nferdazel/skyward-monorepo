@@ -83,12 +83,12 @@ class ExpenseBreakdownBar extends StatelessWidget {
                       borderRadius: BorderRadius.circular(1),
                     ),
                   ),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: AppSpacing.xs),
                   Text(
                     '${segment.label} $pct%',
                     style: AppTypography.badgeText.copyWith(
                       color: AppTheme.textSecondary,
-                      fontSize: 10,
+                      fontSize: 11,
                       letterSpacing: 0.0,
                     ),
                   ),

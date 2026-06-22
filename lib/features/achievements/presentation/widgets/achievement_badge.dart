@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../presentation/theme/app_spacing.dart';
 import '../../../../presentation/theme/app_typography.dart';
 import '../../domain/achievement_model.dart';
 
@@ -75,7 +76,7 @@ class AchievementBadge extends StatelessWidget {
                 child: Text(
                   definition.name.toUpperCase(),
                   style: AppTypography.badgeText.copyWith(
-                    fontSize: 10,
+                    fontSize: 11,
                     color: color,
                     letterSpacing: 0.06,
                   ),
@@ -83,7 +84,7 @@ class AchievementBadge extends StatelessWidget {
                 ),
               ),
               if (isLocked) ...[
-                const SizedBox(width: 4),
+                const SizedBox(width: AppSpacing.xs),
                 Icon(
                   Icons.lock_outline,
                   size: 10,

@@ -236,7 +236,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
           style: AppTypography.badgeText.copyWith(
             color: isActive ? AppTheme.primary : AppTheme.textSecondary,
             letterSpacing: 0.4,
-            fontSize: 10,
+            fontSize: 11,
           ),
         ),
       ),
@@ -300,19 +300,8 @@ class _LeaderboardViewState extends State<LeaderboardView> {
               children:
                   [
                     RankCell(rank: rank, isHuman: isHuman),
-                    // Trend indicator placeholder (stable)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      child: Center(
-                        child: Text(
-                          AppStrings.rankTrendStable,
-                          style: AppTypography.badgeText.copyWith(
-                            color: AppTheme.textMuted,
-                            fontSize: 10,
-                          ),
-                        ),
-                      ),
-                    ),
+                    // Trend indicator: compare current rank with previous day
+                    _buildRankTrendIndicator(rank, entry.previousRank),
                     Padding(
                       padding: const EdgeInsets.symmetric(
                         vertical: 6,
@@ -397,7 +386,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
     final selectedId = state.selectedCompetitorId;
     if (selectedId == null) {
       return AppCard(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(AppSpacing.xxl),
         child: Center(
           child: Text(
             AppStrings.selectCompetitor,
@@ -415,7 +404,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
     final insights = state.selectedInsights;
     if (insights == null && !state.isLoadingInsights) {
       return AppCard(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(AppSpacing.xxl),
         child: Center(
           child: Text(
             AppStrings.failedToLoadIntel,
@@ -439,7 +428,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
         : null;
 
     return AppCard(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(AppSpacing.xl),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -462,11 +451,11 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.md),
               _buildStatusPill(liveInsights.status),
             ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.xs),
           Text(
             'CEO: ${liveInsights.ceoName}',
             maxLines: 1,
@@ -475,9 +464,9 @@ class _LeaderboardViewState extends State<LeaderboardView> {
               color: AppTheme.textSecondary,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
           Divider(color: AppTheme.border),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
 
           if (state.isLoadingInsights) ...[
             Container(
@@ -513,14 +502,14 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
           ],
 
           if (currentLeader != null) ...[
             _buildGapProgress(liveCompetitor, currentLeader),
-            const SizedBox(height: 20),
+            const SizedBox(height: AppSpacing.xl),
             Divider(color: AppTheme.border),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
           ],
 
           Text(
@@ -530,31 +519,31 @@ class _LeaderboardViewState extends State<LeaderboardView> {
               letterSpacing: 1.0,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
           _buildSideStatRow(
             AppStrings.liquidCash,
             AppFormatters.currency.format(liveInsights.cash),
             liveInsights.cash >= 0 ? AppTheme.success : AppTheme.error,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           _buildSideStatRow(
             AppStrings.estNetWorth,
             AppFormatters.currency.format(liveInsights.netWorth),
             AppTheme.primary,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           _buildSideStatRow(
             AppStrings.revenuePerAircraft,
             AppFormatters.currency.format(liveInsights.revenuePerAircraft),
             AppTheme.info,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           _buildSideStatRow(
             AppStrings.netWorthPerAircraft,
             AppFormatters.currency.format(liveInsights.netWorthPerAircraft),
             AppTheme.success,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           AppInfoStrip(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -576,9 +565,9 @@ class _LeaderboardViewState extends State<LeaderboardView> {
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: AppSpacing.xl),
           Divider(color: AppTheme.border),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
 
           Text(
             AppStrings.hangarFleetBreakdown,
@@ -631,9 +620,9 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                     }).toList(),
                   ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
           Divider(color: AppTheme.border),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
 
           Text(
             AppStrings.operatingRoutePathways,
@@ -668,7 +657,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                               size: 14,
                               color: AppTheme.primary,
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: AppSpacing.sm),
                             Expanded(
                               child: Text(
                                 route,
@@ -710,6 +699,70 @@ class _LeaderboardViewState extends State<LeaderboardView> {
     return LeaderboardTableHeaderCell(text: text);
   }
 
+  Widget _buildRankTrendIndicator(int currentRank, int? previousRank) {
+    // No history data yet — show stable placeholder
+    if (previousRank == null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        child: Center(
+          child: Text(
+            AppStrings.rankTrendStable,
+            style: AppTypography.badgeText.copyWith(
+              color: AppTheme.textMuted,
+              fontSize: 11,
+            ),
+          ),
+        ),
+      );
+    }
+
+    final delta = previousRank - currentRank;
+
+    if (delta > 0) {
+      // Rank improved (moved up)
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        child: Center(
+          child: Text(
+            '\u2191$delta',
+            style: AppTypography.badgeText.copyWith(
+              color: AppTheme.success,
+              fontSize: 11,
+            ),
+          ),
+        ),
+      );
+    } else if (delta < 0) {
+      // Rank dropped (moved down)
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        child: Center(
+          child: Text(
+            '\u2193${delta.abs()}',
+            style: AppTypography.badgeText.copyWith(
+              color: AppTheme.error,
+              fontSize: 11,
+            ),
+          ),
+        ),
+      );
+    } else {
+      // Stable
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        child: Center(
+          child: Text(
+            AppStrings.rankTrendStable,
+            style: AppTypography.badgeText.copyWith(
+              color: AppTheme.textMuted,
+              fontSize: 11,
+            ),
+          ),
+        ),
+      );
+    }
+  }
+
   Widget _buildTableCell(
     String text, {
     Color? color,
@@ -742,7 +795,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
             color: AppTheme.primary,
             strokeWidth: 2,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
           Text(
             AppStrings.updatingCompetitorIntel,
             style: AppTypography.microLabel.copyWith(
@@ -839,7 +892,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.sm),
         Container(
           width: double.infinity,
           height: 12,

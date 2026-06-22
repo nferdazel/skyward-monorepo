@@ -180,7 +180,7 @@ class _NotificationTile extends StatelessWidget {
                       color: AppTheme.textSecondary,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpacing.xs),
                   Text(
                     _timeAgo(notification.timestamp),
                     style: AppTypography.captionLight,

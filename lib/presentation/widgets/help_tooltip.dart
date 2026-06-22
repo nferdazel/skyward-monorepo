@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 
 /// A small ? icon that shows a help tooltip on tap/hover.
@@ -26,7 +27,7 @@ class HelpTooltip extends StatelessWidget {
         borderRadius: BorderRadius.circular(4),
         border: Border.all(color: AppTheme.border),
       ),
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(AppSpacing.sm),
       child: Icon(
         Icons.help_outline,
         size: iconSize,
@@ -51,7 +52,7 @@ class HowToPlayOverlay extends StatelessWidget {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 520),
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(AppSpacing.xxl),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -63,7 +64,7 @@ class HowToPlayOverlay extends StatelessWidget {
                     size: 18,
                     color: AppTheme.primary,
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpacing.sm),
                   Text(
                     'HOW TO PLAY',
                     style: AppTypography.screenTitleMedium.copyWith(
@@ -82,9 +83,9 @@ class HowToPlayOverlay extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
               Divider(color: AppTheme.border),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
               _buildSection(
                 icon: Icons.flight_outlined,
                 title: 'Acquire Fleet',
@@ -115,9 +116,9 @@ class HowToPlayOverlay extends StatelessWidget {
                 body:
                     'Grow your net worth faster than AI competitors by optimizing routes, pricing, and fleet utilization.',
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
               Divider(color: AppTheme.border),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               Align(
                 alignment: Alignment.centerRight,
                 child: Text(

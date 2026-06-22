@@ -97,7 +97,7 @@ class _FinanceViewState extends State<FinanceView>
                   isActive: _tabController.index == 0,
                   onTap: () => _onTabTap(0),
                 ),
-                const SizedBox(width: 24),
+                const SizedBox(width: AppSpacing.xxl),
                 AppTabItem(
                   label: AppStrings.financeTransactionsTab,
                   isActive: _tabController.index == 1,
@@ -488,7 +488,7 @@ class _FinanceViewState extends State<FinanceView>
             ),
           ),
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(AppSpacing.sm),
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(4),
@@ -729,7 +729,7 @@ class _FinanceViewState extends State<FinanceView>
   Widget _buildHeaderCell(String text) {
     return AppTableHeaderCell(
       label: text,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
     );
   }
 
@@ -751,12 +751,12 @@ class _FinanceViewState extends State<FinanceView>
       children: [
         // Column 1: Category Badge
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
           child: Row(children: [_buildCategoryPill(entry.category)]),
         ),
         // Column 2: Details Description
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
           child: Text(
             entry.description,
             style: AppTypography.bodyMedium.copyWith(
@@ -766,7 +766,7 @@ class _FinanceViewState extends State<FinanceView>
         ),
         // Column 3: Game calendar date
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
           child: AppStatText(
             label: _dateOnlyFormat.format(entry.gameDate),
             value: _timeOnlyFormat.format(entry.gameDate),
@@ -776,7 +776,7 @@ class _FinanceViewState extends State<FinanceView>
         ),
         // Column 4: Cash flow yield
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
           child: Align(
             alignment: Alignment.centerRight,
             child: Text(

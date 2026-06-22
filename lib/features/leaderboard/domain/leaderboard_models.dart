@@ -10,6 +10,7 @@ class LeaderboardEntry {
   final double monthlyRevenue;
   final String status;
   final int consecutiveNegativeDays;
+  final int? previousRank;
 
   const LeaderboardEntry({
     required this.id,
@@ -23,6 +24,7 @@ class LeaderboardEntry {
     required this.monthlyRevenue,
     required this.status,
     this.consecutiveNegativeDays = 0,
+    this.previousRank,
   });
 
   factory LeaderboardEntry.fromMap(Map<String, dynamic> map) {
@@ -38,6 +40,7 @@ class LeaderboardEntry {
       monthlyRevenue: (map['monthly_revenue'] as num?)?.toDouble() ?? 0.0,
       status: map['status'] ?? 'Active',
       consecutiveNegativeDays: (map['consecutive_negative_days'] as num?)?.toInt() ?? 0,
+      previousRank: (map['previous_rank'] as num?)?.toInt(),
     );
   }
 }

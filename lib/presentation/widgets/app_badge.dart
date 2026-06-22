@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 
 /// A badge displaying a status label with semantic color coding.
@@ -70,7 +71,7 @@ class AppBadge extends StatelessWidget {
                   shape: BoxShape.circle,
                 ),
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: AppSpacing.xs),
             ],
             Text(
               label.toUpperCase(),

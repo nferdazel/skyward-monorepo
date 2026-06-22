@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
+import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 
 class AppTabItem extends StatelessWidget {
@@ -28,7 +29,7 @@ class AppTabItem extends StatelessWidget {
               color: isActive ? AppTheme.primary : AppTheme.textSecondary,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           Container(
             height: 2,
             width: 40,

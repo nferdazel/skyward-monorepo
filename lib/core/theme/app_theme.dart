@@ -33,6 +33,10 @@ class AppTheme {
   static const Color accentBright = SkywardColors.darkAccentBright;
   static const Color accentGhost = SkywardColors.darkAccentGhost;
 
+  // ── SECONDARY: ATC TEAL ──
+  static const Color teal = SkywardColors.darkTeal;
+  static const Color tealSubtle = SkywardColors.darkTealSubtle;
+
   // ── GRADIENT FALLBACKS ──
   static Gradient get primaryGradient => const LinearGradient(
     colors: [SkywardColors.darkAccent, SkywardColors.darkAccent],

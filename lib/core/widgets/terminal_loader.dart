@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../presentation/theme/app_spacing.dart';
 import '../../presentation/theme/app_typography.dart';
 import '../theme/app_theme.dart';
 
@@ -26,7 +27,7 @@ class TerminalLoader extends StatelessWidget {
             letterSpacing: 1.5,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.md),
         SizedBox(
           width: width,
           height: 4,

@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/services/sound_service.dart';
 import '../../../../core/utils/app_formatters.dart';
 import '../../../../core/constants/game_constants.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -68,6 +69,7 @@ class _RoutesViewState extends State<RoutesView> {
           final message = state.routes.length == 1
               ? '${state.message} Your first route is live!'
               : state.message;
+          SoundService.playSuccess();
           AppSnackBar.showSuccess(context, message);
         } else if (state is RoutesError) {
           AppSnackBar.showError(context, state.message);
@@ -84,7 +86,7 @@ class _RoutesViewState extends State<RoutesView> {
                   color: AppTheme.primary,
                   strokeWidth: 2,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
                 Text(
                   AppStrings.loadingRouteNetwork,
                   style: AppTypography.microLabel.copyWith(
@@ -347,7 +349,7 @@ class _RoutesViewState extends State<RoutesView> {
                 'CARTO / OSM',
                 style: AppTypography.badgeText.copyWith(
                   color: AppTheme.textSecondary,
-                  fontSize: 9,
+                  fontSize: 11,
                   letterSpacing: 0.2,
                 ),
               ),
@@ -535,7 +537,7 @@ class _RoutesViewState extends State<RoutesView> {
                     statusLabel,
                     style: AppTypography.badgeText.copyWith(
                       color: statusColor,
-                      fontSize: 9,
+                      fontSize: 11,
                     ),
                   ),
                 ),
@@ -703,14 +705,14 @@ class _RoutesViewState extends State<RoutesView> {
             label,
             style: AppTypography.badgeText.copyWith(
               color: AppTheme.textMuted,
-              fontSize: 9,
+              fontSize: 11,
             ),
           ),
           Text(
             value,
             style: AppTypography.badgeText.copyWith(
               color: valueColor,
-              fontSize: 9,
+              fontSize: 11,
             ),
           ),
         ],
@@ -766,7 +768,7 @@ class _RoutesViewState extends State<RoutesView> {
                     'DIST: ${_plannerOrigin!.latitude.toStringAsFixed(2)}° ${_plannerOrigin!.longitude.toStringAsFixed(2)}°',
                     style: AppTypography.badgeText.copyWith(
                       color: AppTheme.textMuted,
-                      fontSize: 9,
+                      fontSize: 11,
                     ),
                   ),
                   const SizedBox(width: AppSpacing.md),
@@ -775,7 +777,7 @@ class _RoutesViewState extends State<RoutesView> {
                   '${airports.length} AIRPORTS',
                   style: AppTypography.badgeText.copyWith(
                     color: AppTheme.textMuted,
-                    fontSize: 9,
+                    fontSize: 11,
                   ),
                 ),
               ],
@@ -960,14 +962,14 @@ class _RoutesViewState extends State<RoutesView> {
           '$label: ',
           style: AppTypography.badgeText.copyWith(
             color: AppTheme.textMuted,
-            fontSize: 9,
+            fontSize: 11,
           ),
         ),
         Text(
           value,
           style: AppTypography.badgeText.copyWith(
             color: AppTheme.textPrimary,
-            fontSize: 9,
+            fontSize: 11,
           ),
         ),
       ],
@@ -1806,7 +1808,7 @@ class _AirportMarker extends StatelessWidget {
           label,
           style: AppTypography.microLabel.copyWith(
             color: demandColor,
-            fontSize: 9,
+            fontSize: 11,
           ),
         ),
       ),

@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/services/sound_service.dart';
 import '../../../../core/utils/app_formatters.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/lazy_tab_cubit.dart';
@@ -343,11 +344,31 @@ class _AuthenticatedDashboardShellState
     // Sort by severity (error first, then warning, then info)
     newNotifications.sort((a, b) => a.type.index.compareTo(b.type.index));
 
+    // Play notification sound if new notifications arrived
+    if (newNotifications.isNotEmpty &&
+        (newNotifications.length != _notifications.length ||
+            !_notificationsAreIdentical(_notifications, newNotifications))) {
+      SoundService.playNotification();
+    }
+
     if (mounted) {
       setState(() {
         _notifications = newNotifications;
       });
     }
+  }
+
+  bool _notificationsAreIdentical(
+    List<GameNotification> a,
+    List<GameNotification> b,
+  ) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].title != b[i].title || a[i].message != b[i].message) {
+        return false;
+      }
+    }
+    return true;
   }
 
   @override

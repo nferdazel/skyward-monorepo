@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 
 class AppTableHeaderCell extends StatelessWidget {
@@ -11,7 +12,7 @@ class AppTableHeaderCell extends StatelessWidget {
   const AppTableHeaderCell({
     super.key,
     required this.label,
-    this.padding = const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+    this.padding = const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.sm),
     this.color,
   });
 

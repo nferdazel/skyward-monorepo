@@ -1,41 +1,46 @@
 import 'package:flutter/material.dart';
 
 /* ═══════════════════════════════════════════════════════
-   SKYWARD OPS — Color Token System v4.0
-   Military-grade command center meets premium fintech.
+   SKYWARD OPS — Color Token System v5.0
+   Aviation Command theme — PFD/ATC-inspired cockpit UI.
    Monochrome base, color encodes operational meaning only.
 ══════════════════════════════════════════════════════ */
 
 class SkywardColors {
   const SkywardColors._();
   // ── Backgrounds ──
-  static const darkBg        = Color(0xFF0A0C0F);
-  static const darkSurface   = Color(0xFF111318);
-  static const darkSurface2  = Color(0xFF181C22);
-  static const darkSurface3  = Color(0xFF1E222A);
+  static const darkBg        = Color(0xFF080B10); // Deep cockpit
+  static const darkSurface   = Color(0xFF0F1319); // Panel base
+  static const darkSurface2  = Color(0xFF161C25); // Raised panel
+  static const darkSurface3  = Color(0xFF1E2633); // Elevated card
 
   // ── Borders ──
-  static const darkBorder    = Color(0x1FFFFFFF); // rgba(255,255,255,0.12)
-  static const darkBorder2   = Color(0x0FFFFFFF); // rgba(255,255,255,0.06)
+  static const darkBorder    = Color(0x1AFFFFFF); // 10% white
+  static const darkBorder2   = Color(0x0DFFFFFF); // 5% white
 
-  // ── Accent: Operational Colors ──
-  static const darkAccent    = Color(0xFF448AFF); // blue - informational / links
-  static const darkAccentSubtle = Color(0x1F448AFF); // rgba(68,138,255,0.12)
-  static const darkAccentBright = Color(0xFF82B1FF);
-  static const darkAccentGhost  = Color(0x0D448AFF); // rgba(68,138,255,0.05)
+  // ── Primary: HUD Blue ──
+  static const darkAccent       = Color(0xFF5B9EE0); // HUD Blue (PFD-inspired)
+  static const darkAccentSubtle = Color(0x1A5B9EE0); // 10% opacity
+  static const darkAccentBright = Color(0xFF8DBFF0); // Hover/pressed state
+  static const darkAccentGhost  = Color(0x0D5B9EE0); // 5% opacity
 
-  static const darkGreen     = Color(0xFF00E676); // nominal / ready
-  static const darkGreenSubtle = Color(0x1F00E676); // rgba(0,230,118,0.12)
-  static const darkRed       = Color(0xFFFF3D00); // critical / grounded
-  static const darkRedSubtle = Color(0x1FFF3D00); // rgba(255,61,0,0.12)
-  static const darkAmber     = Color(0xFFFFB300); // caution / warning
-  static const darkAmberSubtle = Color(0x1FFFB300); // rgba(255,179,0,0.12)
-  static const darkNeutral   = Color(0xFF6B7280);
+  // ── Secondary: ATC Teal ──
+  static const darkTeal       = Color(0xFF3AAFA0); // ATC Teal (data visualization)
+  static const darkTealSubtle = Color(0x1A3AAFA0); // 10% opacity
+
+  // ── Semantic Colors ──
+  static const darkGreen       = Color(0xFF34D07B); // PFD Green (desaturated)
+  static const darkGreenSubtle = Color(0x1A34D07B);
+  static const darkAmber       = Color(0xFFE6A817); // Cockpit Caution Amber
+  static const darkAmberSubtle = Color(0x1AE6A817);
+  static const darkRed         = Color(0xFFD94E4E); // Alert Red (muted)
+  static const darkRedSubtle   = Color(0x1AD94E4E);
+  static const darkNeutral     = Color(0xFF6B7889); // Steel Gray
 
   // ── Text ──
-  static const darkTextPri   = Color(0xFFE8EAF0);
-  static const darkTextSec   = Color(0xFF8A919D);
-  static const darkTextDim   = Color(0xFF5A6170);
+  static const darkTextPri   = Color(0xFFDDE2EA); // Cool white (14.8:1 on bg)
+  static const darkTextSec   = Color(0xFF8090A3); // Steel blue-gray (5.7:1)
+  static const darkTextDim   = Color(0xFF505D6E); // Muted (3.1:1 — large text only)
 
   // Light mode (not actively used, kept for compilation)
   static const lightBg       = Color(0xFFF6F8FA);

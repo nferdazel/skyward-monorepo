@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/services/sound_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
@@ -97,6 +98,7 @@ class _OnboardingOverlayState extends State<OnboardingOverlay> {
   bool get _isLast => _currentStep == _steps.length - 1;
 
   void _next() {
+    SoundService.playTap();
     if (_isLast) {
       _complete();
     } else {

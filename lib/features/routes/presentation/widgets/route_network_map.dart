@@ -640,7 +640,7 @@ class _MapAttributionBadge extends StatelessWidget {
         'CARTO / OSM',
         style: AppTypography.badgeText.copyWith(
           color: AppTheme.textSecondary,
-          fontSize: 9,
+          fontSize: 11,
           letterSpacing: 0.2,
         ),
       ),
