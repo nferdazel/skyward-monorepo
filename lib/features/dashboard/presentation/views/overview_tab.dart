@@ -13,6 +13,7 @@ import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
 import '../../../finance/presentation/cubit/finance_cubit.dart';
 import '../../../fleet/presentation/cubit/fleet_cubit.dart';
+import '../../../navigation/presentation/cubit/navigation_cubit.dart';
 import '../../../leaderboard/presentation/cubit/leaderboard_cubit.dart';
 import '../../../routes/presentation/cubit/routes_cubit.dart';
 import '../../../simulation/presentation/cubit/simulation_cubit.dart';
@@ -83,31 +84,39 @@ class OverviewTab extends StatelessWidget {
   Widget _buildKPICardsRow(BuildContext context, OverviewSnapshot overview) {
     return Row(
       children: [
-        // Card 1: Fleet Ready — 10/10 green
+        // Card 1: Fleet Ready → Fleet tab
         Expanded(
-          child: _buildKPICard(
-            title: 'FLEET READY',
-            icon: Icons.check_circle_outline,
-            value: '${overview.readyFleetCount}/${overview.totalFleetCount}',
-            filledSegments: overview.totalFleetCount > 0
-                ? 10
-                : 0,
-            activeColor: AppTheme.success,
+          child: InkWell(
+            onTap: () => context.read<NavigationCubit>().selectTab(1),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
+            child: _buildKPICard(
+              title: 'FLEET READY',
+              icon: Icons.check_circle_outline,
+              value: '${overview.readyFleetCount}/${overview.totalFleetCount}',
+              filledSegments: overview.totalFleetCount > 0
+                  ? 10
+                  : 0,
+              activeColor: AppTheme.success,
+            ),
           ),
         ),
         const SizedBox(width: AppSpacing.md),
-        // Card 2: Network Health — filled proportionally (blue)
+        // Card 2: Network Health → Routes tab
         Expanded(
-          child: _buildKPICard(
-            title: 'NETWORK HEALTH',
-            icon: Icons.hub_outlined,
-            value: '${overview.activeRoutes} ${AppStrings.routesSuffix.trim()}',
-            filledSegments: overview.activeRoutes.clamp(0, 10),
-            activeColor: AppTheme.primary,
+          child: InkWell(
+            onTap: () => context.read<NavigationCubit>().selectTab(2),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
+            child: _buildKPICard(
+              title: 'NETWORK HEALTH',
+              icon: Icons.hub_outlined,
+              value: '${overview.activeRoutes} ${AppStrings.routesSuffix.trim()}',
+              filledSegments: overview.activeRoutes.clamp(0, 10),
+              activeColor: AppTheme.primary,
+            ),
           ),
         ),
         const SizedBox(width: AppSpacing.md),
-        // Card 3: Avg Condition — filled by condition value (warning if <70)
+        // Card 3: Avg Condition
         Expanded(
           child: _buildKPICard(
             title: 'AVG CONDITION',
@@ -118,9 +127,13 @@ class OverviewTab extends StatelessWidget {
           ),
         ),
         const SizedBox(width: AppSpacing.md),
-        // Card 4: Cash Runway
+        // Card 4: Cash Runway → Finance tab
         Expanded(
-          child: _buildRunwayCard(overview),
+          child: InkWell(
+            onTap: () => context.read<NavigationCubit>().selectTab(3),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
+            child: _buildRunwayCard(overview),
+          ),
         ),
       ],
     );
@@ -184,8 +197,6 @@ class OverviewTab extends StatelessWidget {
   }
 
   Widget _buildRunwayCard(OverviewSnapshot snapshot) {
-    final inactiveColor = AppTheme.textMuted.withValues(alpha: 0.25);
-
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
@@ -211,22 +222,6 @@ class OverviewTab extends StatelessWidget {
             style: AppTypography.largeKpi.copyWith(color: snapshot.runwayColor),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: AppSpacing.md),
-          // 10-segment progress bar (all inactive — raw days not available)
-          Row(
-            children: List.generate(10, (index) {
-              return Expanded(
-                child: Container(
-                  height: 3,
-                  margin: EdgeInsets.only(right: index < 9 ? 2 : 0),
-                  decoration: BoxDecoration(
-                    color: inactiveColor,
-                    borderRadius: BorderRadius.circular(1),
-                  ),
-                ),
-              );
-            }),
           ),
         ],
       ),

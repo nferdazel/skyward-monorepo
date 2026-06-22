@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../presentation/theme/app_spacing.dart';
+import '../../../../presentation/theme/app_typography.dart';
 import '../../../../presentation/widgets/skyward_logo.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../navigation/presentation/cubit/navigation_cubit.dart';
@@ -80,7 +81,32 @@ class DashboardSidebar extends StatelessWidget {
             context,
             Icons.logout,
             false,
-            () => context.read<AuthCubit>().logout(),
+            () async {
+              final confirmed = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  backgroundColor: AppTheme.surface,
+                  title: Text('LOGOUT', style: AppTypography.sectionHeaderLarge),
+                  content: Text(
+                    'Are you sure you want to logout?',
+                    style: AppTypography.bodyMedium,
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: Text('CANCEL', style: AppTypography.badgeText),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: Text('LOGOUT', style: AppTypography.badgeText.copyWith(color: AppTheme.error)),
+                    ),
+                  ],
+                ),
+              );
+              if (confirmed == true && context.mounted) {
+                context.read<AuthCubit>().logout();
+              }
+            },
             color: AppTheme.error,
             label: 'Logout',
           ),
@@ -94,7 +120,7 @@ class DashboardSidebar extends StatelessWidget {
     BuildContext context,
     IconData icon,
     bool isActive,
-    VoidCallback onTap, {
+    GestureTapCallback? onTap, {
     Color? color,
     String label = '',
   }) {

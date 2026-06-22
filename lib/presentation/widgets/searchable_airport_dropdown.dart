@@ -47,7 +47,14 @@ class _SearchableAirportDropdownState extends State<SearchableAirportDropdown> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.selectedValue != widget.selectedValue &&
         !_focusNode.hasFocus) {
-      _textController.text = _getDisplayText(widget.selectedValue);
+      // Defer text controller update to avoid markNeedsBuild() during build.
+      // Setting _textController.text triggers notifyListeners() which calls
+      // markNeedsBuild() on the attached EditableText — unsafe during build.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_focusNode.hasFocus) {
+          _textController.text = _getDisplayText(widget.selectedValue);
+        }
+      });
     }
   }
 
@@ -74,7 +81,13 @@ class _SearchableAirportDropdownState extends State<SearchableAirportDropdown> {
         if (!mounted) return;
         if (!_focusNode.hasFocus) {
           _removeOverlay();
-          _textController.text = _getDisplayText(widget.selectedValue);
+          // Defer text controller update to avoid markNeedsBuild() during
+          // a concurrent build phase.
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && !_focusNode.hasFocus) {
+              _textController.text = _getDisplayText(widget.selectedValue);
+            }
+          });
         }
       });
     }

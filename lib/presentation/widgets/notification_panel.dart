@@ -50,7 +50,7 @@ class NotificationPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      elevation: 8,
+      elevation: 0,
       borderRadius: BorderRadius.circular(AppSpacing.radiusSoft),
       color: AppTheme.surface,
       child: Container(

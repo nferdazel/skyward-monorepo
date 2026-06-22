@@ -117,8 +117,24 @@ class _AuthenticatedDashboardShellState
   }
 
   Future<void> _checkOnboarding() async {
-    final complete = await isOnboardingComplete();
-    if (!complete && mounted) {
+    final authState = context.read<AuthCubit>().state;
+    if (authState is! AuthAuthenticated) return;
+
+    // If the database says onboarding is done, skip it immediately.
+    if (authState.user.onboardingCompleted) {
+      if (mounted) setState(() => _showOnboarding = false);
+      return;
+    }
+
+    // Check local cache (SharedPreferences) as a fast-path.
+    final localComplete = await isOnboardingComplete();
+    if (localComplete && mounted) {
+      setState(() => _showOnboarding = false);
+      return;
+    }
+
+    // Neither source says complete — show onboarding.
+    if (mounted) {
       setState(() => _showOnboarding = true);
     }
   }
@@ -351,9 +367,17 @@ class _AuthenticatedDashboardShellState
       SoundService.playNotification();
     }
 
-    if (mounted) {
-      setState(() {
-        _notifications = newNotifications;
+    // Defer setState to after the current frame to avoid
+    // "setState() or markNeedsBuild() called during build" when
+    // multiple BlocListeners trigger _refreshNotifications in the
+    // same frame as a BlocBuilder rebuild.
+    if (mounted && !_notificationsAreIdentical(_notifications, newNotifications)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {
+            _notifications = newNotifications;
+          });
+        }
       });
     }
   }
@@ -489,7 +513,7 @@ class _AuthenticatedDashboardShellState
     NumberFormat currencyFormat,
     DateFormat dateFormat,
   ) {
-    final scale = context.watch<SettingsCubit>().state.uiScale;
+    final scale = context.select<SettingsCubit, double>((c) => c.state.uiScale);
 
     return Scaffold(
       backgroundColor: AppTheme.background,
