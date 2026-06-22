@@ -125,7 +125,8 @@ class SupabaseAuthGateway implements AuthGateway {
         .select(
           'id, username, company_name, ceo_name, cash, game_current_time, '
           'auto_grounding_threshold, hq_airport_iata, operational_status, '
-          'consecutive_negative_days, recovery_streak_days',
+          'consecutive_negative_days, recovery_streak_days, '
+          'onboarding_completed',
         )
         .eq('auth_user_id', authUserId)
         .maybeSingle();

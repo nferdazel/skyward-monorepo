@@ -10,6 +10,7 @@ class User {
   final String operationalStatus;
   final int consecutiveNegativeDays;
   final int recoveryStreakDays;
+  final bool onboardingCompleted;
 
   User({
     required this.id,
@@ -23,6 +24,7 @@ class User {
     this.operationalStatus = 'Active',
     this.consecutiveNegativeDays = 0,
     this.recoveryStreakDays = 0,
+    this.onboardingCompleted = false,
   });
 
   factory User.fromMap(Map<String, dynamic> map) {
@@ -44,6 +46,7 @@ class User {
       consecutiveNegativeDays:
           (map['consecutive_negative_days'] as num?)?.toInt() ?? 0,
       recoveryStreakDays: (map['recovery_streak_days'] as num?)?.toInt() ?? 0,
+      onboardingCompleted: map['onboarding_completed'] as bool? ?? false,
     );
   }
 
@@ -59,6 +62,7 @@ class User {
     String? operationalStatus,
     int? consecutiveNegativeDays,
     int? recoveryStreakDays,
+    bool? onboardingCompleted,
   }) {
     return User(
       id: id ?? this.id,
@@ -74,6 +78,7 @@ class User {
       consecutiveNegativeDays:
           consecutiveNegativeDays ?? this.consecutiveNegativeDays,
       recoveryStreakDays: recoveryStreakDays ?? this.recoveryStreakDays,
+      onboardingCompleted: onboardingCompleted ?? this.onboardingCompleted,
     );
   }
 }

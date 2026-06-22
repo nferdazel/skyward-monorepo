@@ -31,6 +31,7 @@ class _AuthScreenState extends State<AuthScreen> {
   late final TextEditingController _passwordController;
   late final TextEditingController _companyController;
   late final TextEditingController _ceoController;
+  bool _obscurePassword = true;
 
   @override
   void initState() {
@@ -258,11 +259,19 @@ class _AuthScreenState extends State<AuthScreen> {
               // Password
               TextFormField(
                 controller: _passwordController,
-                obscureText: true,
+                obscureText: _obscurePassword,
                 enabled: !isLoading,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'PASSWORD',
-                  prefixIcon: Icon(Icons.lock_outline, size: 20),
+                  prefixIcon: const Icon(Icons.lock_outline, size: 20),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                      color: AppTheme.textMuted,
+                      size: 18,
+                    ),
+                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                  ),
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty)
