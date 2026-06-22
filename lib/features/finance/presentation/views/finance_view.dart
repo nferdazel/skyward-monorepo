@@ -10,6 +10,7 @@ import '../../../../core/utils/perf_debug.dart';
 import '../../../../presentation/theme/app_spacing.dart';
 import '../../../../presentation/theme/app_typography.dart';
 import '../../../../presentation/widgets/app_badge.dart';
+import '../../../../presentation/widgets/app_button.dart';
 import '../../../../presentation/widgets/app_card.dart';
 import '../../../../presentation/widgets/app_empty_state.dart';
 import '../../../../presentation/widgets/app_info_strip.dart';
@@ -153,19 +154,14 @@ class _FinanceViewState extends State<FinanceView>
                             textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: AppSpacing.lg),
-                          OutlinedButton.icon(
+                          AppButton(
+                            text: 'RETRY',
+                            icon: Icons.refresh,
                             onPressed: () => context
                                 .read<FinanceCubit>()
                                 .loadLedger(userId),
-                            icon: const Icon(Icons.refresh, size: 16),
-                            label: Text(
-                              'RETRY',
-                              style: AppTypography.badgeText,
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AppTheme.primary,
-                              side: BorderSide(color: AppTheme.primary),
-                            ),
+                            type: AppButtonType.secondary,
+                            height: 40,
                           ),
                         ],
                       ),
@@ -517,11 +513,6 @@ class _FinanceViewState extends State<FinanceView>
   }
 
   Widget _buildFinanceSignals(_FinanceOverview overview, FinanceDataState state) {
-    // CASM/RASM require totalSeats, averageDistance, and flightsPerWeek
-    // which are not available in the current FinanceSnapshot.
-    const String casmValue = 'N/A';
-    const String rasmValue = 'N/A';
-
     return AppInfoStrip(
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -548,17 +539,7 @@ class _FinanceViewState extends State<FinanceView>
             AppStrings.financeRevenueCoverageLabel,
             overview.coverageLabel,
             overview.coverageColor,
-            'Revenue vs expense ratio \u2014 above 1.0 means profitable',
-          ),
-          AppStatText(
-            label: 'CASM',
-            value: casmValue,
-            valueColor: AppTheme.textSecondary,
-          ),
-          AppStatText(
-            label: 'RASM',
-            value: rasmValue,
-            valueColor: AppTheme.textSecondary,
+            'Revenue vs expense ratio — above 1.0 means profitable',
           ),
         ],
       ),

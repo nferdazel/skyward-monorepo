@@ -155,17 +155,14 @@ class BankPanel extends StatelessWidget {
 
         // ── Take loan button ──
         const SizedBox(height: AppSpacing.md),
-        SizedBox(
-          width: double.infinity,
-          child: AppButton(
-            text: 'TAKE LOAN',
-            icon: Icons.add,
-            onPressed: activeLoans.length < 3
-                ? () => _showLoanDialog(context)
-                : null,
-            type: AppButtonType.primary,
-            height: 40,
-          ),
+        AppButton(
+          text: 'TAKE LOAN',
+          icon: Icons.add,
+          onPressed: activeLoans.length < 3
+              ? () => _showLoanDialog(context)
+              : null,
+          type: AppButtonType.primary,
+          height: 40,
         ),
       ],
     );
