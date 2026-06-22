@@ -26,15 +26,18 @@ class AppLineChart extends StatelessWidget {
       return SizedBox(width: width, height: height);
     }
 
-    return SizedBox(
-      width: width,
-      height: height,
-      child: CustomPaint(
-        painter: _LineChartPainter(
-          data: data,
-          lineColor: lineColor ?? AppTheme.primary,
-          fillColor: fillColor ?? AppTheme.primary.withValues(alpha: 0.1),
-          showDots: showDots,
+    return Semantics(
+      label: 'Line chart showing trend over ${data.length} periods',
+      child: SizedBox(
+        width: width,
+        height: height,
+        child: CustomPaint(
+          painter: _LineChartPainter(
+            data: data,
+            lineColor: lineColor ?? AppTheme.primary,
+            fillColor: fillColor ?? AppTheme.primary.withValues(alpha: 0.1),
+            showDots: showDots,
+          ),
         ),
       ),
     );

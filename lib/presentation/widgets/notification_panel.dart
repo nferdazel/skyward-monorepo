@@ -100,19 +100,40 @@ class NotificationPanel extends StatelessWidget {
           ),
           const Spacer(),
           if (notifications.any((n) => !n.isRead))
-            GestureDetector(
-              onTap: onMarkAllRead,
-              child: Text(
-                AppStrings.markAllRead,
-                style: AppTypography.microLabel.copyWith(
-                  color: AppTheme.primary,
+            Semantics(
+              button: true,
+              label: 'Mark all notifications as read',
+              child: InkWell(
+                onTap: onMarkAllRead,
+                borderRadius: BorderRadius.circular(4),
+                hoverColor: AppTheme.primary.withValues(alpha: 0.08),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.xs,
+                    vertical: AppSpacing.xs,
+                  ),
+                  child: Text(
+                    AppStrings.markAllRead,
+                    style: AppTypography.microLabel.copyWith(
+                      color: AppTheme.primary,
+                    ),
+                  ),
                 ),
               ),
             ),
           const SizedBox(width: AppSpacing.sm),
-          GestureDetector(
-            onTap: onClose,
-            child: Icon(Icons.close, size: 18, color: AppTheme.textMuted),
+          Semantics(
+            button: true,
+            label: 'Close notifications',
+            child: InkWell(
+              onTap: onClose,
+              borderRadius: BorderRadius.circular(4),
+              hoverColor: AppTheme.textMuted.withValues(alpha: 0.08),
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.xs),
+                child: Icon(Icons.close, size: 18, color: AppTheme.textMuted),
+              ),
+            ),
           ),
         ],
       ),
@@ -139,56 +160,60 @@ class _NotificationTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = _typeColor(notification.type);
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.sm,
-        ),
-        decoration: BoxDecoration(
-          color: notification.isRead ? null : color.withValues(alpha: 0.05),
-          border: Border(bottom: BorderSide(color: AppTheme.borderSubtle)),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 8,
-              height: 8,
-              margin: const EdgeInsets.only(top: 4),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: notification.isRead ? AppTheme.border : color,
+    return Semantics(
+      label:
+          '${notification.isRead ? "" : "Unread: "}${notification.title}. ${notification.message}',
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
+          ),
+          decoration: BoxDecoration(
+            color: notification.isRead ? null : color.withValues(alpha: 0.05),
+            border: Border(bottom: BorderSide(color: AppTheme.borderSubtle)),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                margin: const EdgeInsets.only(top: 4),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: notification.isRead ? AppTheme.border : color,
+                ),
               ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    notification.title,
-                    style: AppTypography.badgeText.copyWith(
-                      color: AppTheme.textPrimary,
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      notification.title,
+                      style: AppTypography.badgeText.copyWith(
+                        color: AppTheme.textPrimary,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    notification.message,
-                    style: AppTypography.captionRegular.copyWith(
-                      color: AppTheme.textSecondary,
+                    const SizedBox(height: 2),
+                    Text(
+                      notification.message,
+                      style: AppTypography.captionRegular.copyWith(
+                        color: AppTheme.textSecondary,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    _timeAgo(notification.timestamp),
-                    style: AppTypography.captionLight,
-                  ),
-                ],
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      _timeAgo(notification.timestamp),
+                      style: AppTypography.captionLight,
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

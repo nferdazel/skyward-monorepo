@@ -9,6 +9,7 @@ import '../../features/auth/presentation/cubit/auth_cubit.dart';
 import '../../features/auth/presentation/cubit/auth_state.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
+import 'app_button.dart';
 
 // ── Persistence key ──
 const _kOnboardingCompleteKey = 'onboarding_complete';
@@ -213,14 +214,10 @@ class _OnboardingOverlayState extends State<OnboardingOverlay> {
               Positioned(
                 top: AppSpacing.lg,
                 right: AppSpacing.lg,
-                child: TextButton(
+                child: AppButton(
+                  text: 'SKIP',
                   onPressed: _skip,
-                  child: Text(
-                    'SKIP',
-                    style: AppTypography.badgeText.copyWith(
-                      color: AppTheme.textMuted,
-                    ),
-                  ),
+                  type: AppButtonType.secondary,
                 ),
               ),
             ],
@@ -255,33 +252,18 @@ class _OnboardingOverlayState extends State<OnboardingOverlay> {
       children: [
         // Back button — invisible on first step
         if (_currentStep > 0)
-          TextButton(
+          AppButton(
+            text: 'BACK',
             onPressed: _back,
-            child: Text(
-              'BACK',
-              style: AppTypography.badgeText.copyWith(
-                color: AppTheme.textMuted,
-              ),
-            ),
+            type: AppButtonType.secondary,
           )
         else
           const SizedBox(width: 80),
 
         // Next / Start button
-        ElevatedButton(
+        AppButton(
+          text: _isLast ? 'START PLAYING' : 'NEXT',
           onPressed: _next,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppTheme.primary,
-            foregroundColor: Colors.black,
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.xxl,
-              vertical: AppSpacing.md,
-            ),
-          ),
-          child: Text(
-            _isLast ? 'START PLAYING' : 'NEXT',
-            style: AppTypography.badgeText.copyWith(color: Colors.black),
-          ),
         ),
       ],
     );

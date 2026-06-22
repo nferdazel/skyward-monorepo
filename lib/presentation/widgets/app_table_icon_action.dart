@@ -30,8 +30,9 @@ class AppTableIconAction extends StatelessWidget {
           onTap: onPressed,
           borderRadius: BorderRadius.circular(4),
           child: Container(
-            width: 28,
-            height: 28,
+            width: 44,
+            height: 44,
+            alignment: Alignment.center,
             decoration: BoxDecoration(
               color: foreground.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(4),
@@ -42,7 +43,7 @@ class AppTableIconAction extends StatelessWidget {
             ),
             child: Icon(
               icon,
-              size: 15,
+              size: 18,
               color: onPressed == null ? AppTheme.textMuted : foreground,
             ),
           ),

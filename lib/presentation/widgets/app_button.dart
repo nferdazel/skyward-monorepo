@@ -63,6 +63,8 @@ class AppButton extends StatelessWidget {
                 }
               : null,
           borderRadius: BorderRadius.circular(4),
+          hoverColor: AppTheme.primary.withValues(alpha: 0.08),
+          highlightColor: AppTheme.primary.withValues(alpha: 0.12),
           child: Container(
             alignment: Alignment.center,
             decoration: BoxDecoration(
@@ -71,9 +73,7 @@ class AppButton extends StatelessWidget {
               border: getBorder(),
             ),
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-            child: Opacity(
-              opacity: isEnabled ? 1.0 : 0.4,
-              child: isLoading
+            child: isLoading
                   ? SizedBox(
                       width: 20,
                       height: 20,
@@ -101,7 +101,6 @@ class AppButton extends StatelessWidget {
                         ),
                       ],
                     ),
-            ),
           ),
         ),
       ),

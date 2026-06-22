@@ -26,14 +26,17 @@ class AppSparkline extends StatelessWidget {
 
     final lineColor = color ?? AppTheme.primary;
 
-    return SizedBox(
-      width: width,
-      height: height,
-      child: CustomPaint(
-        painter: _SparklinePainter(
-          data: data,
-          color: lineColor,
-          strokeWidth: strokeWidth,
+    return Semantics(
+      label: 'Trend chart showing ${data.length} data points',
+      child: SizedBox(
+        width: width,
+        height: height,
+        child: CustomPaint(
+          painter: _SparklinePainter(
+            data: data,
+            color: lineColor,
+            strokeWidth: strokeWidth,
+          ),
         ),
       ),
     );
@@ -80,6 +83,17 @@ class _SparklinePainter extends CustomPainter {
     }
 
     canvas.drawPath(path, paint);
+
+    // Gradient fill beneath the sparkline
+    final fillPath = Path.from(path);
+    fillPath.lineTo(size.width, size.height);
+    fillPath.lineTo(0, size.height);
+    fillPath.close();
+
+    final fillPaint = Paint()
+      ..color = color.withValues(alpha: 0.1)
+      ..style = PaintingStyle.fill;
+    canvas.drawPath(fillPath, fillPaint);
   }
 
   @override
