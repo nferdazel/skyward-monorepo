@@ -101,4 +101,4 @@ BEGIN
         v_fleet,
         v_routes;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
