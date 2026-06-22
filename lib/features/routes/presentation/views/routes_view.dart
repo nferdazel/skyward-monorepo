@@ -65,26 +65,10 @@ class _RoutesViewState extends State<RoutesView> {
     return BlocConsumer<RoutesCubit, RoutesState>(
       listener: (context, state) {
         if (state is RoutesActionSuccess) {
-          AppSnackBar.showSuccess(context, state.message);
-          if (state.routes.length == 1) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      '🛫 YOUR FIRST ROUTE IS LIVE. Revenue will flow after the next simulation tick.',
-                      style: AppTypography.badgeText.copyWith(
-                        color: AppTheme.success,
-                      ),
-                    ),
-                    backgroundColor: AppTheme.surface,
-                    duration: const Duration(seconds: 6),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              }
-            });
-          }
+          final message = state.routes.length == 1
+              ? '${state.message} Your first route is live!'
+              : state.message;
+          AppSnackBar.showSuccess(context, message);
         } else if (state is RoutesError) {
           AppSnackBar.showError(context, state.message);
         }
@@ -201,6 +185,7 @@ class _RoutesViewState extends State<RoutesView> {
         origin: r.origin,
         destination: r.destination,
         highlighted: false,
+        color: _getRouteColor(r),
       )),
     ];
     if (highlightedRoute != null) {
@@ -208,6 +193,7 @@ class _RoutesViewState extends State<RoutesView> {
         origin: highlightedRoute.origin,
         destination: highlightedRoute.destination,
         highlighted: true,
+        color: _getRouteColor(highlightedRoute),
       ));
     }
 
@@ -269,9 +255,9 @@ class _RoutesViewState extends State<RoutesView> {
                     ),
                   ],
                   strokeWidth: ultraDense ? 1.5 : (denseNetwork ? 2 : 3),
-                  color: AppTheme.info.withValues(alpha: 0.72),
+                  color: route.color.withValues(alpha: 0.72),
                   borderStrokeWidth: ultraDense ? 0 : (denseNetwork ? 3 : 7),
-                  borderColor: AppTheme.info.withValues(alpha: 0.16),
+                  borderColor: route.color.withValues(alpha: 0.16),
                 ),
               if (highlightedRoute != null)
                 Polyline(
@@ -292,8 +278,8 @@ class _RoutesViewState extends State<RoutesView> {
                   ],
                   strokeWidth: ultraDense ? 2.5 : (denseNetwork ? 3 : 4),
                   color: AppTheme.primary,
-                  borderStrokeWidth: ultraDense ? 0 : (denseNetwork ? 4 : 9),
-                  borderColor: AppTheme.primary.withValues(alpha: 0.22),
+                  borderStrokeWidth: ultraDense ? 0 : (denseNetwork ? 4 : 8),
+                  borderColor: AppTheme.primary.withValues(alpha: 0.3),
                 ),
             ],
           ),
@@ -318,12 +304,13 @@ class _RoutesViewState extends State<RoutesView> {
                 ))
                   Marker(
                     point: LatLng(airport.latitude, airport.longitude),
-                    width: 72,
-                    height: 28,
+                    width: 50,
+                    height: 20,
                     alignment: Alignment.topCenter,
                     child: _AirportMarker(
                       label: airport.iata,
                       highlighted: false,
+                      demandIndex: airport.demandIndex,
                     ),
                   ),
               ],
@@ -1603,6 +1590,16 @@ class _RoutesViewState extends State<RoutesView> {
     }
   }
 
+  Color _getRouteColor(UserRoute route) {
+    final baseFare = GameConstants.ticketBaseFare +
+        (route.distanceKm * GameConstants.ticketPerKmRate);
+    final priceRatio = route.ticketPrice / baseFare;
+
+    if (priceRatio <= 1.05) return AppTheme.success;
+    if (priceRatio <= 1.20) return AppTheme.warning;
+    return AppTheme.error;
+  }
+
   String _viabilityLabel(RouteViabilityBand viability) {
     switch (viability) {
       case RouteViabilityBand.strong:
@@ -1719,11 +1716,13 @@ class _MapRoute {
   final Airport origin;
   final Airport destination;
   final bool highlighted;
+  final Color color;
 
   const _MapRoute({
     required this.origin,
     required this.destination,
     required this.highlighted,
+    required this.color,
   });
 }
 
@@ -1776,28 +1775,38 @@ class _MapViewport {
 class _AirportMarker extends StatelessWidget {
   final String label;
   final bool highlighted;
+  final int demandIndex;
 
-  const _AirportMarker({required this.label, required this.highlighted});
+  const _AirportMarker({
+    required this.label,
+    required this.highlighted,
+    required this.demandIndex,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final color = highlighted ? AppTheme.primary : AppTheme.info;
+    final demandColor = demandIndex >= 80
+        ? AppTheme.success
+        : demandIndex >= 50
+            ? AppTheme.warning
+            : AppTheme.error;
     return Align(
       alignment: Alignment.topCenter,
       child: Container(
         padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.xs,
+          horizontal: 4,
           vertical: 2,
         ),
         decoration: BoxDecoration(
-          color: AppTheme.surface.withValues(alpha: 0.92),
-          border: Border.all(color: color.withValues(alpha: 0.8)),
+          color: demandColor.withValues(alpha: 0.3),
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: demandColor.withValues(alpha: 0.5)),
         ),
         child: Text(
           label,
-          style: AppTypography.badgeText.copyWith(
-            color: color,
-            fontSize: 11,
+          style: AppTypography.microLabel.copyWith(
+            color: demandColor,
+            fontSize: 9,
           ),
         ),
       ),
