@@ -12,6 +12,7 @@ import '../../../../presentation/widgets/app_empty_state.dart';
 import '../../../../presentation/widgets/app_info_strip.dart';
 import '../../../../presentation/widgets/app_section_header.dart';
 import '../../../../presentation/widgets/app_stat_text.dart';
+import '../../../../presentation/widgets/app_sparkline.dart';
 import '../../../../presentation/widgets/app_table_cells.dart';
 import '../../../../presentation/widgets/app_table_shell.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
@@ -71,7 +72,7 @@ class FinanceView extends StatelessWidget {
                   children: [
                     const AppSectionHeader(title: AppStrings.currentPositionTitle),
                     const SizedBox(height: AppSpacing.blockGap),
-                    _buildCurrentPositionGrid(state.snapshot, _currencyFormat),
+                    _buildCurrentPositionGrid(state.snapshot, _currencyFormat, state.dailySnapshots),
                     const SizedBox(height: AppSpacing.sectionGap),
                     const AppSectionHeader(title: AppStrings.rollingOperationsTitle),
                     const SizedBox(height: AppSpacing.blockGap),
@@ -112,6 +113,7 @@ class FinanceView extends StatelessWidget {
   Widget _buildCurrentPositionGrid(
     FinanceSnapshot snapshot,
     NumberFormat currencyFormat,
+    List<FinanceDailySnapshot> dailySnapshots,
   ) {
     final fleetMixLabel =
         '${snapshot.ownedFleetCount} owned / ${snapshot.leasedFleetCount} leased';
@@ -138,12 +140,34 @@ class FinanceView extends StatelessWidget {
               currencyFormat.format(snapshot.cash),
               AppTheme.success,
               Icons.account_balance_wallet_outlined,
+              sparkline: dailySnapshots.length >= 3
+                  ? AppSparkline(
+                      data: dailySnapshots
+                          .take(7)
+                          .map((d) => d.net)
+                          .toList(),
+                      width: 60,
+                      height: 24,
+                      color: AppTheme.success,
+                    )
+                  : null,
             ),
             _buildSummaryCard(
               AppStrings.estNetWorth,
               currencyFormat.format(snapshot.netWorth),
               AppTheme.primary,
               Icons.account_balance_outlined,
+              sparkline: dailySnapshots.length >= 3
+                  ? AppSparkline(
+                      data: dailySnapshots
+                          .take(7)
+                          .map((d) => d.net)
+                          .toList(),
+                      width: 60,
+                      height: 24,
+                      color: AppTheme.primary,
+                    )
+                  : null,
             ),
             _buildSummaryCard(
               AppStrings.ownedAssetValue,
@@ -185,6 +209,7 @@ class FinanceView extends StatelessWidget {
     final rollingExpense = state.snapshot.rollingExpense30d;
     final rollingNet = state.snapshot.rollingNet30d;
     final netColor = rollingNet >= 0 ? AppTheme.success : AppTheme.error;
+    final dailySnapshots = state.dailySnapshots;
 
     return Row(
       children: [
@@ -194,6 +219,17 @@ class FinanceView extends StatelessWidget {
             currencyFormat.format(rollingRevenue),
             AppTheme.success,
             Icons.trending_up,
+            sparkline: dailySnapshots.length >= 3
+                ? AppSparkline(
+                    data: dailySnapshots
+                        .take(7)
+                        .map((d) => d.revenue)
+                        .toList(),
+                    width: 60,
+                    height: 24,
+                    color: AppTheme.success,
+                  )
+                : null,
           ),
         ),
         const SizedBox(width: AppSpacing.xl),
@@ -203,6 +239,17 @@ class FinanceView extends StatelessWidget {
             currencyFormat.format(rollingExpense),
             AppTheme.error,
             Icons.trending_down,
+            sparkline: dailySnapshots.length >= 3
+                ? AppSparkline(
+                    data: dailySnapshots
+                        .take(7)
+                        .map((d) => d.expense)
+                        .toList(),
+                    width: 60,
+                    height: 24,
+                    color: AppTheme.error,
+                  )
+                : null,
           ),
         ),
         const SizedBox(width: AppSpacing.xl),
@@ -212,6 +259,17 @@ class FinanceView extends StatelessWidget {
             currencyFormat.format(rollingNet),
             netColor,
             Icons.account_balance_outlined,
+            sparkline: dailySnapshots.length >= 3
+                ? AppSparkline(
+                    data: dailySnapshots
+                        .take(7)
+                        .map((d) => d.net)
+                        .toList(),
+                    width: 60,
+                    height: 24,
+                    color: netColor,
+                  )
+                : null,
           ),
         ),
       ],
@@ -222,8 +280,9 @@ class FinanceView extends StatelessWidget {
     String label,
     String value,
     Color color,
-    IconData icon,
-  ) {
+    IconData icon, {
+    Widget? sparkline,
+  }) {
     return AppCard(
       customBorder: Border(
         top: BorderSide(color: color, width: 1.5),
@@ -251,6 +310,10 @@ class FinanceView extends StatelessWidget {
                     color: color,
                   ),
                 ),
+                if (sparkline != null) ...[
+                  const SizedBox(height: 4),
+                  sparkline,
+                ],
               ],
             ),
           ),
