@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -13,6 +15,7 @@ import '../../../../presentation/theme/app_spacing.dart';
 import '../../../../presentation/theme/app_typography.dart';
 import '../../../../presentation/widgets/app_badge.dart';
 import '../../../../presentation/widgets/app_button.dart';
+import '../../../../presentation/widgets/app_card.dart';
 import '../../../../presentation/widgets/app_dialog_shell.dart';
 import '../../../../presentation/widgets/app_empty_state.dart';
 import '../../../../presentation/widgets/app_info_strip.dart';
@@ -28,6 +31,7 @@ import '../../../auth/presentation/cubit/auth_state.dart';
 import '../../../routes/presentation/cubit/routes_cubit.dart';
 import '../../../routes/presentation/cubit/routes_state.dart';
 import '../../../simulation/presentation/cubit/simulation_cubit.dart';
+import '../../../bank/presentation/cubit/bank_cubit.dart';
 import '../../domain/fleet_models.dart';
 import '../cubit/fleet_cubit.dart';
 import '../cubit/fleet_state.dart';
@@ -1075,6 +1079,18 @@ class _FleetViewState extends State<FleetView>
                                 false,
                               ),
                       ),
+                      const SizedBox(width: AppSpacing.xs),
+                      AppTableIconAction(
+                        tooltip: 'Finance Aircraft',
+                        icon: Icons.credit_card,
+                        onPressed: isActionLoading
+                            ? null
+                            : () => _showFinanceDialog(
+                                context,
+                                model,
+                                userId,
+                              ),
+                      ),
                     ],
                   ),
                 ),
@@ -1287,6 +1303,142 @@ class _FleetViewState extends State<FleetView>
           },
         );
       },
+    );
+  }
+
+  void _showFinanceDialog(
+    BuildContext context,
+    AircraftModel model,
+    String userId,
+  ) {
+    double downPaymentPct = 0.20;
+    int termMonths = 60;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          final downPayment = model.purchasePrice * downPaymentPct;
+          final principal = model.purchasePrice - downPayment;
+          final monthlyPayment = principal *
+              (0.05 / 12) /
+              (1 - pow(1 + 0.05 / 12, -termMonths));
+          final totalCost = downPayment + (monthlyPayment * termMonths);
+
+          return AppDialogShell(
+            title: 'FINANCE: ${model.manufacturer} ${model.modelName}',
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Down payment slider
+                Text(
+                  'Down Payment: ${(downPaymentPct * 100).round()}%',
+                  style: AppTypography.bodyMedium,
+                ),
+                Slider(
+                  value: downPaymentPct,
+                  min: 0.10,
+                  max: 0.50,
+                  divisions: 8,
+                  onChanged: (v) =>
+                      setDialogState(() => downPaymentPct = v),
+                ),
+                Text(
+                  '\$${_formatNumber(downPayment)}',
+                  style: AppTypography.monoValue,
+                ),
+
+                const SizedBox(height: AppSpacing.lg),
+
+                // Term selector
+                Text('Term', style: AppTypography.microLabel),
+                Row(
+                  children: [
+                    for (final term in [36, 60, 120])
+                      Padding(
+                        padding:
+                            const EdgeInsets.only(right: AppSpacing.sm),
+                        child: ChoiceChip(
+                          label: Text('${term ~/ 12}yr'),
+                          selected: termMonths == term,
+                          onSelected: (v) =>
+                              setDialogState(() => termMonths = term),
+                        ),
+                      ),
+                  ],
+                ),
+
+                const SizedBox(height: AppSpacing.lg),
+
+                // Summary
+                AppCard(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: Column(
+                    children: [
+                      _summaryRow('Aircraft Price',
+                          '\$${_formatNumber(model.purchasePrice)}'),
+                      _summaryRow('Down Payment',
+                          '\$${_formatNumber(downPayment)}'),
+                      _summaryRow('Monthly Payment',
+                          '\$${_formatNumber(monthlyPayment)}'),
+                      _summaryRow(
+                          'Total Cost', '\$${_formatNumber(totalCost)}'),
+                      _summaryRow(
+                          'vs Buy Outright',
+                          '+\$${_formatNumber(totalCost - model.purchasePrice)}'),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: AppSpacing.lg),
+
+                // Confirm
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    AppButton(
+                      text: 'Cancel',
+                      onPressed: () => Navigator.pop(ctx),
+                      type: AppButtonType.secondary,
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    AppButton(
+                      text: 'Finance Aircraft',
+                      onPressed: () {
+                        context.read<BankCubit>().financeAircraft(
+                              model.id,
+                              userId,
+                              termMonths,
+                              downPaymentPct,
+                            );
+                        Navigator.pop(ctx);
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _summaryRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: AppTypography.captionRegular
+                .copyWith(color: AppTheme.textSecondary),
+          ),
+          Text(value, style: AppTypography.monoValue),
+        ],
+      ),
     );
   }
 
@@ -1572,6 +1724,15 @@ class _FleetViewState extends State<FleetView>
   List<AircraftModel> _getCatalogList(FleetState state) {
     if (state is FleetDataState) return state.catalog;
     return [];
+  }
+
+  String _formatNumber(double value) {
+    if (value >= 1000000) {
+      return '${(value / 1000000).toStringAsFixed(1)}M';
+    } else if (value >= 1000) {
+      return '${(value / 1000).toStringAsFixed(0)}K';
+    }
+    return value.toStringAsFixed(0);
   }
 
   Widget _tableHeaderCell(String label) {
