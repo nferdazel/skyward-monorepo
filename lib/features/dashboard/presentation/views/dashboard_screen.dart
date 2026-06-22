@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/lazy_tab_cubit.dart';
 import '../../../../core/utils/perf_debug.dart';
@@ -23,6 +24,7 @@ import '../../../settings/presentation/cubit/settings_cubit.dart';
 import '../../../settings/presentation/views/settings_view.dart';
 import '../../../simulation/presentation/cubit/simulation_cubit.dart';
 import '../../../simulation/presentation/cubit/simulation_state.dart';
+import '../../domain/overview_snapshot.dart';
 import '../widgets/dashboard_sidebar.dart';
 import '../widgets/top_hud.dart';
 import 'overview_tab.dart';
@@ -242,6 +244,31 @@ class _AuthenticatedDashboardShellState
     );
   }
 
+  List<String> _buildTickerMessages(
+    BuildContext context,
+    AuthAuthenticated authState,
+  ) {
+    final overview = OverviewSnapshot.fromStates(
+      user: authState.user,
+      simState: context.read<SimulationCubit>().state,
+      fleetState: context.read<FleetCubit>().state,
+      routesState: context.read<RoutesCubit>().state,
+      financeState: context.read<FinanceCubit>().state,
+      leaderboardState: context.read<LeaderboardCubit>().state,
+    );
+
+    return [
+      'FLEET: ${overview.readyFleetCount}/${overview.totalFleetCount} READY',
+      'ROUTES: ${overview.activeRoutes} ACTIVE',
+      'CASH RUNWAY: ${overview.runwayLabel}',
+      if (overview.leaderGapLabel.isNotEmpty &&
+          overview.leaderGapLabel != AppStrings.loadingLabel)
+        overview.leaderGapLabel,
+      'STATUS: ${overview.operationalStatus.toUpperCase()}',
+      'SEASON CLOCK RUNNING',
+    ];
+  }
+
   Widget _buildDesktopLayout(
     BuildContext context,
     AuthAuthenticated authState,
@@ -311,7 +338,15 @@ class _AuthenticatedDashboardShellState
                   ),
                 ),
                 // Ticker at bottom
-                const TickerTape(),
+                BlocBuilder<SimulationCubit, SimulationState>(
+                  buildWhen: (prev, curr) =>
+                      prev.gameTime != curr.gameTime ||
+                      prev.cashBalance != curr.cashBalance,
+                  builder: (context, simState) {
+                    final messages = _buildTickerMessages(context, authState);
+                    return TickerTape(messages: messages);
+                  },
+                ),
               ],
             ),
           ),

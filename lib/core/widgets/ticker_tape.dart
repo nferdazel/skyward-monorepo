@@ -5,7 +5,14 @@ import '../../presentation/theme/app_spacing.dart';
 import '../theme/app_theme.dart';
 
 class TickerTape extends StatefulWidget {
-  const TickerTape({super.key});
+  final List<String> messages;
+  final double height;
+
+  const TickerTape({
+    super.key,
+    this.messages = const ['SYSTEM INITIALIZING...'],
+    this.height = 24,
+  });
 
   static final TextStyle _monoStyle = GoogleFonts.ibmPlexMono(
     fontSize: 11,
@@ -22,8 +29,11 @@ class _TickerTapeState extends State<TickerTape>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _animation;
-  final String _message =
-      'SYSTEM OPERATIONAL  •  FLIGHT OPS ACTIVE  •  AI COMPETITORS LIVE  •  GLOBAL RANKINGS ONLINE  •  CASH RUNWAY STABLE  •  SEASON CLOCK RUNNING';
+
+  String get _tickerText {
+    if (widget.messages.isEmpty) return 'SYSTEM INITIALIZING...';
+    return widget.messages.join('  •  ');
+  }
 
   @override
   void initState() {
@@ -45,16 +55,18 @@ class _TickerTapeState extends State<TickerTape>
 
   @override
   Widget build(BuildContext context) {
+    final tickerText = _tickerText;
+
     if (MediaQuery.disableAnimationsOf(context)) {
       return Container(
-        height: 24,
+        height: widget.height,
         width: double.infinity,
         decoration: BoxDecoration(
           color: AppTheme.surface,
         ),
         child: Center(
           child: Text(
-            _message,
+            tickerText,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TickerTape._monoStyle,
@@ -64,7 +76,7 @@ class _TickerTapeState extends State<TickerTape>
     }
 
     return Container(
-      height: 24,
+      height: widget.height,
       width: double.infinity,
       decoration: BoxDecoration(
         color: AppTheme.surface,
@@ -83,7 +95,7 @@ class _TickerTapeState extends State<TickerTape>
           child: Align(
             alignment: Alignment.centerLeft,
             child: Text(
-              _message,
+              tickerText,
               maxLines: 1,
               overflow: TextOverflow.visible,
               style: TickerTape._monoStyle,
