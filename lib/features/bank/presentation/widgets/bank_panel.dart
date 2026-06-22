@@ -15,6 +15,7 @@ import '../../../../presentation/widgets/app_empty_state.dart';
 import '../../../../presentation/widgets/app_info_strip.dart';
 import '../../../../presentation/widgets/app_labeled_value.dart';
 import '../../../../presentation/widgets/app_snackbar.dart';
+import '../../domain/credit_report_model.dart';
 import '../../domain/loan_model.dart';
 import '../cubit/bank_cubit.dart';
 import '../cubit/bank_state.dart';
@@ -69,10 +70,10 @@ class BankPanel extends StatelessWidget {
   Widget _buildBody(BuildContext context, BankState state) {
     return switch (state) {
       BankInitial() || BankLoading() => _buildLoading(),
-      BankLoaded(:final loans) =>
+      BankLoaded(:final loans, :final creditReport) =>
         loans.isEmpty
             ? _buildEmptyState(context)
-            : _buildContent(context, loans),
+            : _buildContent(context, loans, creditReport: creditReport),
       BankError(:final hasData, :final loans) =>
         hasData ? _buildContent(context, loans) : _buildEmptyState(context),
       BankLoanSuccess(:final loans) => _buildContent(context, loans),
@@ -111,7 +112,7 @@ class BankPanel extends StatelessWidget {
 
   // ── Content ─────────────────────────────────────────────────────────────
 
-  Widget _buildContent(BuildContext context, List<Loan> loans) {
+  Widget _buildContent(BuildContext context, List<Loan> loans, {CreditReport? creditReport}) {
     final activeLoans = loans.where((l) => l.isActive).toList();
     final historicalLoans = loans.where((l) => !l.isActive).toList();
 
@@ -128,6 +129,12 @@ class BankPanel extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // ── Credit score card ──
+        if (creditReport != null) ...[
+          _buildCreditScoreCard(creditReport),
+          const SizedBox(height: AppSpacing.md),
+        ],
+
         // ── Summary strip ──
         if (activeLoans.isNotEmpty) ...[
           _buildSummaryStrip(totalOutstanding, totalWeekly),
@@ -204,6 +211,92 @@ class BankPanel extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  // ── Credit Score Card ─────────────────────────────────────────────────────
+
+  Widget _buildCreditScoreCard(CreditReport report) {
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              SizedBox(
+                width: 80,
+                height: 80,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      value: report.currentScore / 1000.0,
+                      strokeWidth: 6,
+                      backgroundColor: AppTheme.borderSubtle,
+                      valueColor: AlwaysStoppedAnimation(_tierColor(report.creditTier)),
+                    ),
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(report.currentScore.toString(), style: AppTypography.largeKpi),
+                        Text(report.creditTier, style: AppTypography.badgeText.copyWith(color: _tierColor(report.creditTier))),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.lg),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('CREDIT RATING', style: AppTypography.sectionHeaderLarge),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text('Max Loan: \$${_formatNumber(report.maxUnsecuredLoan)}', style: AppTypography.captionRegular),
+                    Text('Rate: ${(report.baseInterestRate * 100).toStringAsFixed(1)}% APR', style: AppTypography.captionRegular),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (report.suggestions.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.md),
+            Text('IMPROVEMENTS', style: AppTypography.microLabel.copyWith(color: AppTheme.textMuted)),
+            const SizedBox(height: AppSpacing.sm),
+            ...report.suggestions.take(3).map((s) => Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+              child: Row(
+                children: [
+                  Icon(Icons.arrow_forward_ios, size: 10, color: AppTheme.primary),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(child: Text(s, style: AppTypography.captionRegular)),
+                ],
+              ),
+            )),
+          ],
+        ],
+      ),
+    );
+  }
+
+  static Color _tierColor(String tier) {
+    switch (tier) {
+      case 'Platinum': return const Color(0xFFE5E4E2);
+      case 'Gold': return const Color(0xFFFFD700);
+      case 'Silver': return const Color(0xFFC0C0C0);
+      case 'Standard': return AppTheme.primary;
+      case 'Subprime': return AppTheme.error;
+      default: return AppTheme.textSecondary;
+    }
+  }
+
+  static String _formatNumber(double value) {
+    if (value >= 1000000) {
+      return '${(value / 1000000).toStringAsFixed(1)}M';
+    } else if (value >= 1000) {
+      return '${(value / 1000).toStringAsFixed(0)}K';
+    }
+    return value.toStringAsFixed(0);
   }
 
   // ── Loan Dialog ─────────────────────────────────────────────────────────

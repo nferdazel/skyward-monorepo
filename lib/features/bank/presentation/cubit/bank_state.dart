@@ -1,3 +1,5 @@
+import '../../domain/aircraft_financing_model.dart';
+import '../../domain/credit_report_model.dart';
 import '../../domain/loan_model.dart';
 
 abstract class BankState {
@@ -14,8 +16,16 @@ class BankLoading extends BankState {
 
 class BankLoaded extends BankState {
   final List<Loan> loans;
+  final CreditReport? creditReport;
+  final List<CreditScoreSnapshot> creditHistory;
+  final List<AircraftFinancing> aircraftFinancing;
 
-  const BankLoaded({required this.loans});
+  const BankLoaded({
+    required this.loans,
+    this.creditReport,
+    this.creditHistory = const [],
+    this.aircraftFinancing = const [],
+  });
 
   /// Active loans currently being repaid.
   List<Loan> get activeLoans =>
@@ -42,6 +52,16 @@ class BankLoaded extends BankState {
 
   /// Whether the player can take another loan.
   bool get canTakeLoan => activeLoanCount < 3;
+
+  /// Active aircraft financing plans.
+  List<AircraftFinancing> get activeFinancing =>
+      aircraftFinancing.where((f) => f.isActive).toList();
+
+  /// Current credit score (cached on users table).
+  int get creditScore => creditReport?.currentScore ?? 500;
+
+  /// Current credit tier.
+  String get creditTier => creditReport?.creditTier ?? 'Standard';
 }
 
 class BankError extends BankState {
@@ -64,6 +84,16 @@ class BankLoanSuccess extends BankState {
   const BankLoanSuccess({
     required this.message,
     required this.newCash,
+    required this.loans,
+  });
+}
+
+class BankRefinanceSuccess extends BankState {
+  final String message;
+  final List<Loan> loans;
+
+  const BankRefinanceSuccess({
+    required this.message,
     required this.loans,
   });
 }

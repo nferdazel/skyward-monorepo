@@ -14,7 +14,22 @@ class BankGatewayException implements Exception {
 
 abstract class BankGateway {
   Future<List<dynamic>> getLoans(String userId);
-  Future<List<dynamic>> takeLoan(double principal, int termWeeks);
+  Future<List<dynamic>> takeLoan(
+    double principal,
+    int termWeeks, {
+    String loanType,
+    String? collateralAircraftId,
+  });
+  Future<Map<String, dynamic>> getCreditReport();
+  Future<List<dynamic>> getCreditHistory();
+  Future<List<dynamic>> getAircraftFinancing();
+  Future<List<dynamic>> financeAircraft(
+    String aircraftModelId,
+    String fleetId,
+    int termMonths,
+    double downPaymentPct,
+  );
+  Future<Map<String, dynamic>> refinanceLoan(String loanId);
 }
 
 class SupabaseBankGateway implements BankGateway {
@@ -27,7 +42,9 @@ class SupabaseBankGateway implements BankGateway {
           .from('loans')
           .select(
             'id, principal, interest_rate, remaining_balance, weekly_payment, '
-            'status, taken_at, game_date_taken, paid_off_at',
+            'status, loan_type, collateral_aircraft_id, '
+            'credit_score_at_origination, missed_payments, '
+            'taken_at, game_date_taken, paid_off_at',
           )
           .eq('user_id', userId)
           .order('taken_at', ascending: false);
@@ -45,26 +62,156 @@ class SupabaseBankGateway implements BankGateway {
   }
 
   @override
-  Future<List<dynamic>> takeLoan(double principal, int termWeeks) async {
+  Future<List<dynamic>> takeLoan(
+    double principal,
+    int termWeeks, {
+    String loanType = 'unsecured',
+    String? collateralAircraftId,
+  }) async {
     try {
       final response = await SupabaseManager.client.rpc(
         'take_loan',
         params: {
           'p_principal': principal,
           'p_term_weeks': termWeeks,
+          'p_loan_type': loanType,
+          'p_collateral_aircraft_id': collateralAircraftId,
         },
       );
       return response as List<dynamic>;
     } on PostgrestException catch (e) {
       SupabaseManager.logRpcFailure(
         'take_loan',
-        {'p_principal': principal, 'p_term_weeks': termWeeks},
+        {
+          'p_principal': principal,
+          'p_term_weeks': termWeeks,
+          'p_loan_type': loanType,
+        },
         e.message,
       );
       throw BankGatewayException(e.message, 'takeLoan');
     } catch (e, stack) {
       SupabaseManager.logError('takeLoan', e, stack);
       throw BankGatewayException(e.toString(), 'takeLoan');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> getCreditReport() async {
+    try {
+      final response = await SupabaseManager.client.rpc('get_credit_report');
+      if (response is List && response.isNotEmpty) {
+        return response.first as Map<String, dynamic>;
+      }
+      return {};
+    } on PostgrestException catch (e) {
+      SupabaseManager.logRpcFailure('get_credit_report', {}, e.message);
+      throw BankGatewayException(e.message, 'getCreditReport');
+    } catch (e, stack) {
+      SupabaseManager.logError('getCreditReport', e, stack);
+      throw BankGatewayException(e.toString(), 'getCreditReport');
+    }
+  }
+
+  @override
+  Future<List<dynamic>> getCreditHistory() async {
+    try {
+      return await SupabaseManager.client
+          .from('credit_score_history')
+          .select(
+            'score, fleet_health, revenue_stability, debt_ratio, '
+            'cash_reserve, profit_history, game_date',
+          )
+          .order('game_date', ascending: false)
+          .limit(30);
+    } on PostgrestException catch (e) {
+      SupabaseManager.logRpcFailure('getCreditHistory', {}, e.message);
+      throw BankGatewayException(e.message, 'getCreditHistory');
+    } catch (e, stack) {
+      SupabaseManager.logError('getCreditHistory', e, stack);
+      throw BankGatewayException(e.toString(), 'getCreditHistory');
+    }
+  }
+
+  @override
+  Future<List<dynamic>> getAircraftFinancing() async {
+    try {
+      return await SupabaseManager.client
+          .from('aircraft_financing')
+          .select(
+            'id, user_id, aircraft_model_id, fleet_id, down_payment, '
+            'financed_amount, interest_rate, monthly_payment, '
+            'remaining_payments, total_payments, remaining_balance, '
+            'credit_score_at_origination, status, taken_at, '
+            'game_date_taken, paid_off_at',
+          )
+          .order('taken_at', ascending: false);
+    } on PostgrestException catch (e) {
+      SupabaseManager.logRpcFailure('getAircraftFinancing', {}, e.message);
+      throw BankGatewayException(e.message, 'getAircraftFinancing');
+    } catch (e, stack) {
+      SupabaseManager.logError('getAircraftFinancing', e, stack);
+      throw BankGatewayException(e.toString(), 'getAircraftFinancing');
+    }
+  }
+
+  @override
+  Future<List<dynamic>> financeAircraft(
+    String aircraftModelId,
+    String fleetId,
+    int termMonths,
+    double downPaymentPct,
+  ) async {
+    try {
+      final response = await SupabaseManager.client.rpc(
+        'finance_aircraft',
+        params: {
+          'p_aircraft_model_id': aircraftModelId,
+          'p_fleet_id': fleetId,
+          'p_term_months': termMonths,
+          'p_down_payment_pct': downPaymentPct,
+        },
+      );
+      return response as List<dynamic>;
+    } on PostgrestException catch (e) {
+      SupabaseManager.logRpcFailure(
+        'finance_aircraft',
+        {
+          'p_aircraft_model_id': aircraftModelId,
+          'p_fleet_id': fleetId,
+        },
+        e.message,
+      );
+      throw BankGatewayException(e.message, 'financeAircraft');
+    } catch (e, stack) {
+      SupabaseManager.logError('financeAircraft', e, stack);
+      throw BankGatewayException(e.toString(), 'financeAircraft');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> refinanceLoan(String loanId) async {
+    try {
+      final response = await SupabaseManager.client.rpc(
+        'refinance_loan',
+        params: {
+          'p_loan_id': loanId,
+        },
+      );
+      if (response is List && response.isNotEmpty) {
+        return response.first as Map<String, dynamic>;
+      }
+      return {};
+    } on PostgrestException catch (e) {
+      SupabaseManager.logRpcFailure(
+        'refinance_loan',
+        {'p_loan_id': loanId},
+        e.message,
+      );
+      throw BankGatewayException(e.message, 'refinanceLoan');
+    } catch (e, stack) {
+      SupabaseManager.logError('refinanceLoan', e, stack);
+      throw BankGatewayException(e.toString(), 'refinanceLoan');
     }
   }
 }

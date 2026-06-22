@@ -11,6 +11,8 @@ import '../../../../core/utils/app_error.dart';
 import '../../../../core/utils/dev_mode_manager.dart';
 import '../../../simulation/presentation/cubit/simulation_cubit.dart';
 import '../../data/bank_gateway.dart';
+import '../../domain/aircraft_financing_model.dart';
+import '../../domain/credit_report_model.dart';
 import '../../domain/loan_model.dart';
 import 'bank_state.dart';
 
@@ -19,6 +21,9 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
   final RealtimeSubscriptionBag _realtimeSubscriptions =
       RealtimeSubscriptionBag();
   List<Loan> _cachedLoans = [];
+  CreditReport? _cachedCreditReport;
+  List<CreditScoreSnapshot> _cachedCreditHistory = [];
+  List<AircraftFinancing> _cachedFinancing = [];
   Timer? _realtimeRefreshDebounce;
   String? _userId;
 
@@ -31,7 +36,7 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
     _userId = userId;
     subscribeToSimulation(
       simCubit,
-      () => loadLoans(userId, silent: true),
+      () => loadBankData(userId, silent: true),
       delay: const Duration(milliseconds: 800),
     );
     _setupRealtime(userId);
@@ -45,29 +50,49 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
     return super.close();
   }
 
-  /// Load all loans for the current user.
-  Future<void> loadLoans(String userId, {bool silent = false}) async {
+  /// Load all bank data: loans, credit report, credit history, financing.
+  Future<void> loadBankData(String userId, {bool silent = false}) async {
     if (!silent) {
       emit(const BankLoading());
     }
 
     try {
       if (DevModeManager.isDevMode) {
-        _loadMockLoans();
+        _loadMockData();
         return;
       }
 
-      final response = await _gateway.getLoans(userId);
-      _cachedLoans =
-          response.map((m) => Loan.fromMap(m as Map<String, dynamic>)).toList();
+      // Load loans and credit report in parallel
+      final results = await Future.wait([
+        _gateway.getLoans(userId),
+        _gateway.getCreditReport(),
+        _gateway.getCreditHistory(),
+        _gateway.getAircraftFinancing(),
+      ]);
 
-      emit(BankLoaded(loans: _cachedLoans));
+      _cachedLoans = (results[0] as List<dynamic>)
+          .map((m) => Loan.fromMap(m as Map<String, dynamic>))
+          .toList();
+
+      final creditMap = results[1] as Map<String, dynamic>;
+      _cachedCreditReport =
+          creditMap.isNotEmpty ? CreditReport.fromMap(creditMap) : null;
+
+      _cachedCreditHistory = (results[2] as List<dynamic>)
+          .map((m) => CreditScoreSnapshot.fromMap(m as Map<String, dynamic>))
+          .toList();
+
+      _cachedFinancing = (results[3] as List<dynamic>)
+          .map((m) => AircraftFinancing.fromMap(m as Map<String, dynamic>))
+          .toList();
+
+      _emitLoaded();
     } catch (e, stack) {
-      AppError.log('loadLoans', e, stack);
+      AppError.log('loadBankData', e, stack);
       if (!silent) {
         emit(
           BankError(
-            message: AppError.extractMessage(e, 'Failed to load loans.'),
+            message: AppError.extractMessage(e, 'Failed to load bank data.'),
             hasData: _cachedLoans.isNotEmpty,
             loans: _cachedLoans,
           ),
@@ -76,8 +101,18 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
     }
   }
 
+  /// Load all loans for the current user (backward-compatible entry point).
+  Future<void> loadLoans(String userId, {bool silent = false}) async {
+    await loadBankData(userId, silent: silent);
+  }
+
   /// Take a new loan from the bank.
-  Future<void> takeLoan(double principal, int termWeeks) async {
+  Future<void> takeLoan(
+    double principal,
+    int termWeeks, {
+    String loanType = 'unsecured',
+    String? collateralAircraftId,
+  }) async {
     emit(const BankLoading());
 
     try {
@@ -86,7 +121,12 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
         return;
       }
 
-      final response = await _gateway.takeLoan(principal, termWeeks);
+      final response = await _gateway.takeLoan(
+        principal,
+        termWeeks,
+        loanType: loanType,
+        collateralAircraftId: collateralAircraftId,
+      );
 
       if (response.isNotEmpty) {
         final result = response.first as Map<String, dynamic>;
@@ -95,11 +135,19 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
         final newCash = (result['new_cash'] as num?)?.toDouble() ?? 0.0;
 
         if (success) {
-          // Reload loans to get the updated list
-          final loansResponse = await _gateway.getLoans(_userId ?? '');
-          _cachedLoans = loansResponse
+          // Reload all bank data
+          final results = await Future.wait([
+            _gateway.getLoans(_userId ?? ''),
+            _gateway.getCreditReport(),
+          ]);
+
+          _cachedLoans = (results[0] as List<dynamic>)
               .map((m) => Loan.fromMap(m as Map<String, dynamic>))
               .toList();
+
+          final creditMap = results[1] as Map<String, dynamic>;
+          _cachedCreditReport =
+              creditMap.isNotEmpty ? CreditReport.fromMap(creditMap) : null;
 
           emit(BankLoanSuccess(
             message: message,
@@ -126,6 +174,147 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
     }
   }
 
+  /// Finance an aircraft purchase.
+  Future<void> financeAircraft(
+    String aircraftModelId,
+    String fleetId,
+    int termMonths,
+    double downPaymentPct,
+  ) async {
+    emit(const BankLoading());
+
+    try {
+      final response = await _gateway.financeAircraft(
+        aircraftModelId,
+        fleetId,
+        termMonths,
+        downPaymentPct,
+      );
+
+      if (response.isNotEmpty) {
+        final result = response.first as Map<String, dynamic>;
+        final success = result['success'] as bool? ?? false;
+        final message = result['message'] as String? ?? '';
+
+        if (success) {
+          // Reload financing data
+          final financingData = await _gateway.getAircraftFinancing();
+          _cachedFinancing = financingData
+              .map((m) => AircraftFinancing.fromMap(m as Map<String, dynamic>))
+              .toList();
+
+          _emitLoaded();
+        } else {
+          emit(BankError(
+            message: message,
+            hasData: _cachedLoans.isNotEmpty,
+            loans: _cachedLoans,
+          ));
+        }
+      }
+    } catch (e, stack) {
+      AppError.log('financeAircraft', e, stack);
+      emit(
+        BankError(
+          message: AppError.extractMessage(e, 'Failed to process financing.'),
+          hasData: _cachedLoans.isNotEmpty,
+          loans: _cachedLoans,
+        ),
+      );
+    }
+  }
+
+  /// Load credit report for the given user.
+  Future<void> loadCreditReport(String userId) async {
+    try {
+      final creditMap = await _gateway.getCreditReport();
+      _cachedCreditReport =
+          creditMap.isNotEmpty ? CreditReport.fromMap(creditMap) : null;
+      _emitLoaded();
+    } catch (e, stack) {
+      AppError.log('loadCreditReport', e, stack);
+      emit(
+        BankError(
+          message:
+              AppError.extractMessage(e, 'Failed to load credit report.'),
+          hasData: _cachedLoans.isNotEmpty,
+          loans: _cachedLoans,
+        ),
+      );
+    }
+  }
+
+  /// Load aircraft financing plans for the given user.
+  Future<void> loadAircraftFinancing(String userId) async {
+    try {
+      final financingData = await _gateway.getAircraftFinancing();
+      _cachedFinancing = financingData
+          .map((m) => AircraftFinancing.fromMap(m as Map<String, dynamic>))
+          .toList();
+      _emitLoaded();
+    } catch (e, stack) {
+      AppError.log('loadAircraftFinancing', e, stack);
+      emit(
+        BankError(
+          message: AppError.extractMessage(
+            e,
+            'Failed to load aircraft financing.',
+          ),
+          hasData: _cachedLoans.isNotEmpty,
+          loans: _cachedLoans,
+        ),
+      );
+    }
+  }
+
+  /// Refinance an existing loan.
+  Future<void> refinanceLoan(String loanId) async {
+    emit(const BankLoading());
+
+    try {
+      final result = await _gateway.refinanceLoan(loanId);
+      final success = result['success'] as bool? ?? false;
+      final message = result['message'] as String? ?? '';
+
+      if (success) {
+        // Reload loans after refinance
+        final loansData = await _gateway.getLoans(_userId ?? '');
+        _cachedLoans = loansData
+            .map((m) => Loan.fromMap(m as Map<String, dynamic>))
+            .toList();
+
+        emit(BankRefinanceSuccess(
+          message: message,
+          loans: _cachedLoans,
+        ));
+      } else {
+        emit(BankError(
+          message: message,
+          hasData: _cachedLoans.isNotEmpty,
+          loans: _cachedLoans,
+        ));
+      }
+    } catch (e, stack) {
+      AppError.log('refinanceLoan', e, stack);
+      emit(
+        BankError(
+          message: AppError.extractMessage(e, 'Failed to refinance loan.'),
+          hasData: _cachedLoans.isNotEmpty,
+          loans: _cachedLoans,
+        ),
+      );
+    }
+  }
+
+  void _emitLoaded() {
+    emit(BankLoaded(
+      loans: _cachedLoans,
+      creditReport: _cachedCreditReport,
+      creditHistory: _cachedCreditHistory,
+      aircraftFinancing: _cachedFinancing,
+    ));
+  }
+
   void _setupRealtime(String userId) {
     if (DevModeManager.isDevMode || SupabaseManager.hasMockClient) return;
 
@@ -150,11 +339,11 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
   void _scheduleRealtimeRefresh(String userId) {
     _realtimeRefreshDebounce?.cancel();
     _realtimeRefreshDebounce = Timer(const Duration(milliseconds: 300), () {
-      unawaited(loadLoans(userId, silent: true));
+      unawaited(loadBankData(userId, silent: true));
     });
   }
 
-  void _loadMockLoans() {
+  void _loadMockData() {
     final now = DateTime.now();
     _cachedLoans = [
       Loan(
@@ -164,6 +353,7 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
         remainingBalance: 3200000,
         weeklyPayment: 101923.08,
         status: 'active',
+        loanType: 'unsecured',
         takenAt: now.subtract(const Duration(days: 30)),
         gameDateTaken: now.subtract(const Duration(days: 30)),
       ),
@@ -174,12 +364,29 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
         remainingBalance: 0,
         weeklyPayment: 20384.62,
         status: 'paid_off',
+        loanType: 'secured',
         takenAt: now.subtract(const Duration(days: 120)),
         gameDateTaken: now.subtract(const Duration(days: 120)),
         paidOffAt: now.subtract(const Duration(days: 10)),
       ),
     ];
-    emit(BankLoaded(loans: _cachedLoans));
+    _cachedCreditReport = const CreditReport(
+      currentScore: 720,
+      fleetHealth: 160,
+      revenueStability: 150,
+      debtRatio: 140,
+      cashReserve: 130,
+      profitHistory: 140,
+      creditTier: 'Gold',
+      maxUnsecuredLoan: 30000000,
+      maxSecuredLoan: 75000000,
+      maxFinancingAmount: 60000000,
+      baseInterestRate: 0.04,
+      suggestions: ['Maintain consistent route operations.'],
+    );
+    _cachedCreditHistory = [];
+    _cachedFinancing = [];
+    _emitLoaded();
   }
 
   void _mockTakeLoan(double principal, int termWeeks) {
@@ -195,6 +402,7 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
       remainingBalance: totalRepayable,
       weeklyPayment: weeklyPayment,
       status: 'active',
+      loanType: 'unsecured',
       takenAt: now,
       gameDateTaken: now,
     );
