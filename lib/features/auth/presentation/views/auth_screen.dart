@@ -242,6 +242,7 @@ class _AuthScreenState extends State<AuthScreen> {
               TextFormField(
                 controller: _usernameController,
                 keyboardType: TextInputType.name,
+                textInputAction: TextInputAction.next,
                 enabled: !isLoading,
                 decoration: const InputDecoration(
                   labelText: 'USERNAME',
@@ -260,6 +261,7 @@ class _AuthScreenState extends State<AuthScreen> {
               TextFormField(
                 controller: _passwordController,
                 obscureText: _obscurePassword,
+                textInputAction: TextInputAction.done,
                 enabled: !isLoading,
                 decoration: InputDecoration(
                   labelText: 'PASSWORD',
@@ -280,12 +282,14 @@ class _AuthScreenState extends State<AuthScreen> {
                     return AppStrings.passwordMinLength;
                   return null;
                 },
+                onFieldSubmitted: (_) => _submitForm(context, isLoginMode),
               ),
               if (!isLoginMode) ...[
                 const SizedBox(height: AppSpacing.md),
                 // Company Name
                 TextFormField(
                   controller: _companyController,
+                  textInputAction: TextInputAction.next,
                   enabled: !isLoading,
                   decoration: const InputDecoration(
                     labelText: 'COMPANY NAME',
@@ -302,6 +306,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 // CEO Name
                 TextFormField(
                   controller: _ceoController,
+                  textInputAction: TextInputAction.next,
                   enabled: !isLoading,
                   decoration: const InputDecoration(
                     labelText: 'CEO NAME',
