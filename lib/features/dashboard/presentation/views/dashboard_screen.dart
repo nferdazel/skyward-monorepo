@@ -8,7 +8,9 @@ import '../../../../core/utils/lazy_tab_cubit.dart';
 import '../../../../core/utils/perf_debug.dart';
 import '../../../../core/widgets/ticker_tape.dart';
 import '../../../../presentation/theme/app_spacing.dart';
+import '../../../../presentation/theme/app_typography.dart';
 import '../../../../presentation/widgets/notification_panel.dart';
+import '../../../../presentation/widgets/onboarding_overlay.dart';
 import '../../../auth/domain/user_model.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
@@ -89,6 +91,9 @@ class _AuthenticatedDashboardShellState
   late final FinanceCubit _financeCubit;
   late final LazyTabCubit _lazyTabCubit;
 
+  // ── Onboarding state ──
+  bool _showOnboarding = false;
+
   // ── Notification state ──
   late List<GameNotification> _notifications;
   OverlayEntry? _notificationOverlayEntry;
@@ -108,6 +113,14 @@ class _AuthenticatedDashboardShellState
     _lazyTabCubit = LazyTabCubit();
     _notifications = generateSampleNotifications();
     _bootstrapForUser(widget.initialUser);
+    _checkOnboarding();
+  }
+
+  Future<void> _checkOnboarding() async {
+    final complete = await isOnboardingComplete();
+    if (!complete && mounted) {
+      setState(() => _showOnboarding = true);
+    }
   }
 
   void _bootstrapForUser(User user) {
@@ -338,6 +351,44 @@ class _AuthenticatedDashboardShellState
     ];
   }
 
+  Widget _buildNetworkStatusBar(SimulationState simState) {
+    if (simState.errorMessage == null || simState.errorMessage!.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      color: AppTheme.errorSubtle,
+      child: Row(
+        children: [
+          const Icon(Icons.wifi_off, size: 16, color: AppTheme.error),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              AppStrings.connectionLost,
+              style: AppTypography.captionRegular.copyWith(
+                color: AppTheme.error,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              context.read<SimulationCubit>().syncWithDatabase();
+            },
+            child: Text(
+              AppStrings.retryNow,
+              style: AppTypography.badgeText.copyWith(color: AppTheme.error),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildDesktopLayout(
     BuildContext context,
     AuthAuthenticated authState,
@@ -348,12 +399,14 @@ class _AuthenticatedDashboardShellState
 
     return Scaffold(
       backgroundColor: AppTheme.background,
-      body: Row(
+      body: Stack(
         children: [
-          const DashboardSidebar(),
-          Expanded(
-            child: Column(
-              children: [
+          Row(
+            children: [
+              const DashboardSidebar(),
+              Expanded(
+                child: Column(
+                  children: [
                 // Status bar
                 BlocBuilder<SimulationCubit, SimulationState>(
                   buildWhen: (previous, current) =>
@@ -376,54 +429,71 @@ class _AuthenticatedDashboardShellState
                     );
                   },
                 ),
+                // Network error status bar
+                BlocBuilder<SimulationCubit, SimulationState>(
+                  buildWhen: (previous, current) =>
+                      previous.errorMessage != current.errorMessage,
+                  builder: (context, simState) =>
+                      _buildNetworkStatusBar(simState),
+                ),
                 // Content area
-                Expanded(
-                  child: Container(
-                    padding: EdgeInsets.all(
-                      AppSpacing.pagePadding * scale,
-                    ),
-                    child: BlocBuilder<NavigationCubit, NavigationState>(
-                      builder: (context, navState) {
-                        return BlocBuilder<LazyTabCubit, LazyTabState>(
-                          builder: (context, lazyState) {
-                            return IndexedStack(
-                              index: navState.activeIndex,
-                              children: List.generate(
-                                6,
-                                (index) => RepaintBoundary(
-                                  child:
-                                      lazyState.loadedIndexes.contains(
-                                        index,
-                                      )
-                                          ? _buildTabChild(
-                                              context,
-                                              index,
-                                              currencyFormat,
-                                              dateFormat,
-                                            )
-                                          : const SizedBox.shrink(),
-                                ),
-                              ),
+                    Expanded(
+                      child: Container(
+                        padding: EdgeInsets.all(
+                          AppSpacing.pagePadding * scale,
+                        ),
+                        child: BlocBuilder<NavigationCubit, NavigationState>(
+                          builder: (context, navState) {
+                            return BlocBuilder<LazyTabCubit, LazyTabState>(
+                              builder: (context, lazyState) {
+                                return IndexedStack(
+                                  index: navState.activeIndex,
+                                  children: List.generate(
+                                    6,
+                                    (index) => RepaintBoundary(
+                                      child:
+                                          lazyState.loadedIndexes.contains(
+                                            index,
+                                          )
+                                              ? _buildTabChild(
+                                                  context,
+                                                  index,
+                                                  currencyFormat,
+                                                  dateFormat,
+                                                )
+                                              : const SizedBox.shrink(),
+                                    ),
+                                  ),
+                                );
+                              },
                             );
                           },
+                        ),
+                      ),
+                    ),
+                    // Ticker at bottom
+                    BlocBuilder<SimulationCubit, SimulationState>(
+                      buildWhen: (prev, curr) =>
+                          prev.gameTime != curr.gameTime ||
+                          prev.cashBalance != curr.cashBalance,
+                      builder: (context, simState) {
+                        final messages = _buildTickerMessages(
+                          context,
+                          authState,
                         );
+                        return TickerTape(messages: messages);
                       },
                     ),
-                  ),
+                  ],
                 ),
-                // Ticker at bottom
-                BlocBuilder<SimulationCubit, SimulationState>(
-                  buildWhen: (prev, curr) =>
-                      prev.gameTime != curr.gameTime ||
-                      prev.cashBalance != curr.cashBalance,
-                  builder: (context, simState) {
-                    final messages = _buildTickerMessages(context, authState);
-                    return TickerTape(messages: messages);
-                  },
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
+          // Onboarding overlay for first-time users
+          if (_showOnboarding)
+            OnboardingOverlay(
+              onComplete: () => setState(() => _showOnboarding = false),
+            ),
         ],
       ),
     );
