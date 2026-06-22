@@ -14,6 +14,7 @@ import '../../../../presentation/widgets/app_dropdown_field.dart';
 import '../../../../presentation/widgets/app_empty_state.dart';
 import '../../../../presentation/widgets/app_info_strip.dart';
 import '../../../../presentation/widgets/app_labeled_value.dart';
+import '../../../../presentation/widgets/app_section_header.dart';
 import '../../../../presentation/widgets/app_snackbar.dart';
 import '../../domain/credit_report_model.dart';
 import '../../domain/loan_model.dart';
@@ -36,32 +37,17 @@ class BankPanel extends StatelessWidget {
         }
       },
       builder: (context, state) {
-        return AppCard(
-          header: _buildHeader(context, state),
-          child: _buildBody(context, state),
+        return SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const AppSectionHeader(title: 'BANK'),
+              const SizedBox(height: AppSpacing.blockGap),
+              _buildBody(context, state),
+            ],
+          ),
         );
       },
-    );
-  }
-
-  // ── Header ──────────────────────────────────────────────────────────────
-
-  Widget _buildHeader(BuildContext context, BankState state) {
-    final activeCount = switch (state) {
-      BankLoaded(:final activeLoanCount) => activeLoanCount,
-      BankError(:final loans) => loans.where((l) => l.isActive).length,
-      _ => 0,
-    };
-
-    return Row(
-      children: [
-        Icon(Icons.account_balance, size: 16, color: AppTheme.primary),
-        const SizedBox(width: AppSpacing.sm),
-        Text('BANK', style: AppTypography.sectionHeaderMedium),
-        const Spacer(),
-        if (activeCount > 0)
-          AppBadge.primary(label: '$activeCount / 3 ACTIVE'),
-      ],
     );
   }
 

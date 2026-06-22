@@ -48,15 +48,15 @@ class AppTypography {
     letterSpacing: 0.1,
   );
 
-  // ── BODY TEXT (Inter) ──
-  static final TextStyle bodyLarge = GoogleFonts.inter(
+  // ── BODY TEXT (IBM Plex Sans — readable prose) ──
+  static final TextStyle bodyLarge = GoogleFonts.ibmPlexSans(
     fontSize: 14,
     fontWeight: FontWeight.normal,
     color: textPrimary,
     height: 1.4,
   );
 
-  static final TextStyle bodyMedium = GoogleFonts.inter(
+  static final TextStyle bodyMedium = GoogleFonts.ibmPlexSans(
     fontSize: 13,
     fontWeight: FontWeight.normal,
     color: textSecondary,
@@ -72,15 +72,15 @@ class AppTypography {
     letterSpacing: 0.1,
   );
 
-  // ── CAPTIONS / HINTS (Inter) ──
-  static final TextStyle captionRegular = GoogleFonts.inter(
+  // ── CAPTIONS / HINTS (IBM Plex Sans) ──
+  static final TextStyle captionRegular = GoogleFonts.ibmPlexSans(
     fontSize: 12,
     fontWeight: FontWeight.normal,
     color: textSecondary,
     height: 1.25,
   );
 
-  static final TextStyle captionLight = GoogleFonts.inter(
+  static final TextStyle captionLight = GoogleFonts.ibmPlexSans(
     fontSize: 11,
     fontWeight: FontWeight.w400,
     color: textMuted,
@@ -158,7 +158,7 @@ class AppTypography {
     color: textPrimary,
   );
 
-  static final TextStyle captionMuted = GoogleFonts.inter(
+  static final TextStyle captionMuted = GoogleFonts.ibmPlexSans(
     fontSize: 11,
     fontWeight: FontWeight.w400,
     color: textMuted,

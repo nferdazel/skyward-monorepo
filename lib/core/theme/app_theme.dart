@@ -62,7 +62,7 @@ class AppTheme {
         onSecondary: Colors.white,
         onSurface: SkywardColors.darkTextPri,
       ),
-      textTheme: GoogleFonts.interTextTheme(
+      textTheme: GoogleFonts.ibmPlexSansTextTheme(
         const TextTheme(
           displayLarge: TextStyle(
             fontSize: 22,
@@ -247,7 +247,7 @@ class AppTheme {
         onSecondary: Colors.black,
         onSurface: SkywardColors.lightTextPri,
       ),
-      textTheme: GoogleFonts.interTextTheme(
+      textTheme: GoogleFonts.ibmPlexSansTextTheme(
         const TextTheme(
           displayLarge: TextStyle(
             fontSize: 22,
