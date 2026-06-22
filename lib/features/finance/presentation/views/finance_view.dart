@@ -15,6 +15,7 @@ import '../../../../presentation/widgets/app_stat_text.dart';
 import '../../../../presentation/widgets/app_sparkline.dart';
 import '../../../../presentation/widgets/app_table_cells.dart';
 import '../../../../presentation/widgets/app_table_shell.dart';
+import '../../../../presentation/widgets/expense_breakdown_bar.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
 import '../../domain/finance_snapshot.dart';
@@ -79,6 +80,8 @@ class FinanceView extends StatelessWidget {
                     _buildExecutiveSummary(context, state, _currencyFormat),
                     const SizedBox(height: AppSpacing.blockGap),
                     _buildFinanceSignals(overview, _currencyFormat),
+                    const SizedBox(height: AppSpacing.sectionGap),
+                    _buildExpenseBreakdownBar(state, _currencyFormat),
                     const SizedBox(height: AppSpacing.sectionGap),
 
                     const AppSectionHeader(
@@ -358,6 +361,62 @@ class FinanceView extends StatelessWidget {
             value: overview.coverageLabel,
             valueColor: overview.coverageColor,
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExpenseBreakdownBar(
+    FinanceDataState state,
+    NumberFormat currencyFormat,
+  ) {
+    final segments = [
+      ExpenseSegment(
+        label: 'Operations',
+        amount: state.totalOperations,
+        color: AppTheme.error,
+      ),
+      ExpenseSegment(
+        label: 'Leasing',
+        amount: state.totalLease,
+        color: AppTheme.warning,
+      ),
+      ExpenseSegment(
+        label: 'Repairs',
+        amount: state.totalRepair,
+        color: AppTheme.primary,
+      ),
+      ExpenseSegment(
+        label: 'Acquisitions',
+        amount: state.totalPurchase,
+        color: AppTheme.info,
+      ),
+    ];
+
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'WHERE YOUR MONEY GOES',
+                style: AppTypography.microLabel.copyWith(
+                  color: AppTheme.textMuted,
+                ),
+              ),
+              Text(
+                currencyFormat.format(state.totalExpense),
+                style: AppTypography.monoValue.copyWith(
+                  color: AppTheme.error,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          ExpenseBreakdownBar(segments: segments),
         ],
       ),
     );
