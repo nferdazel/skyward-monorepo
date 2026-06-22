@@ -49,6 +49,22 @@ Forbidden for app state:
 - Backend-returned fields must be treated as contracts. Do not make silent assumptions about optional or renamed fields.
 - Migration history may be broad, but current behavior must be documented from active code paths.
 
+### 4a. Gateway Pattern
+
+Every feature that talks to Supabase must use the **gateway pattern**:
+
+- Define an abstract `*Gateway` interface in `lib/features/<feature>/data/`.
+- Implement it as `Supabase*Gateway` that wraps all Supabase RPC/table calls.
+- Each gateway method catches `PostgrestException` and throws a typed `*GatewayException`.
+- Cubits depend on the abstract gateway, never on `Supabase*Gateway` directly.
+- This enables testability (mock the gateway) and centralizes error handling.
+
+Example structure:
+```
+lib/features/fleet/data/
+  fleet_gateway.dart   # FleetGateway (abstract) + SupabaseFleetGateway + FleetGatewayException
+```
+
 ## 5. UI/UX Rules
 
 - **Desktop web only.** Mobile responsive layouts have been removed. Do not add `ResponsiveLayout` or mobile-specific branches.
@@ -70,7 +86,7 @@ All UI code must use the design system tokens defined in the theme files.
 ### Colors
 
 - Use `AppTheme.*` static const fields for all colors (e.g., `AppTheme.primary`, `AppTheme.success`)
-- Use semantic variants for subtle backgrounds: `successSubtle`, `dangerSubtle`, `warningSubtle`
+- Use semantic variants for subtle backgrounds: `successSubtle`, `errorSubtle`, `warningSubtle`
 - Use `surfaceRaised` for elevated surfaces (table headers, raised panels)
 - Use `borderSubtle` for subtle container backgrounds
 
@@ -85,6 +101,14 @@ All UI code must use the design system tokens defined in the theme files.
 - Use `AppTypography.*` styles for all text
 - UPPERCASE labels must use `microLabel` or explicit `letterSpacing: 0.06`
 - Data emphasis values use `hudValue`, `dataEmphasis`, or `largeKpi` as appropriate
+- Available styles by category:
+  - **Screen titles** (IBM Plex Mono): `screenTitleLarge`, `screenTitleMedium`
+  - **Section headers** (IBM Plex Mono, ALL CAPS): `sectionHeaderLarge`, `sectionHeaderMedium`
+  - **Body text** (Inter): `bodyLarge`, `bodyMedium`
+  - **Captions** (Inter): `captionRegular`, `captionLight`, `captionMuted`
+  - **Labels** (IBM Plex Mono, ALL CAPS): `microLabel`, `badgeText`, `monoLabel`, `labelSecondary`
+  - **Data/mono** (IBM Plex Mono): `hudValue`, `dataEmphasis`, `largeKpi`, `telemetry`, `monoValue`, `valuePrimary`
+  - **Buttons** (IBM Plex Mono): `buttonText`
 
 ### Border Radius
 
@@ -129,7 +153,30 @@ For every non-trivial change:
 - If code behavior changes materially, update the relevant docs in the same workstream.
 - Do not leave contradictory guidance in-repo when the current code is known.
 
-## 9. Review Checklist
+## 9. Test Patterns
+
+Tests are organized into four layers under `test/`:
+
+| Layer | Directory | Purpose |
+|---|---|---|
+| Layer 1 — Unit | `test/layer1_unit/` | Cubit state flows, domain models, business logic, theme tokens |
+| Layer 2 — Widget | `test/layer2_widget/` | Smoke tests for views, reusable widget behavior |
+| Layer 3 — Integration | `test/layer3_integration/` | Auth flows, realtime stream behavior |
+| Layer 4 — Database | `test/layer4_database/` | SQL audit tests, RPC/trigger verification |
+
+Run all tests:
+```bash
+flutter test
+```
+
+Run a specific layer:
+```bash
+flutter test test/layer1_unit/
+```
+
+Gateway tests mock the abstract `*Gateway` interface, not the Supabase client.
+
+## 10. Review Checklist
 
 Every change should be reviewable against this checklist:
 

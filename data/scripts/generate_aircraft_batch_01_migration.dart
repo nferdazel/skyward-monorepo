@@ -8,7 +8,7 @@ void main() {
     return;
   }
 
-  final output = File('docs_and_migrations/migrations/29_aircraft_replenishment_batch_01.sql');
+  final output = File('migrations/29_aircraft_replenishment_batch_01.sql');
   final dataRows = rows.skip(1).toList();
   final sourceRows = dataRows
       .map(

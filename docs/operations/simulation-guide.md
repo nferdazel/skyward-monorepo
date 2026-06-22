@@ -1,6 +1,6 @@
 # Skyward Simulation Troubleshooting
 
-Last verified on 2026-06-07.
+Last verified on 2026-06-22.
 
 ## Phantom ledger rows after reset
 
@@ -42,6 +42,8 @@ When simulation behavior looks suspicious, inspect:
 3. actor lag between the season clock and actor cursor
 4. `world_tick_log.players_processed` / `world_tick_log.bots_processed`
 5. buffered revenue/cost fields and assigned route/aircraft status
+6. active `game_events` rows that may be modifying fuel prices or demand
+7. `financial_snapshots` for daily trend anomalies
 
 Fast guardrail check:
 
@@ -57,3 +59,32 @@ If a reset user is already in a bad ledger state:
 - align `users.game_current_time` to the active `season_clock` if needed
 - delete the phantom ledger rows
 - or run `reset_user_airline()` again if no valid post-reset progress must be preserved
+
+## Event system
+
+Active events modify simulation economics in real time:
+- `fuel_price` events change the global fuel cost multiplier
+- `demand_index` events change passenger demand at specific airports
+- `airport_tax` events change landing fees globally
+- `weather` events penalise demand at specific airports
+
+Check active events:
+```sql
+SELECT * FROM game_events WHERE is_active = true ORDER BY start_game_time DESC;
+```
+
+If fuel costs or revenue look unexpectedly high/low, an active event may be
+the cause. Events expire automatically via `deactivate_expired_events()`.
+
+## Aviation depth notes
+
+Non-linear degradation: aircraft below 60% condition degrade faster. At 40%
+condition the aircraft wears 75% faster; at 20% it wears 150% faster. Deferred
+maintenance becomes increasingly costly.
+
+Maintenance milestones: A-check every 500 flights (10% condition penalty if
+skipped), C-check every 3000 flights (25% condition penalty if skipped). Track
+via `user_fleet.total_flights`, `last_a_check_at`, `last_c_check_at`.
+
+Cargo revenue: 10% of ticket revenue, scaling with route distance up to 5000 km.
+Logged as `financial_ledger.category = 'cargo'`.

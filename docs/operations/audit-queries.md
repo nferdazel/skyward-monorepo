@@ -1,6 +1,6 @@
 # Skyward Live Backend Audit Queries
 
-Last verified on 2026-06-07.
+Last verified on 2026-06-22.
 
 Use these against your real Supabase project when you want to inspect simulation behavior without changing code.
 
@@ -459,4 +459,90 @@ limit 20;
 select *
 from data_retention_policy
 order by key;
+```
+
+## 21. Active game events check
+
+Use this to inspect currently active world events that may be affecting
+simulation economics.
+
+```sql
+select
+  event_type,
+  title,
+  effect_type,
+  effect_target,
+  effect_value,
+  start_game_time,
+  end_game_time
+from game_events
+where is_active = true
+order by start_game_time desc;
+```
+
+## 22. Financial snapshots trend check
+
+Use this to inspect daily financial trends for a player.
+
+```sql
+select
+  game_date,
+  cash,
+  net_worth,
+  daily_revenue,
+  daily_expense,
+  fleet_count,
+  route_count
+from financial_snapshots
+where user_id = '<your_user_id>'
+order by game_date desc
+limit 30;
+```
+
+## 23. Hub bonus and congestion check
+
+Inspect the hub bonus and congestion factor for a specific airport:
+
+```sql
+select
+  get_hub_bonus_percentage('CGK', '<your_user_id>') as hub_bonus_pct,
+  calculate_airport_congestion_factor('CGK') as congestion_factor;
+```
+
+## 24. Maintenance milestone audit
+
+Check which aircraft are overdue for A-check or C-check:
+
+```sql
+select
+  f.id,
+  f.nickname,
+  f.tail_number,
+  f.condition,
+  f.total_flights,
+  f.last_a_check_at,
+  f.last_c_check_at,
+  CASE WHEN f.total_flights >= f.last_a_check_at + 500 THEN 'OVERDUE' ELSE 'ok' END as a_check_status,
+  CASE WHEN f.total_flights >= f.last_c_check_at + 3000 THEN 'OVERDUE' ELSE 'ok' END as c_check_status
+from user_fleet f
+where f.user_id = '<your_user_id>'
+  AND f.status = 'active'
+  AND (f.total_flights >= f.last_a_check_at + 500
+    OR f.total_flights >= f.last_c_check_at + 3000);
+```
+
+## 25. Cargo revenue audit
+
+Check recent cargo revenue entries in the ledger:
+
+```sql
+select
+  game_date,
+  amount,
+  description
+from financial_ledger
+where user_id = '<your_user_id>'
+  and category = 'cargo'
+order by game_date desc
+limit 20;
 ```

@@ -19,31 +19,38 @@ authoritative simulation, economy, world time, and operational validation.
 - finance snapshots plus rolling ledger analytics
 - AI competitor leaderboard with Intel panel
 - backend world-tick simulation and actor reconciliation
+- notification panel with typed alerts (info, success, warning, error, event)
+- first-run onboarding overlay guiding new players through fleet, routes, and assignment
+- network error recovery with auto-retry and manual retry action
 - owner/operator SQL tools for private admin use
 - dark tactical operations console UI with 4px border-radius design system
 
 ## Architecture
 
 - `DashboardScreen` is the runtime composition root
+- `NavigationCubit` owns tab selection state (index-based, sealed state)
 - `SimulationCubit` is the central reconciliation source
 - `LazyTabCubit` owns workspace lazy-load state for dashboard, fleet, and routes
 - `FleetCubit`, `RoutesCubit`, `FinanceCubit`, and `LeaderboardCubit` react
   through `SimulationReactiveMixin`, but finance and leaderboard are lazy-init
   surfaces
+- each feature uses a **gateway pattern** for data access: an abstract
+  `*Gateway` interface with a `Supabase*Gateway` implementation that wraps all
+  Supabase calls, handles errors, and throws typed `*GatewayException`s
 - production Flutter observes backend time; it does not locally advance
   authoritative game time
 - debug builds expose lightweight `[PERF]` instrumentation for load/reload audits
 
 Desktop shell layout:
-- ticker tape (28px scrolling operational broadcast)
-- sidebar (220px fixed width, icon+label nav with section grouping)
-- HUD bar (44px with pipe separators)
-- main content workspace via `IndexedStack`
+- sidebar (44px icon-only with tooltip labels, section grouping divider)
+- HUD bar (40px with pill indicators, pipe separators, notification bell)
+- main content workspace via `IndexedStack` (6 tabs: overview, fleet, routes, finance, leaderboard, settings)
+- ticker tape (24px scrolling operational broadcast at bottom)
 
 For the maintained backend/runtime record, use:
-- [docs_and_migrations/README.md](docs_and_migrations/README.md)
-- [docs_and_migrations/docs/01_ai_handover.md](docs_and_migrations/docs/01_ai_handover.md)
-- [docs_and_migrations/docs/03_supabase_contract_map.md](docs_and_migrations/docs/03_supabase_contract_map.md)
+- [docs/README.md](docs/README.md)
+- [docs/architecture/ai-handover.md](docs/architecture/ai-handover.md)
+- [docs/architecture/supabase-contracts.md](docs/architecture/supabase-contracts.md)
 
 ## Local setup
 
@@ -78,7 +85,7 @@ If placeholder values remain, the app falls back to dev mode with mock data.
 
 Apply SQL migrations in numeric order from:
 
-- `docs_and_migrations/migrations/`
+- `migrations/`
 
 ### Run
 
@@ -108,7 +115,7 @@ Required GitHub secrets:
 ## Repo guide
 
 - `lib/`: Flutter application code
-- `docs_and_migrations/`: maintained SQL and backend/runtime docs
+- `docs/` and `migrations/`: maintained SQL and backend/runtime docs
 - `data/`: catalog replenishment workflow and curated data artifacts
 - `test/`: unit, widget, integration, and database-oriented test layers
 

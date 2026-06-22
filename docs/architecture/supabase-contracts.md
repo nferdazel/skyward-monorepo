@@ -1,6 +1,6 @@
 # Skyward Supabase Contract Map
 
-Last verified against code on 2026-06-09.
+Last verified against code on 2026-06-22.
 
 This is the live Flutter-to-Supabase contract surface.
 
@@ -62,6 +62,8 @@ This is the live Flutter-to-Supabase contract surface.
   - synchronizes player and bot actor state to the new season game time
   - after Phase 5.1, uses qualified season references and assumes the active
     season has been bootstrapped to the existing actor frontier
+  - calls `generate_game_events()` and `deactivate_expired_events()` after
+    advancing the clock (event system)
 
 `process_player_simulation_to_time`
 - caller: `process_world_tick`, `process_simulation_delta`
@@ -71,6 +73,16 @@ This is the live Flutter-to-Supabase contract surface.
 - current behavior:
   - processes one player from `users.game_current_time` to the target season
     game time through deterministic game-day boundaries
+  - applies active game event multipliers (fuel price, demand)
+  - applies hub bonus, airport congestion, and competition factors
+  - applies seasonal demand modifiers (peak/normal/off-season)
+  - applies fare-class demand elasticity (business/first 30% fewer pax)
+  - includes crew cost model ($350/flight-hour)
+  - tracks A-check (500 flights) and C-check (3000 flights) milestones
+  - computes cargo revenue (10% of ticket revenue, distance-scaled)
+  - uses non-linear degradation (accelerating wear below 60% condition)
+  - computes catch-up subsidy for players < 30% of leader net worth
+  - records daily `financial_snapshots` at game-day boundaries
 
 `process_all_bots_simulation_to_time`
 - caller: `process_world_tick`
@@ -80,6 +92,10 @@ This is the live Flutter-to-Supabase contract surface.
 - current behavior:
   - processes active bots from `ai_competitors.game_current_time` to the target
     season game time through deterministic game-day boundaries
+  - applies active game event multipliers (fuel price, demand)
+  - applies seasonal demand modifiers, fare-class elasticity, crew costs
+  - tracks A-check and C-check maintenance milestones
+  - computes cargo revenue and non-linear degradation
 
 `ensure_world_current`
 - caller: command RPCs and snapshot reads
@@ -223,6 +239,88 @@ This is the live Flutter-to-Supabase contract surface.
   - creates the matching `public.users` row with future auth ownership linkage
   - leaves season bootstrap and actor-start-time enforcement to existing
     `users` insert triggers
+
+### Simulation helpers
+
+`haversine_distance`
+- caller: `create_route` server-side distance validation
+- params:
+  - `lat1`, `lon1`, `lat2`, `lon2`
+- current behavior:
+  - computes great-circle distance in km between two coordinates
+  - immutable, used for route distance validation with 10% tolerance
+
+`calculate_route_max_weekly_flights` (2-param overload)
+- caller: owner-optimizer, route assignment checks
+- params:
+  - `p_distance_km`
+  - `p_speed_kmh`
+- current behavior:
+  - returns max weekly flights using hardcoded 1.0-hour turnaround
+
+`calculate_route_max_weekly_flights` (3-param overload)
+- caller: player and bot simulation engine
+- params:
+  - `p_distance_km`
+  - `p_speed_kmh`
+  - `p_turnaround_hours`
+- current behavior:
+  - returns max weekly flights using per-aircraft turnaround time
+
+`calculate_route_expected_passengers` (8-param overload)
+- caller: player and bot simulation engine
+- params:
+  - `p_capacity`, `p_distance_km`, `p_ticket_price`
+  - `p_origin_demand`, `p_destination_demand`
+  - `p_origin_iata`, `p_destination_iata`, `p_user_id`
+- current behavior:
+  - base passenger count from capacity, demand, and pricing elasticity
+  - competition factor: splits demand when multiple actors serve same O-D pair
+  - congestion factor: penalises overloaded origin airports (> 50 weekly departures)
+  - hub bonus: 2% per additional route sharing the same origin, capped at 20%
+
+`calculate_airport_congestion_factor`
+- caller: 8-param `calculate_route_expected_passengers`
+- params:
+  - `p_origin_iata`
+- current behavior:
+  - returns a multiplier (0.50–1.0) based on total weekly departures from the airport
+  - penalty starts at > 50 weekly flights
+
+`calculate_hub_bonus`
+- caller: 8-param `calculate_route_expected_passengers`
+- params:
+  - `p_origin_iata`, `p_user_id`
+- current behavior:
+  - returns a demand multiplier (1.0–1.20) based on hub-and-spoke effect
+  - 2% bonus per additional active route sharing the same origin, capped at 20%
+
+`get_hub_bonus_percentage`
+- caller: Flutter UI for hub bonus display
+- params:
+  - `p_origin_iata`, `p_user_id`
+- current behavior:
+  - returns the hub bonus as a percentage (0–20) for UI display labels
+
+### Event system
+
+`generate_game_events`
+- caller: `process_world_tick` after advancing the season clock
+- params:
+  - `p_game_time`
+- current behavior:
+  - 5% chance per tick to generate one of four event types
+  - `fuel_shock`: global fuel price multiplier (0.7×–1.3×) for 72 hours
+  - `demand_surge`: airport-specific demand multiplier (1.2×–1.5×) for 48 hours
+  - `weather`: airport-specific demand penalty (0.5×) for 24 hours
+  - `regulatory`: global airport tax increase (5–20%) for 168 hours
+
+`deactivate_expired_events`
+- caller: `process_world_tick` after advancing the season clock
+- params:
+  - `p_game_time`
+- current behavior:
+  - marks `game_events` rows as `is_active = false` when `end_game_time` has passed
 
 ### Fleet
 
@@ -430,6 +528,8 @@ The client also reads some tables directly through Supabase queries:
 - `users`
 - `airports`
 - `global_game_settings`
+- `game_events` (active world events)
+- `financial_snapshots` (daily financial history for trends)
 
 These are still part of the effective contract because UI parsing depends on their returned fields.
 
@@ -469,3 +569,7 @@ The app also depends indirectly on backend jobs that are not called as standalon
   - contribution-based distress route cutbacks
   - paid bot repair recovery for grounded airframes
   - reserve-aware expansion gates tied to active lease burden
+  - premium cabin seat distributions per archetype
+  - competitive response pricing on shared O-D routes
+  - bot aircraft purchasing when cash > 3× starting capital
+  - soft-delete bankruptcy (status = 'Bankrupt', fleet grounded, data preserved)

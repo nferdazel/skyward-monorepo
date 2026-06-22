@@ -1,6 +1,6 @@
 # Skyward Docs And Migrations
 
-Last verified on 2026-06-09.
+Last verified on 2026-06-22.
 
 This folder is the maintenance record for Skyward's Supabase-backed runtime.
 Use it as an operator guide, not as a chronological diary.
@@ -9,10 +9,10 @@ Use it as an operator guide, not as a chronological diary.
 
 If you only open four files, open these:
 
-1. [01_ai_handover.md](docs/01_ai_handover.md)
-2. [03_supabase_contract_map.md](docs/03_supabase_contract_map.md)
-3. [04_database_design.md](docs/04_database_design.md)
-4. [07_live_backend_audit_queries.md](docs/07_live_backend_audit_queries.md)
+1. [ai-handover.md](architecture/ai-handover.md)
+2. [supabase-contracts.md](architecture/supabase-contracts.md)
+3. [database.md](architecture/database.md)
+4. [audit-queries.md](operations/audit-queries.md)
 
 ## Current Runtime State
 
@@ -26,43 +26,46 @@ Backend/runtime milestones already in place:
 - auth-bound gameplay RPC wrappers
 - RLS on the app-facing read surface
 - removal of the legacy custom-session auth system
-
-Current major next step:
-- Phase 16 foundation: player activity tracking and inactive-player policy
+- gateway pattern (7 gateways: Auth, Simulation, Fleet, Routes, Finance, Leaderboard, Settings)
+- event system (`game_events` table with time-bounded fuel, demand, tax, and weather effects)
+- notification panel, onboarding overlay, and help tooltip UI widgets
+- financial snapshots for historical trend visualization
+- hub-and-spoke bonus, airport congestion, and catch-up subsidy mechanics
+- aviation depth: turnaround times, fare-class elasticity, crew costs, seasonal demand, maintenance milestones
+- cargo revenue and non-linear aircraft degradation
 
 ## How To Use This Folder
 
 Use docs by question:
 - "What is the app/backend shape right now?"
-  Open [01_ai_handover.md](docs/01_ai_handover.md)
+  Open [ai-handover.md](architecture/ai-handover.md)
 - "What RPCs or direct table reads does Flutter rely on?"
-  Open [03_supabase_contract_map.md](docs/03_supabase_contract_map.md)
+  Open [supabase-contracts.md](architecture/supabase-contracts.md)
 - "What is the current database/security model?"
-  Open [04_database_design.md](docs/04_database_design.md)
+  Open [database.md](architecture/database.md)
 - "How do I troubleshoot suspicious simulation behavior?"
-  Open [06_simulation_troubleshooting.md](docs/06_simulation_troubleshooting.md)
+  Open [simulation-guide.md](operations/simulation-guide.md)
 - "What SQL should I run against live Supabase?"
-  Open [07_live_backend_audit_queries.md](docs/07_live_backend_audit_queries.md)
+  Open [audit-queries.md](operations/audit-queries.md)
 - "How does the private owner/operator optimizer work?"
-  Open [08_owner_operator_tools.md](docs/08_owner_operator_tools.md)
+  Open [owner-tools.md](operations/owner-tools.md)
 - "What is the current UI/UX design system?"
-  Open [09_ui_ux_extraction.md](docs/09_ui_ux_extraction.md)
+  Open [ui-design-system.md](architecture/ui-design-system.md)
 
 ## Documentation Set
 
 Core maintenance docs:
-- `docs/01_ai_handover.md`
-- `docs/02_architecture_baseline.md`
-- `docs/03_supabase_contract_map.md`
-- `docs/04_database_design.md`
+- `architecture/ai-handover.md`
+- `architecture/supabase-contracts.md`
+- `architecture/database.md`
 
 Operational/reference docs:
-- `docs/06_simulation_troubleshooting.md`
-- `docs/07_live_backend_audit_queries.md`
-- `docs/08_owner_operator_tools.md`
+- `operations/simulation-guide.md`
+- `operations/audit-queries.md`
+- `operations/owner-tools.md`
 
 UI/UX docs:
-- `docs/09_ui_ux_extraction.md`
+- `architecture/ui-design-system.md`
 
 ## Migration Bands
 
@@ -84,6 +87,16 @@ High-level grouping:
 - `62`-`68`
   Security hardening: Supabase Auth identity, auth bootstrap, RPC auth binding,
   RLS, and legacy custom-session removal
+- `69`
+  `financial_snapshots` UI read wiring
+- `70`-`78`
+  Security/race-condition fixes, route distance validation (Haversine), bot
+  bankruptcy soft-delete, RLS policy fixes, performance indexes, sell-aircraft
+  operation ordering, tail-number collision retry, password-hash column drop,
+  game balance (competition, premium cabins, bot purchasing), event system
+  (`game_events`), catch-up subsidy, hub bonus, `financial_snapshots` table,
+  aviation depth (turnaround, fare-class elasticity, crew costs, seasonal
+  demand, A/C-check milestones), cargo revenue, non-linear degradation
 
 ## Current Time Authority
 

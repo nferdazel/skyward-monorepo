@@ -1,6 +1,6 @@
 # Skyward Database Design
 
-Last verified against code and migration history on 2026-06-09.
+Last verified against code and migration history on 2026-06-22.
 
 This is the current high-level database design record.
 It replaces older raw-schema walkthroughs that no longer matched the live app.
@@ -70,6 +70,14 @@ Important fields used by Flutter:
 - `season_id`
 - HQ/grounding-related settings fields
 
+New columns (migration 72):
+- `password_hash` column was dropped — authentication is handled entirely by
+  Supabase Auth
+
+New columns (migration 78):
+- `buffered_cargo_revenue` — buffered cargo revenue accumulator, written to
+  `financial_ledger` as a separate line item at the game-day boundary
+
 Security Phase 1 note:
 - `auth_user_id` is now the forward path for binding authenticated callers to
   gameplay rows through `auth.uid()`
@@ -106,6 +114,11 @@ Contains starting cash, fuel price, safety limits, bot count, and lease deposit 
 Static aircraft catalog used for acquisition and planning.
 Last live baseline verified on 2026-06-01: `48` rows.
 
+New columns (migration 77):
+- `turnaround_hours` — ground-handling time in hours between landing and next
+  takeoff. Set by aircraft size class: ≤80 seats = 0.5h, 81–200 = 0.75h,
+  201–350 = 1.5h, >350 = 2.0h
+
 ### `airports`
 Static airport registry used by route creation and settings HQ selection.
 Last live baseline verified on 2026-06-01: `239` rows.
@@ -119,6 +132,14 @@ This is the authoritative source for:
 - seat configuration
 - assigned/grounded operational state
 - scheduled-maintenance slot wear recovery inputs
+
+New columns (migration 77):
+- `total_flights` — total flights completed by this airframe since acquisition
+- `last_a_check_at` — flight count at which the last A-check was performed (every 500 flights)
+- `last_c_check_at` — flight count at which the last C-check was performed (every 3000 flights)
+
+New column (migration 78):
+- `buffered_cargo_revenue` — buffered cargo revenue accumulator for bot actors
 
 ### `user_routes`
 Authoritative route network state.
@@ -161,6 +182,41 @@ Phase 14 compaction foundation:
   `world_tick_daily_summary` and then delete the covered raw rows
 - compaction is manual only in this phase; no scheduler is wired yet
 
+### `game_events`
+Time-bounded world events that modify simulation economics.
+
+Event types: `fuel_shock`, `demand_surge`, `weather`, `regulatory`.
+
+Important fields:
+- `event_type` — category of the event
+- `effect_type` — what the event modifies (`fuel_price`, `demand_index`, `airport_tax`)
+- `effect_target` — airport IATA code or `global`
+- `effect_value` — multiplier or absolute value
+- `start_game_time` / `end_game_time` — time window
+- `is_active` — whether the event is currently in effect
+
+RLS: world-readable, service-role writes only.
+Index: `game_events_active_lookup_idx` on `(effect_type, effect_target, is_active, start_game_time, end_game_time)`.
+
+Migration 75 creates this table and wires `generate_game_events()` and
+`deactivate_expired_events()` into `process_world_tick`.
+
+### `financial_snapshots`
+Daily financial snapshots for historical trend visualization.
+
+Important fields:
+- `user_id` — references `users(id)`
+- `game_date` — one row per user per game day
+- `cash` / `net_worth` — balance snapshot
+- `daily_revenue` / `daily_expense` — that day's totals
+- `fleet_count` / `route_count` — operational footprint
+
+RLS: users can only read their own snapshots.
+Index: `financial_snapshots_user_date_idx` on `(user_id, game_date DESC)`.
+
+Migration 76 creates this table and records daily snapshots at game-day
+boundaries from `process_player_simulation_to_time`.
+
 ### `world_tick_daily_summary`
 Daily UTC summary buckets for compacted `world_tick_log` history.
 
@@ -201,11 +257,17 @@ The database is responsible for:
 - generating leaderboard payloads
 - generating competitor insights
 - reporting database/table size for free-tier maintenance planning
+- generating and expiring time-bounded world events
+- computing hub bonus, airport congestion, and competition factors
+- applying seasonal demand modifiers and fare-class elasticity
+- tracking maintenance check milestones (A-check, C-check)
+- computing cargo revenue and non-linear degradation
+- recording daily financial snapshots for historical trends
 
 ## Migration policy
 
 Migration files live in:
-- `docs_and_migrations/migrations/`
+- `migrations/`
 
 Apply them in numeric order:
 - `01_...sql` onward

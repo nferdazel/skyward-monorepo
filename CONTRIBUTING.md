@@ -26,7 +26,7 @@ flutter run
 
 - Follow the [MAINTAINER_STANDARD.md](MAINTAINER_STANDARD.md)
 - Cubit-only state management
-- Feature-first architecture
+- Feature-first architecture with gateway pattern for data access
 - Desktop web only (no mobile responsive)
 - Use the design system tokens (AppTheme, AppSpacing, AppTypography)
 
@@ -46,3 +46,14 @@ Use conventional commits:
 - Include tests for new features
 - Update documentation if needed
 - Ensure `flutter analyze` and `flutter test` pass
+
+## Test Structure
+
+Tests are organized into layers:
+
+- `test/layer1_unit/` — Unit tests (cubits, models, business logic)
+- `test/layer2_widget/` — Widget smoke tests
+- `test/layer3_integration/` — Integration tests (auth flows, realtime)
+- `test/layer4_database/` — SQL audit and RPC/trigger tests
+
+Run a specific layer: `flutter test test/layer1_unit/`

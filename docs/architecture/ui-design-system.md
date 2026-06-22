@@ -1,6 +1,6 @@
 # Skyward UI/UX Extraction
 
-Last verified against code on 2026-06-09 (post v4 redesign).
+Last verified against code on 2026-06-22 (post v4 redesign).
 
 This document extracts the current UI/UX structure, design language, and screen responsibilities from the live Flutter codebase so redesign work can stay grounded in the actual product.
 
@@ -375,6 +375,40 @@ Not present in the current UX:
 - freeform canvas tools
 - visual automation builders
 
+### New Widget Signatures
+
+#### Notification Panel
+
+In-app notification system for game events:
+- `GameNotification` model with title, message, type, timestamp, read state
+- `NotificationType` enum: info, success, warning, error, event
+- `NotificationPanel` widget with read/unread state management
+- `NotificationBadge` for unread count display
+
+Reference:
+- [notification_panel.dart](../../lib/presentation/widgets/notification_panel.dart:1)
+
+#### Onboarding Overlay
+
+First-time player guidance overlay:
+- persists completion state via `SharedPreferences`
+- `OnboardingStep` model with title, description, icon, optional action
+- step-by-step walkthrough with progress indicator
+- dark overlay with highlighted content area
+
+Reference:
+- [onboarding_overlay.dart](../../lib/presentation/widgets/onboarding_overlay.dart:1)
+
+#### Help Tooltip
+
+Contextual inline help:
+- small `?` icon that shows a tooltip on tap/hover
+- themed to match the dark operations console style
+- configurable icon size
+
+Reference:
+- [help_tooltip.dart](../../lib/presentation/widgets/help_tooltip.dart:1)
+
 ### Design System
 
 #### Color Tokens
@@ -402,36 +436,51 @@ From [app_spacing.dart](../../lib/presentation/theme/app_spacing.dart:1):
 | Token | Value |
 |-------|-------|
 | `xs` | 4.0 |
-| `sm` | 6.0 |
-| `md` | 10.0 |
-| `lg` | 14.0 |
-| `xl` | 16.0 |
-| `xxl` | 20.0 |
-| `xxxl` | 24.0 |
+| `sm` | 8.0 |
+| `md` | 12.0 |
+| `lg` | 16.0 |
+| `xl` | 20.0 |
+| `xxl` | 24.0 |
+| `xxxl` | 32.0 |
 
 Semantic tokens:
 - `pagePadding`: 16
 - `cardPadding`: 12
 - `sectionGap`: 16
 - `blockGap`: 12
-- `compactGap`: 10
-- `microGap`: 6
+- `compactGap`: 8
+- `microGap`: 4
 - `tabContentGap`: 12
+
+Border radius tokens:
+- `radiusTight`: 2
+- `radiusDefault`: 4
+- `radiusSoft`: 8
+- `radiusRound`: 12
 
 #### Typography
 
-Font family:
-- IBM Plex Sans via Google Fonts
+Font families:
+- IBM Plex Mono via Google Fonts — used for all metric values, labels, section headers, badges, buttons, HUD values, KPI text
+- Inter via Google Fonts — used for body text, captions, hints
 
 Current typographic hierarchy:
-- screen titles: 15 to 17
-- section headers: 13 to 14, UPPERCASE, letterSpacing +0.08em
-- body text: 13
-- captions and badges: 11 to 12
-- micro labels: 11px, UPPERCASE, letterSpacing +0.06em
-- HUD values: 13px, bold
-- data emphasis: 16px, bold
-- large KPI: 22px, bold
+- screen titles: 13–15px, IBM Plex Mono, w600, letterSpacing +0.06em
+- section headers: 11–12px, IBM Plex Mono, w600, UPPERCASE, letterSpacing +0.10em
+- body text: 13–14px, Inter
+- captions and hints: 11–12px, Inter
+- micro labels: 11px, IBM Plex Mono, w600, letterSpacing +0.10em
+- badge text: 11px, IBM Plex Mono, w600, letterSpacing +0.08em
+- button text: 12px, IBM Plex Mono, w600, letterSpacing +0.08em
+- HUD values: 13px, IBM Plex Mono, w600
+- data emphasis: 15px, IBM Plex Mono, w700
+- large KPI: 20px, IBM Plex Mono, w700, letterSpacing -0.02em
+- telemetry: 12px, IBM Plex Mono, w500
+- mono value: 13px, IBM Plex Mono, w600
+- mono label: 11px, IBM Plex Mono, w600, letterSpacing +0.08em
+- label secondary: 11px, IBM Plex Mono, w600, letterSpacing +0.08em
+- value primary: 13px, IBM Plex Mono, w600
+- caption muted: 11px, Inter, w400
 
 References:
 - [app_theme.dart](../../lib/core/theme/app_theme.dart:1)
@@ -450,6 +499,9 @@ Current shared primitives:
 - dropdown fields
 - labeled values
 - info strips
+- notification panel
+- onboarding overlay
+- help tooltip
 
 Visual behavior of primitives:
 - cards are flat bordered blocks with 4px radius

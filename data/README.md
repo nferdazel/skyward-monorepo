@@ -67,7 +67,7 @@ These are snapshot inputs for local review workflows only.
 ## Maintenance rules
 
 1. Treat curated CSVs as the review surface.
-2. Treat numbered SQL migrations in `docs_and_migrations/migrations/` as the
+2. Treat numbered SQL migrations in `migrations/` as the
    historical application record once a batch is accepted.
 3. Do not treat `generated/` SQL files as canonical unless they are promoted
    into numbered migrations.

@@ -1,6 +1,6 @@
 # Skyward Architecture Baseline
 
-Last verified against code on 2026-06-08.
+Last verified against code on 2026-06-22.
 
 ## Application model
 
@@ -48,6 +48,27 @@ Allowed local widget state is limited to widget lifecycle concerns such as:
 - `TextEditingController`
 - `FocusNode`
 - dialog-local control composition
+
+## Gateway pattern
+
+Every Cubit that communicates with Supabase does so through a dedicated
+gateway abstraction. There are seven gateways:
+
+- `AuthGateway` / `SupabaseAuthGateway`
+- `SimulationGateway` / `SupabaseSimulationGateway`
+- `FleetGateway` / `SupabaseFleetGateway`
+- `RoutesGateway` / `SupabaseRoutesGateway`
+- `FinanceGateway` / `SupabaseFinanceGateway`
+- `LeaderboardGateway` / `SupabaseLeaderboardGateway`
+- `SettingsGateway` / `SupabaseSettingsGateway`
+
+Each gateway defines:
+- an abstract interface declaring the Supabase operations for that feature
+- a concrete `Supabase*Gateway` implementation
+- a dedicated `*GatewayException` type
+
+This makes Cubits testable with mock gateways and keeps Supabase client
+usage behind a single boundary per feature.
 
 ## Reactive flow
 
@@ -98,6 +119,9 @@ Shared widget primitives now cover:
 - compact table actions
 - control labels and dropdowns
 - stat text / info strips / labeled values
+- notification panel (`NotificationPanel`)
+- onboarding overlay (`OnboardingOverlay`)
+- help tooltip (`HelpTooltip`)
 
 ## Feature notes
 
@@ -121,6 +145,7 @@ Shared widget primitives now cover:
 - executive summaries
 - runway / burn-mix / coverage signals
 - daily operating snapshots and pressure-oriented cash diagnostics
+- financial snapshots for historical trend visualization
 
 ### Leaderboard
 - net-worth-based global ranking
@@ -140,6 +165,26 @@ Shared widget primitives now cover:
 - backend-controlled simulation and decision loop
 - archetype-shaped fleet seeding and route deployment
 - doctrine-driven route retuning, contribution-based distress cutbacks, and paid grounded-aircraft recovery
+- premium cabin seat distributions per archetype (Regional 80/15/5, Aggressive 70/20/10, Premium 50/30/20)
+- competitive response pricing when humans serve shared routes
+- bot aircraft purchasing when cash reserves exceed 3x starting capital
+
+### Event system
+- `game_events` table stores time-bounded world events
+- event types: `fuel_shock`, `demand_surge`, `weather`, `regulatory`
+- `generate_game_events()` runs each world tick with 5% probability per event type
+- `deactivate_expired_events()` marks past events inactive
+- active events modify fuel prices, airport demand, and airport taxes in simulation
+- catch-up subsidy gives trailing players (< 30% of leader net worth) a scaled government subsidy
+
+### Aviation depth
+- per-aircraft-type turnaround times on `aircraft_models` (0.5–2.0 hrs)
+- fare-class demand elasticity: business/first class attract 30% fewer passengers than seat-ratio split
+- crew cost model: $350/hr per flight hour
+- seasonal demand modifiers: peak (Jun-Aug, Dec) 1.15×, off-season (Jan-Feb, Oct-Nov) 0.90×
+- maintenance check milestones: A-check every 500 flights, C-check every 3000 flights
+- cargo revenue: 10% of ticket revenue baseline, scaling with route distance up to 5000 km
+- non-linear aircraft degradation: accelerating wear below 60% condition
 
 ### Settings
 - airline profile / HQ / safety threshold

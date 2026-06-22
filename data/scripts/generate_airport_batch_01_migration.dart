@@ -8,7 +8,7 @@ void main() {
     return;
   }
 
-  final output = File('docs_and_migrations/migrations/28_airport_replenishment_batch_01.sql');
+  final output = File('migrations/28_airport_replenishment_batch_01.sql');
   final dataRows = rows.skip(1).toList();
 
   final buffer = StringBuffer()

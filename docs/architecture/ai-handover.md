@@ -1,6 +1,6 @@
 # Skyward AI Handover
 
-Last verified against code on 2026-06-09.
+Last verified against code on 2026-06-22.
 
 ## Current shape
 
@@ -29,6 +29,24 @@ Other feature cubits subscribe through `SimulationReactiveMixin`.
 `FinanceCubit` and `LeaderboardCubit` are initialized lazily when their
 workspaces are first opened.
 
+## Gateway pattern
+
+Every Cubit that communicates with Supabase does so through a dedicated
+gateway. There are seven gateways in total:
+
+| Gateway | Supabase surface |
+|---------|-----------------|
+| `AuthGateway` | `register-with-username` Edge Function |
+| `SimulationGateway` | `process_simulation_delta`, `users`, `global_game_settings` |
+| `FleetGateway` | `purchase_aircraft`, `lease_aircraft`, `repair_aircraft`, `sell_aircraft`, `terminate_aircraft_lease`, `configure_aircraft_seats` |
+| `RoutesGateway` | `create_route`, `assign_aircraft_to_route`, `update_route_frequency_and_price`, `delete_route` |
+| `FinanceGateway` | `get_finance_snapshot` |
+| `LeaderboardGateway` | `get_global_leaderboard`, `get_competitor_insights` |
+| `SettingsGateway` | `reset_user_airline`, `save_airline_settings` |
+
+Each gateway defines an abstract interface and a `Supabase*Gateway`
+implementation. This makes Cubits testable with mock gateways.
+
 ## Backend truth
 
 Flutter does not calculate authoritative economy outcomes.
@@ -44,9 +62,9 @@ Important backend responsibilities:
 - ledger/history reads
 
 See:
-- [03_supabase_contract_map.md](03_supabase_contract_map.md)
-- [04_database_design.md](04_database_design.md)
-- [../README.md](../README.md)
+- [supabase-contracts.md](supabase-contracts.md)
+- [database.md](database.md)
+- [../../README.md](../../README.md)
 
 Security migration note:
 - Security Phase 1 adds `users.auth_user_id` plus shared username/email helper
@@ -93,6 +111,10 @@ Recent work tightened:
 - a private owner/operator optimizer RPC now exists for SQL-side route planning
 - dashboard/fleet/routes tab content now lazy-loads through `LazyTabCubit`
 - debug builds now emit lightweight `[PERF]` logs for load/reload auditing
+- notification panel widget for in-app game event alerts
+- onboarding overlay for first-time player guidance
+- help tooltip widget for contextual inline explanations
+- financial snapshots power historical trend charts in the Finance tab
 
 Leaderboard sorting was intentionally removed.
 Rankings now always default to net worth order.
@@ -100,9 +122,9 @@ Rankings now always default to net worth order.
 ## Docs and migrations
 
 Project records now live in:
-- `docs_and_migrations/docs/`
-- `docs_and_migrations/migrations/`
-- `docs_and_migrations/README.md`
+- `docs/`
+- `migrations/`
+- `docs/README.md`
 
 Apply SQL migrations from `migrations/` in numeric order.
 Treat docs in `docs/` as the current maintenance record.
@@ -135,8 +157,15 @@ audits when you need real operational state.
 9. Next backend policy step is Phase 16 foundation: player activity tracking,
    simulation status, and inactive-player audit/reporting.
 10. Finance now separates current balance-sheet state from rolling 30-day ledger
-   analytics. The backend contract for both human players and bots is
-   `get_finance_snapshot()`.
+    analytics. The backend contract for both human players and bots is
+    `get_finance_snapshot()`.
 11. Security hardening is now an active backend track. Do not add new client
     RPCs that trust caller-supplied `p_user_id`; future work will bind gameplay
     access to `auth.uid()` and RLS.
+12. The event system (`game_events`) generates time-bounded effects during world
+    ticks. Future event types or UI surfacing should go through the existing
+    `generate_game_events` / `deactivate_expired_events` contract.
+13. Aviation depth features (turnaround, crew costs, seasonal demand,
+    A/C-check milestones, cargo revenue, non-linear degradation) are live in
+    the simulation engine. Any simulation formula changes must be reflected in
+    both the player and bot processing functions.
