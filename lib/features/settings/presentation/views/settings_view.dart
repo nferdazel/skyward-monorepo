@@ -206,8 +206,8 @@ class _SettingsViewState extends State<SettingsView> {
               ),
               isDense: true,
               contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 8,
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.sm,
               ),
               prefixIcon: const Icon(Icons.business_outlined, size: 20),
             ),
@@ -405,8 +405,8 @@ class _SettingsViewState extends State<SettingsView> {
             decoration: InputDecoration(
               isDense: true,
               contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 8,
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.sm,
               ),
             ),
             items: const [

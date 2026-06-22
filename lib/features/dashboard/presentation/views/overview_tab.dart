@@ -298,7 +298,7 @@ class OverviewTab extends StatelessWidget {
               height: 32,
               decoration: BoxDecoration(
                 color: color,
-                borderRadius: BorderRadius.circular(2),
+                borderRadius: BorderRadius.circular(AppSpacing.radiusTight),
               ),
             ),
           ],
@@ -340,7 +340,7 @@ class OverviewTab extends StatelessWidget {
   ) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(4),
+      borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
       child: AppCard(
         padding: const EdgeInsets.all(AppSpacing.lg),
         child: Row(
