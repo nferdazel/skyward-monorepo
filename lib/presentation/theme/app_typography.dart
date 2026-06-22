@@ -4,6 +4,11 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/app_theme.dart';
 
 class AppTypography {
+  // ── Letter-spacing tokens ──
+  static const double spacingTight = 0.04;
+  static const double spacingNormal = 0.08;
+  static const double spacingWide = 0.12;
+
   static Color get textPrimary => AppTheme.textPrimary;
   static Color get textSecondary => AppTheme.textSecondary;
   static Color get textMuted => AppTheme.textMuted;
@@ -137,5 +142,26 @@ class AppTypography {
     fontWeight: FontWeight.w600,
     color: textPrimary,
     letterSpacing: 0.08,
+  );
+
+  // ── CONVENIENCE STYLES (avoid copyWith abuse) ──
+  static final TextStyle labelSecondary = GoogleFonts.ibmPlexMono(
+    fontSize: 11,
+    fontWeight: FontWeight.w600,
+    color: textSecondary,
+    letterSpacing: spacingNormal,
+  );
+
+  static final TextStyle valuePrimary = GoogleFonts.ibmPlexMono(
+    fontSize: 13,
+    fontWeight: FontWeight.w600,
+    color: textPrimary,
+  );
+
+  static final TextStyle captionMuted = GoogleFonts.inter(
+    fontSize: 11,
+    fontWeight: FontWeight.w400,
+    color: textMuted,
+    height: 1.25,
   );
 }

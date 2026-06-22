@@ -17,4 +17,10 @@ class AppSpacing {
   static const double compactGap = 8.0;
   static const double microGap = 4.0;
   static const double tabContentGap = 12.0;
+
+  // ── Border radius scale ──
+  static const double radiusTight = 2;
+  static const double radiusDefault = 4;
+  static const double radiusSoft = 8;
+  static const double radiusRound = 12;
 }

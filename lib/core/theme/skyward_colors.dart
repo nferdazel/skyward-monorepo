@@ -58,4 +58,10 @@ class SkywardColors {
   static const lightAmber    = Color(0xFFFFB300);
   static const lightAmberSubtle = Color(0xFFFFF8C5);
   static const lightNeutral  = Color(0xFF6B7280);
+
+  // ── Opacity scale ──
+  static const double opacitySubtle = 0.06;
+  static const double opacityLight = 0.12;
+  static const double opacityMedium = 0.24;
+  static const double opacityHeavy = 0.48;
 }

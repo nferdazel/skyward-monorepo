@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import 'app_theme_colors.dart';
 import 'skyward_colors.dart';
 
 class AppTheme {
@@ -50,7 +49,6 @@ class AppTheme {
       scaffoldBackgroundColor: SkywardColors.darkBg,
       cardColor: SkywardColors.darkSurface,
       dividerColor: SkywardColors.darkBorder,
-      extensions: [AppThemeColors.dark()],
       colorScheme: const ColorScheme.dark(
         primary: SkywardColors.darkAccent,
         secondary: SkywardColors.darkAccentSubtle,
@@ -236,7 +234,6 @@ class AppTheme {
       scaffoldBackgroundColor: SkywardColors.lightBg,
       cardColor: SkywardColors.lightSurface,
       dividerColor: SkywardColors.lightBorder,
-      extensions: [AppThemeColors.light()],
       colorScheme: const ColorScheme.light(
         primary: SkywardColors.lightAccent,
         secondary: SkywardColors.lightAccentSubtle,
