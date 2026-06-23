@@ -157,7 +157,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       textCapitalization: TextCapitalization.words,
                       decoration: const InputDecoration(
                         labelText: AppStrings.resetCeoNameLabel,
-                        prefixIcon: Icon(Icons.person_outline, size: 20),
+                        prefixIcon: Icon(Icons.badge_outlined, size: 20),
                       ),
                     ),
                     const SizedBox(height: AppSpacing.md),

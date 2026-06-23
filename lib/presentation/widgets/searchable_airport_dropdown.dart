@@ -165,7 +165,7 @@ class _SearchableAirportDropdownState extends State<SearchableAirportDropdown> {
                     setState(() {});
                   },
                 )
-              : Icon(Icons.arrow_drop_down, color: AppTheme.textSecondary),
+              : Icon(Icons.arrow_drop_down, color: AppTheme.primary, size: 18),
         ),
         onChanged: (value) {
           _query = value;

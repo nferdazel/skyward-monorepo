@@ -159,7 +159,7 @@ class _FinanceViewState extends State<FinanceView>
                           ),
                           const SizedBox(height: AppSpacing.md),
                           Text(
-                            AppStrings.failedToLoadLedgerLogs,
+                            state.message,
                             style: AppTypography.buttonText.copyWith(
                               color: AppTheme.error,
                             ),
@@ -167,7 +167,7 @@ class _FinanceViewState extends State<FinanceView>
                           ),
                           const SizedBox(height: AppSpacing.lg),
                           AppButton(
-                            text: 'RETRY',
+                            text: AppStrings.retryLabel,
                             icon: Icons.refresh,
                             onPressed: () => context
                                 .read<FinanceCubit>()
@@ -207,7 +207,19 @@ class _FinanceViewState extends State<FinanceView>
                     );
                   }
 
-                  return Center(child: Text(AppStrings.loadingControls, style: AppTypography.bodyMedium.copyWith(color: AppTheme.textMuted)));
+                  return Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const CircularProgressIndicator(color: AppTheme.primary, strokeWidth: 2),
+                        const SizedBox(height: AppSpacing.lg),
+                        Text(
+                          AppStrings.loadingControls,
+                          style: AppTypography.microLabel.copyWith(color: AppTheme.textMuted),
+                        ),
+                      ],
+                    ),
+                  );
                 },
               ),
             ),
@@ -587,7 +599,7 @@ class _FinanceViewState extends State<FinanceView>
                 ),
               ),
               const SizedBox(width: AppSpacing.xs),
-              HelpTooltip(message: helpMessage, iconSize: 12),
+              HelpTooltip(message: helpMessage),
             ],
           ),
           const SizedBox(height: AppSpacing.xs),

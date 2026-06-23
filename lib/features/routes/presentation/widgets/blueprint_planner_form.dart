@@ -258,7 +258,7 @@ class _BlueprintPlannerFormState extends State<BlueprintPlannerForm> {
                     ),
                   ),
                   const SizedBox(width: AppSpacing.md),
-                  Icon(Icons.swap_horiz, color: AppTheme.primary, size: 24),
+                  Icon(Icons.swap_horiz, color: AppTheme.primary, size: 18),
                   const SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: SearchableAirportDropdown(

@@ -58,7 +58,7 @@ class DashboardScreen extends StatelessWidget {
       builder: (context, authState) {
         if (authState is! AuthAuthenticated) {
           return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
+            body: Center(child: CircularProgressIndicator(color: AppTheme.primary, strokeWidth: 2)),
           );
         }
 
@@ -471,7 +471,7 @@ class _AuthenticatedDashboardShellState
   Widget build(BuildContext context) {
     final authState = context.read<AuthCubit>().state;
     if (authState is! AuthAuthenticated) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(body: Center(child: CircularProgressIndicator(color: AppTheme.primary, strokeWidth: 2)));
     }
 
     return MultiBlocProvider(

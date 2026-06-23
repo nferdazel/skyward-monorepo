@@ -139,7 +139,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
             ),
             const SizedBox(height: AppSpacing.lg),
             AppButton(
-              text: 'RETRY',
+              text: AppStrings.retryLabel,
               onPressed: () {
                 final authState = context.read<AuthCubit>().state;
                 if (authState is AuthAuthenticated) {
@@ -154,6 +154,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
               },
               type: AppButtonType.secondary,
               icon: Icons.refresh,
+              height: 40,
             ),
           ],
         ),
@@ -516,13 +517,10 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                     ),
                   ),
                   const SizedBox(width: AppSpacing.md),
-                  Expanded(
+                    Expanded(
                     child: Text(
                       AppStrings.updatingCompetitorIntel,
-                      style: AppTypography.badgeText.copyWith(
-                        color: AppTheme.primary,
-                        letterSpacing: AppTypography.spacingSection,
-                      ),
+                      style: AppTypography.microLabel.copyWith(color: AppTheme.textMuted),
                     ),
                   ),
                 ],

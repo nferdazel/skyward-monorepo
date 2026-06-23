@@ -123,7 +123,7 @@ class _RoutesViewState extends State<RoutesView> {
                 ),
                 const SizedBox(height: AppSpacing.lg),
                 AppButton(
-                  text: 'RETRY',
+                  text: AppStrings.retryLabel,
                   onPressed: () => context
                       .read<RoutesCubit>()
                       .loadRoutesAndData(userId),
