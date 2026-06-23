@@ -1703,7 +1703,7 @@ class _RoutesViewState extends State<RoutesView> {
                           : AppStrings.assignConfirm,
                       onPressed: canConfirm
                           ? () {
-                              context.read<RoutesCubit>().assignAircraft(
+                              ctx.read<RoutesCubit>().assignAircraft(
                                     routeId: route.id,
                                     aircraftId: selectedId,
                                     userId: userId,
