@@ -326,11 +326,11 @@ BEGIN
     -- Insert loan record
     INSERT INTO loans (
         user_id, principal, interest_rate, remaining_balance,
-        weekly_payment, status, start_game_date, term_weeks,
+        weekly_payment, status, game_date_taken,
         loan_type, collateral_aircraft_id, credit_score_at_origination
     ) VALUES (
         v_user_id, p_principal, v_interest_rate, v_total_repayable,
-        v_weekly_payment, 'active', v_game_time, p_term_weeks,
+        v_weekly_payment, 'active', v_game_time,
         p_loan_type, p_collateral_aircraft_id, v_credit_score
     );
 
