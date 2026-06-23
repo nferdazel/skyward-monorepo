@@ -10,6 +10,7 @@ import '../../../../core/utils/lazy_tab_cubit.dart';
 import '../../../../core/utils/perf_debug.dart';
 import '../../../../presentation/theme/app_spacing.dart';
 import '../../../../presentation/theme/app_typography.dart';
+import '../../../../presentation/widgets/app_button.dart';
 import '../../../../presentation/widgets/notification_panel.dart';
 import '../../../../presentation/widgets/onboarding_overlay.dart';
 import '../../../auth/domain/user_model.dart';
@@ -545,14 +546,13 @@ class _AuthenticatedDashboardShellState
               ),
             ),
           ),
-          TextButton(
+          AppButton(
+            text: AppStrings.retryNow,
             onPressed: () {
               context.read<SimulationCubit>().syncWithDatabase();
             },
-            child: Text(
-              AppStrings.retryNow,
-              style: AppTypography.badgeText.copyWith(color: AppTheme.error),
-            ),
+            type: AppButtonType.secondary,
+            height: 32,
           ),
         ],
       ),

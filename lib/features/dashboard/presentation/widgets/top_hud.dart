@@ -176,7 +176,7 @@ class TopHud extends StatelessWidget {
                     ),
                     decoration: BoxDecoration(
                       color: AppTheme.error,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusSoft),
                     ),
                     constraints: const BoxConstraints(
                       minWidth: 14,
@@ -185,7 +185,7 @@ class TopHud extends StatelessWidget {
                     child: Text(
                       unreadCount > 9 ? '9+' : '$unreadCount',
                       style: AppTypography.captionLight.copyWith(
-                        color: Colors.white,
+                        color: AppTheme.textPrimary,
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                       ),

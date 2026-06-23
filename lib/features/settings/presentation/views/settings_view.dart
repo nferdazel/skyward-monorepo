@@ -11,6 +11,7 @@ import '../../../../presentation/theme/app_typography.dart';
 import '../../../../presentation/widgets/app_button.dart';
 import '../../../../presentation/widgets/app_card.dart';
 import '../../../../presentation/widgets/app_dialog_shell.dart';
+import '../../../../presentation/widgets/app_dropdown_field.dart';
 import '../../../../presentation/widgets/app_labeled_value.dart';
 import '../../../../presentation/widgets/app_section_header.dart';
 import '../../../../presentation/widgets/app_snackbar.dart';
@@ -67,7 +68,12 @@ class _SettingsViewState extends State<SettingsView> {
   Widget build(BuildContext context) {
     final authState = context.select<AuthCubit, AuthState>((c) => c.state);
     if (authState is! AuthAuthenticated) {
-      return const Center(child: Text(AppStrings.unauthorized));
+      return Center(
+        child: Text(
+          AppStrings.unauthorized,
+          style: AppTypography.bodyMedium.copyWith(color: AppTheme.textMuted),
+        ),
+      );
     }
 
     final user = authState.user;
@@ -396,19 +402,9 @@ class _SettingsViewState extends State<SettingsView> {
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
-          DropdownButtonFormField<String>(
-            initialValue: state.seatPreset,
-            style: AppTypography.bodyMedium.copyWith(
-              color: AppTheme.textPrimary,
-            ),
-            dropdownColor: AppTheme.surface,
-            decoration: InputDecoration(
-              isDense: true,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-                vertical: AppSpacing.sm,
-              ),
-            ),
+          AppDropdownField<String>(
+            label: 'SEAT PRESET',
+            value: state.seatPreset,
             items: const [
               DropdownMenuItem(
                 value: 'max_economy',

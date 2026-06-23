@@ -11,6 +11,7 @@ import '../../../../presentation/widgets/app_card.dart';
 import '../../../../presentation/widgets/app_section_header.dart';
 import '../../../../presentation/widgets/app_sparkline.dart';
 import '../../../../presentation/widgets/help_tooltip.dart';
+import '../../../../presentation/widgets/segmented_progress_bar.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
 import '../../../finance/presentation/cubit/finance_cubit.dart';
@@ -35,7 +36,12 @@ class OverviewTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final authState = context.read<AuthCubit>().state;
     if (authState is! AuthAuthenticated) {
-      return const Center(child: Text(AppStrings.unauthorized));
+      return Center(
+        child: Text(
+          AppStrings.unauthorized,
+          style: AppTypography.bodyMedium.copyWith(color: AppTheme.textMuted),
+        ),
+      );
     }
 
     return _buildDesktopLayout(context, authState);
@@ -198,20 +204,12 @@ class OverviewTab extends StatelessWidget {
           ],
           const SizedBox(height: AppSpacing.sm),
           // 10-segment progress bar
-          Row(
-            children: List.generate(10, (index) {
-              final isActive = index < filledSegments;
-              return Expanded(
-                child: Container(
-                  height: AppSpacing.xs,
-                  margin: EdgeInsets.only(right: index < 9 ? AppSpacing.xs : 0),
-                  decoration: BoxDecoration(
-                    color: isActive ? activeColor : inactiveColor,
-                    borderRadius: BorderRadius.circular(AppSpacing.radiusTight),
-                  ),
-                ),
-              );
-            }),
+          SegmentedProgressBar(
+            value: filledSegments * 10.0,
+            segments: 10,
+            height: AppSpacing.xs,
+            activeColor: activeColor,
+            inactiveColor: inactiveColor,
           ),
         ],
       ),

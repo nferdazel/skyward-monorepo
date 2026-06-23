@@ -8,6 +8,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../presentation/theme/app_spacing.dart';
 import '../../../../presentation/theme/app_typography.dart';
 import '../../../../presentation/widgets/app_button.dart';
+import '../../../../presentation/widgets/app_dialog_shell.dart';
 import '../../../../presentation/widgets/app_snackbar.dart';
 import '../../../../presentation/widgets/skyward_logo.dart';
 import '../../../auth/data/auth_gateway.dart';
@@ -85,18 +86,8 @@ class _AuthScreenState extends State<AuthScreen> {
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            return AlertDialog(
-              backgroundColor: AppTheme.surface,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: BorderSide(color: AppTheme.border),
-              ),
-              title: Text(
-                AppStrings.resetPasswordTitle,
-                style: AppTypography.screenTitleLarge.copyWith(
-                  color: AppTheme.primary,
-                ),
-              ),
+            return AppDialogShell(
+              title: AppStrings.resetPasswordTitle,
               content: Form(
                 key: formKey,
                 child: Column(
@@ -128,71 +119,66 @@ class _AuthScreenState extends State<AuthScreen> {
                   ],
                 ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: isLoading
-                      ? null
-                      : () => Navigator.of(dialogContext).pop(),
-                  child: Text(
-                    AppStrings.cancelLabel,
-                    style: AppTypography.buttonText.copyWith(
-                      color: AppTheme.textSecondary,
+              actions: Row(
+                children: [
+                  Expanded(
+                    child: AppButton(
+                      text: AppStrings.cancelLabel,
+                      onPressed: isLoading
+                          ? null
+                          : () => Navigator.of(dialogContext).pop(),
+                      type: AppButtonType.secondary,
+                      height: 40,
                     ),
                   ),
-                ),
-                TextButton(
-                  onPressed: isLoading
-                      ? null
-                      : () async {
-                          if (!(formKey.currentState?.validate() ?? false)) {
-                            return;
-                          }
-                          setDialogState(() => isLoading = true);
-                          try {
-                            final username = resetController.text
-                                .trim()
-                                .toLowerCase()
-                                .replaceAll(RegExp(r'[^a-z0-9._-]+'), '-')
-                                .replaceAll(RegExp(r'^-+|-+$'), '');
-                            final email =
-                                '$username@${SupabaseAuthGateway.syntheticAuthDomain}';
-                            await SupabaseManager.client.auth
-                                .resetPasswordForEmail(email);
-                            if (context.mounted) {
-                              Navigator.of(dialogContext).pop();
-                              AppSnackBar.showSuccess(
-                                context,
-                                AppStrings.resetPasswordSent,
-                              );
-                            }
-                          } catch (e) {
-                            SupabaseManager.logError(
-                              'reset_password_for_email',
-                              e,
-                            );
-                            setDialogState(() => isLoading = false);
-                            if (context.mounted) {
-                              AppSnackBar.showError(
-                                context,
-                                AppStrings.resetPasswordFailed,
-                              );
-                            }
-                          }
-                        },
-                  child: isLoading
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(
-                          'SEND RESET LINK',
-                          style: AppTypography.buttonText.copyWith(
-                            color: AppTheme.primary,
-                          ),
-                        ),
-                ),
-              ],
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: AppButton(
+                      text: isLoading ? '' : 'SEND RESET LINK',
+                      onPressed: isLoading
+                          ? null
+                          : () async {
+                              if (!(formKey.currentState?.validate() ?? false)) {
+                                return;
+                              }
+                              setDialogState(() => isLoading = true);
+                              try {
+                                final username = resetController.text
+                                    .trim()
+                                    .toLowerCase()
+                                    .replaceAll(RegExp(r'[^a-z0-9._-]+'), '-')
+                                    .replaceAll(RegExp(r'^-+|-+$'), '');
+                                final email =
+                                    '$username@${SupabaseAuthGateway.syntheticAuthDomain}';
+                                await SupabaseManager.client.auth
+                                    .resetPasswordForEmail(email);
+                                if (context.mounted) {
+                                  Navigator.of(dialogContext).pop();
+                                  AppSnackBar.showSuccess(
+                                    context,
+                                    AppStrings.resetPasswordSent,
+                                  );
+                                }
+                              } catch (e) {
+                                SupabaseManager.logError(
+                                  'reset_password_for_email',
+                                  e,
+                                );
+                                setDialogState(() => isLoading = false);
+                                if (context.mounted) {
+                                  AppSnackBar.showError(
+                                    context,
+                                    AppStrings.resetPasswordFailed,
+                                  );
+                                }
+                              }
+                            },
+                      isLoading: isLoading,
+                      height: 40,
+                    ),
+                  ),
+                ],
+              ),
             );
           },
         );
@@ -258,7 +244,7 @@ class _AuthScreenState extends State<AuthScreen> {
           AppStrings.skyward,
           style: AppTypography.screenTitleLarge.copyWith(
             fontSize: 20,
-            fontWeight: FontWeight.w900,
+            fontWeight: FontWeight.w700,
             letterSpacing: 0.12,
             color: AppTheme.primary,
           ),
@@ -278,7 +264,7 @@ class _AuthScreenState extends State<AuthScreen> {
             return Container(
               decoration: BoxDecoration(
                 color: AppTheme.surface,
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
                 border: Border.all(color: AppTheme.border),
               ),
               padding: const EdgeInsets.all(AppSpacing.xs),
@@ -293,7 +279,7 @@ class _AuthScreenState extends State<AuthScreen> {
                           _formKey.currentState?.reset();
                         }
                       },
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           vertical: AppSpacing.sm,
@@ -302,7 +288,7 @@ class _AuthScreenState extends State<AuthScreen> {
                           color: isLoginMode
                               ? AppTheme.accentSubtle
                               : Colors.transparent,
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
                         ),
                         child: Center(
                           child: Text(
@@ -329,7 +315,7 @@ class _AuthScreenState extends State<AuthScreen> {
                           _formKey.currentState?.reset();
                         }
                       },
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           vertical: AppSpacing.sm,
@@ -338,7 +324,7 @@ class _AuthScreenState extends State<AuthScreen> {
                           color: !isLoginMode
                               ? AppTheme.accentSubtle
                               : Colors.transparent,
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
                         ),
                         child: Center(
                           child: Text(
