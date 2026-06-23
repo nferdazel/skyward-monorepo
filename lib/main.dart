@@ -13,6 +13,13 @@ import 'features/settings/presentation/cubit/settings_cubit.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Suppress known Flutter web CanvasKit context-lost error on hot restart.
+  // This is a Flutter engine bug (surface.dart LateInitializationError).
+  FlutterError.onError = (details) {
+    if (details.toString().contains('_handledContextLostEvent')) return;
+    FlutterError.presentError(details);
+  };
+
   // Minimum recommended window size: 920×600 for desktop/web layouts.
   // Flutter web does not provide a direct API to enforce minimum window size;
   // responsive breakpoints handle narrower viewports gracefully.
