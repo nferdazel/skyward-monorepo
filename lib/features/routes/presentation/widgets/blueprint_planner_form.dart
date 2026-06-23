@@ -312,7 +312,7 @@ class _BlueprintPlannerFormState extends State<BlueprintPlannerForm> {
                         ],
                       ),
                       const SizedBox(height: AppSpacing.sm),
-                      Divider(color: AppTheme.border),
+                      Divider(color: AppTheme.border, height: 1),
                       const SizedBox(height: AppSpacing.sm),
                       _buildRealtimeElasticityIndicator(
                         state.calculatedDistance,
@@ -379,7 +379,7 @@ class _BlueprintPlannerFormState extends State<BlueprintPlannerForm> {
                           ],
                         ),
                         const SizedBox(height: AppSpacing.sm),
-                        Divider(color: AppTheme.border),
+                        Divider(color: AppTheme.border, height: 1),
                         const SizedBox(height: AppSpacing.sm),
                         Wrap(
                           spacing: AppSpacing.lg,

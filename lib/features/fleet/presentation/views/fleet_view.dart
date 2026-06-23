@@ -529,7 +529,7 @@ class _FleetViewState extends State<FleetView>
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Divider(color: AppTheme.border),
+                  Divider(color: AppTheme.border, height: 1),
                   const SizedBox(height: AppSpacing.md),
 
                   Text(
@@ -1198,7 +1198,7 @@ class _FleetViewState extends State<FleetView>
                     ),
                   ),
                   const SizedBox(height: AppSpacing.md),
-                  Divider(color: AppTheme.border),
+                  Divider(color: AppTheme.border, height: 1),
                   const SizedBox(height: AppSpacing.md),
 
                   Text(

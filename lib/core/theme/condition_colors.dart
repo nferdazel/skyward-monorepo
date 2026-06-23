@@ -27,7 +27,7 @@ class ConditionColors {
     ),
     ConditionBand(label: 'GOOD', color: AppTheme.primary, minThreshold: 70.0),
     ConditionBand(label: 'FAIR', color: AppTheme.warning, minThreshold: 50.0),
-    ConditionBand(label: 'POOR', color: Color(0xFFD98E4E), minThreshold: 25.0),
+    ConditionBand(label: 'POOR', color: AppTheme.orange, minThreshold: 25.0),
     ConditionBand(label: 'CRITICAL', color: AppTheme.error, minThreshold: 0.0),
   ];
 

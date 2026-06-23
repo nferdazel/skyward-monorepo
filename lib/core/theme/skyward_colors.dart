@@ -37,6 +37,11 @@ class SkywardColors {
   static const darkRedSubtle   = Color(0x1AE05555);
   static const darkNeutral     = Color(0xFF758489); // Steel Gray (~4.52:1 — passes AA)
 
+  // ── Tier / Condition extras ──
+  static const darkPlatinum = Color(0xFFE5E4E2); // Platinum silver
+  static const darkGold     = Color(0xFFFFD700); // Gold
+  static const darkOrange   = Color(0xFFD98E4E); // Caution orange (POOR band)
+
   // ── Text ──
   static const darkTextPri   = Color(0xFFDDE2EA); // Cool white (14.8:1 on bg)
   static const darkTextSec   = Color(0xFF8090A3); // Steel blue-gray (5.7:1)

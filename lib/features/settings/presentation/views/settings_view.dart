@@ -331,7 +331,7 @@ class _SettingsViewState extends State<SettingsView> {
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
-          Divider(color: AppTheme.border),
+          Divider(color: AppTheme.border, height: 1),
           const SizedBox(height: AppSpacing.lg),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -382,7 +382,7 @@ class _SettingsViewState extends State<SettingsView> {
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
-          Divider(color: AppTheme.border),
+          Divider(color: AppTheme.border, height: 1),
           const SizedBox(height: AppSpacing.lg),
 
           // Default Seat Configuration Preset
@@ -424,7 +424,7 @@ class _SettingsViewState extends State<SettingsView> {
             },
           ),
           const SizedBox(height: AppSpacing.lg),
-          Divider(color: AppTheme.border),
+          Divider(color: AppTheme.border, height: 1),
           const SizedBox(height: AppSpacing.lg),
 
           // Auto-Repair Threshold
@@ -481,7 +481,7 @@ class _SettingsViewState extends State<SettingsView> {
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
-          Divider(color: AppTheme.border),
+          Divider(color: AppTheme.border, height: 1),
           const SizedBox(height: AppSpacing.lg),
 
           // Default Fare Multiplier

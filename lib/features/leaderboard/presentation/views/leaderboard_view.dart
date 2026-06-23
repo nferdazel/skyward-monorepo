@@ -492,7 +492,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
-          Divider(color: AppTheme.border),
+          Divider(color: AppTheme.border, height: 1),
           const SizedBox(height: AppSpacing.lg),
 
           if (state.isLoadingInsights) ...[
@@ -532,7 +532,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
           if (currentLeader != null) ...[
             _buildGapProgress(liveCompetitor, currentLeader),
             const SizedBox(height: AppSpacing.xl),
-            Divider(color: AppTheme.border),
+            Divider(color: AppTheme.border, height: 1),
             const SizedBox(height: AppSpacing.lg),
           ],
 
@@ -590,7 +590,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
             ),
           ),
           const SizedBox(height: AppSpacing.xl),
-          Divider(color: AppTheme.border),
+          Divider(color: AppTheme.border, height: 1),
           const SizedBox(height: AppSpacing.lg),
 
           Text(
@@ -645,7 +645,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                   ),
           ),
           const SizedBox(height: AppSpacing.lg),
-          Divider(color: AppTheme.border),
+          Divider(color: AppTheme.border, height: 1),
           const SizedBox(height: AppSpacing.lg),
 
           Text(
@@ -886,8 +886,8 @@ class _LeaderboardViewState extends State<LeaderboardView> {
 
   static Color _tierColor(String? tier) {
     switch (tier) {
-      case 'Platinum': return const Color(0xFFE5E4E2);
-      case 'Gold': return const Color(0xFFFFD700);
+      case 'Platinum': return AppTheme.tierPlatinum;
+      case 'Gold': return AppTheme.tierGold;
       case 'Silver': return AppTheme.textSecondary;
       case 'Standard': return AppTheme.textMuted;
       case 'Subprime': return AppTheme.error;

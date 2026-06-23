@@ -341,8 +341,8 @@ class BankPanel extends StatelessWidget {
 
   static Color _tierColor(String tier) {
     switch (tier) {
-      case 'Platinum': return const Color(0xFFE5E4E2); // Platinum silver
-      case 'Gold': return const Color(0xFFFFD700); // Gold
+      case 'Platinum': return AppTheme.tierPlatinum;
+      case 'Gold': return AppTheme.tierGold;
       case 'Silver': return AppTheme.textSecondary;
       case 'Standard': return AppTheme.textMuted;
       case 'Subprime': return AppTheme.error;

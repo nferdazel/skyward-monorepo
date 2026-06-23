@@ -65,7 +65,7 @@ class NotificationPanel extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             _buildHeader(),
-            const Divider(height: 1),
+            Divider(color: AppTheme.border, height: 1),
             if (notifications.isEmpty)
               _buildEmptyState()
             else

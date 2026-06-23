@@ -25,6 +25,11 @@ class AppTheme {
   static const Color info = SkywardColors.darkTeal;
   static const Color neutral = SkywardColors.darkNeutral;
 
+  // ── TIER / CONDITION EXTRAS ──
+  static const Color tierPlatinum = SkywardColors.darkPlatinum;
+  static const Color tierGold = SkywardColors.darkGold;
+  static const Color orange = SkywardColors.darkOrange;
+
   // ── TEXT COLORS ──
   static const Color textPrimary = SkywardColors.darkTextPri;
   static const Color textSecondary = SkywardColors.darkTextSec;
