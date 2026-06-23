@@ -6,9 +6,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/game_constants.dart';
 import '../../../../core/database/supabase_client.dart';
-import '../../../../core/utils/app_error.dart';
 import '../../../../core/mixins/simulation_reactive_mixin.dart';
 import '../../../../core/realtime/realtime_subscription_bag.dart';
+import '../../../../core/utils/app_error.dart';
 import '../../../../core/utils/dev_mode_manager.dart';
 import '../../../../core/utils/perf_debug.dart';
 import '../../../simulation/presentation/cubit/simulation_cubit.dart';
@@ -34,8 +34,8 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
   final FleetGateway _gateway;
 
   FleetCubit({FleetGateway? gateway})
-      : _gateway = gateway ?? SupabaseFleetGateway(),
-        super(const FleetInitial());
+    : _gateway = gateway ?? SupabaseFleetGateway(),
+      super(const FleetInitial());
 
   FleetDataState _snapshotState() {
     return FleetLoaded(
@@ -77,7 +77,8 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
     required Future<bool> Function(
       Map<String, dynamic> result,
       FleetDataState snapshot,
-    ) onSuccess,
+    )
+    onSuccess,
     String errorPrefix = '',
     Map<String, dynamic> rpcParams = const {},
   }) async {
@@ -273,7 +274,10 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
   }
 
   void _scheduleRealtimeRefresh(String userId) {
-    PerfDebug.event('fleet.realtime_refresh_scheduled', fields: {'user': userId});
+    PerfDebug.event(
+      'fleet.realtime_refresh_scheduled',
+      fields: {'user': userId},
+    );
     _realtimeRefreshDebounce?.cancel();
     _realtimeRefreshDebounce = Timer(const Duration(milliseconds: 200), () {
       unawaited(loadFleetAndCatalog(userId, silent: true));
@@ -423,8 +427,7 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
         'p_first_class_seats': firstClass,
       }),
       onSuccess: (result, snapshot) async {
-        final message =
-            result['message'] as String? ?? AppStrings.leaseFailed;
+        final message = result['message'] as String? ?? AppStrings.leaseFailed;
         final newCash = (result['new_cash'] as num?)?.toDouble();
 
         if (newCash != null) {
@@ -498,8 +501,7 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
       rpcParams: {'p_user_id': userId, 'p_fleet_id': fleetId},
       rpcCall: () => _gateway.repairAircraft({'p_fleet_id': fleetId}),
       onSuccess: (result, snapshot) async {
-        final message =
-            result['message'] as String? ?? AppStrings.repairFailed;
+        final message = result['message'] as String? ?? AppStrings.repairFailed;
         final newCash = (result['new_cash'] as num?)?.toDouble();
 
         if (newCash != null) {
@@ -575,8 +577,7 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
       rpcParams: {'p_user_id': userId, 'p_fleet_id': fleetId},
       rpcCall: () => _gateway.sellAircraft({'p_fleet_id': fleetId}),
       onSuccess: (result, snapshot) async {
-        final message =
-            result['message'] as String? ?? AppStrings.saleFailed;
+        final message = result['message'] as String? ?? AppStrings.saleFailed;
         final newCash = (result['new_cash'] as num?)?.toDouble();
 
         if (newCash != null) {
@@ -776,8 +777,8 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
     required String userId,
     required String modelId,
   }) async {
-    final List<dynamic> fleetRecords =
-        await _gateway.fetchLatestAircraftForModel(userId, modelId);
+    final List<dynamic> fleetRecords = await _gateway
+        .fetchLatestAircraftForModel(userId, modelId);
 
     if (fleetRecords.isEmpty) return;
 
@@ -787,8 +788,9 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
   }
 
   Future<void> _reloadSingleAircraftIntoCache(String aircraftId) async {
-    final Map<String, dynamic> fleetRecord =
-        await _gateway.fetchSingleAircraft(aircraftId);
+    final Map<String, dynamic> fleetRecord = await _gateway.fetchSingleAircraft(
+      aircraftId,
+    );
 
     final aircraft = UserFleetAircraft.fromMap(fleetRecord);
     final index = _cachedFleet.indexWhere((item) => item.id == aircraft.id);

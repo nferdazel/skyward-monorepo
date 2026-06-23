@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants/app_strings.dart';
-import '../../../../core/utils/app_formatters.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/app_formatters.dart';
 import '../../../../presentation/theme/app_spacing.dart';
 import '../../../../presentation/theme/app_typography.dart';
 import '../../../../presentation/widgets/app_badge.dart';
@@ -67,7 +67,12 @@ class _LeaderboardViewState extends State<LeaderboardView> {
   Widget build(BuildContext context) {
     final authState = context.read<AuthCubit>().state;
     if (authState is! AuthAuthenticated) {
-      return Center(child: Text(AppStrings.unauthorized, style: AppTypography.bodyMedium.copyWith(color: AppTheme.textMuted)));
+      return Center(
+        child: Text(
+          AppStrings.unauthorized,
+          style: AppTypography.bodyMedium.copyWith(color: AppTheme.textMuted),
+        ),
+      );
     }
 
     return BlocConsumer<LeaderboardCubit, LeaderboardState>(
@@ -221,7 +226,10 @@ class _LeaderboardViewState extends State<LeaderboardView> {
         _changeSort(sortKey);
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.xs,
+        ),
         decoration: BoxDecoration(
           color: isActive
               ? AppTheme.primary.withValues(alpha: 0.15)
@@ -287,92 +295,101 @@ class _LeaderboardViewState extends State<LeaderboardView> {
             final isHuman = !entry.isBot;
             final isSelected = selectedId == entry.id;
 
-            final semanticLabel = 'Rank $rank: ${entry.companyName}, Net worth ${AppFormatters.currency.format(entry.netWorth)}';
+            final semanticLabel =
+                'Rank $rank: ${entry.companyName}, Net worth ${AppFormatters.currency.format(entry.netWorth)}';
             final rowChildren = [
-                    Semantics(
-                      label: semanticLabel,
-                      child: RankCell(rank: rank, isHuman: isHuman),
-                    ),
-                    // Trend indicator: compare current rank with previous day
-                    _buildRankTrendIndicator(rank, entry.previousRank),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: AppSpacing.sm,
-                        horizontal: AppSpacing.sm,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  entry.companyName,
-                                  style: AppTypography.bodyMedium.copyWith(
-                                    fontWeight: isHuman
-                                        ? FontWeight.bold
-                                        : FontWeight.normal,
-                                    color: isHuman
-                                        ? AppTheme.primary
-                                        : AppTheme.textPrimary,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              if (!isHuman) ...[
-                                const SizedBox(width: AppSpacing.xs),
-                                const AIBadge(),
-                              ],
-                              if (entry.creditTier != null && entry.creditTier != 'Standard')
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                                  margin: const EdgeInsets.only(left: AppSpacing.xs),
-                                  decoration: BoxDecoration(
-                                    color: _tierColor(entry.creditTier).withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(AppSpacing.radiusTight),
-                                  ),
-                                  child: Text(
-                                    entry.creditTier!,
-                                    style: AppTypography.badgeText.copyWith(
-                                      color: _tierColor(entry.creditTier),
-                                      fontSize: AppTypography.nanoLabel.fontSize,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: AppSpacing.xs),
-                          Text(
-                            entry.ceoName,
-                            maxLines: 1,
+              Semantics(
+                label: semanticLabel,
+                child: RankCell(rank: rank, isHuman: isHuman),
+              ),
+              // Trend indicator: compare current rank with previous day
+              _buildRankTrendIndicator(rank, entry.previousRank),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: AppSpacing.sm,
+                  horizontal: AppSpacing.sm,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            entry.companyName,
+                            style: AppTypography.bodyMedium.copyWith(
+                              fontWeight: isHuman
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                              color: isHuman
+                                  ? AppTheme.primary
+                                  : AppTheme.textPrimary,
+                            ),
                             overflow: TextOverflow.ellipsis,
-                            style: AppTypography.captionRegular.copyWith(
-                              color: AppTheme.textSecondary,
+                          ),
+                        ),
+                        if (!isHuman) ...[
+                          const SizedBox(width: AppSpacing.xs),
+                          const AIBadge(),
+                        ],
+                        if (entry.creditTier != null &&
+                            entry.creditTier != 'Standard')
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 1,
+                            ),
+                            margin: const EdgeInsets.only(left: AppSpacing.xs),
+                            decoration: BoxDecoration(
+                              color: _tierColor(
+                                entry.creditTier,
+                              ).withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(
+                                AppSpacing.radiusTight,
+                              ),
+                            ),
+                            child: Text(
+                              entry.creditTier!,
+                              style: AppTypography.badgeText.copyWith(
+                                color: _tierColor(entry.creditTier),
+                                fontSize: AppTypography.nanoLabel.fontSize,
+                              ),
                             ),
                           ),
-                        ],
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      entry.ceoName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.captionRegular.copyWith(
+                        color: AppTheme.textSecondary,
                       ),
                     ),
-                    _buildTableCell(
-                      AppFormatters.currency.format(entry.cash),
-                      isMono: true,
-                    ),
-                    _buildTableCell(
-                      AppFormatters.currency.format(entry.netWorth),
-                      color: AppTheme.success,
-                      isBold: true,
-                      isMono: true,
-                    ),
-                    _buildTableCell(
-                      '${entry.fleetSize} ${AppStrings.fleetLabel.toLowerCase()}',
-                      isBold: isHuman,
-                      isMono: true,
-                    ),
-                    _buildTableCell(
-                      AppFormatters.currency.format(entry.monthlyRevenue),
-                      isMono: true,
-                    ),
-                  ];
+                  ],
+                ),
+              ),
+              _buildTableCell(
+                AppFormatters.currency.format(entry.cash),
+                isMono: true,
+              ),
+              _buildTableCell(
+                AppFormatters.currency.format(entry.netWorth),
+                color: AppTheme.success,
+                isBold: true,
+                isMono: true,
+              ),
+              _buildTableCell(
+                '${entry.fleetSize} ${AppStrings.fleetLabel.toLowerCase()}',
+                isBold: isHuman,
+                isMono: true,
+              ),
+              _buildTableCell(
+                AppFormatters.currency.format(entry.monthlyRevenue),
+                isMono: true,
+              ),
+            ];
 
             return TableRow(
               decoration: BoxDecoration(
@@ -385,15 +402,14 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                   bottom: BorderSide(color: AppTheme.border, width: 1.0),
                 ),
               ),
-              children:
-                  rowChildren.map((cell) {
-                    return TableCell(
-                      child: InkWell(
-                        onTap: () => cubit.selectCompetitor(entry),
-                        child: cell,
-                      ),
-                    );
-                  }).toList(),
+              children: rowChildren.map((cell) {
+                return TableCell(
+                  child: InkWell(
+                    onTap: () => cubit.selectCompetitor(entry),
+                    child: cell,
+                  ),
+                );
+              }).toList(),
             );
           }),
         ],
@@ -496,7 +512,10 @@ class _LeaderboardViewState extends State<LeaderboardView> {
           if (state.isLoadingInsights) ...[
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.md),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.md,
+              ),
               decoration: BoxDecoration(
                 color: AppTheme.primary.withValues(alpha: 0.08),
                 border: Border.all(
@@ -515,10 +534,12 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                     ),
                   ),
                   const SizedBox(width: AppSpacing.md),
-                    Expanded(
+                  Expanded(
                     child: Text(
                       AppStrings.updatingCompetitorIntel,
-                      style: AppTypography.microLabel.copyWith(color: AppTheme.textMuted),
+                      style: AppTypography.microLabel.copyWith(
+                        color: AppTheme.textMuted,
+                      ),
                     ),
                   ),
                 ],
@@ -729,9 +750,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
         child: Center(
           child: Text(
             AppStrings.rankTrendStable,
-            style: AppTypography.badgeText.copyWith(
-              color: AppTheme.textMuted,
-            ),
+            style: AppTypography.badgeText.copyWith(color: AppTheme.textMuted),
           ),
         ),
       );
@@ -746,9 +765,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
         child: Center(
           child: Text(
             '\u2191$delta',
-            style: AppTypography.badgeText.copyWith(
-              color: AppTheme.success,
-            ),
+            style: AppTypography.badgeText.copyWith(color: AppTheme.success),
           ),
         ),
       );
@@ -759,9 +776,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
         child: Center(
           child: Text(
             '\u2193${delta.abs()}',
-            style: AppTypography.badgeText.copyWith(
-              color: AppTheme.error,
-            ),
+            style: AppTypography.badgeText.copyWith(color: AppTheme.error),
           ),
         ),
       );
@@ -772,9 +787,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
         child: Center(
           child: Text(
             AppStrings.rankTrendStable,
-            style: AppTypography.badgeText.copyWith(
-              color: AppTheme.textMuted,
-            ),
+            style: AppTypography.badgeText.copyWith(color: AppTheme.textMuted),
           ),
         ),
       );
@@ -798,8 +811,16 @@ class _LeaderboardViewState extends State<LeaderboardView> {
           );
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.md, horizontal: AppSpacing.sm),
-      child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: style),
+      padding: const EdgeInsets.symmetric(
+        vertical: AppSpacing.md,
+        horizontal: AppSpacing.sm,
+      ),
+      child: Text(
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: style,
+      ),
     );
   }
 
@@ -808,16 +829,11 @@ class _LeaderboardViewState extends State<LeaderboardView> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          CircularProgressIndicator(
-            color: AppTheme.primary,
-            strokeWidth: 2,
-          ),
+          CircularProgressIndicator(color: AppTheme.primary, strokeWidth: 2),
           const SizedBox(height: AppSpacing.lg),
           Text(
             AppStrings.updatingCompetitorIntel,
-            style: AppTypography.microLabel.copyWith(
-              color: AppTheme.textMuted,
-            ),
+            style: AppTypography.microLabel.copyWith(color: AppTheme.textMuted),
           ),
         ],
       ),
@@ -884,12 +900,18 @@ class _LeaderboardViewState extends State<LeaderboardView> {
 
   static Color _tierColor(String? tier) {
     switch (tier) {
-      case 'Platinum': return AppTheme.tierPlatinum;
-      case 'Gold': return AppTheme.tierGold;
-      case 'Silver': return AppTheme.textSecondary;
-      case 'Standard': return AppTheme.textMuted;
-      case 'Subprime': return AppTheme.error;
-      default: return AppTheme.textSecondary;
+      case 'Platinum':
+        return AppTheme.tierPlatinum;
+      case 'Gold':
+        return AppTheme.tierGold;
+      case 'Silver':
+        return AppTheme.textSecondary;
+      case 'Standard':
+        return AppTheme.textMuted;
+      case 'Subprime':
+        return AppTheme.error;
+      default:
+        return AppTheme.textSecondary;
     }
   }
 
@@ -963,5 +985,4 @@ class _LeaderboardViewState extends State<LeaderboardView> {
       ],
     );
   }
-
 }
