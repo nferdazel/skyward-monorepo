@@ -1,7 +1,0 @@
-"manufacturer","model_name","type","range_km","capacity","speed_kmh","fuel_burn_per_km","maintenance_cost_per_hour","purchase_price","lease_price_per_month"
-"ATR","ATR 42-500","regional_turboprop",1200,48,550,2.200,360.00,14000000.00,70000.00
-"Boeing","747-8","wide_body_jet",14815,467,988,12.500,3800.00,418000000.00,2090000.00
-"Boeing","777-300","wide_body_jet",11390,368,905,11.600,2500.00,330000000.00,1650000.00
-"Embraer","E195-E1","regional_jet",4200,118,829,5.100,740.00,53000000.00,265000.00
-"Bombardier","Dash 8 Q300","regional_turboprop",1500,50,530,2.000,320.00,18000000.00,90000.00
-"Boeing","737-500","narrow_body_jet",4400,132,838,4.100,700.00,62000000.00,310000.00
