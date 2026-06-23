@@ -64,7 +64,7 @@ class _RoutesViewState extends State<RoutesView> {
   Widget build(BuildContext context) {
     final authState = context.read<AuthCubit>().state;
     if (authState is! AuthAuthenticated) {
-      return const Center(child: Text(AppStrings.unauthorized));
+      return Center(child: Text(AppStrings.unauthorized, style: AppTypography.bodyMedium.copyWith(color: AppTheme.textMuted)));
     }
 
     final userId = authState.user.id;
@@ -121,16 +121,13 @@ class _RoutesViewState extends State<RoutesView> {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: AppSpacing.lg),
-                OutlinedButton.icon(
+                AppButton(
+                  text: 'RETRY',
                   onPressed: () => context
                       .read<RoutesCubit>()
                       .loadRoutesAndData(userId),
-                  icon: const Icon(Icons.refresh, size: 16),
-                  label: Text(AppStrings.retryLabel, style: AppTypography.badgeText),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppTheme.primary,
-                    side: BorderSide(color: AppTheme.primary),
-                  ),
+                  icon: Icons.refresh,
+                  type: AppButtonType.secondary,
                 ),
               ],
             ),
@@ -196,7 +193,7 @@ class _RoutesViewState extends State<RoutesView> {
                     description: AppStrings.noActiveConnectionsDesc,
                     actionLabel: AppStrings.openBlueprintPlannerCta,
                     onAction: () {
-                      AppSnackBar.showSuccess(context, AppStrings.blueprintPlannerHint);
+                      AppSnackBar.showInfo(context, AppStrings.blueprintPlannerHint);
                     },
                   ),
                 ),
@@ -391,7 +388,7 @@ class _RoutesViewState extends State<RoutesView> {
                 'CARTO / OSM',
                 style: AppTypography.badgeText.copyWith(
                   color: AppTheme.textSecondary,
-                  letterSpacing: 0.2,
+                  letterSpacing: AppTypography.spacingNormal,
                 ),
               ),
             ),
@@ -711,7 +708,7 @@ class _RoutesViewState extends State<RoutesView> {
       ),
       child: Text(
         iata,
-        style: AppTypography.monoLabel.copyWith(
+        style: AppTypography.badgeText.copyWith(
           color: AppTheme.primary,
         ),
       ),
@@ -836,7 +833,7 @@ class _RoutesViewState extends State<RoutesView> {
                     color: AppTheme.textSecondary,
                   ),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: AppSpacing.xs),
                 HelpTooltip(message: 'Create new routes between airports. Select origin, destination, and set a ticket fare near the recommended base fare for optimal demand.'),
                 const Spacer(),
                 if (_plannerOrigin != null && _plannerDestination != null) ...[
@@ -923,7 +920,7 @@ class _RoutesViewState extends State<RoutesView> {
                         isDense: true,
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: AppSpacing.sm,
-                          vertical: 10,
+                          vertical: AppSpacing.md,
                         ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
@@ -957,7 +954,7 @@ class _RoutesViewState extends State<RoutesView> {
                       return AppButton(
                         text: isLoading ? AppStrings.creatingRouteLabel : AppStrings.createRouteLabel,
                         isLoading: isLoading,
-                        height: 38,
+                        height: 40,
                         onPressed: isLoading
                             ? null
                             : () => _submitBlueprint(
@@ -1016,7 +1013,7 @@ class _RoutesViewState extends State<RoutesView> {
                 if (_plannerOrigin != null && _plannerDestination != null)
                   Text(
                     '${_plannerOrigin!.iata} → ${_plannerDestination!.iata}',
-                    style: AppTypography.monoLabel.copyWith(
+                    style: AppTypography.badgeText.copyWith(
                       color: AppTheme.primary,
                     ),
                   ),
@@ -1232,7 +1229,7 @@ class _RoutesViewState extends State<RoutesView> {
                           AppStrings.routeViabilityBoard,
                           style: AppTypography.badgeText.copyWith(
                             color: AppTheme.primary,
-                            letterSpacing: 0.6,
+                            letterSpacing: AppTypography.spacingSection,
                           ),
                         ),
                         const SizedBox(height: AppSpacing.sm),
@@ -1302,8 +1299,7 @@ class _RoutesViewState extends State<RoutesView> {
       builder: (dialogCtx) {
         return AppDialogShell(
           title: AppStrings.adjustConnectionParameters,
-          content: SingleChildScrollView(
-            child: Column(
+          content: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1436,7 +1432,6 @@ class _RoutesViewState extends State<RoutesView> {
                 ),
               ],
             ),
-          ),
           actions: Row(
             children: [
               Expanded(
@@ -1546,7 +1541,7 @@ class _RoutesViewState extends State<RoutesView> {
             AppStrings.plannerAdjustmentBoard,
             style: AppTypography.badgeText.copyWith(
               color: _viabilityColor(assessment.viability),
-              letterSpacing: 0.8,
+              letterSpacing: AppTypography.spacingSection,
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -1914,7 +1909,7 @@ class _RoutesViewState extends State<RoutesView> {
         _plannerOrigin = nearest;
         _updatePlannerDistance();
       });
-      AppSnackBar.showSuccess(
+      AppSnackBar.showInfo(
           context, 'Origin: ${nearest.iata} — ${nearest.name}');
     } else if (_plannerDestination == null &&
         nearest.iata != _plannerOrigin!.iata) {
@@ -1922,7 +1917,7 @@ class _RoutesViewState extends State<RoutesView> {
         _plannerDestination = nearest;
         _updatePlannerDistance();
       });
-      AppSnackBar.showSuccess(
+      AppSnackBar.showInfo(
           context, 'Destination: ${nearest.iata} — ${nearest.name}');
     }
   }
@@ -2140,11 +2135,10 @@ class _AirportMarkerState extends State<_AirportMarker> {
                 ),
                 child: Text(
                   widget.label,
-                  style: AppTypography.badgeText.copyWith(
+                  style: AppTypography.nanoLabel.copyWith(
                     color: widget.isConnected
                         ? demandColor
                         : AppTheme.textSecondary,
-                    fontSize: widget.isConnected ? 10 : 9,
                   ),
                 ),
               ),

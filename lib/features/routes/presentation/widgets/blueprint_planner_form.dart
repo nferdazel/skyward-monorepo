@@ -596,7 +596,7 @@ class _BlueprintPlannerFormState extends State<BlueprintPlannerForm> {
           label.toUpperCase(),
           style: AppTypography.badgeText.copyWith(
             color: AppTypography.textSecondary,
-            letterSpacing: 0.5,
+            letterSpacing: AppTypography.spacingRelaxed,
           ),
         ),
         const SizedBox(height: AppSpacing.xs),
@@ -604,7 +604,7 @@ class _BlueprintPlannerFormState extends State<BlueprintPlannerForm> {
           value,
           style: AppTypography.badgeText.copyWith(
             color: isWarning ? AppTheme.warning : AppTypography.textPrimary,
-            letterSpacing: 0.0,
+            letterSpacing: AppTypography.spacingNone,
           ),
         ),
       ],
@@ -698,7 +698,7 @@ class _BlueprintPlannerFormState extends State<BlueprintPlannerForm> {
               AppStrings.passengerBookingElasticity,
               style: AppTypography.badgeText.copyWith(
                 color: AppTypography.textSecondary,
-                letterSpacing: 0.5,
+                letterSpacing: AppTypography.spacingRelaxed,
               ),
             ),
             Container(
@@ -714,7 +714,7 @@ class _BlueprintPlannerFormState extends State<BlueprintPlannerForm> {
                 status.toUpperCase(),
                 style: AppTypography.badgeText.copyWith(
                   color: color,
-                  letterSpacing: 0.0,
+                  letterSpacing: AppTypography.spacingNone,
                 ),
               ),
             ),

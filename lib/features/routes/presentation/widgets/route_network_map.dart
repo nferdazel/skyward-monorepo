@@ -108,7 +108,7 @@ class RouteNetworkMap extends StatelessWidget {
             color: AppTheme.background,
             border: Border.all(color: AppTheme.border),
           ),
-          padding: EdgeInsets.all(compact ? AppSpacing.md : AppSpacing.md),
+          padding: EdgeInsets.all(AppSpacing.md),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -566,6 +566,7 @@ class _MapMetricChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
         border: Border.all(color: color.withValues(alpha: 0.4)),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
       ),
       child: RichText(
         text: TextSpan(
@@ -575,7 +576,7 @@ class _MapMetricChip extends StatelessWidget {
               style: AppTypography.badgeText.copyWith(
                 color: AppTheme.textSecondary,
                 fontSize: 11,
-                letterSpacing: 0.6,
+                letterSpacing: AppTypography.spacingSection,
               ),
             ),
             TextSpan(
@@ -614,7 +615,7 @@ class _MapLegendChip extends StatelessWidget {
           label,
           style: AppTypography.badgeText.copyWith(
             color: AppTheme.textSecondary,
-            letterSpacing: 0.3,
+            letterSpacing: AppTypography.spacingNormal,
           ),
         ),
       ],
@@ -641,7 +642,7 @@ class _MapAttributionBadge extends StatelessWidget {
         style: AppTypography.badgeText.copyWith(
           color: AppTheme.textSecondary,
           fontSize: 11,
-          letterSpacing: 0.2,
+          letterSpacing: AppTypography.spacingNormal,
         ),
       ),
     );
