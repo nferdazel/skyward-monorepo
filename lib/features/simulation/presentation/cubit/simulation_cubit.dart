@@ -201,8 +201,15 @@ class SimulationCubit extends Cubit<SimulationState>
         return null;
       }
 
-      // 1. Ask Supabase to reconcile this actor to the shared world clock.
-      final List<dynamic> response = await _gateway.processSimulationDelta();
+      // 1. Reconcile actor to shared world clock & fetch user profile in parallel.
+      //    loadUserProfile does not depend on the delta result.
+      final results = await Future.wait([
+        _gateway.processSimulationDelta(),
+        _gateway.loadUserProfile(userId),
+      ]);
+
+      final List<dynamic> response = results[0] as List<dynamic>;
+      final Map<String, dynamic> userProfile = results[1] as Map<String, dynamic>;
 
       double elapsedGameDays = 0.0;
       int flightsRun = 0;
@@ -213,11 +220,6 @@ class SimulationCubit extends Cubit<SimulationState>
             (result['elapsed_game_days'] as num?)?.toDouble() ?? 0.0;
         flightsRun = (result['flights_run'] as num?)?.toInt() ?? 0;
       }
-
-      // 2. Fetch the authoritative user profile containing reconciled balances and time.
-      final Map<String, dynamic> userProfile = await _gateway.loadUserProfile(
-        userId,
-      );
 
       final authoritativeUser = User.fromMap(userProfile);
 
