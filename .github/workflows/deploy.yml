@@ -47,10 +47,6 @@ jobs:
       - name: Run Tests
         run: flutter test
 
-      - name: Audit dependencies
-        run: dart pub outdated
-        continue-on-error: true
-
       - name: Analyze Code
         run: flutter analyze --no-fatal-infos
 

@@ -20,7 +20,6 @@ import '../../../../presentation/widgets/app_sparkline.dart';
 import '../../../../presentation/widgets/app_line_chart.dart';
 import '../../../../presentation/widgets/help_tooltip.dart';
 import '../../../../presentation/widgets/app_table_cells.dart';
-import '../../../../presentation/widgets/app_table_shell.dart';
 import '../../../../presentation/widgets/app_tab_item.dart';
 import '../../../../presentation/widgets/expense_breakdown_bar.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
@@ -46,6 +45,13 @@ class _FinanceViewState extends State<FinanceView>
 
   late final TabController _tabController;
   late final LazyTabCubit _lazyTabCubit;
+
+  static const _ledgerColumnWidths = <int, TableColumnWidth>{
+    0: FlexColumnWidth(3),  // Category Badge
+    1: FlexColumnWidth(11), // Detailed description
+    2: FlexColumnWidth(3),  // Game calendar date
+    3: FlexColumnWidth(3),  // Cash flow yield
+  };
 
   @override
   void initState() {
@@ -245,22 +251,22 @@ class _FinanceViewState extends State<FinanceView>
   }
 
   Widget _buildTransactionsTab(BuildContext context, FinanceDataState state) {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const AppSectionHeader(
-            title: AppStrings.auditedTransactionLogs,
-          ),
-          const SizedBox(height: AppSpacing.blockGap),
-          _buildLedgerLogs(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const AppSectionHeader(
+          title: AppStrings.auditedTransactionLogs,
+        ),
+        const SizedBox(height: AppSpacing.blockGap),
+        Expanded(
+          child: _buildLedgerLogs(
             context,
             state,
             AppFormatters.currencyDetailed,
             _dateTimeFormat,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -752,25 +758,33 @@ class _FinanceViewState extends State<FinanceView>
       );
     }
 
-    return AppTableShell(
-      child: Table(
-        columnWidths: const {
-          0: FlexColumnWidth(3), // Category Badge
-          1: FlexColumnWidth(11), // Detailed description
-          2: FlexColumnWidth(3), // Game calendar date
-          3: FlexColumnWidth(3), // Cash flow yield
-        },
-        defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+    return AppCard(
+      padding: EdgeInsets.zero,
+      child: Column(
         children: [
-          // Header Row
-          _buildTableHeaderRow(),
-          // Log Entries
-          ...List.generate(
-            state.logs.length,
-            (index) => _buildTableEntryRow(
-              state.logs[index],
-              currencyFormat,
-              dateFormat,
+          // Fixed header row
+          Table(
+            columnWidths: _ledgerColumnWidths,
+            defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+            children: [_buildTableHeaderRow()],
+          ),
+          // Lazy data rows
+          Expanded(
+            child: ListView.builder(
+              itemCount: state.logs.length,
+              itemBuilder: (context, index) {
+                return Table(
+                  columnWidths: _ledgerColumnWidths,
+                  defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                  children: [
+                    _buildTableEntryRow(
+                      state.logs[index],
+                      currencyFormat,
+                      dateFormat,
+                    ),
+                  ],
+                );
+              },
             ),
           ),
         ],

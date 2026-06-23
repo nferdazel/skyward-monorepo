@@ -14,6 +14,7 @@ import '../../../../core/utils/perf_debug.dart';
 import '../../../../presentation/theme/app_spacing.dart';
 import '../../../../presentation/theme/app_typography.dart';
 import '../../../../presentation/widgets/app_badge.dart';
+import '../../../../presentation/widgets/app_card.dart';
 import '../../../../presentation/widgets/app_button.dart';
 import '../../../../presentation/widgets/app_dialog_shell.dart';
 import '../../../../presentation/widgets/app_dropdown_field.dart';
@@ -47,6 +48,16 @@ class _FleetViewState extends State<FleetView>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
   late final LazyTabCubit _lazyTabCubit;
+
+  static const _fleetColumnWidths = <int, TableColumnWidth>{
+    0: FlexColumnWidth(1.1), // TAIL
+    1: FlexColumnWidth(2.1), // AIRCRAFT
+    2: FlexColumnWidth(1.0), // ACQ
+    3: FlexColumnWidth(1.1), // CONDITION
+    4: FlexColumnWidth(1.0), // STATUS
+    5: FlexColumnWidth(1.8), // CABIN
+    6: FlexColumnWidth(1.0), // ACTIONS
+  };
 
   @override
   void initState() {
@@ -258,189 +269,220 @@ class _FleetViewState extends State<FleetView>
     double autoGroundingThreshold,
     Set<String> assignedFleetIds,
   ) {
-    return AppTableShell(
-      child: Table(
-        columnWidths: const {
-          0: FlexColumnWidth(1.1), // TAIL
-          1: FlexColumnWidth(2.1), // AIRCRAFT
-          2: FlexColumnWidth(1.0), // ACQ
-          3: FlexColumnWidth(1.1), // CONDITION
-          4: FlexColumnWidth(1.0), // STATUS
-          5: FlexColumnWidth(1.8), // CABIN
-          6: FlexColumnWidth(1.0), // ACTIONS
-        },
-        defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+    return AppCard(
+      padding: EdgeInsets.zero,
+      child: Column(
         children: [
-          TableRow(
-            decoration: BoxDecoration(
-              color: AppTheme.surfaceRaised,
-            ),
+          // Fixed header row
+          Table(
+            columnWidths: _fleetColumnWidths,
+            defaultVerticalAlignment: TableCellVerticalAlignment.middle,
             children: [
-              _tableHeaderCell(AppStrings.tailHeader),
-              _tableHeaderCell(AppStrings.aircraftHeader),
-              _tableHeaderCell(AppStrings.acquisitionHeader),
-              _tableHeaderCell(AppStrings.conditionHeader),
-              _tableHeaderCell(AppStrings.statusHeader),
-              _tableHeaderCell(AppStrings.cabinHeader),
-              _tableHeaderCell(AppStrings.actionsHeader),
+              TableRow(
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceRaised,
+                ),
+                children: [
+                  _tableHeaderCell(AppStrings.tailHeader),
+                  _tableHeaderCell(AppStrings.aircraftHeader),
+                  _tableHeaderCell(AppStrings.acquisitionHeader),
+                  _tableHeaderCell(AppStrings.conditionHeader),
+                  _tableHeaderCell(AppStrings.statusHeader),
+                  _tableHeaderCell(AppStrings.cabinHeader),
+                  _tableHeaderCell(AppStrings.actionsHeader),
+                ],
+              ),
             ],
           ),
-          ...fleetList.map((aircraft) {
-            final isGrounded = aircraft.isMaintenanceGrounded(
-              autoGroundingThreshold,
-            );
-            final isAssigned = assignedFleetIds.contains(aircraft.id);
-            return TableRow(
-              decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(color: AppTheme.border, width: 1.0),
-                ),
-              ),
-              children: [
-                _tableCell(
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      AppBadge.primary(label: aircraft.tailNumber),
-                      const SizedBox(height: AppSpacing.sm),
-                        Text(
-                          aircraft.nickname.toUpperCase(),
-                          style: AppTypography.badgeText.copyWith(
-                            color: AppTheme.textSecondary,
-                            letterSpacing: 0.5,
-                          ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+          // Lazy data rows
+          Expanded(
+            child: ListView.builder(
+              itemCount: fleetList.length,
+              itemBuilder: (context, index) {
+                final aircraft = fleetList[index];
+                return _buildFleetRow(
+                  context,
+                  aircraft,
+                  userId,
+                  currencyFormat,
+                  isActionLoading,
+                  autoGroundingThreshold,
+                  assignedFleetIds,
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFleetRow(
+    BuildContext context,
+    UserFleetAircraft aircraft,
+    String userId,
+    NumberFormat currencyFormat,
+    bool isActionLoading,
+    double autoGroundingThreshold,
+    Set<String> assignedFleetIds,
+  ) {
+    final isGrounded = aircraft.isMaintenanceGrounded(
+      autoGroundingThreshold,
+    );
+    final isAssigned = assignedFleetIds.contains(aircraft.id);
+    return Table(
+      columnWidths: _fleetColumnWidths,
+      defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+      children: [
+        TableRow(
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: AppTheme.border, width: 1.0),
+            ),
+          ),
+          children: [
+            _tableCell(
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  AppBadge.primary(label: aircraft.tailNumber),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    aircraft.nickname.toUpperCase(),
+                    style: AppTypography.badgeText.copyWith(
+                      color: AppTheme.textSecondary,
+                      letterSpacing: 0.5,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                _tableCell(
-                  Column(
+                ],
+              ),
+            ),
+            _tableCell(
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    aircraft.model.modelName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.bodyMedium.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    aircraft.model.manufacturer.toUpperCase(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.badgeText.copyWith(
+                      color: AppTheme.textSecondary,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    '${aircraft.model.capacity} ${AppStrings.capacityPaxSuffix}',
+                    style: AppTypography.badgeText.copyWith(
+                      color: AppTheme.primary,
+                      letterSpacing: 0.0,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            _tableCell(_buildAcquisitionBadge(aircraft.acquisitionType)),
+            _tableCell(_buildWearConditionCell(aircraft.condition)),
+            _tableCell(_buildStatusBadge(aircraft.status, isGrounded)),
+            _tableCell(
+              Builder(
+                builder: (context) {
+                  final int economy = aircraft.economySeats;
+                  final int business = aircraft.businessSeats;
+                  final int first = aircraft.firstClassSeats;
+                  final int capacity = aircraft.model.capacity;
+                  final int occupied =
+                      (economy * 1) + (business * 2) + (first * 3);
+                  return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        aircraft.model.modelName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.bodyMedium.copyWith(
-                          fontWeight: FontWeight.bold,
+                        'E $economy  B $business  F $first',
+                        style: AppTypography.badgeText.copyWith(
                           color: AppTheme.textPrimary,
+                          letterSpacing: 0.0,
                         ),
                       ),
                       const SizedBox(height: AppSpacing.xs),
-                        Text(
-                          aircraft.model.manufacturer.toUpperCase(),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTypography.badgeText.copyWith(
-                            color: AppTheme.textSecondary,
-                            letterSpacing: 0.5,
+                      Text(
+                        '$occupied / $capacity slots',
+                        style: AppTypography.badgeText.copyWith(
+                          color: occupied <= capacity
+                              ? AppTheme.success
+                              : AppTheme.error,
+                          letterSpacing: 0.0,
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+            _tableCell(
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildDisposalIconAction(
+                    context: context,
+                    aircraft: aircraft,
+                    userId: userId,
+                    currencyFormat: currencyFormat,
+                    isAssigned: isAssigned,
+                    isActionLoading: isActionLoading,
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  AppTableIconAction(
+                    tooltip: AppStrings.configureSeatsTooltip,
+                    icon: Icons.tune,
+                    size: 28,
+                    iconSize: 14,
+                    onPressed: () =>
+                        _showSeatConfigDialog(context, aircraft, userId),
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  aircraft.condition < 100.0
+                      ? AppTableIconAction(
+                          tooltip:
+                              '${AppStrings.repairTooltipPrefix}${currencyFormat.format(aircraft.repairCost)}',
+                          icon: Icons.build_outlined,
+                          size: 28,
+                          iconSize: 14,
+                          onPressed: isActionLoading
+                              ? null
+                              : () => _confirmRepair(
+                                  context,
+                                  aircraft,
+                                  userId,
+                                  currencyFormat,
+                                ),
+                        )
+                      : AppBadge(
+                          label: AppStrings.okStatus,
+                          color: AppTheme.success,
+                          fontSize: 11,
+                          letterSpacing: 0.4,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: AppSpacing.sm,
+                            vertical: AppSpacing.sm,
                           ),
                         ),
-                        const SizedBox(height: AppSpacing.xs),
-                        Text(
-                          '${aircraft.model.capacity} ${AppStrings.capacityPaxSuffix}',
-                          style: AppTypography.badgeText.copyWith(
-                            color: AppTheme.primary,
-                            letterSpacing: 0.0,
-                          ),
-                      ),
-                    ],
-                  ),
-                ),
-                _tableCell(_buildAcquisitionBadge(aircraft.acquisitionType)),
-                _tableCell(_buildWearConditionCell(aircraft.condition)),
-                _tableCell(_buildStatusBadge(aircraft.status, isGrounded)),
-                _tableCell(
-                  Builder(
-                    builder: (context) {
-                      final int economy = aircraft.economySeats;
-                      final int business = aircraft.businessSeats;
-                      final int first = aircraft.firstClassSeats;
-                      final int capacity = aircraft.model.capacity;
-                      final int occupied =
-                          (economy * 1) + (business * 2) + (first * 3);
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'E $economy  B $business  F $first',
-                            style: AppTypography.badgeText.copyWith(
-                              color: AppTheme.textPrimary,
-                              letterSpacing: 0.0,
-                            ),
-                          ),
-                          const SizedBox(height: AppSpacing.xs),
-                          Text(
-                            '$occupied / $capacity slots',
-                            style: AppTypography.badgeText.copyWith(
-                              color: occupied <= capacity
-                                  ? AppTheme.success
-                                  : AppTheme.error,
-                              letterSpacing: 0.0,
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ),
-                _tableCell(
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildDisposalIconAction(
-                        context: context,
-                        aircraft: aircraft,
-                        userId: userId,
-                        currencyFormat: currencyFormat,
-                        isAssigned: isAssigned,
-                        isActionLoading: isActionLoading,
-                      ),
-                      const SizedBox(width: AppSpacing.xs),
-                      AppTableIconAction(
-                        tooltip: AppStrings.configureSeatsTooltip,
-                        icon: Icons.tune,
-                        size: 28,
-                        iconSize: 14,
-                        onPressed: () =>
-                            _showSeatConfigDialog(context, aircraft, userId),
-                      ),
-                      const SizedBox(width: AppSpacing.xs),
-                      aircraft.condition < 100.0
-                          ? AppTableIconAction(
-                              tooltip:
-                                  '${AppStrings.repairTooltipPrefix}${currencyFormat.format(aircraft.repairCost)}',
-                              icon: Icons.build_outlined,
-                              size: 28,
-                              iconSize: 14,
-                              onPressed: isActionLoading
-                                  ? null
-                                  : () => _confirmRepair(
-                                      context,
-                                      aircraft,
-                                      userId,
-                                      currencyFormat,
-                                    ),
-                            )
-                          : AppBadge(
-                              label: AppStrings.okStatus,
-                              color: AppTheme.success,
-                              fontSize: 11,
-                              letterSpacing: 0.4,
-                              padding: EdgeInsets.symmetric(
-                                horizontal: AppSpacing.sm,
-                                vertical: AppSpacing.sm,
-                              ),
-                            ),
-                    ],
-                  ),
-                ),
-              ],
-            );
-          }),
-        ],
-      ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
