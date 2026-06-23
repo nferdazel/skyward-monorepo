@@ -15,7 +15,6 @@ import '../../../../core/utils/perf_debug.dart';
 import '../../../../presentation/theme/app_spacing.dart';
 import '../../../../presentation/theme/app_typography.dart';
 import '../../../../presentation/widgets/app_badge.dart';
-import '../../../../presentation/widgets/app_card.dart';
 import '../../../../presentation/widgets/app_button.dart';
 import '../../../../presentation/widgets/app_dialog_shell.dart';
 import '../../../../presentation/widgets/app_dropdown_field.dart';
@@ -27,6 +26,7 @@ import '../../../../presentation/widgets/app_snackbar.dart';
 import '../../../../presentation/widgets/app_table_cells.dart';
 import '../../../../presentation/widgets/app_table_icon_action.dart';
 import '../../../../presentation/widgets/app_table_shell.dart';
+import '../../../../presentation/widgets/segmented_progress_bar.dart';
 import '../../../../presentation/widgets/app_tab_item.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
@@ -94,7 +94,12 @@ class _FleetViewState extends State<FleetView>
   Widget build(BuildContext context) {
     final authState = context.read<AuthCubit>().state;
     if (authState is! AuthAuthenticated) {
-      return const Center(child: Text(AppStrings.unauthorized));
+      return Center(
+        child: Text(
+          AppStrings.unauthorized,
+          style: AppTypography.bodyMedium.copyWith(color: AppTheme.textMuted),
+        ),
+      );
     }
 
     final userId = authState.user.id;
@@ -270,8 +275,7 @@ class _FleetViewState extends State<FleetView>
     double autoGroundingThreshold,
     Set<String> assignedFleetIds,
   ) {
-    return AppCard(
-      padding: EdgeInsets.zero,
+    return AppTableShell(
       child: Column(
         children: [
           // Fixed header row
@@ -352,7 +356,7 @@ class _FleetViewState extends State<FleetView>
                     aircraft.nickname.toUpperCase(),
                     style: AppTypography.badgeText.copyWith(
                       color: AppTheme.textSecondary,
-                      letterSpacing: 0.5,
+                      letterSpacing: AppTypography.spacingRelaxed,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -379,15 +383,14 @@ class _FleetViewState extends State<FleetView>
                     overflow: TextOverflow.ellipsis,
                     style: AppTypography.badgeText.copyWith(
                       color: AppTheme.textSecondary,
-                      letterSpacing: 0.5,
+                      letterSpacing: AppTypography.spacingRelaxed,
                     ),
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   Text(
                     '${aircraft.model.capacity} ${AppStrings.capacityPaxSuffix}',
-                    style: AppTypography.badgeText.copyWith(
+                    style: AppTypography.monoValue.copyWith(
                       color: AppTheme.primary,
-                      letterSpacing: 0.0,
                     ),
                   ),
                 ],
@@ -412,17 +415,16 @@ class _FleetViewState extends State<FleetView>
                         'E $economy  B $business  F $first',
                         style: AppTypography.badgeText.copyWith(
                           color: AppTheme.textPrimary,
-                          letterSpacing: 0.0,
+                          letterSpacing: AppTypography.spacingNone,
                         ),
                       ),
                       const SizedBox(height: AppSpacing.xs),
                       Text(
                         '$occupied / $capacity slots',
-                        style: AppTypography.badgeText.copyWith(
+                        style: AppTypography.monoValue.copyWith(
                           color: occupied <= capacity
                               ? AppTheme.success
                               : AppTheme.error,
-                          letterSpacing: 0.0,
                         ),
                       ),
                     ],
@@ -472,10 +474,10 @@ class _FleetViewState extends State<FleetView>
                           label: AppStrings.okStatus,
                           color: AppTheme.success,
                           fontSize: 11,
-                          letterSpacing: 0.4,
+                          letterSpacing: AppTypography.spacingRelaxed,
                           padding: EdgeInsets.symmetric(
                             horizontal: AppSpacing.sm,
-                            vertical: AppSpacing.sm,
+                            vertical: AppSpacing.xs,
                           ),
                         ),
                 ],
@@ -763,7 +765,12 @@ class _FleetViewState extends State<FleetView>
 
         final catalog = _getCatalogList(state);
         if (catalog.isEmpty) {
-          return const Center(child: Text(AppStrings.noCatalogModelsAvailable));
+          return Center(
+            child: Text(
+              AppStrings.noCatalogModelsAvailable,
+              style: AppTypography.bodyMedium.copyWith(color: AppTheme.textMuted),
+            ),
+          );
         }
 
         final isActionLoading = state is FleetActionLoading;
@@ -822,8 +829,13 @@ class _FleetViewState extends State<FleetView>
             _buildFilterSortBar(context, cubit, filters),
             Expanded(
               child: filteredCatalog.isEmpty
-                  ? const Center(
-                      child: Text(AppStrings.noAircraftMatchCriteria),
+                  ? Center(
+                      child: Text(
+                        AppStrings.noAircraftMatchCriteria,
+                        style: AppTypography.bodyMedium.copyWith(
+                          color: AppTheme.textMuted,
+                        ),
+                      ),
                     )
                   : _buildCatalogTable(
                       context,
@@ -1018,7 +1030,7 @@ class _FleetViewState extends State<FleetView>
                         overflow: TextOverflow.ellipsis,
                         style: AppTypography.badgeText.copyWith(
                           color: AppTheme.textSecondary,
-                          letterSpacing: 0.5,
+                          letterSpacing: AppTypography.spacingRelaxed,
                         ),
                       ),
                     ],
@@ -1038,9 +1050,8 @@ class _FleetViewState extends State<FleetView>
                     child: Text(
                       '${model.rangeKm} KM',
                       textAlign: TextAlign.right,
-                      style: AppTypography.badgeText.copyWith(
+                      style: AppTypography.monoValue.copyWith(
                         color: AppTheme.textPrimary,
-                        letterSpacing: 0.0,
                       ),
                     ),
                   ),
@@ -1051,9 +1062,8 @@ class _FleetViewState extends State<FleetView>
                     child: Text(
                       '${model.capacity} PAX',
                       textAlign: TextAlign.right,
-                      style: AppTypography.badgeText.copyWith(
+                      style: AppTypography.monoValue.copyWith(
                         color: AppTheme.textPrimary,
-                        letterSpacing: 0.0,
                       ),
                     ),
                   ),
@@ -1064,9 +1074,8 @@ class _FleetViewState extends State<FleetView>
                     child: Text(
                       '${model.fuelBurnPerKm} L/KM',
                       textAlign: TextAlign.right,
-                      style: AppTypography.badgeText.copyWith(
+                      style: AppTypography.monoValue.copyWith(
                         color: AppTheme.textPrimary,
-                        letterSpacing: 0.0,
                       ),
                     ),
                   ),
@@ -1078,18 +1087,16 @@ class _FleetViewState extends State<FleetView>
                       Text(
                         'Lease ${currencyFormat.format(model.leasePricePerMonth)}/mo',
                         textAlign: TextAlign.right,
-                        style: AppTypography.badgeText.copyWith(
+                        style: AppTypography.monoValue.copyWith(
                           color: AppTheme.textPrimary,
-                          letterSpacing: 0.0,
                         ),
                       ),
                       const SizedBox(height: AppSpacing.xs),
                       Text(
                         'Buy ${currencyFormat.format(model.purchasePrice)}',
                         textAlign: TextAlign.right,
-                        style: AppTypography.badgeText.copyWith(
+                        style: AppTypography.monoValue.copyWith(
                           color: AppTheme.primary,
-                          letterSpacing: 0.0,
                         ),
                       ),
                     ],
@@ -1725,32 +1732,20 @@ class _FleetViewState extends State<FleetView>
           ),
         ),
         const SizedBox(height: AppSpacing.xs),
-        SizedBox(
+        SegmentedProgressBar(
+          value: condition,
+          segments: 10,
           width: 64,
           height: 6,
-          child: Row(
-            children: List.generate(10, (index) {
-              final segmentThreshold = (index + 1) * 10.0;
-              final isActive = condition >= segmentThreshold;
-              return Expanded(
-                child: Container(
-                  height: 6,
-                  margin: EdgeInsets.only(right: index < 9 ? 1 : 0),
-                  decoration: BoxDecoration(
-                    color: isActive ? barColor : AppTheme.borderSubtle,
-                    borderRadius: BorderRadius.circular(AppSpacing.radiusTight),
-                  ),
-                ),
-              );
-            }),
-          ),
+          activeColor: barColor,
+          inactiveColor: AppTheme.borderSubtle,
         ),
         const SizedBox(height: AppSpacing.xs),
         Text(
           bandLabel,
           style: AppTypography.badgeText.copyWith(
             color: barColor,
-            letterSpacing: 0.4,
+            letterSpacing: AppTypography.spacingRelaxed,
           ),
         ),
       ],
