@@ -13,6 +13,8 @@ import '../../../../core/utils/app_error.dart';
 import '../../../../core/utils/dev_mode_manager.dart';
 import '../../../simulation/presentation/cubit/simulation_cubit.dart';
 import '../../data/bank_gateway.dart';
+import '../../domain/bank_account_model.dart';
+import '../../domain/bank_transaction_model.dart';
 import '../../domain/credit_report_model.dart';
 import '../../domain/loan_model.dart';
 import 'bank_state.dart';
@@ -25,6 +27,8 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
   CreditReport? _cachedCreditReport;
   List<CreditScoreSnapshot> _cachedCreditHistory = [];
   List<Loan> _cachedFinancing = [];
+  List<BankAccount> _cachedAccounts = [];
+  List<BankTransaction> _cachedTransactions = [];
   Timer? _realtimeRefreshDebounce;
   String? _userId;
   Future<void>? _activeLoad;
@@ -74,12 +78,13 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
         return;
       }
 
-      // Load loans and credit report in parallel
+      // Load loans, credit report, and bank accounts in parallel
       final results = await Future.wait([
         _gateway.getLoans(userId),
         _gateway.getCreditReport(),
         _gateway.getCreditHistory(),
         _gateway.getAircraftFinancing(),
+        _gateway.getBankAccounts(),
       ]);
 
       _cachedLoans = (results[0] as List<dynamic>)
@@ -97,6 +102,19 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
       _cachedFinancing = (results[3] as List<dynamic>)
           .map((m) => Loan.fromMap(m as Map<String, dynamic>))
           .toList();
+
+      _cachedAccounts = results[4] as List<BankAccount>;
+
+      // Load transactions for savings account if it exists
+      final savingsAccount = _cachedAccounts
+          .where((a) => a.isSavings)
+          .firstOrNull;
+      if (savingsAccount != null) {
+        _cachedTransactions =
+            await _gateway.getBankTransactions(savingsAccount.id);
+      } else {
+        _cachedTransactions = [];
+      }
 
       _emitLoaded();
     } catch (e, stack) {
@@ -398,6 +416,139 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
     }
   }
 
+  /// Open a new savings account.
+  Future<void> createSavingsAccount() async {
+    emit(const BankLoading());
+
+    try {
+      final result = await _gateway.createSavingsAccount();
+      final success = result['success'] as bool? ?? false;
+      final message = result['message'] as String? ?? '';
+
+      if (success) {
+        _cachedAccounts = await _gateway.getBankAccounts();
+        _cachedTransactions = [];
+        if (isClosed) return;
+        emit(BankSavingsSuccess(
+          message: message,
+          accounts: _cachedAccounts,
+          transactions: _cachedTransactions,
+        ));
+      } else {
+        if (isClosed) return;
+        emit(BankError(
+          message: message,
+          hasData: _cachedLoans.isNotEmpty,
+          loans: _cachedLoans,
+        ));
+      }
+    } catch (e, stack) {
+      AppError.log('createSavingsAccount', e, stack);
+      if (isClosed) return;
+      emit(BankError(
+        message: AppError.extractMessage(e, 'Failed to open savings account.'),
+        hasData: _cachedLoans.isNotEmpty,
+        loans: _cachedLoans,
+      ));
+    }
+  }
+
+  /// Deposit cash into savings account.
+  Future<void> depositToSavings(double amount) async {
+    emit(const BankLoading());
+
+    try {
+      final result = await _gateway.depositToSavings(amount);
+      final success = result['success'] as bool? ?? false;
+      final message = result['message'] as String? ?? '';
+
+      if (success) {
+        _cachedAccounts = await _gateway.getBankAccounts();
+        final savingsAccount = _cachedAccounts
+            .where((a) => a.isSavings)
+            .firstOrNull;
+        if (savingsAccount != null) {
+          _cachedTransactions =
+              await _gateway.getBankTransactions(savingsAccount.id);
+        }
+        if (isClosed) return;
+        emit(BankSavingsSuccess(
+          message: message,
+          accounts: _cachedAccounts,
+          transactions: _cachedTransactions,
+        ));
+      } else {
+        if (isClosed) return;
+        emit(BankError(
+          message: message,
+          hasData: _cachedLoans.isNotEmpty,
+          loans: _cachedLoans,
+        ));
+      }
+    } catch (e, stack) {
+      AppError.log('depositToSavings', e, stack);
+      if (isClosed) return;
+      emit(BankError(
+        message: AppError.extractMessage(e, 'Failed to deposit to savings.'),
+        hasData: _cachedLoans.isNotEmpty,
+        loans: _cachedLoans,
+      ));
+    }
+  }
+
+  /// Withdraw cash from savings account.
+  Future<void> withdrawFromSavings(double amount) async {
+    emit(const BankLoading());
+
+    try {
+      final result = await _gateway.withdrawFromSavings(amount);
+      final success = result['success'] as bool? ?? false;
+      final message = result['message'] as String? ?? '';
+
+      if (success) {
+        _cachedAccounts = await _gateway.getBankAccounts();
+        final savingsAccount = _cachedAccounts
+            .where((a) => a.isSavings)
+            .firstOrNull;
+        if (savingsAccount != null) {
+          _cachedTransactions =
+              await _gateway.getBankTransactions(savingsAccount.id);
+        }
+        if (isClosed) return;
+        emit(BankSavingsSuccess(
+          message: message,
+          accounts: _cachedAccounts,
+          transactions: _cachedTransactions,
+        ));
+      } else {
+        if (isClosed) return;
+        emit(BankError(
+          message: message,
+          hasData: _cachedLoans.isNotEmpty,
+          loans: _cachedLoans,
+        ));
+      }
+    } catch (e, stack) {
+      AppError.log('withdrawFromSavings', e, stack);
+      if (isClosed) return;
+      emit(BankError(
+        message: AppError.extractMessage(e, 'Failed to withdraw from savings.'),
+        hasData: _cachedLoans.isNotEmpty,
+        loans: _cachedLoans,
+      ));
+    }
+  }
+
+  /// Load bank transactions for a specific account.
+  Future<void> loadBankTransactions(String accountId) async {
+    try {
+      _cachedTransactions = await _gateway.getBankTransactions(accountId);
+      _emitLoaded();
+    } catch (e, stack) {
+      AppError.log('loadBankTransactions', e, stack);
+    }
+  }
+
   void _emitLoaded() {
     if (isClosed) return;
     emit(BankLoaded(
@@ -405,6 +556,8 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
       creditReport: _cachedCreditReport,
       creditHistory: _cachedCreditHistory,
       aircraftFinancing: _cachedFinancing,
+      accounts: _cachedAccounts,
+      transactions: _cachedTransactions,
     ));
   }
 

@@ -18,6 +18,8 @@ import '../../../../presentation/widgets/app_info_strip.dart';
 import '../../../../presentation/widgets/app_labeled_value.dart';
 import '../../../../presentation/widgets/app_section_header.dart';
 import '../../../../presentation/widgets/app_snackbar.dart';
+import '../../domain/bank_account_model.dart';
+import '../../domain/bank_transaction_model.dart';
 import '../../domain/credit_report_model.dart';
 import '../../domain/loan_model.dart';
 import '../cubit/bank_cubit.dart';
@@ -35,6 +37,9 @@ class BankPanel extends StatelessWidget {
           AppSnackBar.showError(context, state.message);
         }
         if (state is BankLoanSuccess) {
+          AppSnackBar.showSuccess(context, state.message);
+        }
+        if (state is BankSavingsSuccess) {
           AppSnackBar.showSuccess(context, state.message);
         }
       },
@@ -58,15 +63,31 @@ class BankPanel extends StatelessWidget {
   Widget _buildBody(BuildContext context, BankState state) {
     return switch (state) {
       BankInitial() || BankLoading() => _buildLoading(),
-      BankLoaded(:final loans, :final creditReport) =>
+      BankLoaded(:final loans, :final creditReport, :final accounts, :final transactions) =>
         loans.isEmpty
-            ? _buildEmptyState(context, creditReport: creditReport)
-            : _buildContent(context, loans, creditReport: creditReport),
+            ? _buildEmptyState(context, creditReport: creditReport, accounts: accounts, transactions: transactions)
+            : _buildContent(context, loans, creditReport: creditReport, accounts: accounts, transactions: transactions),
       BankError(:final hasData, :final loans, :final creditReport) =>
         hasData ? _buildContent(context, loans, creditReport: creditReport) : _buildEmptyState(context),
       BankLoanSuccess(:final loans, :final creditReport) => _buildContent(context, loans, creditReport: creditReport),
+      BankSavingsSuccess(:final accounts, :final transactions) => _buildContent(context, _cachedLoansForState(context), creditReport: _cachedCreditForState(context), accounts: accounts, transactions: transactions),
       _ => _buildLoading(),
     };
+  }
+
+  List<Loan> _cachedLoansForState(BuildContext context) {
+    final cubit = context.read<BankCubit>();
+    final state = cubit.state;
+    if (state is BankLoaded) return state.loans;
+    if (state is BankSavingsSuccess) return [];
+    return [];
+  }
+
+  CreditReport? _cachedCreditForState(BuildContext context) {
+    final cubit = context.read<BankCubit>();
+    final state = cubit.state;
+    if (state is BankLoaded) return state.creditReport;
+    return null;
   }
 
   Widget _buildLoading() {
@@ -82,7 +103,7 @@ class BankPanel extends StatelessWidget {
     );
   }
 
-  Widget _buildEmptyState(BuildContext context, {CreditReport? creditReport}) {
+  Widget _buildEmptyState(BuildContext context, {CreditReport? creditReport, List<BankAccount> accounts = const [], List<BankTransaction> transactions = const []}) {
     final tierDescription = creditReport != null
         ? _tierDescription(creditReport.creditTier)
         : null;
@@ -91,6 +112,16 @@ class BankPanel extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // ── Account Summary ──
+        if (accounts.isNotEmpty) ...[
+          _buildAccountSummary(context, accounts),
+          const SizedBox(height: AppSpacing.md),
+        ],
+
+        // ── Savings Section ──
+        _buildSavingsSection(context, accounts: accounts, transactions: transactions),
+        const SizedBox(height: AppSpacing.md),
+
         if (creditReport != null) ...[
           _buildCreditScoreCard(creditReport),
           const SizedBox(height: AppSpacing.md),
@@ -119,7 +150,7 @@ class BankPanel extends StatelessWidget {
 
   // ── Content ─────────────────────────────────────────────────────────────
 
-  Widget _buildContent(BuildContext context, List<Loan> loans, {CreditReport? creditReport}) {
+  Widget _buildContent(BuildContext context, List<Loan> loans, {CreditReport? creditReport, List<BankAccount> accounts = const [], List<BankTransaction> transactions = const []}) {
     final activeLoans = loans.where((l) => l.isActive).toList();
     final historicalLoans = loans.where((l) => !l.isActive).toList();
 
@@ -136,6 +167,16 @@ class BankPanel extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // ── Account Summary ──
+        if (accounts.isNotEmpty) ...[
+          _buildAccountSummary(context, accounts),
+          const SizedBox(height: AppSpacing.md),
+        ],
+
+        // ── Savings Section ──
+        _buildSavingsSection(context, accounts: accounts, transactions: transactions),
+        const SizedBox(height: AppSpacing.md),
+
         // ── Credit score card ──
         if (creditReport != null) ...[
           _buildCreditScoreCard(creditReport),
@@ -218,6 +259,188 @@ class BankPanel extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // ── Account Summary ─────────────────────────────────────────────────────
+
+  Widget _buildAccountSummary(BuildContext context, List<BankAccount> accounts) {
+    final checking = accounts.where((a) => a.isChecking).firstOrNull;
+    final savings = accounts.where((a) => a.isSavings).firstOrNull;
+
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'ACCOUNTS',
+            style: AppTypography.microLabel.copyWith(
+              color: AppTheme.textMuted,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              if (checking != null) ...[
+                Expanded(
+                  child: _AccountTile(
+                    icon: Icons.account_balance_wallet_outlined,
+                    label: 'Checking',
+                    balance: checking.balance,
+                    color: AppTheme.primary,
+                  ),
+                ),
+              ],
+              if (checking != null && savings != null)
+                const SizedBox(width: AppSpacing.md),
+              if (savings != null) ...[
+                Expanded(
+                  child: _AccountTile(
+                    icon: Icons.savings_outlined,
+                    label: 'Savings',
+                    balance: savings.balance,
+                    color: AppTheme.success,
+                    interestRate: savings.interestRate,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Savings Section ─────────────────────────────────────────────────────
+
+  Widget _buildSavingsSection(BuildContext context, {List<BankAccount> accounts = const [], List<BankTransaction> transactions = const []}) {
+    final savings = accounts.where((a) => a.isSavings).firstOrNull;
+
+    if (savings == null) {
+      return AppCard(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.savings_outlined,
+              size: 32,
+              color: AppTheme.textMuted,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'Open a Savings Account',
+              style: AppTypography.bodyMedium.copyWith(
+                color: AppTheme.textPrimary,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              'Earn interest on your deposits',
+              style: AppTypography.captionRegular.copyWith(
+                color: AppTheme.textMuted,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            AppButton(
+              text: 'OPEN SAVINGS ACCOUNT',
+              onPressed: () => context.read<BankCubit>().createSavingsAccount(),
+              type: AppButtonType.primary,
+              height: 40,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Deposit/Withdraw controls
+        AppCard(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    'SAVINGS ACCOUNT',
+                    style: AppTypography.microLabel.copyWith(
+                      color: AppTheme.textMuted,
+                    ),
+                  ),
+                  const Spacer(),
+                  AppBadge(
+                    label: '${(savings.interestRate * 100).toStringAsFixed(1)}% APY',
+                    color: AppTheme.success,
+                    fontSize: 11,
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Row(
+                children: [
+                  Expanded(
+                    child: AppButton(
+                      text: 'DEPOSIT',
+                      icon: Icons.arrow_downward,
+                      onPressed: () => _showSavingsDialog(context, isDeposit: true),
+                      type: AppButtonType.primary,
+                      height: 40,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: AppButton(
+                      text: 'WITHDRAW',
+                      icon: Icons.arrow_upward,
+                      onPressed: savings.balance > 0
+                          ? () => _showSavingsDialog(context, isDeposit: false)
+                          : null,
+                      type: AppButtonType.secondary,
+                      height: 40,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+
+        // Recent transactions
+        if (transactions.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            'RECENT TRANSACTIONS',
+            style: AppTypography.microLabel.copyWith(
+              color: AppTheme.textMuted,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          for (int i = 0; i < transactions.length && i < 5; i++) ...[
+            _TransactionRow(transaction: transactions[i]),
+            if (i < transactions.length - 1 && i < 4)
+              const SizedBox(height: AppSpacing.xs),
+          ],
+        ],
+      ],
+    );
+  }
+
+  // ── Savings Dialog ──────────────────────────────────────────────────────
+
+  void _showSavingsDialog(BuildContext context, {required bool isDeposit}) {
+    showDialog<void>(
+      context: context,
+      builder: (_) => BlocProvider.value(
+        value: context.read<BankCubit>(),
+        child: _SavingsActionDialog(isDeposit: isDeposit),
       ),
     );
   }
@@ -533,6 +756,270 @@ class _HistoricalLoanRow extends StatelessWidget {
           fontSize: 11,
         ),
       ],
+    );
+  }
+}
+
+// ============================================================================
+// Account tile (checking / savings)
+// ============================================================================
+
+class _AccountTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final double balance;
+  final Color color;
+  final double? interestRate;
+
+  const _AccountTile({
+    required this.icon,
+    required this.label,
+    required this.balance,
+    required this.color,
+    this.interestRate,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusTight),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: color),
+              const SizedBox(width: AppSpacing.xs),
+              Text(
+                label.toUpperCase(),
+                style: AppTypography.nanoLabel.copyWith(color: color),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            AppFormatters.currency.format(balance),
+            style: AppTypography.hudValue.copyWith(
+              color: AppTheme.textPrimary,
+            ),
+          ),
+          if (interestRate != null && interestRate! > 0) ...[
+            const SizedBox(height: 2),
+            Text(
+              '${(interestRate! * 100).toStringAsFixed(1)}% APY',
+              style: AppTypography.captionLight.copyWith(
+                color: AppTheme.textMuted,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// Transaction row
+// ============================================================================
+
+class _TransactionRow extends StatelessWidget {
+  final BankTransaction transaction;
+
+  const _TransactionRow({required this.transaction});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDeposit = transaction.transactionType == 'deposit' ||
+        transaction.transactionType == 'interest';
+    final color = isDeposit ? AppTheme.success : AppTheme.error;
+    final icon = isDeposit ? Icons.arrow_downward : Icons.arrow_upward;
+
+    return Row(
+      children: [
+        Icon(icon, size: 14, color: color),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                transaction.description ?? _typeLabel(transaction.transactionType),
+                style: AppTypography.captionRegular.copyWith(
+                  color: AppTheme.textSecondary,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+        Text(
+          '${isDeposit ? '+' : '-'}${AppFormatters.currency.format(transaction.amount)}',
+          style: AppTypography.badgeText.copyWith(color: color, fontSize: 11),
+        ),
+      ],
+    );
+  }
+
+  String _typeLabel(String type) {
+    switch (type) {
+      case 'deposit':
+        return 'Deposit';
+      case 'withdrawal':
+        return 'Withdrawal';
+      case 'interest':
+        return 'Interest Accrued';
+      default:
+        return type;
+    }
+  }
+}
+
+// ============================================================================
+// Savings action dialog (deposit / withdraw)
+// ============================================================================
+
+class _SavingsActionDialog extends StatefulWidget {
+  final bool isDeposit;
+
+  const _SavingsActionDialog({required this.isDeposit});
+
+  @override
+  State<_SavingsActionDialog> createState() => _SavingsActionDialogState();
+}
+
+class _SavingsActionDialogState extends State<_SavingsActionDialog> {
+  double _amount = 100000;
+  final TextEditingController _amountController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _amountController.text = _amount.toStringAsFixed(0);
+  }
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final title = widget.isDeposit ? 'Deposit to Savings' : 'Withdraw from Savings';
+
+    return AppDialogShell(
+      title: title,
+      subtitle: widget.isDeposit
+          ? 'Move cash from your checking account into savings to earn interest.'
+          : 'Withdraw funds from savings back to your checking account.',
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Amount',
+            style: AppTypography.microLabel.copyWith(
+              color: AppTheme.textSecondary,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          TextField(
+            controller: _amountController,
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            style: AppTypography.bodyMedium.copyWith(color: AppTheme.textPrimary),
+            decoration: InputDecoration(
+              prefixText: '\$ ',
+              prefixStyle: AppTypography.hudValue.copyWith(
+                color: AppTheme.textSecondary,
+              ),
+              hintText: '10000 – 50000000',
+              hintStyle: AppTypography.captionRegular.copyWith(
+                color: AppTheme.textMuted,
+              ),
+            ),
+            onChanged: (value) {
+              final parsed = double.tryParse(value);
+              if (parsed != null) {
+                setState(() => _amount = parsed.clamp(10000, 50000000));
+              }
+            },
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              activeTrackColor: AppTheme.primary,
+              inactiveTrackColor: AppTheme.border,
+              thumbColor: AppTheme.primary,
+              overlayColor: AppTheme.primary.withValues(alpha: 0.1),
+              trackHeight: 2,
+            ),
+            child: Slider(
+              value: _amount,
+              min: 10000,
+              max: 50000000,
+              divisions: 4999,
+              onChanged: (value) {
+                setState(() {
+                  _amount = value;
+                  _amountController.text = value.toStringAsFixed(0);
+                });
+              },
+            ),
+          ),
+        ],
+      ),
+      actions: BlocConsumer<BankCubit, BankState>(
+        listener: (context, state) {
+          if (state is BankSavingsSuccess) {
+            Navigator.pop(context);
+          }
+        },
+        builder: (context, state) {
+          final isLoading = state is BankLoading;
+
+          return Row(
+            children: [
+              Expanded(
+                child: AppButton(
+                  text: AppStrings.cancel,
+                  onPressed: isLoading ? null : () => Navigator.pop(context),
+                  type: AppButtonType.secondary,
+                  height: 40,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: AppButton(
+                  text: 'CONFIRM',
+                  icon: Icons.check,
+                  isLoading: isLoading,
+                  onPressed: _amount >= 10000 && !isLoading
+                      ? () {
+                          final cubit = context.read<BankCubit>();
+                          if (widget.isDeposit) {
+                            cubit.depositToSavings(_amount);
+                          } else {
+                            cubit.withdrawFromSavings(_amount);
+                          }
+                        }
+                      : null,
+                  type: AppButtonType.primary,
+                  height: 40,
+                ),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 }

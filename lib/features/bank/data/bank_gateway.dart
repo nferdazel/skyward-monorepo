@@ -1,6 +1,8 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/database/supabase_client.dart';
+import '../domain/bank_account_model.dart';
+import '../domain/bank_transaction_model.dart';
 
 class BankGatewayException implements Exception {
   final String message;
@@ -30,6 +32,11 @@ abstract class BankGateway {
   );
   Future<Map<String, dynamic>> refinanceLoan(String loanId);
   Future<Map<String, dynamic>> repayLoan(String loanId, double? amount);
+  Future<List<BankAccount>> getBankAccounts();
+  Future<List<BankTransaction>> getBankTransactions(String accountId);
+  Future<Map<String, dynamic>> createSavingsAccount();
+  Future<Map<String, dynamic>> depositToSavings(double amount);
+  Future<Map<String, dynamic>> withdrawFromSavings(double amount);
 }
 
 class SupabaseBankGateway implements BankGateway {
@@ -238,6 +245,88 @@ class SupabaseBankGateway implements BankGateway {
     } catch (e, stack) {
       SupabaseManager.logError('refinanceLoan', e, stack);
       throw BankGatewayException(e.toString(), 'refinanceLoan');
+    }
+  }
+
+  @override
+  Future<List<BankAccount>> getBankAccounts() async {
+    try {
+      final response = await SupabaseManager.client
+          .from('bank_accounts')
+          .select()
+          .eq('user_id', SupabaseManager.client.auth.currentUser?.id ?? '');
+      return (response as List)
+          .map((m) => BankAccount.fromMap(Map<String, dynamic>.from(m)))
+          .toList();
+    } catch (e, stack) {
+      SupabaseManager.logError('getBankAccounts', e, stack);
+      throw BankGatewayException(e.toString(), 'getBankAccounts');
+    }
+  }
+
+  @override
+  Future<List<BankTransaction>> getBankTransactions(String accountId) async {
+    try {
+      final response = await SupabaseManager.client
+          .from('bank_transactions')
+          .select()
+          .eq('account_id', accountId)
+          .order('created_at', ascending: false)
+          .limit(50);
+      return (response as List)
+          .map((m) => BankTransaction.fromMap(Map<String, dynamic>.from(m)))
+          .toList();
+    } catch (e, stack) {
+      SupabaseManager.logError('getBankTransactions', e, stack);
+      throw BankGatewayException(e.toString(), 'getBankTransactions');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> createSavingsAccount() async {
+    try {
+      final response = await SupabaseManager.client.rpc('create_savings_account');
+      return Map<String, dynamic>.from(response);
+    } on PostgrestException catch (e) {
+      SupabaseManager.logRpcFailure('create_savings_account', {}, e.message);
+      throw BankGatewayException(e.message, 'createSavingsAccount');
+    } catch (e, stack) {
+      SupabaseManager.logError('createSavingsAccount', e, stack);
+      throw BankGatewayException(e.toString(), 'createSavingsAccount');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> depositToSavings(double amount) async {
+    try {
+      final response = await SupabaseManager.client.rpc(
+        'deposit_to_savings',
+        params: {'p_amount': amount},
+      );
+      return Map<String, dynamic>.from(response);
+    } on PostgrestException catch (e) {
+      SupabaseManager.logRpcFailure('deposit_to_savings', {'p_amount': amount}, e.message);
+      throw BankGatewayException(e.message, 'depositToSavings');
+    } catch (e, stack) {
+      SupabaseManager.logError('depositToSavings', e, stack);
+      throw BankGatewayException(e.toString(), 'depositToSavings');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> withdrawFromSavings(double amount) async {
+    try {
+      final response = await SupabaseManager.client.rpc(
+        'withdraw_from_savings',
+        params: {'p_amount': amount},
+      );
+      return Map<String, dynamic>.from(response);
+    } on PostgrestException catch (e) {
+      SupabaseManager.logRpcFailure('withdraw_from_savings', {'p_amount': amount}, e.message);
+      throw BankGatewayException(e.message, 'withdrawFromSavings');
+    } catch (e, stack) {
+      SupabaseManager.logError('withdrawFromSavings', e, stack);
+      throw BankGatewayException(e.toString(), 'withdrawFromSavings');
     }
   }
 }

@@ -1,3 +1,5 @@
+import '../../domain/bank_account_model.dart';
+import '../../domain/bank_transaction_model.dart';
 import '../../domain/credit_report_model.dart';
 import '../../domain/loan_model.dart';
 
@@ -18,12 +20,16 @@ class BankLoaded extends BankState {
   final CreditReport? creditReport;
   final List<CreditScoreSnapshot> creditHistory;
   final List<Loan> aircraftFinancing;
+  final List<BankAccount> accounts;
+  final List<BankTransaction> transactions;
 
   const BankLoaded({
     required this.loans,
     this.creditReport,
     this.creditHistory = const [],
     this.aircraftFinancing = const [],
+    this.accounts = const [],
+    this.transactions = const [],
   });
 
   /// Active loans currently being repaid.
@@ -61,6 +67,17 @@ class BankLoaded extends BankState {
 
   /// Current credit tier.
   String get creditTier => creditReport?.creditTier ?? 'Standard';
+
+  /// Checking account (auto-created on user registration).
+  BankAccount? get checkingAccount =>
+      accounts.where((a) => a.isChecking).firstOrNull;
+
+  /// Savings account (null if not yet opened).
+  BankAccount? get savingsAccount =>
+      accounts.where((a) => a.isSavings).firstOrNull;
+
+  /// Whether the user has a savings account.
+  bool get hasSavings => savingsAccount != null;
 }
 
 class BankError extends BankState {
@@ -98,5 +115,17 @@ class BankRefinanceSuccess extends BankState {
   const BankRefinanceSuccess({
     required this.message,
     required this.loans,
+  });
+}
+
+class BankSavingsSuccess extends BankState {
+  final String message;
+  final List<BankAccount> accounts;
+  final List<BankTransaction> transactions;
+
+  const BankSavingsSuccess({
+    required this.message,
+    required this.accounts,
+    required this.transactions,
   });
 }
