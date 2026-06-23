@@ -1601,7 +1601,8 @@ class _RoutesViewState extends State<RoutesView> {
     final fleetState = context.read<FleetCubit>().state;
     if (fleetState is! FleetLoaded) return;
 
-    final routesState = context.read<RoutesCubit>().state;
+    final routesCubit = context.read<RoutesCubit>();
+    final routesState = routesCubit.state;
     final assignedIds = routesState is RoutesDataState
         ? routesState.routes
               .map((r) => r.assignedAircraftId)
@@ -1703,7 +1704,7 @@ class _RoutesViewState extends State<RoutesView> {
                           : AppStrings.assignConfirm,
                       onPressed: canConfirm
                           ? () {
-                              ctx.read<RoutesCubit>().assignAircraft(
+                              routesCubit.assignAircraft(
                                     routeId: route.id,
                                     aircraftId: selectedId,
                                     userId: userId,
