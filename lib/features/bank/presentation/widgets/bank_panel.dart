@@ -296,16 +296,15 @@ class BankPanel extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.xs),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
                 decoration: BoxDecoration(
                   color: _tierColor(report.creditTier).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(AppSpacing.radiusTight),
                 ),
                 child: Text(
                   report.creditTier.toUpperCase(),
-                  style: AppTypography.badgeText.copyWith(
+                  style: AppTypography.nanoLabel.copyWith(
                     color: _tierColor(report.creditTier),
-                    fontSize: 10,
                   ),
                 ),
               ),
@@ -342,10 +341,10 @@ class BankPanel extends StatelessWidget {
 
   static Color _tierColor(String tier) {
     switch (tier) {
-      case 'Platinum': return const Color(0xFFE5E4E2);
-      case 'Gold': return const Color(0xFFFFD700);
-      case 'Silver': return const Color(0xFFC0C0C0);
-      case 'Standard': return AppTheme.primary;
+      case 'Platinum': return const Color(0xFFE5E4E2); // Platinum silver
+      case 'Gold': return const Color(0xFFFFD700); // Gold
+      case 'Silver': return AppTheme.textSecondary;
+      case 'Standard': return AppTheme.textMuted;
       case 'Subprime': return AppTheme.error;
       default: return AppTheme.textSecondary;
     }
@@ -430,7 +429,7 @@ class _LoanCard extends StatelessWidget {
                       'BOT',
                       style: AppTypography.badgeText.copyWith(
                         color: AppTheme.warning,
-                        fontSize: 9,
+                        fontSize: AppTypography.nanoLabel.fontSize,
                       ),
                     ),
                   ),

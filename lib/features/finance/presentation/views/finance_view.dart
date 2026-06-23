@@ -20,6 +20,7 @@ import '../../../../presentation/widgets/app_sparkline.dart';
 import '../../../../presentation/widgets/app_line_chart.dart';
 import '../../../../presentation/widgets/help_tooltip.dart';
 import '../../../../presentation/widgets/app_table_cells.dart';
+import '../../../../presentation/widgets/app_table_shell.dart';
 import '../../../../presentation/widgets/app_tab_item.dart';
 import '../../../../presentation/widgets/expense_breakdown_bar.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
@@ -87,7 +88,7 @@ class _FinanceViewState extends State<FinanceView>
   Widget build(BuildContext context) {
     final authState = context.read<AuthCubit>().state;
     if (authState is! AuthAuthenticated) {
-      return const Center(child: Text(AppStrings.unauthorized));
+      return Center(child: Text(AppStrings.unauthorized, style: AppTypography.bodyMedium.copyWith(color: AppTheme.textMuted)));
     }
 
     return BlocProvider<LazyTabCubit>.value(
@@ -206,7 +207,7 @@ class _FinanceViewState extends State<FinanceView>
                     );
                   }
 
-                  return const Center(child: Text(AppStrings.loadingControls));
+                  return Center(child: Text(AppStrings.loadingControls, style: AppTypography.bodyMedium.copyWith(color: AppTheme.textMuted)));
                 },
               ),
             ),
@@ -503,8 +504,8 @@ class _FinanceViewState extends State<FinanceView>
                   ),
                 ),
                 if (sparkline != null) ...[
-                  const SizedBox(height: 2),
-                  SizedBox(height: 16, child: sparkline),
+                  const SizedBox(height: AppSpacing.xs),
+                  SizedBox(height: AppSpacing.lg, child: sparkline),
                 ],
               ],
             ),
@@ -582,10 +583,10 @@ class _FinanceViewState extends State<FinanceView>
                 label,
                 style: AppTypography.badgeText.copyWith(
                   color: AppTheme.textSecondary,
-                  letterSpacing: 0.4,
+                  letterSpacing: AppTypography.spacingRelaxed,
                 ),
               ),
-              const SizedBox(width: 2),
+              const SizedBox(width: AppSpacing.xs),
               HelpTooltip(message: helpMessage, iconSize: 12),
             ],
           ),
@@ -594,7 +595,7 @@ class _FinanceViewState extends State<FinanceView>
             value,
             style: AppTypography.badgeText.copyWith(
               color: valueColor,
-              letterSpacing: 0.0,
+              letterSpacing: AppTypography.spacingNone,
             ),
           ),
         ],
@@ -758,9 +759,9 @@ class _FinanceViewState extends State<FinanceView>
       );
     }
 
-    return AppCard(
-      padding: EdgeInsets.zero,
+    return AppTableShell(
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           // Fixed header row
           Table(
@@ -769,22 +770,13 @@ class _FinanceViewState extends State<FinanceView>
             children: [_buildTableHeaderRow()],
           ),
           // Lazy data rows
-          Expanded(
-            child: ListView.builder(
-              itemCount: state.logs.length,
-              itemBuilder: (context, index) {
-                return Table(
-                  columnWidths: _ledgerColumnWidths,
-                  defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-                  children: [
-                    _buildTableEntryRow(
-                      state.logs[index],
-                      currencyFormat,
-                      dateFormat,
-                    ),
-                  ],
-                );
-              },
+          ...state.logs.map(
+            (log) => Table(
+              columnWidths: _ledgerColumnWidths,
+              defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+              children: [
+                _buildTableEntryRow(log, currencyFormat, dateFormat),
+              ],
             ),
           ),
         ],
@@ -830,12 +822,12 @@ class _FinanceViewState extends State<FinanceView>
       ),
       children: [
         // Column 1: Category Badge
-        Padding(
+        AppTableBodyCell(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
           child: Row(children: [_buildCategoryPill(entry.category)]),
         ),
         // Column 2: Details Description
-        Padding(
+        AppTableBodyCell(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
           child: Text(
             entry.description,
@@ -845,7 +837,7 @@ class _FinanceViewState extends State<FinanceView>
           ),
         ),
         // Column 3: Game calendar date
-        Padding(
+        AppTableBodyCell(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
           child: AppStatText(
             label: _dateOnlyFormat.format(entry.gameDate),
@@ -855,7 +847,7 @@ class _FinanceViewState extends State<FinanceView>
           ),
         ),
         // Column 4: Cash flow yield
-        Padding(
+        AppTableBodyCell(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
           child: Align(
             alignment: Alignment.centerRight,
@@ -864,7 +856,7 @@ class _FinanceViewState extends State<FinanceView>
               textAlign: TextAlign.right,
               style: AppTypography.badgeText.copyWith(
                 color: valueColor,
-                letterSpacing: 0.0,
+                letterSpacing: AppTypography.spacingNone,
               ),
             ),
           ),
