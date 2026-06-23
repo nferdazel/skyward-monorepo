@@ -105,7 +105,7 @@ CREATE TABLE IF NOT EXISTS public.users (
     username character varying(50),
     company_name character varying(100) NOT NULL,
     ceo_name character varying(100) NOT NULL,
-    cash numeric(20,2) NOT NULL DEFAULT 10000000.00,
+    cash numeric(20,2) NOT NULL DEFAULT 15000000.00,
     game_current_time timestamp with time zone NOT NULL DEFAULT '2020-01-01 00:00:00+00',
     last_active_at timestamp with time zone NOT NULL DEFAULT now(),
     created_at timestamp with time zone NOT NULL DEFAULT now(),
