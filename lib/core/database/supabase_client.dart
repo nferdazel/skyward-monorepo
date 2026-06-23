@@ -82,16 +82,16 @@ class SupabaseManager {
 
   // Centrally log Supabase client network/execution exceptions
   static void logError(String action, dynamic error, [dynamic stackTrace]) {
-    debugPrint('==================================================');
-    debugPrint('[SUPABASE EXCEPTION] Action: $action');
-    debugPrint(
+    print('==================================================');
+    print('[SUPABASE EXCEPTION] Action: $action');
+    print(
       '[SUPABASE EXCEPTION] Timestamp: ${DateTime.now().toIso8601String()}',
     );
-    debugPrint('[SUPABASE EXCEPTION] Error: $error');
+    print('[SUPABASE EXCEPTION] Error: $error');
     if (stackTrace != null) {
       debugPrint('[SUPABASE EXCEPTION] StackTrace:\n$stackTrace');
     }
-    debugPrint('==================================================');
+    print('==================================================');
   }
 
   // Centrally log Supabase RPC response failure messages
@@ -100,13 +100,13 @@ class SupabaseManager {
     Map<String, dynamic> params,
     String errorMessage,
   ) {
-    debugPrint('==================================================');
-    debugPrint('[SUPABASE RPC FAILURE] Stored Procedure: $functionName');
+    print('==================================================');
+    print('[SUPABASE RPC FAILURE] Stored Procedure: $functionName');
     debugPrint(
       '[SUPABASE RPC FAILURE] Timestamp: ${DateTime.now().toIso8601String()}',
     );
     debugPrint('[SUPABASE RPC FAILURE] Request Parameters: $params');
-    debugPrint('[SUPABASE RPC FAILURE] Database Error Message: $errorMessage');
-    debugPrint('==================================================');
+    print('[SUPABASE RPC FAILURE] Database Error Message: $errorMessage');
+    print('==================================================');
   }
 }

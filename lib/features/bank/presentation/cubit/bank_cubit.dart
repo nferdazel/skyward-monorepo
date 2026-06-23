@@ -176,6 +176,14 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
             loans: _cachedLoans,
           ));
         }
+      } else {
+        AppError.log('takeLoan', 'Empty response from take_loan RPC', null);
+        if (isClosed) return;
+        emit(BankError(
+          message: AppStrings.loanProcessFailed,
+          hasData: _cachedLoans.isNotEmpty,
+          loans: _cachedLoans,
+        ));
       }
     } catch (e, stack) {
       AppError.log('takeLoan', e, stack);

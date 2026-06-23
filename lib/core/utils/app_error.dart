@@ -26,6 +26,15 @@ class AppError {
       return match?.group(1)?.trim() ?? fallback;
     }
 
+    // BankGatewayException — extract the wrapped message
+    if (error is Exception && raw.startsWith('BankGatewayException')) {
+      final bracketEnd = raw.indexOf(']: ');
+      if (bracketEnd != -1) {
+        final inner = raw.substring(bracketEnd + 3);
+        return extractMessage(inner, fallback);
+      }
+    }
+
     return fallback;
   }
 
