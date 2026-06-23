@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/database/supabase_client.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../presentation/theme/app_spacing.dart';
 import '../../../../presentation/theme/app_typography.dart';
 import '../../../../presentation/widgets/app_button.dart';
 import '../../../../presentation/widgets/app_snackbar.dart';
 import '../../../../presentation/widgets/skyward_logo.dart';
+import '../../../auth/data/auth_gateway.dart';
 import '../cubit/auth_cubit.dart';
 import '../cubit/auth_state.dart';
 
@@ -69,6 +71,135 @@ class _AuthScreenState extends State<AuthScreen> {
         );
       }
     }
+  }
+
+  Future<void> _showForgotPasswordDialog(BuildContext context) async {
+    final resetController = TextEditingController(
+      text: _usernameController.text,
+    );
+    final formKey = GlobalKey<FormState>();
+    bool isLoading = false;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: AppTheme.surface,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(color: AppTheme.border),
+              ),
+              title: Text(
+                AppStrings.resetPasswordTitle,
+                style: AppTypography.screenTitleLarge.copyWith(
+                  color: AppTheme.primary,
+                ),
+              ),
+              content: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      AppStrings.resetPasswordMessage,
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    TextFormField(
+                      controller: resetController,
+                      autofocus: true,
+                      enabled: !isLoading,
+                      decoration: const InputDecoration(
+                        labelText: 'USERNAME',
+                        prefixIcon: Icon(Icons.person_outline, size: 20),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return AppStrings.enterValidUsername;
+                        }
+                        return null;
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isLoading
+                      ? null
+                      : () => Navigator.of(dialogContext).pop(),
+                  child: Text(
+                    AppStrings.cancelLabel,
+                    style: AppTypography.buttonText.copyWith(
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: isLoading
+                      ? null
+                      : () async {
+                          if (!(formKey.currentState?.validate() ?? false)) {
+                            return;
+                          }
+                          setDialogState(() => isLoading = true);
+                          try {
+                            final username = resetController.text
+                                .trim()
+                                .toLowerCase()
+                                .replaceAll(RegExp(r'[^a-z0-9._-]+'), '-')
+                                .replaceAll(RegExp(r'^-+|-+$'), '');
+                            final email =
+                                '$username@${SupabaseAuthGateway.syntheticAuthDomain}';
+                            await SupabaseManager.client.auth
+                                .resetPasswordForEmail(email);
+                            if (context.mounted) {
+                              Navigator.of(dialogContext).pop();
+                              AppSnackBar.showSuccess(
+                                context,
+                                AppStrings.resetPasswordSent,
+                              );
+                            }
+                          } catch (e) {
+                            SupabaseManager.logError(
+                              'reset_password_for_email',
+                              e,
+                            );
+                            setDialogState(() => isLoading = false);
+                            if (context.mounted) {
+                              AppSnackBar.showError(
+                                context,
+                                AppStrings.resetPasswordFailed,
+                              );
+                            }
+                          }
+                        },
+                  child: isLoading
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(
+                          'SEND RESET LINK',
+                          style: AppTypography.buttonText.copyWith(
+                            color: AppTheme.primary,
+                          ),
+                        ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    resetController.dispose();
   }
 
   @override
@@ -284,6 +415,29 @@ class _AuthScreenState extends State<AuthScreen> {
                 },
                 onFieldSubmitted: (_) => _submitForm(context, isLoginMode),
               ),
+              if (isLoginMode) ...[
+                const SizedBox(height: AppSpacing.xs),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: isLoading
+                        ? null
+                        : () => _showForgotPasswordDialog(context),
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: Text(
+                      AppStrings.forgotPassword,
+                      style: AppTypography.microLabel.copyWith(
+                        color: AppTheme.primary,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
               if (!isLoginMode) ...[
                 const SizedBox(height: AppSpacing.md),
                 // Company Name

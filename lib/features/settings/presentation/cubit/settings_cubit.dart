@@ -116,6 +116,7 @@ class SettingsCubit extends Cubit<SettingsState> {
       if (!DevModeManager.isDevMode) {
         final List<dynamic> response = await _gateway.loadAirports();
         final list = response.map((e) => Map<String, dynamic>.from(e)).toList();
+        if (isClosed) return;
         emit(state.copyWith(airports: list, isLoadingAirports: false));
       } else {
         final mockList = [
@@ -150,10 +151,12 @@ class SettingsCubit extends Cubit<SettingsState> {
             'country': 'Japan',
           },
         ];
+        if (isClosed) return;
         emit(state.copyWith(airports: mockList, isLoadingAirports: false));
       }
     } catch (e, stack) {
       AppError.log('loadAirports', e, stack);
+      if (isClosed) return;
       emit(
         state.copyWith(
           isLoadingAirports: false,
@@ -191,15 +194,18 @@ class SettingsCubit extends Cubit<SettingsState> {
             'p_auto_grounding_threshold': autoGroundingThreshold,
             'p_hq_airport_iata': hqAirportIata,
           }, message);
+          if (isClosed) return;
           emit(state.copyWith(isSaving: false, errorMessage: message));
           return;
         }
 
         await onSyncBalance();
       }
+      if (isClosed) return;
       emit(state.copyWith(isSaving: false, isSaveSuccess: true));
     } catch (e, stack) {
       AppError.log('saveSettings', e, stack);
+      if (isClosed) return;
       emit(
         state.copyWith(
           isSaving: false,
@@ -226,6 +232,7 @@ class SettingsCubit extends Cubit<SettingsState> {
             SupabaseManager.logRpcFailure('reset_user_airline', {
               'p_user_id': userId,
             }, message);
+            if (isClosed) return false;
             emit(state.copyWith(isSaving: false, errorMessage: message));
             return false;
           }
@@ -235,10 +242,12 @@ class SettingsCubit extends Cubit<SettingsState> {
       // Execute local triggers to reset simulations, fleet, and routes
       await onResetComplete();
 
+      if (isClosed) return false;
       emit(state.copyWith(isSaving: false, isSaveSuccess: true));
       return true;
     } catch (e, stack) {
       AppError.log('reset_user_airline', e, stack);
+      if (isClosed) return false;
       emit(
         state.copyWith(
           isSaving: false,

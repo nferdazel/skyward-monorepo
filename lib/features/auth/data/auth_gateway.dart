@@ -36,7 +36,7 @@ abstract class AuthGateway {
 }
 
 class SupabaseAuthGateway implements AuthGateway {
-  static const String _syntheticAuthDomain = 'skyward.sachiel.id';
+  static const String syntheticAuthDomain = 'skyward.sachiel.id';
 
   @override
   Future<AuthSessionPayload?> restoreSession() async {
@@ -146,6 +146,6 @@ class SupabaseAuthGateway implements AuthGateway {
         .toLowerCase()
         .replaceAll(RegExp(r'[^a-z0-9._-]+'), '-')
         .replaceAll(RegExp(r'^-+|-+$'), '');
-    return '$normalizedUsername@$_syntheticAuthDomain';
+    return '$normalizedUsername@$syntheticAuthDomain';
   }
 }

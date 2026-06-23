@@ -237,6 +237,7 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
         },
       );
 
+      if (isClosed) return;
       emit(_buildFinanceState(logs, snapshot: _cachedSnapshot, financialSnapshots: _cachedFinancialSnapshots));
     } catch (e, stack) {
       PerfDebug.end(
@@ -246,6 +247,7 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
       );
       AppError.log('loadLedger', e, stack);
       final snapshot = _snapshotState();
+      if (isClosed) return;
       emit(
         FinanceError(
           message: AppError.extractMessage(e, AppStrings.ledgerLoadFailed),
@@ -282,6 +284,7 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
         stopwatch,
         fields: {'silent': silent},
       );
+      if (isClosed) return;
       emit(_buildFinanceState(_cachedLogs, snapshot: _cachedSnapshot));
     } catch (e) {
       PerfDebug.end(
@@ -301,7 +304,7 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
       fields: {'user': userId},
     );
     _realtimeRefreshDebounce?.cancel();
-    _realtimeRefreshDebounce = Timer(const Duration(milliseconds: 150), () {
+    _realtimeRefreshDebounce = Timer(const Duration(milliseconds: 200), () {
       unawaited(loadLedger(userId, silent: true));
     });
   }

@@ -51,6 +51,7 @@ class DashboardSidebar extends StatelessWidget {
           // Nav icons
           Expanded(
             child: BlocBuilder<NavigationCubit, NavigationState>(
+              buildWhen: (prev, cur) => prev.activeIndex != cur.activeIndex,
               builder: (context, state) {
                 return Column(
                   children: [

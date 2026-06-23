@@ -1,13 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/game_constants.dart';
-import '../../../../core/database/supabase_client.dart';
 import '../../../../core/mixins/simulation_reactive_mixin.dart';
-import '../../../../core/realtime/realtime_subscription_bag.dart';
 import '../../../../core/utils/app_error.dart';
 import '../../../../core/utils/dev_mode_manager.dart';
 import '../../../../core/utils/perf_debug.dart';
@@ -26,17 +23,11 @@ class LeaderboardCubit extends Cubit<LeaderboardState>
   final LeaderboardGateway _gateway;
 
   List<LeaderboardEntry> _cachedEntries = [];
-  final RealtimeSubscriptionBag _realtimeSubscriptions =
-      RealtimeSubscriptionBag();
-  String? _humanUserId;
-  String? _humanCompanyName;
-  String? _humanCeoName;
   String? _insightsRequestInFlightForId;
   DateTime? _lastInsightsRefreshAt;
   String? _lastInsightsRefreshId;
   DateTime? _lastRankingsRefreshAt;
   Future<void>? _activeRankingsLoad;
-  Timer? _rankingsRefreshDebounce;
 
   LeaderboardCubit({LeaderboardGateway? gateway})
       : _gateway = gateway ?? const SupabaseLeaderboardGateway(),
@@ -48,9 +39,6 @@ class LeaderboardCubit extends Cubit<LeaderboardState>
     String companyName,
     String ceoName,
   ) {
-    _humanUserId = userId;
-    _humanCompanyName = companyName;
-    _humanCeoName = ceoName;
     subscribeToSimulationWithState(simCubit, (simState) {
       if (!_shouldRefreshRankings()) return;
       unawaited(
@@ -64,14 +52,11 @@ class LeaderboardCubit extends Cubit<LeaderboardState>
         ),
       );
     }, delay: const Duration(milliseconds: 800));
-    _setupRealtime();
   }
 
   @override
   Future<void> close() async {
     disposeReactivity();
-    _rankingsRefreshDebounce?.cancel();
-    await _realtimeSubscriptions.clear();
     return super.close();
   }
 
@@ -221,6 +206,7 @@ class LeaderboardCubit extends Cubit<LeaderboardState>
         prevSelectedInsights,
       );
 
+      if (isClosed) return;
       emit(
         LeaderboardLoaded(
           rankings: _cachedEntries,
@@ -256,38 +242,6 @@ class LeaderboardCubit extends Cubit<LeaderboardState>
     if (_lastRankingsRefreshAt == null) return true;
     return DateTime.now().difference(_lastRankingsRefreshAt!) >=
         _rankingsRefreshInterval;
-  }
-
-  void _scheduleRankingsRefresh({
-    required String humanUserId,
-    required String humanCompanyName,
-    required String humanCeoName,
-    required double humanCash,
-    required double humanNetWorth,
-    required int humanFleetSize,
-    required double humanMonthlyRevenue,
-    bool force = false,
-  }) {
-    if (!force && !_shouldRefreshRankings()) return;
-    PerfDebug.event(
-      'leaderboard.refresh_scheduled',
-      fields: {'force': force, 'user': humanUserId},
-    );
-    _rankingsRefreshDebounce?.cancel();
-    _rankingsRefreshDebounce = Timer(const Duration(milliseconds: 250), () {
-      unawaited(
-        loadRankings(
-          humanUserId: humanUserId,
-          humanCompanyName: humanCompanyName,
-          humanCeoName: humanCeoName,
-          humanCash: humanCash,
-          humanNetWorth: humanNetWorth,
-          humanFleetSize: humanFleetSize,
-          humanMonthlyRevenue: humanMonthlyRevenue,
-          silent: true,
-        ),
-      );
-    });
   }
 
   Future<void> selectCompetitor(LeaderboardEntry competitor) async {
@@ -346,6 +300,7 @@ class LeaderboardCubit extends Cubit<LeaderboardState>
         if (loadedState.selectedCompetitorId != competitor.id) return;
         _lastInsightsRefreshAt = DateTime.now();
         _lastInsightsRefreshId = competitor.id;
+        if (isClosed) return;
         emit(
           loadedState.copyWith(
             selectedInsights: insights,
@@ -359,6 +314,7 @@ class LeaderboardCubit extends Cubit<LeaderboardState>
         final loadedState = state as LeaderboardLoaded;
         if (loadedState.selectedCompetitorId != competitor.id) return;
         if (!silent) {
+          if (isClosed) return;
           emit(loadedState.copyWith(isLoadingInsights: false));
         }
       }
@@ -371,61 +327,6 @@ class LeaderboardCubit extends Cubit<LeaderboardState>
 
   void _sortEntries() {
     _cachedEntries.sort((a, b) => b.netWorth.compareTo(a.netWorth));
-  }
-
-  void _setupRealtime() {
-    if (DevModeManager.isDevMode || SupabaseManager.hasMockClient) return;
-    unawaited(_realtimeSubscriptions.clear());
-
-    final channel = SupabaseManager.client
-        .channel('public:ai_competitors')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'ai_competitors',
-          callback: (_) {
-            final humanUserId = _humanUserId;
-            final humanCompanyName = _humanCompanyName;
-            final humanCeoName = _humanCeoName;
-            if (humanUserId == null ||
-                humanCompanyName == null ||
-                humanCeoName == null) {
-              return;
-            }
-
-            final humanEntry = _cachedEntries
-                .where((entry) => !entry.isBot)
-                .firstWhere(
-                  (_) => true,
-                  orElse: () => LeaderboardEntry(
-                    id: humanUserId,
-                    companyName: humanCompanyName,
-                    ceoName: humanCeoName,
-                    isBot: false,
-                    archetype: 'Player',
-                    cash: GameConstants.startingCash,
-                    netWorth: GameConstants.startingCash,
-                    fleetSize: 0,
-                    monthlyRevenue: 0.0,
-                    status: AppStrings.statusActive,
-                  ),
-                );
-
-            _scheduleRankingsRefresh(
-              humanUserId: humanUserId,
-              humanCompanyName: humanCompanyName,
-              humanCeoName: humanCeoName,
-              humanCash: humanEntry.cash,
-              humanNetWorth: humanEntry.netWorth,
-              humanFleetSize: humanEntry.fleetSize,
-              humanMonthlyRevenue: humanEntry.monthlyRevenue,
-              force: false,
-            );
-          },
-        )
-        .subscribe();
-
-    _realtimeSubscriptions.add(channel);
   }
 
   // Load detailedinsights for detail drawer/modal

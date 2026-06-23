@@ -35,6 +35,11 @@ import '../cubit/routes_state.dart';
 class RoutesView extends StatefulWidget {
   const RoutesView({super.key});
 
+  /// Clears the static great-circle arc cache. Call on logout to free memory.
+  static void clearArcCache() {
+    _RoutesViewState._arcCache.clear();
+  }
+
   @override
   State<RoutesView> createState() => _RoutesViewState();
 }
@@ -94,6 +99,37 @@ class _RoutesViewState extends State<RoutesView> {
                   AppStrings.loadingRouteNetwork,
                   style: AppTypography.microLabel.copyWith(
                     color: AppTheme.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        if (state is RoutesError && !state.hasData) {
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.error_outline, size: 32, color: AppTheme.error),
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  state.message,
+                  style: AppTypography.buttonText.copyWith(
+                    color: AppTheme.error,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                OutlinedButton.icon(
+                  onPressed: () => context
+                      .read<RoutesCubit>()
+                      .loadRoutesAndData(userId),
+                  icon: const Icon(Icons.refresh, size: 16),
+                  label: Text('RETRY', style: AppTypography.badgeText),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.primary,
+                    side: BorderSide(color: AppTheme.primary),
                   ),
                 ),
               ],
@@ -1247,11 +1283,12 @@ class _RoutesViewState extends State<RoutesView> {
                                   ? AppTheme.success
                                   : AppTheme.error,
                             ),
-                            AppLabeledValue(
-                              label: AppStrings.bestFitAircraftLabel,
-                              value:
-                                  '${assessment.recommendedAircraft!.model.manufacturer} ${assessment.recommendedAircraft!.model.modelName}',
-                            ),
+                            if (assessment.recommendedAircraft != null)
+                              AppLabeledValue(
+                                label: AppStrings.bestFitAircraftLabel,
+                                value:
+                                    '${assessment.recommendedAircraft!.model.manufacturer} ${assessment.recommendedAircraft!.model.modelName}',
+                              ),
                           ],
                         ),
                       ],

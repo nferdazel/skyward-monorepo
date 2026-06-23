@@ -46,6 +46,7 @@ class RoutesCubit extends Cubit<RoutesState> with SimulationReactiveMixin {
   }
 
   void _emitLoaded() {
+    if (isClosed) return;
     emit(
       RoutesLoaded(
         routes: List<UserRoute>.from(_cachedRoutes),
@@ -93,6 +94,7 @@ class RoutesCubit extends Cubit<RoutesState> with SimulationReactiveMixin {
       final message = result['message'] as String? ?? failureMessage;
 
       if (success) {
+        if (isClosed) return false;
         emit(
           RoutesActionSuccess(
             message: message,
@@ -107,6 +109,7 @@ class RoutesCubit extends Cubit<RoutesState> with SimulationReactiveMixin {
         return true;
       } else {
         SupabaseManager.logRpcFailure(actionName, rpcParams, message);
+        if (isClosed) return false;
         emit(
           RoutesError(
             message: message,
@@ -123,6 +126,7 @@ class RoutesCubit extends Cubit<RoutesState> with SimulationReactiveMixin {
       }
     } catch (e, stack) {
       SupabaseManager.logError(actionName, e, stack);
+      if (isClosed) return false;
       emit(
         RoutesError(
           message: e.toString(),
@@ -331,6 +335,7 @@ class RoutesCubit extends Cubit<RoutesState> with SimulationReactiveMixin {
         },
       );
 
+      if (isClosed) return;
       emit(
         RoutesLoaded(
           routes: routes,
@@ -347,6 +352,7 @@ class RoutesCubit extends Cubit<RoutesState> with SimulationReactiveMixin {
         fields: {'silent': silent, 'error': true},
       );
       SupabaseManager.logError('loadRoutesAndData', e, stack);
+      if (isClosed) return;
       emit(
         RoutesError(
           message: AppError.extractMessage(e, AppStrings.routesLoadFailed),
@@ -369,7 +375,7 @@ class RoutesCubit extends Cubit<RoutesState> with SimulationReactiveMixin {
       fields: {'user': userId},
     );
     _realtimeRefreshDebounce?.cancel();
-    _realtimeRefreshDebounce = Timer(const Duration(milliseconds: 180), () {
+    _realtimeRefreshDebounce = Timer(const Duration(milliseconds: 200), () {
       unawaited(loadRoutesAndData(userId, silent: true));
     });
   }
@@ -724,6 +730,8 @@ class RoutesCubit extends Cubit<RoutesState> with SimulationReactiveMixin {
     if (DevModeManager.isDevMode || SupabaseManager.hasMockClient) return;
     unawaited(_realtimeSubscriptions.clear());
 
+    // Only subscribe to user_routes — user_fleet is already handled by FleetCubit.
+    // Fleet updates reach this cubit via SimulationReactiveMixin.
     final routesChannel = SupabaseManager.client
         .channel('public:user_routes:user_id=eq.$userId')
         .onPostgresChanges(
@@ -739,23 +747,6 @@ class RoutesCubit extends Cubit<RoutesState> with SimulationReactiveMixin {
         )
         .subscribe();
 
-    final fleetChannel = SupabaseManager.client
-        .channel('public:user_fleet:routes-user_id=eq.$userId')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'user_fleet',
-          filter: PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq,
-            column: 'user_id',
-            value: userId,
-          ),
-          callback: (_) => _scheduleRealtimeRefresh(userId),
-        )
-        .subscribe();
-
-    _realtimeSubscriptions
-      ..add(routesChannel)
-      ..add(fleetChannel);
+    _realtimeSubscriptions.add(routesChannel);
   }
 }

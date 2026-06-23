@@ -320,6 +320,8 @@ class _FleetViewState extends State<FleetView>
                     children: [
                       Text(
                         aircraft.model.modelName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: AppTypography.bodyMedium.copyWith(
                           fontWeight: FontWeight.bold,
                           color: AppTheme.textPrimary,
@@ -328,6 +330,8 @@ class _FleetViewState extends State<FleetView>
                       const SizedBox(height: AppSpacing.xs),
                         Text(
                           aircraft.model.manufacturer.toUpperCase(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: AppTypography.badgeText.copyWith(
                             color: AppTheme.textSecondary,
                             letterSpacing: 0.5,
@@ -957,6 +961,8 @@ class _FleetViewState extends State<FleetView>
                     children: [
                       Text(
                         model.modelName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: AppTypography.bodyMedium.copyWith(
                           fontWeight: FontWeight.bold,
                           color: AppTheme.textPrimary,
@@ -965,6 +971,8 @@ class _FleetViewState extends State<FleetView>
                       const SizedBox(height: AppSpacing.xs),
                       Text(
                         model.manufacturer.toUpperCase(),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: AppTypography.badgeText.copyWith(
                           color: AppTheme.textSecondary,
                           letterSpacing: 0.5,

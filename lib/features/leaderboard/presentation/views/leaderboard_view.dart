@@ -342,6 +342,8 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                           const SizedBox(height: AppSpacing.xs),
                           Text(
                             entry.ceoName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: AppTypography.captionRegular.copyWith(
                               color: AppTheme.textSecondary,
                             ),
@@ -798,7 +800,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.md, horizontal: AppSpacing.sm),
-      child: Text(text, style: style),
+      child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: style),
     );
   }
 

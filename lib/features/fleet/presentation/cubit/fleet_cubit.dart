@@ -49,6 +49,7 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
   }
 
   void _emitLoaded() {
+    if (isClosed) return;
     emit(
       FleetLoaded(
         fleet: List<UserFleetAircraft>.from(_cachedFleet),
@@ -101,6 +102,7 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
           rpcParams,
           AppStrings.dbEmptyResponse,
         );
+        if (isClosed) return false;
         emit(
           FleetError(
             message: AppStrings.dbEmptyResponse,
@@ -129,6 +131,7 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
           rpcParams,
           message ?? failureMessage,
         );
+        if (isClosed) return false;
         emit(
           FleetError(
             message: message ?? failureMessage,
@@ -146,6 +149,7 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
       }
     } catch (e, stack) {
       SupabaseManager.logError(actionName, e, stack);
+      if (isClosed) return false;
       emit(
         FleetError(
           message: AppError.extractMessage(e, errorPrefix),
@@ -234,6 +238,7 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
         },
       );
 
+      if (isClosed) return;
       emit(
         FleetLoaded(
           fleet: fleet,
@@ -251,6 +256,7 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
         fields: {'silent': silent, 'error': true},
       );
       SupabaseManager.logError('loadFleetAndCatalog', e, stack);
+      if (isClosed) return;
       emit(
         FleetError(
           message: AppError.extractMessage(e, AppStrings.fleetLoadFailed),
@@ -269,7 +275,7 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
   void _scheduleRealtimeRefresh(String userId) {
     PerfDebug.event('fleet.realtime_refresh_scheduled', fields: {'user': userId});
     _realtimeRefreshDebounce?.cancel();
-    _realtimeRefreshDebounce = Timer(const Duration(milliseconds: 180), () {
+    _realtimeRefreshDebounce = Timer(const Duration(milliseconds: 200), () {
       unawaited(loadFleetAndCatalog(userId, silent: true));
     });
   }
@@ -342,6 +348,7 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
         _suppressNextFleetRealtimeReload = true;
         await _appendLatestAircraftToCache(userId: userId, modelId: modelId);
 
+        if (isClosed) return false;
         emit(
           FleetActionSuccess(
             message: message,
@@ -427,6 +434,7 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
         _suppressNextFleetRealtimeReload = true;
         await _appendLatestAircraftToCache(userId: userId, modelId: modelId);
 
+        if (isClosed) return false;
         emit(
           FleetActionSuccess(
             message: message,
@@ -498,6 +506,7 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
           await onBalanceChanged(newCash);
         }
 
+        if (isClosed) return false;
         emit(
           FleetActionSuccess(
             message: message,
@@ -576,6 +585,7 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
 
         _suppressNextFleetRealtimeReload = true;
         _cachedFleet.removeWhere((aircraft) => aircraft.id == fleetId);
+        if (isClosed) return false;
         emit(
           FleetActionSuccess(
             message: message,
@@ -652,6 +662,7 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
 
         _suppressNextFleetRealtimeReload = true;
         _cachedFleet.removeWhere((aircraft) => aircraft.id == fleetId);
+        if (isClosed) return false;
         emit(
           FleetActionSuccess(
             message: message,
@@ -721,6 +732,7 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
         'p_first_class_seats': firstClass,
       }),
       onSuccess: (result, snapshot) async {
+        if (isClosed) return false;
         emit(
           FleetActionSuccess(
             message: AppStrings.seatConfigSuccess,

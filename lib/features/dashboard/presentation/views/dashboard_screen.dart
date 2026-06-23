@@ -608,6 +608,7 @@ class _AuthenticatedDashboardShellState
                           AppSpacing.pagePadding * scale,
                         ),
                         child: BlocBuilder<NavigationCubit, NavigationState>(
+                          buildWhen: (prev, cur) => prev.activeIndex != cur.activeIndex,
                           builder: (context, navState) {
                             return BlocBuilder<LazyTabCubit, LazyTabState>(
                               builder: (context, lazyState) {

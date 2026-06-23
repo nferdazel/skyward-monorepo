@@ -117,6 +117,11 @@ class _FinanceViewState extends State<FinanceView>
             const SizedBox(height: AppSpacing.tabContentGap),
             Expanded(
               child: BlocBuilder<FinanceCubit, FinanceState>(
+                buildWhen: (prev, curr) =>
+                    prev.runtimeType != curr.runtimeType ||
+                    (prev is FinanceDataState &&
+                        curr is FinanceDataState &&
+                        prev.metrics != curr.metrics),
                 builder: (context, state) {
                   if (state is FinanceInitial) {
                     return Center(
@@ -515,31 +520,38 @@ class _FinanceViewState extends State<FinanceView>
   Widget _buildFinanceSignals(_FinanceOverview overview, FinanceDataState state) {
     return AppInfoStrip(
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _buildSignalWithHelp(
-            AppStrings.financeCashRunwayLabel,
-            overview.runwayLabel,
-            overview.runwayColor,
-            'Days until cash runs out at current expense rate',
+          Expanded(
+            child: _buildSignalWithHelp(
+              AppStrings.financeCashRunwayLabel,
+              overview.runwayLabel,
+              overview.runwayColor,
+              'Days until cash runs out at current expense rate',
+            ),
           ),
-          _buildSignalWithHelp(
-            AppStrings.financeBurnRatioLabel,
-            overview.burnMixLabel,
-            AppTypography.textPrimary,
-            'Percentage of expenses from leases vs operations',
+          Expanded(
+            child: _buildSignalWithHelp(
+              AppStrings.financeBurnRatioLabel,
+              overview.burnMixLabel,
+              AppTypography.textPrimary,
+              'Percentage of expenses from leases vs operations',
+            ),
           ),
-          _buildSignalWithHelp(
-            AppStrings.financeLargestExpenseLabel,
-            overview.largestExpenseLabel,
-            AppTheme.warning,
-            'Your biggest cost category this period',
+          Expanded(
+            child: _buildSignalWithHelp(
+              AppStrings.financeLargestExpenseLabel,
+              overview.largestExpenseLabel,
+              AppTheme.warning,
+              'Your biggest cost category this period',
+            ),
           ),
-          _buildSignalWithHelp(
-            AppStrings.financeRevenueCoverageLabel,
-            overview.coverageLabel,
-            overview.coverageColor,
-            'Revenue vs expense ratio — above 1.0 means profitable',
+          Expanded(
+            child: _buildSignalWithHelp(
+              AppStrings.financeRevenueCoverageLabel,
+              overview.coverageLabel,
+              overview.coverageColor,
+              'Revenue vs expense ratio — above 1.0 means profitable',
+            ),
           ),
         ],
       ),

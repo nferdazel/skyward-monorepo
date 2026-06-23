@@ -27,6 +27,7 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
   List<AircraftFinancing> _cachedFinancing = [];
   Timer? _realtimeRefreshDebounce;
   String? _userId;
+  Future<void>? _activeLoad;
 
   BankCubit({BankGateway? gateway})
       : _gateway = gateway ?? const SupabaseBankGateway(),
@@ -53,6 +54,16 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
 
   /// Load all bank data: loans, credit report, credit history, financing.
   Future<void> loadBankData(String userId, {bool silent = false}) async {
+    if (_activeLoad != null) return _activeLoad;
+    _activeLoad = _loadBankDataInternal(userId, silent: silent);
+    try {
+      await _activeLoad;
+    } finally {
+      _activeLoad = null;
+    }
+  }
+
+  Future<void> _loadBankDataInternal(String userId, {bool silent = false}) async {
     if (!silent) {
       emit(const BankLoading());
     }
@@ -91,6 +102,7 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
     } catch (e, stack) {
       AppError.log('loadBankData', e, stack);
       if (!silent) {
+        if (isClosed) return;
         emit(
           BankError(
             message: AppError.extractMessage(e, AppStrings.bankDataLoadFailed),
@@ -150,12 +162,14 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
           _cachedCreditReport =
               creditMap.isNotEmpty ? CreditReport.fromMap(creditMap) : null;
 
+          if (isClosed) return;
           emit(BankLoanSuccess(
             message: message,
             newCash: newCash,
             loans: _cachedLoans,
           ));
         } else {
+          if (isClosed) return;
           emit(BankError(
             message: message,
             hasData: _cachedLoans.isNotEmpty,
@@ -165,6 +179,7 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
       }
     } catch (e, stack) {
       AppError.log('takeLoan', e, stack);
+      if (isClosed) return;
       emit(
         BankError(
           message: AppError.extractMessage(e, AppStrings.loanProcessFailed),
@@ -204,6 +219,7 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
 
           _emitLoaded();
         } else {
+          if (isClosed) return;
           emit(BankError(
             message: message,
             hasData: _cachedLoans.isNotEmpty,
@@ -213,6 +229,7 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
       }
     } catch (e, stack) {
       AppError.log('financeAircraft', e, stack);
+      if (isClosed) return;
       emit(
         BankError(
           message: AppError.extractMessage(e, AppStrings.financingProcessFailed),
@@ -232,6 +249,7 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
       _emitLoaded();
     } catch (e, stack) {
       AppError.log('loadCreditReport', e, stack);
+      if (isClosed) return;
       emit(
         BankError(
           message:
@@ -253,6 +271,7 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
       _emitLoaded();
     } catch (e, stack) {
       AppError.log('loadAircraftFinancing', e, stack);
+      if (isClosed) return;
       emit(
         BankError(
           message: AppError.extractMessage(
@@ -282,11 +301,13 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
             .map((m) => Loan.fromMap(m as Map<String, dynamic>))
             .toList();
 
+        if (isClosed) return;
         emit(BankRefinanceSuccess(
           message: message,
           loans: _cachedLoans,
         ));
       } else {
+        if (isClosed) return;
         emit(BankError(
           message: message,
           hasData: _cachedLoans.isNotEmpty,
@@ -295,6 +316,7 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
       }
     } catch (e, stack) {
       AppError.log('refinanceLoan', e, stack);
+      if (isClosed) return;
       emit(
         BankError(
           message: AppError.extractMessage(e, AppStrings.loanRefinanceFailed),
@@ -306,6 +328,7 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
   }
 
   void _emitLoaded() {
+    if (isClosed) return;
     emit(BankLoaded(
       loans: _cachedLoans,
       creditReport: _cachedCreditReport,
@@ -337,7 +360,7 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
 
   void _scheduleRealtimeRefresh(String userId) {
     _realtimeRefreshDebounce?.cancel();
-    _realtimeRefreshDebounce = Timer(const Duration(milliseconds: 300), () {
+    _realtimeRefreshDebounce = Timer(const Duration(milliseconds: 200), () {
       unawaited(loadBankData(userId, silent: true));
     });
   }

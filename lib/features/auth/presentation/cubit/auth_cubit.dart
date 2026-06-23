@@ -25,13 +25,16 @@ class AuthCubit extends Cubit<AuthState> {
 
       final session = await _authGateway.restoreSession();
       if (session == null) {
+        if (isClosed) return;
         emit(const AuthUnauthenticated());
         return;
       }
 
+      if (isClosed) return;
       emit(AuthAuthenticated(user: session.user, token: session.token));
     } catch (e, stack) {
       SupabaseManager.logError('restore_supabase_session', e, stack);
+      if (isClosed) return;
       emit(const AuthUnauthenticated());
     }
   }
@@ -55,6 +58,7 @@ class AuthCubit extends Cubit<AuthState> {
           cashBalance: GameConstants.startingCash,
           gameCurrentTime: DateTime.parse('2020-01-01T00:00:00Z'),
         );
+        if (isClosed) return;
         emit(AuthAuthenticated(user: mockUser, token: 'mock-dev-token'));
         return;
       }
@@ -65,9 +69,11 @@ class AuthCubit extends Cubit<AuthState> {
         companyName: companyName,
         ceoName: ceoName,
       );
+      if (isClosed) return;
       emit(AuthAuthenticated(user: session.user, token: session.token));
     } catch (e, stack) {
       SupabaseManager.logError('register_with_username', e, stack);
+      if (isClosed) return;
       emit(AuthError(message: _extractErrorMessage(e)));
     }
   }
@@ -88,6 +94,7 @@ class AuthCubit extends Cubit<AuthState> {
           cashBalance: GameConstants.startingCash,
           gameCurrentTime: DateTime.parse('2020-01-01T00:00:00Z'),
         );
+        if (isClosed) return;
         emit(AuthAuthenticated(user: mockUser, token: 'mock-dev-token'));
         return;
       }
@@ -96,9 +103,11 @@ class AuthCubit extends Cubit<AuthState> {
         username: username,
         password: password,
       );
+      if (isClosed) return;
       emit(AuthAuthenticated(user: session.user, token: session.token));
     } catch (e, stack) {
       SupabaseManager.logError('sign_in_with_password', e, stack);
+      if (isClosed) return;
       emit(AuthError(message: _extractErrorMessage(e)));
     }
   }
@@ -111,6 +120,7 @@ class AuthCubit extends Cubit<AuthState> {
     } catch (e, stack) {
       SupabaseManager.logError('supabase_sign_out', e, stack);
     }
+    if (isClosed) return;
     emit(const AuthUnauthenticated());
   }
 
