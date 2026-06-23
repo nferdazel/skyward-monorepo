@@ -149,6 +149,22 @@ class AuthCubit extends Cubit<AuthState> {
     emit(AuthAuthenticated(user: mockUser, token: token));
   }
 
+  Future<void> resetPassword({
+    required String username,
+    required String newPassword,
+    String companyName = '',
+    String ceoName = '',
+    String hqAirportIata = '',
+  }) async {
+    await _authGateway.resetPassword(
+      username: username,
+      newPassword: newPassword,
+      companyName: companyName,
+      ceoName: ceoName,
+      hqAirportIata: hqAirportIata,
+    );
+  }
+
   String _extractErrorMessage(Object error) {
     if (error is AuthGatewayException) {
       return error.message;

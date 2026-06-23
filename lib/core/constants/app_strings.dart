@@ -57,9 +57,20 @@ class AppStrings {
   static const String enterCeoName = 'Enter your CEO name';
   static const String forgotPassword = 'Forgot password?';
   static const String resetPasswordTitle = 'Reset Password';
-  static const String resetPasswordMessage = 'A password reset link will be sent to your registered email.';
-  static const String resetPasswordSent = 'Reset link sent! Check your email.';
+  static const String resetPasswordMessage = 'Verify your account identity to reset your password.';
+  static const String resetPasswordSent = 'Password updated successfully! You can now log in.';
   static const String resetPasswordFailed = 'Failed to send reset link. Please try again.';
+  static const String verifyIdentity = 'VERIFY IDENTITY';
+  static const String verifyIdentityMessage = 'Provide at least 2 of the following to verify your account:';
+  static const String resetCompanyNameLabel = 'COMPANY NAME';
+  static const String resetCeoNameLabel = 'CEO NAME';
+  static const String resetHqAirportLabel = 'HQ AIRPORT CODE';
+  static const String newPasswordLabel = 'NEW PASSWORD';
+  static const String confirmPasswordLabel = 'CONFIRM PASSWORD';
+  static const String passwordsDoNotMatch = 'Passwords do not match.';
+  static const String verificationFailed = 'Verification failed. Please check your answers.';
+  static const String resetPasswordButton = 'RESET PASSWORD';
+  static const String continueButton = 'CONTINUE';
 
   // Overview Screen
   static const String executiveHudTitle = 'Executive Operations Dashboard';

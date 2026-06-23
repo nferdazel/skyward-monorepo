@@ -59,6 +59,17 @@ class FakeAuthGateway implements AuthGateway {
   Future<void> logout() async {
     await onLogout?.call();
   }
+
+  @override
+  Future<void> resetPassword({
+    required String username,
+    required String newPassword,
+    String companyName = '',
+    String ceoName = '',
+    String hqAirportIata = '',
+  }) async {
+    // No-op for testing — real implementation calls Edge Function
+  }
 }
 
 void main() {

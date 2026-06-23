@@ -33,6 +33,13 @@ abstract class AuthGateway {
     required String password,
   });
   Future<void> logout();
+  Future<void> resetPassword({
+    required String username,
+    required String newPassword,
+    String companyName,
+    String ceoName,
+    String hqAirportIata,
+  });
 }
 
 class SupabaseAuthGateway implements AuthGateway {
@@ -117,6 +124,39 @@ class SupabaseAuthGateway implements AuthGateway {
       return Future.value();
     }
     return client.auth.signOut();
+  }
+
+  @override
+  Future<void> resetPassword({
+    required String username,
+    required String newPassword,
+    String companyName = '',
+    String ceoName = '',
+    String hqAirportIata = '',
+  }) async {
+    final response = await SupabaseManager.client.functions.invoke(
+      'reset-password',
+      body: {
+        'username': username,
+        'newPassword': newPassword,
+        'companyName': companyName,
+        'ceoName': ceoName,
+        'hqAirportIata': hqAirportIata,
+      },
+    );
+
+    final data = response.data;
+    final payload = data is Map<String, dynamic>
+        ? data
+        : data is Map
+            ? Map<String, dynamic>.from(data)
+            : <String, dynamic>{};
+
+    if (response.status >= 400 || payload['success'] != true) {
+      throw AuthGatewayException(
+        payload['message'] as String? ?? 'Password reset failed.',
+      );
+    }
   }
 
   Future<User> _loadUserProfile(String authUserId) async {

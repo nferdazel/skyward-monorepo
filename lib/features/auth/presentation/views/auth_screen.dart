@@ -12,7 +12,6 @@ import '../../../../presentation/widgets/app_button.dart';
 import '../../../../presentation/widgets/app_dialog_shell.dart';
 import '../../../../presentation/widgets/app_snackbar.dart';
 import '../../../../presentation/widgets/skyward_logo.dart';
-import '../../../auth/data/auth_gateway.dart';
 import '../cubit/auth_cubit.dart';
 import '../cubit/auth_state.dart';
 
@@ -76,20 +75,27 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Future<void> _showForgotPasswordDialog(BuildContext context) async {
-    final resetController = TextEditingController(
-      text: _usernameController.text,
-    );
+    final usernameController = TextEditingController(text: _usernameController.text);
+    final companyController = TextEditingController();
+    final ceoController = TextEditingController();
+    final hqController = TextEditingController();
+    final newPasswordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
     final formKey = GlobalKey<FormState>();
     bool isLoading = false;
+    int step = 1;
 
     await showDialog<void>(
       context: context,
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            return AppDialogShell(
-              title: AppStrings.resetPasswordTitle,
-              content: Form(
+            String title;
+            Widget content;
+
+            if (step == 1) {
+              title = AppStrings.resetPasswordTitle;
+              content = Form(
                 key: formKey,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -103,7 +109,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     ),
                     const SizedBox(height: AppSpacing.lg),
                     TextFormField(
-                      controller: resetController,
+                      controller: usernameController,
                       autofocus: true,
                       enabled: !isLoading,
                       decoration: const InputDecoration(
@@ -119,15 +125,107 @@ class _AuthScreenState extends State<AuthScreen> {
                     ),
                   ],
                 ),
-              ),
-              actions: Row(
+              );
+            } else if (step == 2) {
+              title = AppStrings.verifyIdentity;
+              content = Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      AppStrings.verifyIdentityMessage,
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    TextFormField(
+                      controller: companyController,
+                      enabled: !isLoading,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: const InputDecoration(
+                        labelText: AppStrings.resetCompanyNameLabel,
+                        prefixIcon: Icon(Icons.business_outlined, size: 20),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    TextFormField(
+                      controller: ceoController,
+                      enabled: !isLoading,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: const InputDecoration(
+                        labelText: AppStrings.resetCeoNameLabel,
+                        prefixIcon: Icon(Icons.person_outline, size: 20),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    TextFormField(
+                      controller: hqController,
+                      enabled: !isLoading,
+                      textCapitalization: TextCapitalization.characters,
+                      decoration: const InputDecoration(
+                        labelText: AppStrings.resetHqAirportLabel,
+                        prefixIcon: Icon(Icons.location_on_outlined, size: 20),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            } else {
+              title = AppStrings.resetPasswordTitle;
+              content = Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextFormField(
+                      controller: newPasswordController,
+                      autofocus: true,
+                      enabled: !isLoading,
+                      obscureText: true,
+                      decoration: const InputDecoration(
+                        labelText: AppStrings.newPasswordLabel,
+                        prefixIcon: Icon(Icons.lock_outline, size: 20),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.length < 8) {
+                          return 'Password must be at least 8 characters.';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    TextFormField(
+                      controller: confirmPasswordController,
+                      enabled: !isLoading,
+                      obscureText: true,
+                      decoration: const InputDecoration(
+                        labelText: AppStrings.confirmPasswordLabel,
+                        prefixIcon: Icon(Icons.lock_outline, size: 20),
+                      ),
+                      validator: (value) {
+                        if (value != newPasswordController.text) {
+                          return AppStrings.passwordsDoNotMatch;
+                        }
+                        return null;
+                      },
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            Widget actionButtons;
+            if (step == 1) {
+              actionButtons = Row(
                 children: [
                   Expanded(
                     child: AppButton(
                       text: AppStrings.cancelLabel,
-                      onPressed: isLoading
-                          ? null
-                          : () => Navigator.of(dialogContext).pop(),
+                      onPressed: isLoading ? null : () => Navigator.of(dialogContext).pop(),
                       type: AppButtonType.secondary,
                       height: 40,
                     ),
@@ -135,56 +233,126 @@ class _AuthScreenState extends State<AuthScreen> {
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: AppButton(
-                      text: 'SEND RESET LINK',
-                      onPressed: () async {
-                              if (!(formKey.currentState?.validate() ?? false)) {
-                                return;
-                              }
-                              setDialogState(() => isLoading = true);
-                              try {
-                                final username = resetController.text
-                                    .trim()
-                                    .toLowerCase()
-                                    .replaceAll(RegExp(r'[^a-z0-9._-]+'), '-')
-                                    .replaceAll(RegExp(r'^-+|-+$'), '');
-                                final email =
-                                    '$username@${SupabaseAuthGateway.syntheticAuthDomain}';
-                                await SupabaseManager.client.auth
-                                    .resetPasswordForEmail(email);
-                                if (context.mounted) {
-                                  Navigator.of(dialogContext).pop();
-                                  AppSnackBar.showSuccess(
-                                    context,
-                                    AppStrings.resetPasswordSent,
-                                  );
-                                }
-                              } catch (e) {
-                                SupabaseManager.logError(
-                                  'reset_password_for_email',
-                                  e,
-                                );
-                                setDialogState(() => isLoading = false);
-                                if (context.mounted) {
-                                  AppSnackBar.showError(
-                                    context,
-                                    AppStrings.resetPasswordFailed,
-                                  );
-                                }
-                              }
+                      text: AppStrings.continueButton,
+                      onPressed: isLoading
+                          ? null
+                          : () {
+                              if (!(formKey.currentState?.validate() ?? false)) return;
+                              formKey.currentState!.reset();
+                              setDialogState(() => step = 2);
                             },
-                      isLoading: isLoading,
                       height: 40,
                     ),
                   ),
                 ],
-              ),
+              );
+            } else if (step == 2) {
+              actionButtons = Row(
+                children: [
+                  Expanded(
+                    child: AppButton(
+                      text: AppStrings.cancelLabel,
+                      onPressed: isLoading ? null : () => Navigator.of(dialogContext).pop(),
+                      type: AppButtonType.secondary,
+                      height: 40,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: AppButton(
+                      text: AppStrings.continueButton,
+                      onPressed: isLoading
+                          ? null
+                          : () {
+                              final filled = [
+                                companyController.text.trim(),
+                                ceoController.text.trim(),
+                                hqController.text.trim(),
+                              ].where((v) => v.isNotEmpty).length;
+                              if (filled < 2) {
+                                AppSnackBar.showError(
+                                  context,
+                                  AppStrings.verificationFailed,
+                                );
+                                return;
+                              }
+                              formKey.currentState!.reset();
+                              setDialogState(() => step = 3);
+                            },
+                      height: 40,
+                    ),
+                  ),
+                ],
+              );
+            } else {
+              actionButtons = Row(
+                children: [
+                  Expanded(
+                    child: AppButton(
+                      text: AppStrings.cancelLabel,
+                      onPressed: isLoading ? null : () => Navigator.of(dialogContext).pop(),
+                      type: AppButtonType.secondary,
+                      height: 40,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: AppButton(
+                      text: AppStrings.resetPasswordButton,
+                      isLoading: isLoading,
+                      onPressed: () async {
+                        if (!(formKey.currentState?.validate() ?? false)) return;
+                        setDialogState(() => isLoading = true);
+                        try {
+                          final authCubit = context.read<AuthCubit>();
+                          await authCubit.resetPassword(
+                            username: usernameController.text.trim(),
+                            newPassword: newPasswordController.text,
+                            companyName: companyController.text.trim(),
+                            ceoName: ceoController.text.trim(),
+                            hqAirportIata: hqController.text.trim(),
+                          );
+                          if (context.mounted) {
+                            Navigator.of(dialogContext).pop();
+                            AppSnackBar.showSuccess(
+                              context,
+                              AppStrings.resetPasswordSent,
+                            );
+                          }
+                        } catch (e) {
+                          SupabaseManager.logError('reset_password', e);
+                          setDialogState(() => isLoading = false);
+                          if (context.mounted) {
+                            AppSnackBar.showError(
+                              context,
+                              AppStrings.resetPasswordFailed,
+                            );
+                          }
+                        }
+                      },
+                      height: 40,
+                    ),
+                  ),
+                ],
+              );
+            }
+
+            return AppDialogShell(
+              title: title,
+              content: content,
+              actions: actionButtons,
             );
           },
         );
       },
     );
 
-    resetController.dispose();
+    usernameController.dispose();
+    companyController.dispose();
+    ceoController.dispose();
+    hqController.dispose();
+    newPasswordController.dispose();
+    confirmPasswordController.dispose();
   }
 
   @override
