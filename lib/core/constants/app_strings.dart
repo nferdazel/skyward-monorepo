@@ -369,9 +369,6 @@ class AppStrings {
   static const String seatPresetMaxEconomy = 'Max Economy';
   static const String seatPresetBalanced = 'Balanced';
   static const String seatPresetPremium = 'Premium';
-  static const String showTickerTapeLabel = 'SHOW TICKER TAPE';
-  static const String showTickerTapeDesc =
-      'Toggle visibility of the bottom ticker tape on the dashboard.';
   static const String autoRepairThresholdLabel = 'AUTO-REPAIR THRESHOLD';
   static const String autoRepairThresholdDesc =
       'Aircraft dropping below this condition are flagged for priority repair.';

@@ -230,7 +230,7 @@ class _SettingsViewState extends State<SettingsView> {
           const SizedBox(height: AppSpacing.xs),
           state.isLoadingAirports
               ? SizedBox(
-                  height: 48,
+                  height: AppSpacing.xxxxxl,
                   child: Center(
                     child: CircularProgressIndicator(
                       color: AppTheme.primary,
@@ -427,44 +427,6 @@ class _SettingsViewState extends State<SettingsView> {
           Divider(color: AppTheme.border),
           const SizedBox(height: AppSpacing.lg),
 
-          // Ticker Tape Toggle
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      AppStrings.showTickerTapeLabel,
-                      style: AppTypography.badgeText.copyWith(
-                        color: AppTheme.textPrimary,
-                        letterSpacing: 0.0,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      AppStrings.showTickerTapeDesc,
-                      style: AppTypography.captionRegular.copyWith(
-                        color: AppTheme.textMuted,
-                        height: 1.4,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Switch(
-                value: state.showTickerTape,
-                onChanged: cubit.setShowTickerTape,
-                activeThumbColor: AppTheme.primary,
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          Divider(color: AppTheme.border),
-          const SizedBox(height: AppSpacing.lg),
-
           // Auto-Repair Threshold
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -645,18 +607,18 @@ class _SettingsViewState extends State<SettingsView> {
           const SizedBox(height: AppSpacing.lg),
 
           _buildInfoRow(AppStrings.chiefExecutive, user.ceoName),
-          Divider(color: AppTheme.border, height: 24),
+          const SizedBox(height: AppSpacing.xxl),
           _buildInfoRow(
             AppStrings.companyRegistry,
             user.companyName.toUpperCase(),
           ),
-          Divider(color: AppTheme.border, height: 24),
+          const SizedBox(height: AppSpacing.xxl),
           _buildInfoRow(AppStrings.operationalBaseHq, user.hqAirportIata),
-          Divider(color: AppTheme.border, height: 24),
+          const SizedBox(height: AppSpacing.xxl),
           _buildInfoRow(AppStrings.accountIdentifier, user.id),
-          Divider(color: AppTheme.border, height: 24),
+          const SizedBox(height: AppSpacing.xxl),
           _buildInfoRow(AppStrings.registrationLevel, AppStrings.principalCeo),
-          Divider(color: AppTheme.border, height: 24),
+          const SizedBox(height: AppSpacing.xxl),
         ],
       ),
     );

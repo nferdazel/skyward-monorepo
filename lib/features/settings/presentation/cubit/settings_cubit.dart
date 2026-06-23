@@ -19,7 +19,6 @@ class SettingsState {
   final String? errorMessage;
   final bool isSaveSuccess;
   final String seatPreset;
-  final bool showTickerTape;
   final double autoRepairThreshold;
   final double fareMultiplier;
 
@@ -33,7 +32,6 @@ class SettingsState {
     this.errorMessage,
     this.isSaveSuccess = false,
     this.seatPreset = 'max_economy',
-    this.showTickerTape = true,
     this.autoRepairThreshold = GameConstants.defaultAutoRepairThreshold,
     this.fareMultiplier = GameConstants.defaultFareMultiplier,
   });
@@ -48,7 +46,6 @@ class SettingsState {
     Object? errorMessage = _unset,
     Object? isSaveSuccess = _unset,
     String? seatPreset,
-    bool? showTickerTape,
     double? autoRepairThreshold,
     double? fareMultiplier,
   }) {
@@ -68,7 +65,6 @@ class SettingsState {
           ? this.isSaveSuccess
           : isSaveSuccess as bool,
       seatPreset: seatPreset ?? this.seatPreset,
-      showTickerTape: showTickerTape ?? this.showTickerTape,
       autoRepairThreshold: autoRepairThreshold ?? this.autoRepairThreshold,
       fareMultiplier: fareMultiplier ?? this.fareMultiplier,
     );
@@ -102,10 +98,6 @@ class SettingsCubit extends Cubit<SettingsState> {
 
   void setSeatPreset(String preset) {
     emit(state.copyWith(seatPreset: preset));
-  }
-
-  void setShowTickerTape(bool value) {
-    emit(state.copyWith(showTickerTape: value));
   }
 
   void setAutoRepairThreshold(double value) {

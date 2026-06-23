@@ -501,35 +501,6 @@ void main() {
       );
 
       blocTest<SettingsCubit, SettingsState>(
-        'setShowTickerTape updates showTickerTape',
-        build: () => SettingsCubit(gateway: MockSettingsGateway()),
-        act: (cubit) => cubit.setShowTickerTape(false),
-        expect: () => [
-          isA<SettingsState>().having(
-            (s) => s.showTickerTape,
-            'showTickerTape',
-            false,
-          ),
-        ],
-      );
-
-      blocTest<SettingsCubit, SettingsState>(
-        'setShowTickerTape toggles from default true to false',
-        build: () => SettingsCubit(gateway: MockSettingsGateway()),
-        act: (cubit) {
-          expect(cubit.state.showTickerTape, isTrue);
-          cubit.setShowTickerTape(false);
-        },
-        expect: () => [
-          isA<SettingsState>().having(
-            (s) => s.showTickerTape,
-            'showTickerTape',
-            false,
-          ),
-        ],
-      );
-
-      blocTest<SettingsCubit, SettingsState>(
         'setAutoRepairThreshold updates autoRepairThreshold',
         build: () => SettingsCubit(gateway: MockSettingsGateway()),
         act: (cubit) => cubit.setAutoRepairThreshold(75.0),
