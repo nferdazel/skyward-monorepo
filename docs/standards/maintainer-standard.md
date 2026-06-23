@@ -104,10 +104,10 @@ All UI code must use the design system tokens defined in the theme files.
 - Available styles by category:
   - **Screen titles** (IBM Plex Sans): `screenTitleLarge`, `screenTitleMedium`
   - **Section headers** (IBM Plex Sans, ALL CAPS): `sectionHeaderLarge`, `sectionHeaderMedium`
-  - **Body text** (IBM Plex Sans): `bodyLarge`, `bodyMedium`
-  - **Captions** (IBM Plex Sans): `captionRegular`, `captionLight`, `captionMuted`
-  - **Labels** (IBM Plex Mono, ALL CAPS): `microLabel`, `badgeText`, `monoLabel`, `labelSecondary`
-  - **Data/mono** (IBM Plex Mono): `hudValue`, `dataEmphasis`, `largeKpi`, `telemetry`, `monoValue`, `valuePrimary`
+  - **Body text** (IBM Plex Sans): `bodyLarge`, `bodyMedium`, `telemetry`
+  - **Captions** (IBM Plex Sans): `captionRegular`, `captionLight`
+  - **Labels** (IBM Plex Sans, ALL CAPS): `microLabel`, `badgeText`, `nanoLabel`
+  - **Data/mono** (IBM Plex Mono): `hudValue`, `dataEmphasis`, `largeKpi`, `monoValue`
   - **Buttons** (IBM Plex Sans): `buttonText`
 
 ### Border Radius

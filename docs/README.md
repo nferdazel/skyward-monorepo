@@ -71,7 +71,7 @@ UI/UX docs:
 
 Standards:
 - `standards/maintainer-standard.md`
-- `standards/security.md`
+- [SECURITY.md](../SECURITY.md)
 
 ## Migration Bands
 

@@ -56,8 +56,8 @@ Primary dark palette from [skyward_colors.dart](../../lib/core/theme/skyward_col
 - neutral: `#758489` (muted text)
 
 Runtime theme note:
-- a light theme token set exists
-- the app currently boots with `AppTheme.darkTheme`
+- only the dark theme is defined
+- the app boots with `AppTheme.darkTheme`
 
 References:
 - [main.dart](../../lib/main.dart:1)
@@ -128,7 +128,6 @@ References:
 - [main.dart](../../lib/main.dart:1)
 - [dashboard_sidebar.dart](../../lib/features/dashboard/presentation/widgets/dashboard_sidebar.dart:1)
 - [top_hud.dart](../../lib/features/dashboard/presentation/widgets/top_hud.dart:1)
-- [ticker_tape.dart](../../lib/core/widgets/ticker_tape.dart:1)
 
 ### User Roles
 
@@ -434,6 +433,8 @@ From [app_spacing.dart](../../lib/presentation/theme/app_spacing.dart:1):
 | `xl` | 20.0 |
 | `xxl` | 24.0 |
 | `xxxl` | 32.0 |
+| `xxxxl` | 40.0 |
+| `xxxxxl` | 48.0 |
 
 Semantic tokens:
 - `pagePadding`: 16
@@ -450,10 +451,15 @@ Border radius tokens:
 - `radiusSoft`: 8
 - `radiusRound`: 12
 
+Letter-spacing tokens:
+- `spacingNone`: 0.0
+- `spacingRelaxed`: 0.5
+- `spacingSection`: 0.6
+
 #### Typography
 
 Font families:
-- IBM Plex Mono via Google Fonts — used for metric values, labels, data/mono text, HUD values, KPI text, badges
+- IBM Plex Mono via Google Fonts — used for numeric metric values, HUD values, KPI text, and data emphasis only
 - IBM Plex Sans via Google Fonts — used for screen titles, section headers, body text, captions, buttons
 
 Current typographic hierarchy:
@@ -461,18 +467,15 @@ Current typographic hierarchy:
 - section headers: 11–12px, IBM Plex Sans, w600, UPPERCASE, letterSpacing +0.10em
 - body text: 13–14px, IBM Plex Sans
 - captions and hints: 11–12px, IBM Plex Sans
-- micro labels: 11px, IBM Plex Mono, w600, letterSpacing +0.10em
-- badge text: 11px, IBM Plex Mono, w600, letterSpacing +0.08em
+- micro labels: 11px, IBM Plex Sans, w600, letterSpacing +0.06em
+- badge text: 11px, IBM Plex Sans, w600, letterSpacing +0.08em
 - button text: 12px, IBM Plex Sans, w600, letterSpacing +0.08em
 - HUD values: 13px, IBM Plex Mono, w600
 - data emphasis: 15px, IBM Plex Mono, w700
 - large KPI: 20px, IBM Plex Mono, w700, letterSpacing -0.02em
-- telemetry: 12px, IBM Plex Mono, w500
+- telemetry: 12px, IBM Plex Sans, w500
+- nano labels: 10px, IBM Plex Sans, w600, letterSpacing +0.08em
 - mono value: 13px, IBM Plex Mono, w600
-- mono label: 11px, IBM Plex Mono, w600, letterSpacing +0.08em
-- label secondary: 11px, IBM Plex Mono, w600, letterSpacing +0.08em
-- value primary: 13px, IBM Plex Mono, w600
-- caption muted: 11px, IBM Plex Sans, w400
 
 References:
 - [app_theme.dart](../../lib/core/theme/app_theme.dart:1)
@@ -525,17 +528,6 @@ The app uses a terminal-style loader for auth restore and bootstrapping:
 
 Reference:
 - [terminal_loader.dart](../../lib/core/widgets/terminal_loader.dart:1)
-
-### Ticker Tape
-
-Desktop shell includes a top system ticker strip:
-- 24px height, bright accent bar
-- scrolling animation
-- compressed operational copy
-- status-broadcast feeling
-
-Reference:
-- [ticker_tape.dart](../../lib/core/widgets/ticker_tape.dart:1)
 
 ### HUD Bar
 

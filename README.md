@@ -53,7 +53,6 @@ Desktop shell layout:
 - sidebar (44px icon-only with tooltip labels, section grouping divider)
 - HUD bar (40px with pill indicators, pipe separators, notification bell)
 - main content workspace via `IndexedStack` (6 tabs: overview, fleet, routes, finance, leaderboard, settings)
-- ticker tape (24px scrolling operational broadcast at bottom)
 
 For the maintained backend/runtime record, use:
 - [docs/README.md](docs/README.md)
@@ -124,7 +123,6 @@ Required GitHub secrets:
 
 - `lib/`: Flutter application code
 - `docs/` and `migrations/`: maintained SQL and backend/runtime docs
-- `data/`: catalog replenishment workflow and curated data artifacts
 - `test/`: unit, widget, integration, and database-oriented test layers
 
 ## License

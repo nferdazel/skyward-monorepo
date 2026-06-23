@@ -353,6 +353,3 @@ Current truth is defined by:
 - the live migrations
 - the active RPCs
 - the code paths that parse their results
-
-For catalog replenishment, use the repo-local workflow in:
-- `data/README.md`
