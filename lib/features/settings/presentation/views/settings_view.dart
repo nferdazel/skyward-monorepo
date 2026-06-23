@@ -12,7 +12,6 @@ import '../../../../presentation/widgets/app_button.dart';
 import '../../../../presentation/widgets/app_card.dart';
 import '../../../../presentation/widgets/app_dialog_shell.dart';
 import '../../../../presentation/widgets/app_dropdown_field.dart';
-import '../../../../presentation/widgets/app_labeled_value.dart';
 import '../../../../presentation/widgets/app_section_header.dart';
 import '../../../../presentation/widgets/app_snackbar.dart';
 import '../../../../presentation/widgets/searchable_airport_dropdown.dart';
@@ -146,11 +145,6 @@ class _SettingsViewState extends State<SettingsView> {
                                     const SizedBox(
                                       height: AppSpacing.sectionGap,
                                     ),
-                                    _buildCredentialsSection(
-                                      context,
-                                      state,
-                                      user,
-                                    ),
                                   ],
                                 ),
                               ),
@@ -162,8 +156,6 @@ class _SettingsViewState extends State<SettingsView> {
                             _buildProfileFormSection(context, state, user),
                             const SizedBox(height: AppSpacing.sectionGap),
                             _buildGameSettingsSection(context, state, user),
-                            const SizedBox(height: AppSpacing.sectionGap),
-                            _buildCredentialsSection(context, state, user),
                             const SizedBox(height: AppSpacing.sectionGap),
                             _buildDangerZoneSection(context, state, user.id),
                           ],
@@ -589,41 +581,6 @@ class _SettingsViewState extends State<SettingsView> {
     );
   }
 
-  Widget _buildCredentialsSection(
-    BuildContext context,
-    SettingsState state,
-    User user,
-  ) {
-    return AppCard(
-      backgroundColor: AppTheme.borderSubtle,
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            AppStrings.ceoSecurityAuthorization,
-            style: AppTypography.microLabel.copyWith(color: AppTheme.textMuted),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-
-          _buildInfoRow(AppStrings.chiefExecutive, user.ceoName),
-          const SizedBox(height: AppSpacing.xxl),
-          _buildInfoRow(
-            AppStrings.companyRegistry,
-            user.companyName.toUpperCase(),
-          ),
-          const SizedBox(height: AppSpacing.xxl),
-          _buildInfoRow(AppStrings.operationalBaseHq, user.hqAirportIata),
-          const SizedBox(height: AppSpacing.xxl),
-          _buildInfoRow(AppStrings.accountIdentifier, user.id),
-          const SizedBox(height: AppSpacing.xxl),
-          _buildInfoRow(AppStrings.registrationLevel, AppStrings.principalCeo),
-          const SizedBox(height: AppSpacing.xxl),
-        ],
-      ),
-    );
-  }
-
   Widget _buildDangerZoneSection(
     BuildContext context,
     SettingsState state,
@@ -662,10 +619,6 @@ class _SettingsViewState extends State<SettingsView> {
         ],
       ),
     );
-  }
-
-  Widget _buildInfoRow(String label, String value) {
-    return AppLabeledValue(label: label, value: value);
   }
 
   void _showResetConfirmation(BuildContext context, String userId) {

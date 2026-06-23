@@ -354,13 +354,6 @@ class AppStrings {
       'SYSTEM CONFIGURATIONS SAVED SUCCESSFULLY';
   static const String selectHqHubAirport = 'SELECT HQ HUB AIRPORT';
   static const String operationsConfig = 'OPERATIONS CONFIG';
-  static const String ceoSecurityAuthorization = 'CEO SECURITY AUTHORIZATION';
-  static const String chiefExecutive = 'CHIEF EXECUTIVE';
-  static const String companyRegistry = 'COMPANY REGISTRY';
-  static const String operationalBaseHq = 'OPERATIONAL BASE HQ';
-  static const String accountIdentifier = 'ACCOUNT IDENTIFIER';
-  static const String registrationLevel = 'REGISTRATION LEVEL';
-  static const String principalCeo = 'PRINCIPAL CEO';
   static const String criticalOperationAuth =
       'CRITICAL OPERATION AUTHORIZATION REQUIRED';
   static const String resetAirlineConfirmDesc =
@@ -760,6 +753,7 @@ class AppStrings {
   static const String borrowCapital = 'Borrow capital for expansion.';
   static const String outstanding = 'OUTSTANDING';
   static const String weeklyPayment = 'WEEKLY PAYMENT';
+  static const String payOff = 'PAY OFF';
   static const String paidOff = 'Paid Off';
   static const String defaulted = 'Defaulted';
 

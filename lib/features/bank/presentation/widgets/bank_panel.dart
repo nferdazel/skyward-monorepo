@@ -482,6 +482,17 @@ class _LoanCard extends StatelessWidget {
                 ),
               ],
             ),
+            const SizedBox(height: AppSpacing.sm),
+            SizedBox(
+              width: double.infinity,
+              child: AppButton(
+                text: AppStrings.payOff,
+                onPressed: () =>
+                    context.read<BankCubit>().repayLoan(loan.id),
+                type: AppButtonType.secondary,
+                width: double.infinity,
+              ),
+            ),
           ],
         ),
       ),

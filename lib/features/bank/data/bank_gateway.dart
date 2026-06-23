@@ -29,6 +29,7 @@ abstract class BankGateway {
     int termMonths,
   );
   Future<Map<String, dynamic>> refinanceLoan(String loanId);
+  Future<Map<String, dynamic>> repayLoan(String loanId, double? amount);
 }
 
 class SupabaseBankGateway implements BankGateway {
@@ -183,6 +184,33 @@ class SupabaseBankGateway implements BankGateway {
     } catch (e, stack) {
       SupabaseManager.logError('financeAircraft', e, stack);
       throw BankGatewayException(e.toString(), 'financeAircraft');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> repayLoan(String loanId, double? amount) async {
+    try {
+      final response = await SupabaseManager.client.rpc(
+        'repay_loan',
+        params: {
+          'p_loan_id': loanId,
+          'p_amount': amount,
+        },
+      );
+      if (response is List && response.isNotEmpty) {
+        return response.first as Map<String, dynamic>;
+      }
+      return {};
+    } on PostgrestException catch (e) {
+      SupabaseManager.logRpcFailure(
+        'repay_loan',
+        {'p_loan_id': loanId, 'p_amount': amount},
+        e.message,
+      );
+      throw BankGatewayException(e.message, 'repayLoan');
+    } catch (e, stack) {
+      SupabaseManager.logError('repayLoan', e, stack);
+      throw BankGatewayException(e.toString(), 'repayLoan');
     }
   }
 
