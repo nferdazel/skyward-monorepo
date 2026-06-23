@@ -167,13 +167,21 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
             message: message,
             newCash: newCash,
             loans: _cachedLoans,
+            creditReport: _cachedCreditReport,
           ));
         } else {
+          // Log server-side validation failure to console
+          print('==================================================');
+          print('[BANK] take_loan RPC returned success=false');
+          print('[BANK] Message: $message');
+          print('[BANK] Principal: $principal, Term: $termWeeks weeks');
+          print('==================================================');
           if (isClosed) return;
           emit(BankError(
             message: message,
             hasData: _cachedLoans.isNotEmpty,
             loans: _cachedLoans,
+            creditReport: _cachedCreditReport,
           ));
         }
       } else {
@@ -183,6 +191,7 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
           message: AppStrings.loanProcessFailed,
           hasData: _cachedLoans.isNotEmpty,
           loans: _cachedLoans,
+          creditReport: _cachedCreditReport,
         ));
       }
     } catch (e, stack) {
@@ -193,6 +202,7 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
           message: AppError.extractMessage(e, AppStrings.loanProcessFailed),
           hasData: _cachedLoans.isNotEmpty,
           loans: _cachedLoans,
+          creditReport: _cachedCreditReport,
         ),
       );
     }

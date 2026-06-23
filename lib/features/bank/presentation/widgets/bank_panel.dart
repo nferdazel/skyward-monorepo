@@ -62,9 +62,9 @@ class BankPanel extends StatelessWidget {
         loans.isEmpty
             ? _buildEmptyState(context, creditReport: creditReport)
             : _buildContent(context, loans, creditReport: creditReport),
-      BankError(:final hasData, :final loans) =>
-        hasData ? _buildContent(context, loans) : _buildEmptyState(context),
-      BankLoanSuccess(:final loans) => _buildContent(context, loans),
+      BankError(:final hasData, :final loans, :final creditReport) =>
+        hasData ? _buildContent(context, loans, creditReport: creditReport) : _buildEmptyState(context),
+      BankLoanSuccess(:final loans, :final creditReport) => _buildContent(context, loans, creditReport: creditReport),
       _ => _buildLoading(),
     };
   }
