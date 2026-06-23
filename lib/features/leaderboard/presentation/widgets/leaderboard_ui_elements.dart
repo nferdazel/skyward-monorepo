@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../presentation/theme/app_spacing.dart';
 import '../../../../presentation/theme/app_typography.dart';
 import '../../../../presentation/widgets/app_badge.dart';
 
@@ -21,11 +22,11 @@ class LeaderboardTableHeaderCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.sm),
       child: Text(
         text,
         style: AppTypography.badgeText.copyWith(
-          color: AppTypography.textSecondary,
+          color: AppTheme.textSecondary,
           letterSpacing: 0.3,
         ),
       ),
@@ -50,11 +51,11 @@ class LeaderboardTableCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.sm),
       child: Text(
         text,
         style: AppTypography.bodyMedium.copyWith(
-          color: color ?? AppTypography.textPrimary,
+          color: color ?? AppTheme.textPrimary,
           fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
           letterSpacing: isMono ? 0.0 : 0.1,
         ),
@@ -71,7 +72,7 @@ class RankCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.sm),
       child: Container(
         width: 22,
         height: 22,
@@ -85,8 +86,7 @@ class RankCell extends StatelessWidget {
         child: Text(
           '$rank',
           style: AppTypography.badgeText.copyWith(
-            color: isHuman ? AppTheme.primary : AppTypography.textSecondary,
-            fontWeight: FontWeight.bold,
+            color: isHuman ? AppTheme.primary : AppTheme.textSecondary,
             fontSize: 11,
           ),
         ),

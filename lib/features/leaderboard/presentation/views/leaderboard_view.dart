@@ -7,10 +7,12 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../presentation/theme/app_spacing.dart';
 import '../../../../presentation/theme/app_typography.dart';
 import '../../../../presentation/widgets/app_badge.dart';
+import '../../../../presentation/widgets/app_button.dart';
 import '../../../../presentation/widgets/app_card.dart';
 import '../../../../presentation/widgets/app_empty_state.dart';
 import '../../../../presentation/widgets/app_info_strip.dart';
 import '../../../../presentation/widgets/app_section_header.dart';
+import '../../../../presentation/widgets/app_table_cells.dart';
 import '../../../../presentation/widgets/app_table_shell.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
@@ -65,7 +67,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
   Widget build(BuildContext context) {
     final authState = context.read<AuthCubit>().state;
     if (authState is! AuthAuthenticated) {
-      return const Center(child: Text(AppStrings.unauthorized));
+      return Center(child: Text(AppStrings.unauthorized, style: AppTypography.bodyMedium.copyWith(color: AppTheme.textMuted)));
     }
 
     return BlocConsumer<LeaderboardCubit, LeaderboardState>(
@@ -135,7 +137,8 @@ class _LeaderboardViewState extends State<LeaderboardView> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: AppSpacing.lg),
-            OutlinedButton.icon(
+            AppButton(
+              text: 'RETRY',
               onPressed: () {
                 final authState = context.read<AuthCubit>().state;
                 if (authState is AuthAuthenticated) {
@@ -148,12 +151,8 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                   );
                 }
               },
-              icon: const Icon(Icons.refresh, size: 16),
-              label: Text('RETRY', style: AppTypography.badgeText),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppTheme.primary,
-                side: BorderSide(color: AppTheme.primary),
-              ),
+              type: AppButtonType.secondary,
+              icon: Icons.refresh,
             ),
           ],
         ),
@@ -162,8 +161,8 @@ class _LeaderboardViewState extends State<LeaderboardView> {
       if (_sortedRankings.isEmpty) {
         return AppEmptyState(
           icon: Icons.leaderboard_outlined,
-          title: 'NO COMPETITORS YET',
-          description: 'The leaderboard will populate as airlines begin operations.',
+          title: AppStrings.leaderboardEmptyTitle,
+          description: AppStrings.leaderboardEmptyDesc,
         );
       }
       return Row(
@@ -201,7 +200,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
           'SORT:',
           style: AppTypography.badgeText.copyWith(
             color: AppTheme.textSecondary,
-            letterSpacing: 0.6,
+            letterSpacing: AppTypography.spacingSection,
           ),
         ),
         const SizedBox(width: AppSpacing.sm),
@@ -219,7 +218,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
     return GestureDetector(
       onTap: () => _changeSort(sortKey),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
         decoration: BoxDecoration(
           color: isActive
               ? AppTheme.primary.withValues(alpha: 0.15)
@@ -235,7 +234,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
           label,
           style: AppTypography.badgeText.copyWith(
             color: isActive ? AppTheme.primary : AppTheme.textSecondary,
-            letterSpacing: 0.4,
+            letterSpacing: AppTypography.spacingRelaxed,
           ),
         ),
       ),
@@ -324,7 +323,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                               if (entry.creditTier != null && entry.creditTier != 'Standard')
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                                  margin: const EdgeInsets.only(left: 4),
+                                  margin: const EdgeInsets.only(left: AppSpacing.xs),
                                   decoration: BoxDecoration(
                                     color: _tierColor(entry.creditTier).withValues(alpha: 0.15),
                                     borderRadius: BorderRadius.circular(2),
@@ -333,7 +332,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                                     entry.creditTier!,
                                     style: AppTypography.badgeText.copyWith(
                                       color: _tierColor(entry.creditTier),
-                                      fontSize: 9,
+                                      fontSize: AppTypography.nanoLabel.fontSize,
                                     ),
                                   ),
                                 ),
@@ -494,7 +493,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
           if (state.isLoadingInsights) ...[
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.md),
               decoration: BoxDecoration(
                 color: AppTheme.primary.withValues(alpha: 0.08),
                 border: Border.all(
@@ -518,7 +517,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                       AppStrings.updatingCompetitorIntel,
                       style: AppTypography.badgeText.copyWith(
                         color: AppTheme.primary,
-                        letterSpacing: 0.8,
+                        letterSpacing: AppTypography.spacingSection,
                       ),
                     ),
                   ),
@@ -539,7 +538,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
             AppStrings.competitorMetrics,
             style: AppTypography.badgeText.copyWith(
               color: AppTheme.primary,
-              letterSpacing: 1.0,
+              letterSpacing: AppTypography.spacingSection,
             ),
           ),
           const SizedBox(height: AppSpacing.md),
@@ -577,7 +576,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                     color: AppTheme.textSecondary,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: AppSpacing.xs),
                 Text(
                   _buildDoctrineCopy(liveCompetitor.archetype),
                   style: AppTypography.captionRegular.copyWith(
@@ -596,10 +595,10 @@ class _LeaderboardViewState extends State<LeaderboardView> {
             AppStrings.hangarFleetBreakdown,
             style: AppTypography.badgeText.copyWith(
               color: AppTheme.primary,
-              letterSpacing: 1.0,
+              letterSpacing: AppTypography.spacingSection,
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpacing.sm),
           Expanded(
             child: liveInsights.fleetBreakdown.isEmpty
                 ? Text(
@@ -612,9 +611,9 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                     shrinkWrap: true,
                     children: liveInsights.fleetBreakdown.entries.map((f) {
                       return AppCard(
-                        margin: const EdgeInsets.only(bottom: 6),
+                        margin: const EdgeInsets.only(bottom: AppSpacing.xs),
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
+                          horizontal: AppSpacing.md,
                           vertical: AppSpacing.sm,
                         ),
                         backgroundColor: AppTheme.background,
@@ -651,10 +650,10 @@ class _LeaderboardViewState extends State<LeaderboardView> {
             AppStrings.operatingRoutePathways,
             style: AppTypography.badgeText.copyWith(
               color: AppTheme.primary,
-              letterSpacing: 1.0,
+              letterSpacing: AppTypography.spacingSection,
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpacing.sm),
           Expanded(
             child: liveInsights.networkRoutes.isEmpty
                 ? Text(
@@ -669,7 +668,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                       final route = liveInsights.networkRoutes[index];
                       return AppCard(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
+                          horizontal: AppSpacing.md,
                           vertical: AppSpacing.sm,
                         ),
                         backgroundColor: AppTheme.background,
@@ -719,14 +718,14 @@ class _LeaderboardViewState extends State<LeaderboardView> {
   }
 
   Widget _buildTableHeaderCell(String text) {
-    return LeaderboardTableHeaderCell(text: text);
+    return AppTableHeaderCell(label: text);
   }
 
   Widget _buildRankTrendIndicator(int currentRank, int? previousRank) {
     // No history data yet — show stable placeholder
     if (previousRank == null) {
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
         child: Center(
           child: Text(
             AppStrings.rankTrendStable,
@@ -743,7 +742,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
     if (delta > 0) {
       // Rank improved (moved up)
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
         child: Center(
           child: Text(
             '\u2191$delta',
@@ -756,7 +755,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
     } else if (delta < 0) {
       // Rank dropped (moved down)
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
         child: Center(
           child: Text(
             '\u2193${delta.abs()}',
@@ -769,7 +768,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
     } else {
       // Stable
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
         child: Center(
           child: Text(
             AppStrings.rankTrendStable,
@@ -873,7 +872,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
             value,
             style: AppTypography.badgeText.copyWith(
               color: color,
-              letterSpacing: 0.0,
+              letterSpacing: AppTypography.spacingNone,
             ),
           ),
         ],
@@ -890,7 +889,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
       case 'Silver': return AppTheme.textSecondary;
       case 'Standard': return AppTheme.textMuted;
       case 'Subprime': return AppTheme.error;
-      default: return AppTheme.textMuted;
+      default: return AppTheme.textSecondary;
     }
   }
 
@@ -914,7 +913,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
               AppStrings.gapToLeader,
               style: AppTypography.badgeText.copyWith(
                 color: AppTheme.textSecondary,
-                letterSpacing: 0.6,
+                letterSpacing: AppTypography.spacingSection,
               ),
             ),
             Text(
@@ -943,21 +942,21 @@ class _LeaderboardViewState extends State<LeaderboardView> {
           ),
         ),
         if (gap > 0) ...[
-          const SizedBox(height: 6),
+          const SizedBox(height: AppSpacing.xs),
           Text(
             '-${AppFormatters.currency.format(gap)}${AppStrings.leaderBehindSuffix}',
             style: AppTypography.badgeText.copyWith(
               color: AppTheme.error,
-              letterSpacing: 0.0,
+              letterSpacing: AppTypography.spacingNone,
             ),
           ),
         ] else ...[
-          const SizedBox(height: 6),
+          const SizedBox(height: AppSpacing.xs),
           Text(
             AppStrings.worldLeaderLabel,
             style: AppTypography.badgeText.copyWith(
               color: AppTheme.success,
-              letterSpacing: 0.6,
+              letterSpacing: AppTypography.spacingSection,
             ),
           ),
         ],

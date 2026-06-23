@@ -55,10 +55,10 @@ class AchievementBadge extends StatelessWidget {
       child: Tooltip(
         message: definition.description,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
           decoration: BoxDecoration(
             color: bgColor,
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
             border: Border.all(color: borderColor, width: 0.5),
           ),
           child: Row(
@@ -66,12 +66,11 @@ class AchievementBadge extends StatelessWidget {
             children: [
               Text(
                 definition.icon,
-                style: TextStyle(
-                  fontSize: 14,
+                style: AppTypography.bodyLarge.copyWith(
                   color: isLocked ? AppTheme.textMuted : null,
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.sm),
               Flexible(
                 child: Text(
                   definition.name.toUpperCase(),
@@ -108,8 +107,8 @@ class AchievementGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Wrap(
-      spacing: 8,
-      runSpacing: 8,
+      spacing: AppSpacing.sm,
+      runSpacing: AppSpacing.sm,
       children: AchievementDef.all.map((def) {
         final match = unlockedAchievements
             .where((a) => a.achievementType == def.type)
