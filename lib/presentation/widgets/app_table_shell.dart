@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'app_card.dart';
+import '../../core/theme/app_theme.dart';
+import '../theme/app_spacing.dart';
 
 /// A scrollable card wrapper for tabular data with optional semantic label.
 class AppTableShell extends StatelessWidget {
@@ -14,23 +15,14 @@ class AppTableShell extends StatelessWidget {
     return Semantics(
       container: true,
       label: label ?? 'Data table',
-      child: AppCard(
-        padding: EdgeInsets.zero,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SizedBox(
-              width: double.infinity,
-              height: constraints.hasBoundedHeight ? constraints.maxHeight : null,
-              child: ScrollConfiguration(
-                behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  child: child,
-                ),
-              ),
-            );
-          },
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppTheme.surface,
+          borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
+          border: Border.all(color: AppTheme.border, width: 0.5),
         ),
+        clipBehavior: Clip.antiAlias,
+        child: child,
       ),
     );
   }

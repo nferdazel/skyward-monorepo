@@ -773,7 +773,6 @@ class _FinanceViewState extends State<FinanceView>
 
     return AppTableShell(
       child: Column(
-        mainAxisSize: MainAxisSize.min,
         children: [
           // Fixed header row
           Table(
@@ -782,13 +781,19 @@ class _FinanceViewState extends State<FinanceView>
             children: [_buildTableHeaderRow()],
           ),
           // Lazy data rows
-          ...state.logs.map(
-            (log) => Table(
-              columnWidths: _ledgerColumnWidths,
-              defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-              children: [
-                _buildTableEntryRow(log, currencyFormat, dateFormat),
-              ],
+          Expanded(
+            child: ListView.builder(
+              itemCount: state.logs.length,
+              itemBuilder: (context, index) {
+                final log = state.logs[index];
+                return Table(
+                  columnWidths: _ledgerColumnWidths,
+                  defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                  children: [
+                    _buildTableEntryRow(log, currencyFormat, dateFormat),
+                  ],
+                );
+              },
             ),
           ),
         ],
