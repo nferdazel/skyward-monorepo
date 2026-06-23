@@ -4,6 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../presentation/theme/app_spacing.dart';
 import '../../../../presentation/theme/app_typography.dart';
+import '../../../../presentation/widgets/app_button.dart';
+import '../../../../presentation/widgets/app_dialog_shell.dart';
 import '../../../../presentation/widgets/skyward_logo.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../navigation/presentation/cubit/navigation_cubit.dart';
@@ -82,23 +84,31 @@ class DashboardSidebar extends StatelessWidget {
             () async {
               final confirmed = await showDialog<bool>(
                 context: context,
-                builder: (ctx) => AlertDialog(
-                  backgroundColor: AppTheme.surface,
-                  title: Text('LOGOUT', style: AppTypography.sectionHeaderLarge),
+                builder: (ctx) => AppDialogShell(
+                  title: 'LOGOUT',
                   content: Text(
                     'Are you sure you want to logout?',
                     style: AppTypography.bodyMedium,
                   ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx, false),
-                      child: Text('CANCEL', style: AppTypography.badgeText),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx, true),
-                      child: Text('LOGOUT', style: AppTypography.badgeText.copyWith(color: AppTheme.error)),
-                    ),
-                  ],
+                  actions: Row(
+                    children: [
+                      Expanded(
+                        child: AppButton(
+                          text: 'CANCEL',
+                          onPressed: () => Navigator.pop(ctx, false),
+                          type: AppButtonType.secondary,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: AppButton(
+                          text: 'LOGOUT',
+                          onPressed: () => Navigator.pop(ctx, true),
+                          type: AppButtonType.primary,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               );
               if (confirmed == true && context.mounted) {

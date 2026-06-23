@@ -31,71 +31,62 @@ class AppDialogShell extends StatelessWidget {
       label: title,
       namesRoute: true,
       explicitChildNodes: true,
-      child: Stack(
-        children: [
-          // Backdrop scrim
-          const ModalBarrier(
-            dismissible: false,
-            color: Colors.black54,
+      child: Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(AppSpacing.xl),
+        elevation: 0,
+        child: Material(
+          color: AppTheme.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSpacing.radiusSoft),
+            side: BorderSide(color: AppTheme.border, width: 1.0),
           ),
-          Dialog(
-            backgroundColor: Colors.transparent,
-            insetPadding: const EdgeInsets.all(AppSpacing.xl),
-            elevation: 0,
-            child: Material(
-              color: AppTheme.surface,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppSpacing.radiusSoft),
-                side: BorderSide(color: AppTheme.border, width: 1.0),
-              ),
-              child: Container(
-                constraints: BoxConstraints(maxWidth: maxWidth),
-                padding: const EdgeInsets.all(AppSpacing.xl),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
+          child: Container(
+            constraints: BoxConstraints(maxWidth: maxWidth),
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            title.toUpperCase(),
-                            style: AppTypography.badgeText.copyWith(
-                              color: titleColor ?? AppTheme.primary,
-                              letterSpacing: 0.8,
-                            ),
-                          ),
-                        ),
-                        if (headerTrailing != null) ...[
-                          const SizedBox(width: AppSpacing.md),
-                          headerTrailing!,
-                        ],
-                      ],
-                    ),
-                    if (subtitle != null) ...[
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        subtitle!,
-                        style: AppTypography.captionRegular.copyWith(
-                          color: AppTypography.textSecondary,
+                    Expanded(
+                      child: Text(
+                        title.toUpperCase(),
+                        style: AppTypography.badgeText.copyWith(
+                          color: titleColor ?? AppTheme.primary,
+                          letterSpacing: 0.8,
                         ),
                       ),
-                    ],
-                    const SizedBox(height: AppSpacing.lg),
-                    Flexible(
-                      child: SingleChildScrollView(child: content),
                     ),
-                    if (actions != null) ...[
-                      const SizedBox(height: AppSpacing.xl),
-                      actions!,
+                    if (headerTrailing != null) ...[
+                      const SizedBox(width: AppSpacing.md),
+                      headerTrailing!,
                     ],
                   ],
                 ),
-              ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    subtitle!,
+                    style: AppTypography.captionRegular.copyWith(
+                      color: AppTypography.textSecondary,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: AppSpacing.lg),
+                Flexible(
+                  child: SingleChildScrollView(child: content),
+                ),
+                if (actions != null) ...[
+                  const SizedBox(height: AppSpacing.xl),
+                  actions!,
+                ],
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }

@@ -714,6 +714,48 @@ class AppStrings {
   // Achievement error messages
   static const String achievementsLoadFailed = 'Failed to load achievements.';
 
+  // Assign dialog
+  static const String assignAircraftTitle = 'ASSIGN AIRCRAFT';
+  static const String unassignCurrentAircraft = 'Unassign current aircraft';
+  static const String conditionLabel = 'CONDITION';
+  static const String noAvailableAircraftDesc =
+      'No available aircraft. Acquire one in the Fleet tab first.';
+  static const String assignConfirm = 'ASSIGN';
+  static const String unassignConfirm = 'UNASSIGN';
+
+  // Route panel labels
+  static const String activeRoutesHeader = 'ACTIVE ROUTES';
+  static const String systemMonitorHeader = 'SYSTEM MONITOR';
+  static const String blueprintPlannerHeader = 'BLUEPRINT PLANNER';
+  static const String openBlueprintPlannerCta = 'OPEN BLUEPRINT PLANNER';
+  static const String blueprintPlannerHint =
+      'Use the Blueprint Planner panel below to create your first route between two airports.';
+  static const String selectAirportsPrompt = 'Select origin and destination airports.';
+  static const String fleetMonitorLabel = 'FLEET';
+  static const String networkMonitorLabel = 'NETWORK';
+  static const String retryLabel = 'RETRY';
+  static const String creatingRouteLabel = 'CREATING...';
+  static const String createRouteLabel = 'CREATE ROUTE';
+
+  // Bank/Loan
+  static const String principalAmount = 'PRINCIPAL AMOUNT';
+  static const String loanTerm = 'LOAN TERM';
+  static const String takeLoan = 'TAKE LOAN';
+  static const String loanApproved = 'Loan approved!';
+  static const String noActiveLoans = 'NO ACTIVE LOANS';
+  static const String borrowCapital = 'Borrow capital for expansion.';
+  static const String outstanding = 'OUTSTANDING';
+  static const String weeklyPayment = 'WEEKLY PAYMENT';
+  static const String paidOff = 'Paid Off';
+  static const String defaulted = 'Defaulted';
+
+  // Routes
+  static const String assignAircraft = 'ASSIGN AIRCRAFT';
+  static const String unassignCurrent = 'Unassign current aircraft';
+  static const String noAvailableAircraft = 'No available aircraft. Acquire one in the Fleet tab first.';
+  static const String financeAircraft = 'Finance Aircraft';
+  static const String cancel = 'CANCEL';
+
   // Shared widgets
   static const String dialogDismissButton = 'DISMISS';
 }
