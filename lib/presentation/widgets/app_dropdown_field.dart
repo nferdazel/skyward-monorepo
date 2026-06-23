@@ -51,7 +51,7 @@ class AppDropdownField<T> extends StatelessWidget {
                 icon: Icon(Icons.arrow_drop_down, color: AppTheme.primary, size: 18),
                 style: AppTypography.badgeText.copyWith(
                   color: AppTheme.textPrimary,
-                  letterSpacing: 0.4,
+                  letterSpacing: AppTypography.spacingRelaxed,
                 ),
               ),
             ),

@@ -245,7 +245,7 @@ class _AuthScreenState extends State<AuthScreen> {
           style: AppTypography.screenTitleLarge.copyWith(
             fontSize: 20,
             fontWeight: FontWeight.w700,
-            letterSpacing: 0.12,
+            letterSpacing: AppTypography.spacingWide,
             color: AppTheme.primary,
           ),
         ),
@@ -405,18 +405,13 @@ class _AuthScreenState extends State<AuthScreen> {
                 const SizedBox(height: AppSpacing.xs),
                 Align(
                   alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: isLoading
+                  child: InkWell(
+                    onTap: isLoading
                         ? null
                         : () => _showForgotPasswordDialog(context),
-                    style: TextButton.styleFrom(
-                      padding: EdgeInsets.zero,
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
                     child: Text(
                       AppStrings.forgotPassword,
-                      style: AppTypography.microLabel.copyWith(
+                      style: AppTypography.captionRegular.copyWith(
                         color: AppTheme.primary,
                         decoration: TextDecoration.underline,
                       ),

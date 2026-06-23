@@ -899,7 +899,7 @@ class _RoutesViewState extends State<RoutesView> {
                   const SizedBox(width: AppSpacing.md),
                   // Price
                   SizedBox(
-                    width: 130,
+                    width: 128,
                     child: TextFormField(
                       controller: _priceController,
                       keyboardType: const TextInputType.numberWithOptions(

@@ -123,7 +123,7 @@ class RouteNetworkMap extends StatelessWidget {
                           'WORLD MAP',
                           style: AppTypography.badgeText.copyWith(
                             color: AppTheme.textPrimary,
-                            letterSpacing: 0.8,
+                            letterSpacing: AppTypography.spacingSection,
                           ),
                         ),
                         if (!compact) ...[
@@ -631,7 +631,7 @@ class _MapAttributionBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.xs,
-        vertical: 4,
+        vertical: AppSpacing.xs,
       ),
       decoration: BoxDecoration(
         color: AppTheme.background.withValues(alpha: 0.78),

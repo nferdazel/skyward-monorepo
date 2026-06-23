@@ -326,7 +326,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                                   margin: const EdgeInsets.only(left: AppSpacing.xs),
                                   decoration: BoxDecoration(
                                     color: _tierColor(entry.creditTier).withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(2),
+                                    borderRadius: BorderRadius.circular(AppSpacing.radiusTight),
                                   ),
                                   child: Text(
                                     entry.creditTier!,
@@ -504,8 +504,8 @@ class _LeaderboardViewState extends State<LeaderboardView> {
               child: Row(
                 children: [
                   SizedBox(
-                    width: 12,
-                    height: 12,
+                    width: AppSpacing.md,
+                    height: AppSpacing.md,
                     child: CircularProgressIndicator(
                       color: AppTheme.primary,
                       strokeWidth: 2,

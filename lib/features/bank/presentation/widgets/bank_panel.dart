@@ -423,7 +423,7 @@ class _LoanCard extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                     decoration: BoxDecoration(
                       color: AppTheme.warning.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(2),
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusTight),
                     ),
                     child: Text(
                       'BOT',
@@ -446,7 +446,7 @@ class _LoanCard extends StatelessWidget {
 
             // Progress bar
             ClipRRect(
-              borderRadius: BorderRadius.circular(2),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusTight),
               child: LinearProgressIndicator(
                 value: progress,
                 minHeight: 4,

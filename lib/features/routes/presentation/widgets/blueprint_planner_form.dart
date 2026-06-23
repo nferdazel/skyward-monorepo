@@ -243,7 +243,7 @@ class _BlueprintPlannerFormState extends State<BlueprintPlannerForm> {
                 AppStrings.blueprintNewNodeTitle,
                 style: AppTypography.badgeText.copyWith(
                   color: AppTypography.textPrimary,
-                  letterSpacing: 0.8,
+                  letterSpacing: AppTypography.spacingSection,
                 ),
               ),
               const SizedBox(height: AppSpacing.xs),
@@ -343,7 +343,7 @@ class _BlueprintPlannerFormState extends State<BlueprintPlannerForm> {
                             color: _viabilityColor(
                               planningAssessment.viability,
                             ),
-                            letterSpacing: 0.8,
+                            letterSpacing: AppTypography.spacingSection,
                           ),
                         ),
                         const SizedBox(height: AppSpacing.sm),

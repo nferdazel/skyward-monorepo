@@ -60,7 +60,7 @@ class DashboardSidebar extends StatelessWidget {
                     for (int i = 0; i < navIcons.length; i++) ...[
                       if (i == 3) ...[
                         const SizedBox(height: AppSpacing.sm),
-                        Divider(color: AppTheme.border, height: 1, indent: 10, endIndent: 10),
+                        Divider(color: AppTheme.border, height: 1, indent: AppSpacing.md, endIndent: AppSpacing.md),
                         const SizedBox(height: AppSpacing.sm),
                       ],
                       _buildNavIcon(

@@ -27,7 +27,7 @@ class LeaderboardTableHeaderCell extends StatelessWidget {
         text,
         style: AppTypography.badgeText.copyWith(
           color: AppTheme.textSecondary,
-          letterSpacing: 0.3,
+          letterSpacing: AppTypography.spacingNormal,
         ),
       ),
     );

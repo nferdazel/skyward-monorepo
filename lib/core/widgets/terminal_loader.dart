@@ -24,7 +24,7 @@ class TerminalLoader extends StatelessWidget {
           message,
           style: AppTypography.badgeText.copyWith(
             color: AppTheme.primary,
-            letterSpacing: 1.5,
+            letterSpacing: 1.5, // Intentional wide spacing for terminal aesthetic
           ),
         ),
         const SizedBox(height: AppSpacing.md),
