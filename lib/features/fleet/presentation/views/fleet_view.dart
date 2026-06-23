@@ -6,7 +6,6 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/game_constants.dart';
-import '../../../../core/services/sound_service.dart';
 import '../../../../core/utils/app_formatters.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/condition_colors.dart';
@@ -113,7 +112,6 @@ class _FleetViewState extends State<FleetView>
             final message = state.fleet.length == 1
                 ? '${state.message} Your first airframe is operational!'
                 : state.message;
-            SoundService.playCashRegister();
             AppSnackBar.showSuccess(context, message);
           } else if (state is FleetError) {
             AppSnackBar.showError(context, state.message);
@@ -1595,7 +1593,7 @@ class _FleetViewState extends State<FleetView>
     bool isAssigned,
   ) {
     if (isAssigned) {
-      AppSnackBar.showError(context, AppStrings.disposalAssignedWarning);
+      AppSnackBar.showWarning(context, AppStrings.disposalAssignedWarning);
       return;
     }
 

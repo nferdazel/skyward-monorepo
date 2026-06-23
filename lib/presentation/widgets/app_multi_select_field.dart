@@ -148,7 +148,7 @@ class AppMultiSelectField extends StatelessWidget {
                           type: AppButtonType.secondary,
                           height: 40,
                         ),
-                        const SizedBox(width: AppSpacing.xs),
+                        const SizedBox(width: AppSpacing.sm),
                         AppButton(
                           text: 'APPLY',
                           onPressed: () {

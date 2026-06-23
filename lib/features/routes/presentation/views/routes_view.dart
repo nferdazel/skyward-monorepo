@@ -79,7 +79,6 @@ class _RoutesViewState extends State<RoutesView> {
           final message = state.routes.length == 1
               ? '${state.message} Your first route is live!'
               : state.message;
-          SoundService.playSuccess();
           AppSnackBar.showSuccess(context, message);
         } else if (state is RoutesError) {
           AppSnackBar.showError(context, state.message);
@@ -1107,9 +1106,16 @@ class _RoutesViewState extends State<RoutesView> {
         return AppDialogShell(
           title:
               '${route.originIata} ${AppStrings.routeDividerGlyph} ${route.destinationIata}',
-          content: SizedBox(
-            width: 560,
-            child: Column(
+          headerTrailing: IconButton(
+            icon: Icon(Icons.close, size: 16, color: AppTheme.textMuted),
+            onPressed: () {
+              SoundService.playTap();
+              Navigator.pop(context);
+            },
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(maxWidth: 32, maxHeight: 32),
+          ),
+          content: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1233,7 +1239,6 @@ class _RoutesViewState extends State<RoutesView> {
                 ],
               ],
             ),
-          ),
         );
       },
     );
@@ -1865,7 +1870,7 @@ class _RoutesViewState extends State<RoutesView> {
         _updatePlannerDistance();
       });
       AppSnackBar.showInfo(
-          context, 'Origin: ${nearest.iata} — ${nearest.name}');
+          context, AppStrings.originSelected(nearest.iata, nearest.name));
     } else if (_plannerDestination == null &&
         nearest.iata != _plannerOrigin!.iata) {
       setState(() {
@@ -1873,7 +1878,7 @@ class _RoutesViewState extends State<RoutesView> {
         _updatePlannerDistance();
       });
       AppSnackBar.showInfo(
-          context, 'Destination: ${nearest.iata} — ${nearest.name}');
+          context, AppStrings.destinationSelected(nearest.iata, nearest.name));
     }
   }
 

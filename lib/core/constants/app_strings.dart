@@ -600,6 +600,9 @@ class AppStrings {
   static const String routePricingWatchWeak =
       'Fare is suppressing bookings harder than the network can absorb.';
 
+  static String originSelected(String iata, String name) => 'Origin: $iata — $name';
+  static String destinationSelected(String iata, String name) => 'Destination: $iata — $name';
+
   // Finance Screen
   static const String financeOverviewTab = 'OVERVIEW';
   static const String financeTransactionsTab = 'TRANSACTIONS';

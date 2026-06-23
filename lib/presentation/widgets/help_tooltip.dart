@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../core/services/sound_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
-import 'app_dialog_shell.dart';
 
 /// A small ? icon that shows a help tooltip on tap/hover.
 class HelpTooltip extends StatelessWidget {
@@ -39,109 +37,3 @@ class HelpTooltip extends StatelessWidget {
   }
 }
 
-/// A "How to Play" help overlay dialog shown from the TopHud.
-class HowToPlayOverlay extends StatelessWidget {
-  const HowToPlayOverlay({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return AppDialogShell(
-      title: 'HOW TO PLAY',
-      maxWidth: 520,
-      headerTrailing: IconButton(
-        icon: Icon(Icons.close, size: 16, color: AppTheme.textMuted),
-        padding: EdgeInsets.zero,
-        constraints: const BoxConstraints(
-          minWidth: AppSpacing.xxxl,
-          minHeight: AppSpacing.xxxl,
-        ),
-        onPressed: () {
-          SoundService.playTap();
-          Navigator.pop(context);
-        },
-      ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSection(
-            icon: Icons.flight_outlined,
-            title: 'Acquire Fleet',
-            body:
-                'Buy or lease aircraft from the Hangar tab. Each aircraft needs seat configuration before it can fly routes.',
-          ),
-          _buildSection(
-            icon: Icons.route,
-            title: 'Blueprint Routes',
-            body:
-                'Use the Blueprint Planner on the Routes tab to connect airports. Set ticket prices near the recommended base fare for best demand.',
-          ),
-          _buildSection(
-            icon: Icons.build_outlined,
-            title: 'Maintain Aircraft',
-            body:
-                'Aircraft wear down with each flight. Repair them before they hit the auto-grounding threshold or they stop earning revenue.',
-          ),
-          _buildSection(
-            icon: Icons.account_balance_outlined,
-            title: 'Watch Your Runway',
-            body:
-                'Cash runway shows how many days you can survive at current burn. Keep it above 30 days. Lease costs run even when aircraft are idle.',
-          ),
-          _buildSection(
-            icon: Icons.leaderboard_outlined,
-            title: 'Climb the Leaderboard',
-            body:
-                'Grow your net worth faster than AI competitors by optimizing routes, pricing, and fleet utilization.',
-          ),
-        ],
-      ),
-      actions: Align(
-        alignment: Alignment.centerRight,
-        child: Text(
-          'Hover ? icons throughout the UI for context-specific help.',
-          style: AppTypography.captionLight,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSection({
-    required IconData icon,
-    required String title,
-    required String body,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.lg),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 16, color: AppTheme.primary),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: AppTypography.bodyLarge.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  body,
-                  style: AppTypography.captionRegular.copyWith(
-                    color: AppTheme.textSecondary,
-                    height: 1.4,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
