@@ -88,3 +88,20 @@ via `user_fleet.total_flights`, `last_a_check_at`, `last_c_check_at`.
 
 Cargo revenue: 10% of ticket revenue, scaling with route distance up to 5000 km.
 Logged as `financial_ledger.category = 'cargo'`.
+
+## Bank loan payment processing
+
+Loan payments are processed at game-day boundaries during `process_player_simulation_to_time`:
+- each active loan's `monthly_payment` is deducted from the player's cash
+- `remaining_balance` is reduced by the principal portion of the payment
+- if cash is insufficient, the loan enters `defaulted` status
+- credit score is recalculated after each payment cycle
+- bot actors also participate in the loan system with archetype-aware financial behavior
+
+## Achievement checking
+
+Achievements are evaluated at game-day boundaries during simulation processing:
+- progress values are updated based on current player state (fleet size, route count, net worth, etc.)
+- achievements unlock when progress meets the threshold
+- rank history snapshots are recorded at each game-day boundary
+- unlocked achievements may gate future progression milestones

@@ -23,6 +23,8 @@ Skyward is a Flutter airline-tycoon sim with:
 - `LazyTabCubit`
 - `BlueprintPlannerFormCubit`
 - `SettingsCubit` is provided in `main.dart` at app level
+- `BankCubit`
+- `AchievementCubit`
 
 `SimulationCubit` is the central backend-reconciliation source.
 Other feature cubits subscribe through `SimulationReactiveMixin`.
@@ -32,7 +34,7 @@ workspaces are first opened.
 ## Gateway pattern
 
 Every Cubit that communicates with Supabase does so through a dedicated
-gateway. There are seven gateways in total:
+gateway. There are nine gateways in total:
 
 | Gateway | Supabase surface |
 |---------|-----------------|
@@ -43,6 +45,8 @@ gateway. There are seven gateways in total:
 | `FinanceGateway` | `get_finance_snapshot` |
 | `LeaderboardGateway` | `get_global_leaderboard`, `get_competitor_insights` |
 | `SettingsGateway` | `reset_user_airline`, `save_airline_settings` |
+| `BankGateway` | `take_loan`, `get_credit_report`, `refinance_loan`, `finance_aircraft` |
+| `AchievementGateway` | achievement tracking and rank history reads |
 
 Each gateway defines an abstract interface and a `Supabase*Gateway`
 implementation. This makes Cubits testable with mock gateways.

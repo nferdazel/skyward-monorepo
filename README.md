@@ -14,7 +14,7 @@ authoritative simulation, economy, world time, and operational validation.
 
 - Flutter frontend with feature-first modules
 - Cubit-only app state
-- Supabase-backed auth, simulation, finance, routes, fleet, and leaderboard
+- Supabase-backed auth, simulation, finance, routes, fleet, leaderboard, bank, and achievement
 - backend-owned world clock through `season_clock`
 - human and bot actors sharing the same authoritative simulation rules
 
@@ -23,6 +23,8 @@ authoritative simulation, economy, world time, and operational validation.
 - fleet acquisition, repair, seat configuration, and disposal
 - route planning, pricing, assignment, and schedule management
 - finance snapshots plus rolling ledger analytics
+- bank/loan system with credit scoring and aircraft financing
+- achievements system with rank history tracking
 - AI competitor leaderboard with Intel panel
 - backend world-tick simulation and actor reconciliation
 - notification panel with typed alerts (info, success, warning, error, event)

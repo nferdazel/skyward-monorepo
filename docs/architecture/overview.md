@@ -43,6 +43,8 @@ Current runtime cubits:
 - `LazyTabCubit`
 - `BlueprintPlannerFormCubit`
 - `SettingsCubit`
+- `BankCubit`
+- `AchievementCubit`
 
 Allowed local widget state is limited to widget lifecycle concerns such as:
 - `TextEditingController`
@@ -52,7 +54,7 @@ Allowed local widget state is limited to widget lifecycle concerns such as:
 ## Gateway pattern
 
 Every Cubit that communicates with Supabase does so through a dedicated
-gateway abstraction. There are seven gateways:
+gateway abstraction. There are nine gateways:
 
 - `AuthGateway` / `SupabaseAuthGateway`
 - `SimulationGateway` / `SupabaseSimulationGateway`
@@ -61,6 +63,8 @@ gateway abstraction. There are seven gateways:
 - `FinanceGateway` / `SupabaseFinanceGateway`
 - `LeaderboardGateway` / `SupabaseLeaderboardGateway`
 - `SettingsGateway` / `SupabaseSettingsGateway`
+- `BankGateway` / `SupabaseBankGateway`
+- `AchievementGateway` / `SupabaseAchievementGateway`
 
 Each gateway defines:
 - an abstract interface declaring the Supabase operations for that feature
@@ -87,6 +91,8 @@ The UI now also uses a hybrid Supabase Realtime reflection layer:
 - `RoutesCubit` listens to `user_routes` and `user_fleet`
 - `FinanceCubit` listens to `financial_ledger`
 - `LeaderboardCubit` listens to `ai_competitors`
+- `AchievementCubit` listens to `achievements`
+- `BankCubit` listens to `loans`
 
 Realtime is used to reflect database writes into Cubit state faster.
 It does not replace authoritative SQL simulation or periodic reconciliation.
@@ -185,6 +191,18 @@ Shared widget primitives now cover:
 - maintenance check milestones: A-check every 500 flights, C-check every 3000 flights
 - cargo revenue: 10% of ticket revenue baseline, scaling with route distance up to 5000 km
 - non-linear aircraft degradation: accelerating wear below 60% condition
+
+### Bank
+- loan origination and management
+- credit scoring and credit history
+- aircraft financing
+- loan refinancing
+- bot financial behavior integration
+
+### Achievements
+- achievement tracking and unlocking
+- rank history progression
+- achievement-gated milestones
 
 ### Settings
 - airline profile / HQ / safety threshold

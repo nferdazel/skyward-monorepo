@@ -546,3 +546,89 @@ where user_id = '<your_user_id>'
 order by game_date desc
 limit 20;
 ```
+
+## 26. Achievements audit
+
+Check a player's unlocked achievements and progress:
+
+```sql
+select
+  achievement_key,
+  unlocked_at,
+  progress
+from achievements
+where user_id = '<your_user_id>'
+order by unlocked_at desc;
+```
+
+## 27. Bank loans audit
+
+Check active and historical loans for a player:
+
+```sql
+select
+  id,
+  loan_type,
+  principal,
+  remaining_balance,
+  interest_rate,
+  monthly_payment,
+  status,
+  created_at
+from loans
+where user_id = '<your_user_id>'
+order by created_at desc;
+```
+
+## 28. Credit scoring audit
+
+Check credit score history for a player:
+
+```sql
+select
+  score,
+  factors,
+  calculated_at
+from credit_score_history
+where user_id = '<your_user_id>'
+order by calculated_at desc
+limit 10;
+```
+
+## 29. Aircraft financing audit
+
+Check aircraft financing records:
+
+```sql
+select
+  af.id,
+  af.financed_amount,
+  af.down_payment,
+  l.principal,
+  l.remaining_balance,
+  l.interest_rate,
+  l.status,
+  m.model_name,
+  f.tail_number
+from aircraft_financing af
+join loans l on l.id = af.loan_id
+join aircraft_models m on m.id = af.aircraft_model_id
+join user_fleet f on f.id = af.fleet_id
+where l.user_id = '<your_user_id>'
+order by af.id desc;
+```
+
+## 30. Rank history audit
+
+Check rank progression over time:
+
+```sql
+select
+  game_date,
+  rank,
+  net_worth
+from rank_history
+where user_id = '<your_user_id>'
+order by game_date desc
+limit 30;
+```

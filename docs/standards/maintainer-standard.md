@@ -68,7 +68,7 @@ lib/features/fleet/data/
 ## 5. UI/UX Rules
 
 - **Desktop web only.** Mobile responsive layouts have been removed. Do not add `ResponsiveLayout` or mobile-specific branches.
-- Minimum window size: 1024×700.
+- Minimum window size: 920×600.
 - Minimize flicker.
 - Prefer silent reloads over blocking loaders when data is already on screen.
 - Avoid unnecessary page-wide loading states after small actions.
@@ -93,7 +93,7 @@ All UI code must use the design system tokens defined in the theme files.
 ### Spacing
 
 - Use `AppSpacing.*` tokens only — never hardcode pixel values for spacing
-- Available tokens: `xs` (4), `sm` (8), `md` (12), `lg` (16), `xl` (20), `xxl` (24), `xxxl` (32)
+- Available tokens: `xs` (4), `sm` (8), `md` (12), `lg` (16), `xl` (20), `xxl` (24), `xxxl` (32), `xxxxl` (40), `xxxxxl` (48)
 - Use semantic tokens for layout: `pagePadding`, `cardPadding`, `sectionGap`, `blockGap`
 
 ### Typography
@@ -102,13 +102,13 @@ All UI code must use the design system tokens defined in the theme files.
 - UPPERCASE labels must use `microLabel` or explicit `letterSpacing: 0.06`
 - Data emphasis values use `hudValue`, `dataEmphasis`, or `largeKpi` as appropriate
 - Available styles by category:
-  - **Screen titles** (IBM Plex Mono): `screenTitleLarge`, `screenTitleMedium`
-  - **Section headers** (IBM Plex Mono, ALL CAPS): `sectionHeaderLarge`, `sectionHeaderMedium`
-  - **Body text** (Inter): `bodyLarge`, `bodyMedium`
-  - **Captions** (Inter): `captionRegular`, `captionLight`, `captionMuted`
+  - **Screen titles** (IBM Plex Sans): `screenTitleLarge`, `screenTitleMedium`
+  - **Section headers** (IBM Plex Sans, ALL CAPS): `sectionHeaderLarge`, `sectionHeaderMedium`
+  - **Body text** (IBM Plex Sans): `bodyLarge`, `bodyMedium`
+  - **Captions** (IBM Plex Sans): `captionRegular`, `captionLight`, `captionMuted`
   - **Labels** (IBM Plex Mono, ALL CAPS): `microLabel`, `badgeText`, `monoLabel`, `labelSecondary`
   - **Data/mono** (IBM Plex Mono): `hudValue`, `dataEmphasis`, `largeKpi`, `telemetry`, `monoValue`, `valuePrimary`
-  - **Buttons** (IBM Plex Mono): `buttonText`
+  - **Buttons** (IBM Plex Sans): `buttonText`
 
 ### Border Radius
 

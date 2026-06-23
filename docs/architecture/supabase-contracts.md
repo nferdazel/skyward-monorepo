@@ -471,6 +471,45 @@ This is the live Flutter-to-Supabase contract surface.
   - catches up simulation before closing the route
   - grounds the assigned aircraft before deleting the route
 
+### Bank
+
+`take_loan`
+- caller: `BankCubit.takeLoan()`
+- params:
+  - `p_loan_type`
+  - `p_amount`
+  - `p_aircraft_model_id` (optional, for aircraft financing)
+- current behavior:
+  - auth-bound wrapper resolves player from `auth.uid()`
+  - validates credit score and eligibility
+  - creates loan record and disburses funds
+
+`get_credit_report`
+- caller: `BankCubit.loadCreditReport()`
+- params: none from Flutter
+- current behavior:
+  - auth-bound wrapper resolves player from `auth.uid()`
+  - returns current credit score, loan summary, and payment history
+
+`refinance_loan`
+- caller: `BankCubit.refinanceLoan()`
+- params:
+  - `p_loan_id`
+- current behavior:
+  - auth-bound wrapper resolves player from `auth.uid()`
+  - validates eligibility for refinancing
+  - updates loan terms
+
+`finance_aircraft`
+- caller: `BankCubit.financeAircraft()`
+- params:
+  - `p_model_id`
+  - `p_down_payment`
+- current behavior:
+  - auth-bound wrapper resolves player from `auth.uid()`
+  - validates credit eligibility
+  - creates aircraft financing loan and purchase transaction
+
 ### Leaderboard
 
 `get_global_leaderboard`
@@ -530,6 +569,11 @@ The client also reads some tables directly through Supabase queries:
 - `global_game_settings`
 - `game_events` (active world events)
 - `financial_snapshots` (daily financial history for trends)
+- `loans` (active and historical loan records)
+- `credit_score_history` (credit score tracking)
+- `aircraft_financing` (aircraft-specific financing records)
+- `achievements` (achievement tracking and unlock state)
+- `rank_history` (historical rank snapshots)
 
 These are still part of the effective contract because UI parsing depends on their returned fields.
 
@@ -541,6 +585,8 @@ The Flutter client now subscribes to Postgres Changes on:
 - `user_routes`
 - `financial_ledger`
 - `ai_competitors`
+- `achievements`
+- `loans`
 
 Operational rule:
 - the pg_cron world tick is the authoritative catch-up trigger

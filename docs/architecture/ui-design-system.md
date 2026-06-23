@@ -40,20 +40,20 @@ Current direction:
 - dark airline operations console
 - flat surfaces with 4px border-radius (3px for badges)
 - border-led hierarchy rather than shadow-led hierarchy
-- monospace font (IBM Plex Mono) for all metric values and labels
-- Inter for body/UI text
+- IBM Plex Mono for metric values and labels
+- IBM Plex Sans for general UI text
 - status colors used as operational signals only
 
 Primary dark palette from [skyward_colors.dart](../../lib/core/theme/skyward_colors.dart:1):
-- background: `#0A0C0F` (near-black base)
-- surface: `#111318` (card backgrounds)
-- surface raised: `#181C22` (raised elements)
-- border: `#3A3F4A` (borders)
-- primary accent: `#448AFF` (information blue)
-- success: `#00E676` (operational green)
-- danger: `#FF3D00` (critical red)
-- warning: `#FFB300` (caution amber)
-- neutral: `#6B7280` (muted text)
+- background: `#080B10` (near-black base)
+- surface: `#0F1319` (card backgrounds)
+- surface raised: `#161C25` (raised elements)
+- border: `0x1AFFFFFF` (10% white)
+- primary accent: `#5B9EE0` (HUD blue)
+- success: `#34D07B` (operational green)
+- danger: `#E05555` (critical red)
+- warning: `#E6A817` (caution amber)
+- neutral: `#758489` (muted text)
 
 Runtime theme note:
 - a light theme token set exists
@@ -111,15 +111,10 @@ Post-auth flow:
 - if unauthenticated, show the auth screen
 
 Desktop navigation model:
-- left vertical sidebar (220px fixed width)
-- top system ticker strip (28px, scrolling)
-- top HUD/status bar (44px)
+- left vertical sidebar (44px icon-only with tooltips)
+- top system ticker strip (24px, scrolling)
+- top HUD/status bar (40px)
 - main content workspace rendered through an `IndexedStack`
-
-Mobile navigation model:
-- app bar with company and CEO info
-- compact HUD strip in the app bar bottom area
-- bottom navigation bar
 
 Within sections:
 - Fleet uses a 2-tab internal workspace
@@ -356,9 +351,6 @@ Breakpoint logic:
 - desktop at `>= 950px`
 - mobile below `950px`
 
-Reference:
-- [responsive_layout.dart](../../lib/core/widgets/responsive_layout.dart:1)
-
 ### Interactive Elements
 
 The current app contains several non-trivial interactive components:
@@ -417,17 +409,17 @@ From [app_theme.dart](../../lib/core/theme/app_theme.dart:1):
 
 | Token | Hex | Usage |
 |-------|-----|-------|
-| `primary` | `#79C0FF` | Accent, active states |
-| `accentSubtle` | `#1F3A5F` | Subtle accent backgrounds |
-| `background` | `#0D1117` | Page background |
-| `surface` | `#161B22` | Card/panel background |
-| `surfaceRaised` | `#1C2128` | Elevated surfaces, table headers |
-| `border` | `#30363D` | Borders, dividers |
-| `borderSubtle` | `#21262D` | Subtle backgrounds |
-| `success` | `#3FB950` | Positive states |
-| `error` | `#F85149` | Destructive, errors |
-| `warning` | `#D29922` | Caution states |
-| `neutral` | `#6E7681` | Muted elements |
+| `primary` | `#5B9EE0` | Accent, active states |
+| `accentSubtle` | `#1A5B9EE0` | Subtle accent backgrounds |
+| `background` | `#080B10` | Page background |
+| `surface` | `#0F1319` | Card/panel background |
+| `surfaceRaised` | `#161C25` | Elevated surfaces, table headers |
+| `border` | `0x1AFFFFFF` | Borders, dividers |
+| `borderSubtle` | `0x0DFFFFFF` | Subtle backgrounds |
+| `success` | `#34D07B` | Positive states |
+| `error` | `#E05555` | Destructive, errors |
+| `warning` | `#E6A817` | Caution states |
+| `neutral` | `#758489` | Muted elements |
 
 #### Spacing Tokens
 
@@ -461,17 +453,17 @@ Border radius tokens:
 #### Typography
 
 Font families:
-- IBM Plex Mono via Google Fonts — used for all metric values, labels, section headers, badges, buttons, HUD values, KPI text
-- Inter via Google Fonts — used for body text, captions, hints
+- IBM Plex Mono via Google Fonts — used for metric values, labels, data/mono text, HUD values, KPI text, badges
+- IBM Plex Sans via Google Fonts — used for screen titles, section headers, body text, captions, buttons
 
 Current typographic hierarchy:
-- screen titles: 13–15px, IBM Plex Mono, w600, letterSpacing +0.06em
-- section headers: 11–12px, IBM Plex Mono, w600, UPPERCASE, letterSpacing +0.10em
-- body text: 13–14px, Inter
-- captions and hints: 11–12px, Inter
+- screen titles: 13–15px, IBM Plex Sans, w600, letterSpacing +0.06em
+- section headers: 11–12px, IBM Plex Sans, w600, UPPERCASE, letterSpacing +0.10em
+- body text: 13–14px, IBM Plex Sans
+- captions and hints: 11–12px, IBM Plex Sans
 - micro labels: 11px, IBM Plex Mono, w600, letterSpacing +0.10em
 - badge text: 11px, IBM Plex Mono, w600, letterSpacing +0.08em
-- button text: 12px, IBM Plex Mono, w600, letterSpacing +0.08em
+- button text: 12px, IBM Plex Sans, w600, letterSpacing +0.08em
 - HUD values: 13px, IBM Plex Mono, w600
 - data emphasis: 15px, IBM Plex Mono, w700
 - large KPI: 20px, IBM Plex Mono, w700, letterSpacing -0.02em
@@ -480,7 +472,7 @@ Current typographic hierarchy:
 - mono label: 11px, IBM Plex Mono, w600, letterSpacing +0.08em
 - label secondary: 11px, IBM Plex Mono, w600, letterSpacing +0.08em
 - value primary: 13px, IBM Plex Mono, w600
-- caption muted: 11px, Inter, w400
+- caption muted: 11px, IBM Plex Sans, w400
 
 References:
 - [app_theme.dart](../../lib/core/theme/app_theme.dart:1)
@@ -502,6 +494,14 @@ Current shared primitives:
 - notification panel
 - onboarding overlay
 - help tooltip
+- sparkline charts (`AppSparkline`)
+- line charts (`AppLineChart`)
+- segmented progress bars (`SegmentedProgressBar`)
+- expense breakdown bars (`ExpenseBreakdownBar`)
+- skyward logo (`SkywardLogo`)
+- multi-select fields (`AppMultiSelectField`)
+- snackbars (`AppSnackbar`)
+- tab items (`AppTabItem`)
 
 Visual behavior of primitives:
 - cards are flat bordered blocks with 4px radius
@@ -529,7 +529,7 @@ Reference:
 ### Ticker Tape
 
 Desktop shell includes a top system ticker strip:
-- 28px height, bright accent bar
+- 24px height, bright accent bar
 - scrolling animation
 - compressed operational copy
 - status-broadcast feeling
@@ -547,7 +547,7 @@ Desktop and mobile both prioritize a compact operational HUD showing:
 - fuel price
 - sync/live status
 
-44px height with pipe separators and UPPERCASE labels.
+40px height with pipe separators and UPPERCASE labels.
 
 Reference:
 - [top_hud.dart](../../lib/features/dashboard/presentation/widgets/top_hud.dart:1)
@@ -555,8 +555,7 @@ Reference:
 ### Sidebar
 
 Desktop sidebar:
-- 220px fixed width
-- Icon + label navigation
+- 44px fixed width (icon-only with tooltips)
 - Section grouping: OPERATIONS, ANALYTICS, SYSTEM
 - Active state with left accent border
 - "SKYWARD" wordmark at top

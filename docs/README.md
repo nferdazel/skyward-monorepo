@@ -26,13 +26,15 @@ Backend/runtime milestones already in place:
 - auth-bound gameplay RPC wrappers
 - RLS on the app-facing read surface
 - removal of the legacy custom-session auth system
-- gateway pattern (7 gateways: Auth, Simulation, Fleet, Routes, Finance, Leaderboard, Settings)
+- gateway pattern (9 gateways: Auth, Simulation, Fleet, Routes, Finance, Leaderboard, Settings, Bank, Achievement)
 - event system (`game_events` table with time-bounded fuel, demand, tax, and weather effects)
 - notification panel, onboarding overlay, and help tooltip UI widgets
 - financial snapshots for historical trend visualization
 - hub-and-spoke bonus, airport congestion, and catch-up subsidy mechanics
 - aviation depth: turnaround times, fare-class elasticity, crew costs, seasonal demand, maintenance milestones
 - cargo revenue and non-linear aircraft degradation
+- bank/loan system with credit scoring and aircraft financing
+- achievements system with rank history tracking
 
 ## How To Use This Folder
 
@@ -101,6 +103,28 @@ High-level grouping:
   (`game_events`), catch-up subsidy, hub bonus, `financial_snapshots` table,
   aviation depth (turnaround, fare-class elasticity, crew costs, seasonal
   demand, A/C-check milestones), cargo revenue, non-linear degradation
+- `79`
+  Achievements system
+- `80`-`81`
+  Missing DB object fixes
+- `82`
+  Rank history
+- `83`
+  Onboarding completed column
+- `84`
+  Bank loan system
+- `85`
+  Credit rating and aircraft financing
+- `86`
+  Fare buckets and depreciation
+- `87`
+  Credit system enhanced
+- `88`-`90`
+  Bank schema fixes and ledger constraint
+- `91`
+  Bot financial behavior
+- `92`
+  Critical DB fixes
 
 ## Current Time Authority
 

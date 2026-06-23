@@ -141,6 +141,74 @@ New columns (migration 77):
 New column (migration 78):
 - `buffered_cargo_revenue` — buffered cargo revenue accumulator for bot actors
 
+New column (migration 83):
+- `onboarding_completed` — boolean flag tracking whether the player has completed the onboarding flow
+
+### `achievements`
+Achievement tracking and unlock state per player.
+
+Important fields:
+- `user_id` — references `users(id)`
+- `achievement_key` — unique identifier for the achievement
+- `unlocked_at` — timestamp when the achievement was unlocked
+- `progress` — current progress value toward the achievement goal
+
+RLS: users can only read their own achievements.
+Migration 79 creates this table.
+
+### `rank_history`
+Historical rank snapshots for tracking player progression over time.
+
+Important fields:
+- `user_id` — references `users(id)`
+- `game_date` — the game date of the rank snapshot
+- `rank` — leaderboard rank at that point
+- `net_worth` — net worth at that point
+
+RLS: users can only read their own rank history.
+Migration 82 creates this table.
+
+### `loans`
+Active and historical loan records for the bank system.
+
+Important fields:
+- `user_id` — references `users(id)`
+- `loan_type` — type of loan (`aircraft_financing`, `general`)
+- `principal` — original loan amount
+- `remaining_balance` — current outstanding balance
+- `interest_rate` — annual interest rate
+- `monthly_payment` — scheduled payment amount
+- `status` — loan status (`active`, `paid_off`, `defaulted`)
+- `aircraft_model_id` — for aircraft financing loans
+
+RLS: users can only read their own loans.
+Migration 84 creates this table.
+
+### `credit_score_history`
+Credit score tracking for the bank system.
+
+Important fields:
+- `user_id` — references `users(id)`
+- `score` — credit score value
+- `factors` — JSON object with scoring factors
+- `calculated_at` — timestamp of the score calculation
+
+RLS: users can only read their own credit history.
+Migration 85 creates this table.
+
+### `aircraft_financing`
+Aircraft-specific financing records linking loans to fleet acquisitions.
+
+Important fields:
+- `loan_id` — references `loans(id)`
+- `fleet_id` — references `user_fleet(id)`
+- `aircraft_model_id` — references `aircraft_models(id)`
+- `financed_amount` — amount financed
+- `down_payment` — upfront payment made
+
+RLS: users can only read their own aircraft financing records.
+Migration 85 creates this table; migration 92 reconciles schema conflicts.
+
 ### `user_routes`
 Authoritative route network state.
 This is the source for:
