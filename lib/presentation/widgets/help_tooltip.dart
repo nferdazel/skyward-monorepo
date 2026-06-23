@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/services/sound_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
@@ -54,7 +55,10 @@ class HowToPlayOverlay extends StatelessWidget {
           minWidth: AppSpacing.xxxl,
           minHeight: AppSpacing.xxxl,
         ),
-        onPressed: () => Navigator.pop(context),
+        onPressed: () {
+          SoundService.playTap();
+          Navigator.pop(context);
+        },
       ),
       content: Column(
         mainAxisSize: MainAxisSize.min,

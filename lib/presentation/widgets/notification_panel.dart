@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_strings.dart';
+import '../../core/services/sound_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
@@ -104,7 +105,12 @@ class NotificationPanel extends StatelessWidget {
               button: true,
               label: 'Mark all notifications as read',
               child: InkWell(
-                onTap: onMarkAllRead,
+                onTap: onMarkAllRead == null
+                    ? null
+                    : () {
+                        SoundService.playTap();
+                        onMarkAllRead!();
+                      },
                 borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
                 hoverColor: AppTheme.primary.withValues(alpha: 0.08),
                 child: Padding(
@@ -126,7 +132,12 @@ class NotificationPanel extends StatelessWidget {
             button: true,
             label: 'Close notifications',
             child: InkWell(
-              onTap: onClose,
+              onTap: onClose == null
+                  ? null
+                  : () {
+                      SoundService.playTap();
+                      onClose!();
+                    },
               borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
               hoverColor: AppTheme.textMuted.withValues(alpha: 0.08),
               child: Padding(

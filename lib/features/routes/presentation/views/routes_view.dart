@@ -21,6 +21,7 @@ import '../../../../presentation/widgets/app_empty_state.dart';
 import '../../../../presentation/widgets/app_info_strip.dart';
 import '../../../../presentation/widgets/app_labeled_value.dart';
 import '../../../../presentation/widgets/app_snackbar.dart';
+import '../../../../presentation/widgets/app_table_icon_action.dart';
 import '../../../../presentation/widgets/app_stat_text.dart';
 import '../../../../presentation/widgets/help_tooltip.dart';
 import '../../../../presentation/widgets/searchable_airport_dropdown.dart';
@@ -607,86 +608,50 @@ class _RoutesViewState extends State<RoutesView> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  Tooltip(
-                    message: 'Route details',
-                    child: InkWell(
-                      onTap: () => _showRouteDetailsDialog(
+                  AppTableIconAction(
+                    tooltip: 'Route details',
+                    icon: Icons.info_outline,
+                    onPressed: () => _showRouteDetailsDialog(
+                      context,
+                      route,
+                      AppFormatters.currency,
+                      autoGroundingThreshold,
+                    ),
+                    color: AppTheme.textSecondary,
+                    size: 32,
+                    iconSize: 16,
+                  ),
+                  AppTableIconAction(
+                    tooltip: 'Assign Aircraft',
+                    icon: Icons.link,
+                    onPressed: () => _showAssignDialog(context, route, userId),
+                    color: AppTheme.primary,
+                    size: 32,
+                    iconSize: 16,
+                  ),
+                  AppTableIconAction(
+                    tooltip: 'Adjust Route',
+                    icon: Icons.tune,
+                    onPressed: () {
+                      _showAdjustDialog(
                         context,
                         route,
+                        userId,
                         AppFormatters.currency,
                         autoGroundingThreshold,
-                      ),
-                      borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
-                      child: Container(
-                        width: 32,
-                        height: 32,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
-                          border: Border.all(color: AppTheme.textSecondary.withValues(alpha: 0.3)),
-                        ),
-                        child: Icon(Icons.info_outline, size: 16, color: AppTheme.textSecondary),
-                      ),
-                    ),
+                      );
+                    },
+                    color: AppTheme.primary,
+                    size: 32,
+                    iconSize: 16,
                   ),
-                  Tooltip(
-                    message: 'Assign Aircraft',
-                    child: InkWell(
-                      onTap: () => _showAssignDialog(context, route, userId),
-                      borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
-                      child: Container(
-                        width: 32,
-                        height: 32,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
-                          border: Border.all(color: AppTheme.primary.withValues(alpha: 0.4)),
-                        ),
-                        child: Icon(Icons.link, size: 16, color: AppTheme.primary),
-                      ),
-                    ),
-                  ),
-                  Tooltip(
-                    message: 'Adjust Route',
-                    child: InkWell(
-                      onTap: () {
-                        _showAdjustDialog(
-                          context,
-                          route,
-                          userId,
-                          AppFormatters.currency,
-                          autoGroundingThreshold,
-                        );
-                      },
-                      borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
-                      child: Container(
-                        width: 32,
-                        height: 32,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
-                          border: Border.all(color: AppTheme.primary.withValues(alpha: 0.4)),
-                        ),
-                        child: Icon(Icons.tune, size: 16, color: AppTheme.primary),
-                      ),
-                    ),
-                  ),
-                  Tooltip(
-                    message: 'Close Route',
-                    child: InkWell(
-                      onTap: () => _confirmCloseRoute(context, route, userId),
-                      borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
-                      child: Container(
-                        width: 32,
-                        height: 32,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
-                          border: Border.all(color: AppTheme.error.withValues(alpha: 0.4)),
-                        ),
-                        child: Icon(Icons.close, size: 16, color: AppTheme.error),
-                      ),
-                    ),
+                  AppTableIconAction(
+                    tooltip: 'Close Route',
+                    icon: Icons.close,
+                    onPressed: () => _confirmCloseRoute(context, route, userId),
+                    color: AppTheme.error,
+                    size: 32,
+                    iconSize: 16,
                   ),
                 ],
               ),

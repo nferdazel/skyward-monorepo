@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/services/sound_service.dart';
 import '../../../../core/utils/app_formatters.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../presentation/theme/app_spacing.dart';
@@ -216,7 +217,10 @@ class _LeaderboardViewState extends State<LeaderboardView> {
   Widget _buildSortButton(String label, String sortKey) {
     final isActive = _sortBy == sortKey;
     return GestureDetector(
-      onTap: () => _changeSort(sortKey),
+      onTap: () {
+        SoundService.playTap();
+        _changeSort(sortKey);
+      },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
         decoration: BoxDecoration(

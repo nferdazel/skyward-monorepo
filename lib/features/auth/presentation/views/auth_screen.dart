@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/database/supabase_client.dart';
+import '../../../../core/services/sound_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../presentation/theme/app_spacing.dart';
 import '../../../../presentation/theme/app_typography.dart';
@@ -134,10 +135,8 @@ class _AuthScreenState extends State<AuthScreen> {
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: AppButton(
-                      text: isLoading ? '' : 'SEND RESET LINK',
-                      onPressed: isLoading
-                          ? null
-                          : () async {
+                      text: 'SEND RESET LINK',
+                      onPressed: () async {
                               if (!(formKey.currentState?.validate() ?? false)) {
                                 return;
                               }
@@ -408,7 +407,10 @@ class _AuthScreenState extends State<AuthScreen> {
                   child: InkWell(
                     onTap: isLoading
                         ? null
-                        : () => _showForgotPasswordDialog(context),
+                        : () {
+                            SoundService.playTap();
+                            _showForgotPasswordDialog(context);
+                          },
                     child: Text(
                       AppStrings.forgotPassword,
                       style: AppTypography.captionRegular.copyWith(

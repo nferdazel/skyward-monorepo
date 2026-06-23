@@ -3,7 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/database/supabase_client.dart';
-import '../../core/services/sound_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../features/auth/presentation/cubit/auth_cubit.dart';
 import '../../features/auth/presentation/cubit/auth_state.dart';
@@ -119,7 +118,6 @@ class _OnboardingOverlayState extends State<OnboardingOverlay> {
   bool get _isLast => _currentStep == _steps.length - 1;
 
   void _next() {
-    SoundService.playTap();
     if (_isLast) {
       _complete();
     } else {
