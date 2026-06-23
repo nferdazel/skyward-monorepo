@@ -126,7 +126,7 @@ class _RoutesViewState extends State<RoutesView> {
                       .read<RoutesCubit>()
                       .loadRoutesAndData(userId),
                   icon: const Icon(Icons.refresh, size: 16),
-                  label: Text('RETRY', style: AppTypography.badgeText),
+                  label: Text(AppStrings.retryLabel, style: AppTypography.badgeText),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppTheme.primary,
                     side: BorderSide(color: AppTheme.primary),
@@ -194,9 +194,9 @@ class _RoutesViewState extends State<RoutesView> {
                     icon: Icons.map_outlined,
                     title: AppStrings.noActiveConnections,
                     description: AppStrings.noActiveConnectionsDesc,
-                    actionLabel: 'OPEN BLUEPRINT PLANNER',
+                    actionLabel: AppStrings.openBlueprintPlannerCta,
                     onAction: () {
-                      AppSnackBar.showSuccess(context, 'Use the Blueprint Planner panel below to create your first route between two airports.');
+                      AppSnackBar.showSuccess(context, AppStrings.blueprintPlannerHint);
                     },
                   ),
                 ),
@@ -340,34 +340,11 @@ class _RoutesViewState extends State<RoutesView> {
                 ),
             ],
           ),
-          // All airports as small muted dots
-          MarkerLayer(
-            markers: [
-              for (final airport in airports)
-                if (!connectedAirports.containsKey(airport.iata))
-                  Marker(
-                    point: LatLng(airport.latitude, airport.longitude),
-                    width: 6,
-                    height: 6,
-                    alignment: Alignment.center,
-                    child: Container(
-                      width: 3,
-                      height: 3,
-                      decoration: BoxDecoration(
-                        color: AppTheme.textMuted.withValues(alpha: 0.5),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                  ),
-            ],
-          ),
-          // Connected airports — dot + hover label
+          // All airports with hover labels (skipped in ultra-dense mode)
           if (!ultraDense)
             MarkerLayer(
               markers: [
-                for (final airport in connectedAirports.values.take(
-                  ultraDense ? 4 : (denseNetwork ? 8 : 999),
-                ))
+                for (final airport in airports)
                   Marker(
                     point: LatLng(airport.latitude, airport.longitude),
                     width: 50,
@@ -377,6 +354,7 @@ class _RoutesViewState extends State<RoutesView> {
                       label: airport.iata,
                       highlighted: false,
                       demandIndex: airport.demandIndex,
+                      isConnected: connectedAirports.containsKey(airport.iata),
                     ),
                   ),
               ],
@@ -459,8 +437,8 @@ class _RoutesViewState extends State<RoutesView> {
               children: [
                 Icon(Icons.route, color: AppTheme.primary, size: 13),
                 const SizedBox(width: AppSpacing.sm),
-                Text(
-                  'ACTIVE ROUTES',
+                  Text(
+                  AppStrings.activeRoutesHeader,
                   style: AppTypography.microLabel.copyWith(
                     color: AppTheme.textSecondary,
                   ),
@@ -770,7 +748,7 @@ class _RoutesViewState extends State<RoutesView> {
               PulseDot(color: AppTheme.success, size: 4),
               const SizedBox(width: AppSpacing.sm),
               Text(
-                'SYSTEM MONITOR',
+                AppStrings.systemMonitorHeader,
                 style: AppTypography.microLabel.copyWith(
                   color: AppTheme.textSecondary,
                 ),
@@ -779,12 +757,12 @@ class _RoutesViewState extends State<RoutesView> {
           ),
           const SizedBox(height: AppSpacing.sm),
           _buildMonitorLine(
-            'FLEET',
+            AppStrings.fleetMonitorLabel,
             '$assignedCount/${routes.length} ASSIGNED',
             assignedCount == routes.length ? AppTheme.success : AppTheme.warning,
           ),
           _buildMonitorLine(
-            'NETWORK',
+            AppStrings.networkMonitorLabel,
             '${routes.length} ROUTES',
             AppTheme.textSecondary,
           ),
@@ -853,7 +831,7 @@ class _RoutesViewState extends State<RoutesView> {
                 Icon(Icons.architecture, color: AppTheme.primary, size: 13),
                 const SizedBox(width: AppSpacing.sm),
                 Text(
-                  'BLUEPRINT PLANNER',
+                  AppStrings.blueprintPlannerHeader,
                   style: AppTypography.microLabel.copyWith(
                     color: AppTheme.textSecondary,
                   ),
@@ -863,7 +841,7 @@ class _RoutesViewState extends State<RoutesView> {
                 const Spacer(),
                 if (_plannerOrigin != null && _plannerDestination != null) ...[
                   Text(
-                    'DIST: ${_plannerOrigin!.latitude.toStringAsFixed(2)}° ${_plannerOrigin!.longitude.toStringAsFixed(2)}°',
+                    'DIST: ${_plannerDistance.toStringAsFixed(0)} KM',
                     style: AppTypography.badgeText.copyWith(
                       color: AppTheme.textMuted,
                     ),
@@ -977,7 +955,7 @@ class _RoutesViewState extends State<RoutesView> {
                     builder: (context, routesState) {
                       final isLoading = routesState is RoutesActionLoading;
                       return AppButton(
-                        text: isLoading ? 'CREATING...' : 'CREATE ROUTE',
+                        text: isLoading ? AppStrings.creatingRouteLabel : AppStrings.createRouteLabel,
                         isLoading: isLoading,
                         height: 38,
                         onPressed: isLoading
@@ -1101,7 +1079,7 @@ class _RoutesViewState extends State<RoutesView> {
   ) async {
     if (!(_plannerFormKey.currentState?.validate() ?? false)) return;
     if (_plannerOrigin == null || _plannerDestination == null) {
-      AppSnackBar.showError(context, 'Select origin and destination airports.');
+      AppSnackBar.showError(context, AppStrings.selectAirportsPrompt);
       return;
     }
     if (_plannerOrigin!.iata == _plannerDestination!.iata) {
@@ -1684,58 +1662,166 @@ class _RoutesViewState extends State<RoutesView> {
 
     showDialog(
       context: context,
-      builder: (ctx) => AppDialogShell(
-        title: 'ASSIGN AIRCRAFT',
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
+      builder: (ctx) {
+        String? selectedId = route.assignedAircraftId;
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final isUnassigning = selectedId == null &&
+                route.assignedAircraft != null;
+            final isAssigning = selectedId != null &&
+                selectedId != route.assignedAircraftId;
+            final canConfirm = isUnassigning || isAssigning;
+
+            return AppDialogShell(
+              title: AppStrings.assignAircraftTitle,
+              subtitle:
+                  '${route.originIata} ${AppStrings.routeDividerGlyph} ${route.destinationIata}',
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (route.assignedAircraft != null)
+                    _buildAssignOption(
+                      isSelected: selectedId == null,
+                      icon: Icons.link_off,
+                      iconColor: AppTheme.warning,
+                      title: AppStrings.unassignCurrentAircraft,
+                      onTap: () => setDialogState(() => selectedId = null),
+                    ),
+                  if (route.assignedAircraft != null && available.isNotEmpty)
+                    Divider(color: AppTheme.border, height: 1),
+                  ...available.map((aircraft) {
+                    final conditionPct = aircraft.condition;
+                    final conditionColor = conditionPct >= 80
+                        ? AppTheme.success
+                        : conditionPct >= 50
+                            ? AppTheme.warning
+                            : AppTheme.error;
+
+                    return _buildAssignOption(
+                      isSelected: selectedId == aircraft.id,
+                      icon: Icons.flight,
+                      iconColor: AppTheme.primary,
+                      title:
+                          '${aircraft.tailNumber} — ${aircraft.model.modelName}',
+                      subtitle:
+                          '${AppStrings.conditionLabel}: ${conditionPct.toStringAsFixed(0)}%',
+                      trailing: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: conditionColor,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      onTap: () =>
+                          setDialogState(() => selectedId = aircraft.id),
+                    );
+                  }),
+                  if (available.isEmpty && route.assignedAircraft == null)
+                    Padding(
+                      padding: const EdgeInsets.all(AppSpacing.lg),
+                      child: Text(
+                        AppStrings.noAvailableAircraftDesc,
+                        style: AppTypography.bodyMedium
+                            .copyWith(color: AppTheme.textMuted),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                ],
+              ),
+              actions: Row(
+                children: [
+                  Expanded(
+                    child: AppButton(
+                      text: AppStrings.cancelLabel,
+                      onPressed: () => Navigator.pop(ctx),
+                      type: AppButtonType.secondary,
+                      height: 40,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: AppButton(
+                      text: isUnassigning
+                          ? AppStrings.unassignConfirm
+                          : AppStrings.assignConfirm,
+                      onPressed: canConfirm
+                          ? () {
+                              context.read<RoutesCubit>().assignAircraft(
+                                    routeId: route.id,
+                                    aircraftId: selectedId,
+                                    userId: userId,
+                                  );
+                              Navigator.pop(ctx);
+                            }
+                          : null,
+                      height: 40,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildAssignOption({
+    required bool isSelected,
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    String? subtitle,
+    Widget? trailing,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppTheme.primary.withValues(alpha: 0.08)
+              : Colors.transparent,
+          border: Border(
+            left: BorderSide(
+              color: isSelected ? AppTheme.primary : Colors.transparent,
+              width: 2,
+            ),
+          ),
+        ),
+        child: Row(
           children: [
-            if (route.assignedAircraft != null)
-              ListTile(
-                leading: Icon(Icons.link_off, color: AppTheme.warning),
-                title: Text(
-                  'Unassign current aircraft',
-                  style: AppTypography.bodyMedium,
-                ),
-                onTap: () {
-                  context.read<RoutesCubit>().assignAircraft(
-                        routeId: route.id,
-                        aircraftId: null,
-                        userId: userId,
-                      );
-                  Navigator.pop(ctx);
-                },
-              ),
-            if (route.assignedAircraft != null)
-              Divider(color: AppTheme.border),
-            ...available.map((aircraft) => ListTile(
-                  leading: Icon(Icons.flight, color: AppTheme.primary),
-                  title: Text(
-                    '${aircraft.tailNumber} — ${aircraft.model.modelName}',
-                    style: AppTypography.bodyMedium,
+            Icon(icon, color: iconColor, size: 18),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: isSelected
+                          ? AppTheme.textPrimary
+                          : AppTheme.textSecondary,
+                    ),
                   ),
-                  subtitle: Text(
-                    'Condition: ${aircraft.condition.toStringAsFixed(0)}% • ${aircraft.acquisitionType}',
-                    style: AppTypography.captionLight,
-                  ),
-                  onTap: () {
-                    context.read<RoutesCubit>().assignAircraft(
-                          routeId: route.id,
-                          aircraftId: aircraft.id,
-                          userId: userId,
-                        );
-                    Navigator.pop(ctx);
-                  },
-                )),
-            if (available.isEmpty && route.assignedAircraft == null)
-              Padding(
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                child: Text(
-                  'No available aircraft. Acquire one in the Fleet tab first.',
-                  style: AppTypography.bodyMedium
-                      .copyWith(color: AppTheme.textMuted),
-                  textAlign: TextAlign.center,
-                ),
+                  if (subtitle != null)
+                    Text(
+                      subtitle,
+                      style: AppTypography.captionLight.copyWith(
+                        color: AppTheme.textMuted,
+                      ),
+                    ),
+                ],
               ),
+            ),
+            ?trailing,
           ],
         ),
       ),
@@ -1982,11 +2068,13 @@ class _AirportMarker extends StatefulWidget {
   final String label;
   final bool highlighted;
   final int demandIndex;
+  final bool isConnected;
 
   const _AirportMarker({
     required this.label,
     required this.highlighted,
     required this.demandIndex,
+    this.isConnected = true,
   });
 
   @override
@@ -2004,6 +2092,11 @@ class _AirportMarkerState extends State<_AirportMarker> {
             ? AppTheme.warning
             : AppTheme.error;
 
+    final dotSize = widget.isConnected ? 8.0 : 4.0;
+    final dotColor = widget.isConnected
+        ? demandColor.withValues(alpha: _hovered ? 0.8 : 0.5)
+        : AppTheme.textMuted.withValues(alpha: _hovered ? 0.7 : 0.4);
+
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
@@ -2012,20 +2105,25 @@ class _AirportMarkerState extends State<_AirportMarker> {
         children: [
           // Dot (always visible)
           Container(
-            width: 8,
-            height: 8,
+            width: dotSize,
+            height: dotSize,
             decoration: BoxDecoration(
-              color: demandColor.withValues(alpha: _hovered ? 0.8 : 0.5),
+              color: dotColor,
               shape: BoxShape.circle,
               border: _hovered
-                  ? Border.all(color: demandColor, width: 1)
+                  ? Border.all(
+                      color: widget.isConnected
+                          ? demandColor
+                          : AppTheme.textMuted,
+                      width: 1,
+                    )
                   : null,
             ),
           ),
           // Label (only on hover)
           if (_hovered)
             Positioned(
-              bottom: 12,
+              bottom: widget.isConnected ? 12 : 8,
               child: Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppSpacing.xs,
@@ -2034,13 +2132,19 @@ class _AirportMarkerState extends State<_AirportMarker> {
                 decoration: BoxDecoration(
                   color: AppTheme.surface.withValues(alpha: 0.9),
                   borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
-                  border: Border.all(color: demandColor.withValues(alpha: 0.5)),
+                  border: Border.all(
+                    color: widget.isConnected
+                        ? demandColor.withValues(alpha: 0.5)
+                        : AppTheme.textMuted.withValues(alpha: 0.3),
+                  ),
                 ),
                 child: Text(
                   widget.label,
                   style: AppTypography.badgeText.copyWith(
-                    color: demandColor,
-                    fontSize: 10,
+                    color: widget.isConnected
+                        ? demandColor
+                        : AppTheme.textSecondary,
+                    fontSize: widget.isConnected ? 10 : 9,
                   ),
                 ),
               ),
