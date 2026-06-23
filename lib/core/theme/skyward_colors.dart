@@ -42,27 +42,7 @@ class SkywardColors {
   static const darkTextSec   = Color(0xFF8090A3); // Steel blue-gray (5.7:1)
   static const darkTextDim   = Color(0xFF64748B); // Muted (~4.6:1 — passes AA)
 
-  // Light mode (not actively used, kept for compilation)
-  static const lightBg       = Color(0xFFF6F8FA);
-  static const lightSurface  = Color(0xFFFFFFFF);
-  static const lightSurface2 = Color(0xFFF0F3F7);
-  static const lightSurface3 = Color(0xFFE8EDF2);
-  static const lightBorder   = Color(0xFFD0D7DE);
-  static const lightBorder2  = Color(0xFFAFB8C1);
-  static const lightAccent   = Color(0xFF448AFF);
-  static const lightAccentSubtle = Color(0xFFDFF0FF);
-  static const lightAccentBright = Color(0xFF033D8B);
-  static const lightAccentGhost  = Color(0x0D448AFF);
-  static const lightTextPri  = Color(0xFF24292F);
-  static const lightTextSec  = Color(0xFF57606A);
-  static const lightTextDim  = Color(0xFF8C959F);
-  static const lightGreen    = Color(0xFF00C853);
-  static const lightGreenSubtle = Color(0xFFDAFBE1);
-  static const lightRed      = Color(0xFFFF3D00);
-  static const lightRedSubtle = Color(0xFFFFEBE9);
-  static const lightAmber    = Color(0xFFFFB300);
-  static const lightAmberSubtle = Color(0xFFFFF8C5);
-  static const lightNeutral  = Color(0xFF6B7280);
+  // Light mode removed — dark-only design system.
 
   // ── Opacity scale ──
   static const double opacitySubtle = 0.06;

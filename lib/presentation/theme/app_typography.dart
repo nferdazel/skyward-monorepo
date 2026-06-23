@@ -5,8 +5,11 @@ import '../../core/theme/app_theme.dart';
 
 class AppTypography {
   // ── Letter-spacing tokens ──
+  static const double spacingNone = 0.0;
   static const double spacingTight = 0.04;
   static const double spacingNormal = 0.08;
+  static const double spacingRelaxed = 0.5;
+  static const double spacingSection = 0.6;
   static const double spacingWide = 0.12;
 
   static Color get textPrimary => AppTheme.textPrimary;
@@ -37,7 +40,7 @@ class AppTypography {
     fontWeight: FontWeight.w600,
     color: textSecondary,
     height: 1.2,
-    letterSpacing: 0.1,
+    letterSpacing: spacingSection,
   );
 
   static final TextStyle sectionHeaderMedium = GoogleFonts.ibmPlexSans(
@@ -45,7 +48,7 @@ class AppTypography {
     fontWeight: FontWeight.w600,
     color: textSecondary,
     height: 1.2,
-    letterSpacing: 0.1,
+    letterSpacing: spacingSection,
   );
 
   // ── BODY TEXT (IBM Plex Sans — readable prose) ──
@@ -69,7 +72,15 @@ class AppTypography {
     fontWeight: FontWeight.w600,
     color: textSecondary,
     height: 1.2,
-    letterSpacing: 0.1,
+    letterSpacing: spacingSection,
+  );
+
+  // ── NANO LABELS (IBM Plex Sans, compact badges/chips) ──
+  static final TextStyle nanoLabel = GoogleFonts.ibmPlexSans(
+    fontSize: 10,
+    fontWeight: FontWeight.w600,
+    color: textSecondary,
+    letterSpacing: spacingNormal,
   );
 
   // ── CAPTIONS / HINTS (IBM Plex Sans) ──
@@ -87,12 +98,12 @@ class AppTypography {
     height: 1.25,
   );
 
-  // ── BADGE TEXT (IBM Plex Mono, ALL CAPS) ──
-  static final TextStyle badgeText = GoogleFonts.ibmPlexMono(
+  // ── BADGE TEXT (IBM Plex Sans, ALL CAPS — labels, status tags) ──
+  static final TextStyle badgeText = GoogleFonts.ibmPlexSans(
     fontSize: 11,
     fontWeight: FontWeight.w600,
     color: primaryAccent,
-    letterSpacing: 0.08,
+    letterSpacing: spacingNormal,
   );
 
   // ── BUTTON TEXT (IBM Plex Sans) ──
@@ -100,10 +111,10 @@ class AppTypography {
     fontSize: 12,
     fontWeight: FontWeight.w600,
     color: Colors.black,
-    letterSpacing: 0.08,
+    letterSpacing: spacingNormal,
   );
 
-  // ── DATA / MONO STYLES (IBM Plex Mono) ──
+  // ── DATA / MONO STYLES (IBM Plex Mono — numbers only) ──
   static final TextStyle hudValue = GoogleFonts.ibmPlexMono(
     fontSize: 13,
     fontWeight: FontWeight.w600,
@@ -123,45 +134,16 @@ class AppTypography {
     letterSpacing: -0.02,
   );
 
-  static final TextStyle telemetry = GoogleFonts.ibmPlexMono(
+  static final TextStyle telemetry = GoogleFonts.ibmPlexSans(
     fontSize: 12,
     fontWeight: FontWeight.w500,
     color: textPrimary,
   );
 
-  // ── MONO VALUE (IBM Plex Mono, for metric values) ──
+  // ── MONO VALUE (IBM Plex Mono, for numeric metric values) ──
   static final TextStyle monoValue = GoogleFonts.ibmPlexMono(
     fontSize: 13,
     fontWeight: FontWeight.w600,
     color: textPrimary,
-  );
-
-  // ── MONO LABEL (IBM Plex Mono, for compact labels) ──
-  static final TextStyle monoLabel = GoogleFonts.ibmPlexMono(
-    fontSize: 11,
-    fontWeight: FontWeight.w600,
-    color: textPrimary,
-    letterSpacing: 0.08,
-  );
-
-  // ── CONVENIENCE STYLES (avoid copyWith abuse) ──
-  static final TextStyle labelSecondary = GoogleFonts.ibmPlexSans(
-    fontSize: 11,
-    fontWeight: FontWeight.w600,
-    color: textSecondary,
-    letterSpacing: spacingNormal,
-  );
-
-  static final TextStyle valuePrimary = GoogleFonts.ibmPlexMono(
-    fontSize: 13,
-    fontWeight: FontWeight.w600,
-    color: textPrimary,
-  );
-
-  static final TextStyle captionMuted = GoogleFonts.ibmPlexSans(
-    fontSize: 11,
-    fontWeight: FontWeight.w400,
-    color: textMuted,
-    height: 1.25,
   );
 }
