@@ -65,7 +65,7 @@ class _SettingsViewState extends State<SettingsView> {
 
   @override
   Widget build(BuildContext context) {
-    final authState = context.watch<AuthCubit>().state;
+    final authState = context.select<AuthCubit, AuthState>((c) => c.state);
     if (authState is! AuthAuthenticated) {
       return const Center(child: Text(AppStrings.unauthorized));
     }

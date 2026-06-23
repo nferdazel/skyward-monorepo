@@ -409,7 +409,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 validator: (value) {
                   if (value == null || value.isEmpty)
                     return AppStrings.enterValidPassword;
-                  if (value.length < 6)
+                  if (value.length < 8)
                     return AppStrings.passwordMinLength;
                   return null;
                 },

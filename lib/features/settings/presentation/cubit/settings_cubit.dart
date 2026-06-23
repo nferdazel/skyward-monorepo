@@ -78,6 +78,12 @@ class SettingsState {
 class SettingsCubit extends Cubit<SettingsState> {
   final SettingsGateway _gateway;
 
+  /// Guard against duplicate concurrent save operations.
+  Future<void>? _activeSave;
+
+  /// Guard against duplicate concurrent reset operations.
+  Future<bool>? _activeReset;
+
   SettingsCubit({SettingsGateway? gateway})
     : _gateway = gateway ?? const SupabaseSettingsGateway(),
       super(const SettingsState());
@@ -172,6 +178,24 @@ class SettingsCubit extends Cubit<SettingsState> {
     required double autoGroundingThreshold,
     required String? hqAirportIata,
     required Function onSyncBalance,
+  }) {
+    if (_activeSave != null) return _activeSave!;
+    _activeSave = _saveSettingsInternal(
+      userId: userId,
+      companyName: companyName,
+      autoGroundingThreshold: autoGroundingThreshold,
+      hqAirportIata: hqAirportIata,
+      onSyncBalance: onSyncBalance,
+    );
+    return _activeSave!.whenComplete(() => _activeSave = null);
+  }
+
+  Future<void> _saveSettingsInternal({
+    required String userId,
+    required String companyName,
+    required double autoGroundingThreshold,
+    required String? hqAirportIata,
+    required Function onSyncBalance,
   }) async {
     emit(state.copyWith(isSaving: true));
     try {
@@ -217,6 +241,18 @@ class SettingsCubit extends Cubit<SettingsState> {
 
   // Atomically wipe and reset user airline profile via PL/pgSQL transaction
   Future<bool> resetAirline({
+    required String userId,
+    required Function onResetComplete,
+  }) {
+    if (_activeReset != null) return _activeReset!;
+    _activeReset = _resetAirlineInternal(
+      userId: userId,
+      onResetComplete: onResetComplete,
+    );
+    return _activeReset!.whenComplete(() => _activeReset = null);
+  }
+
+  Future<bool> _resetAirlineInternal({
     required String userId,
     required Function onResetComplete,
   }) async {
