@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../core/services/sound_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
@@ -58,7 +57,6 @@ class AppButton extends StatelessWidget {
         child: InkWell(
           onTap: isEnabled
               ? () {
-                  SoundService.playTap();
                   onPressed!();
                 }
               : null,

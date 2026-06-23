@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../core/services/sound_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../presentation/theme/app_spacing.dart';
 import '../../../../presentation/theme/app_typography.dart';
@@ -153,7 +152,6 @@ class DashboardSidebar extends StatelessWidget {
               onTap: onTap == null
                   ? null
                   : () {
-                      SoundService.playTap();
                       onTap();
                     },
               borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),

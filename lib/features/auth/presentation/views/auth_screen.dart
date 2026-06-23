@@ -4,7 +4,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/database/supabase_client.dart';
-import '../../../../core/services/sound_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../presentation/theme/app_spacing.dart';
 import '../../../../presentation/theme/app_typography.dart';
@@ -576,7 +575,6 @@ class _AuthScreenState extends State<AuthScreen> {
                     onTap: isLoading
                         ? null
                         : () {
-                            SoundService.playTap();
                             _showForgotPasswordDialog(context);
                           },
                     child: Text(

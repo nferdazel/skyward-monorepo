@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../core/services/sound_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
@@ -8,12 +7,10 @@ import '../theme/app_typography.dart';
 /// Utility for displaying themed success, error, info, and warning snackbars.
 class AppSnackBar {
   static void showSuccess(BuildContext context, String message) {
-    SoundService.playSuccess();
     _show(context, message, AppTheme.success, Colors.black);
   }
 
   static void showError(BuildContext context, String message) {
-    SoundService.playError();
     _show(context, message, AppTheme.error, Colors.white);
   }
 

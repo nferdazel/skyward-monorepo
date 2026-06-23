@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../core/services/sound_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../theme/app_spacing.dart';
 
@@ -36,7 +35,6 @@ class AppTableIconAction extends StatelessWidget {
           onTap: onPressed == null
               ? null
               : () {
-                  SoundService.playTap();
                   onPressed!();
                 },
           borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),

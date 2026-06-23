@@ -3,7 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_strings.dart';
-import '../../../../core/services/sound_service.dart';
 import '../../../../core/utils/app_formatters.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/lazy_tab_cubit.dart';
@@ -436,7 +435,6 @@ class _AuthenticatedDashboardShellState
     if (newNotifications.isNotEmpty &&
         (newNotifications.length != _notifications.length ||
             !_notificationsAreIdentical(_notifications, newNotifications))) {
-      SoundService.playNotification();
     }
 
     // Defer setState to after the current frame to avoid

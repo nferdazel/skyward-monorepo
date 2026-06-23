@@ -7,7 +7,6 @@ import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../../core/constants/app_strings.dart';
-import '../../../../core/services/sound_service.dart';
 import '../../../../core/utils/app_formatters.dart';
 import '../../../../core/constants/game_constants.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -1109,7 +1108,6 @@ class _RoutesViewState extends State<RoutesView> {
           headerTrailing: IconButton(
             icon: Icon(Icons.close, size: 16, color: AppTheme.textMuted),
             onPressed: () {
-              SoundService.playTap();
               Navigator.pop(context);
             },
             padding: EdgeInsets.zero,

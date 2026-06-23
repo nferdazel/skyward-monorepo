@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_strings.dart';
-import '../../core/services/sound_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
@@ -108,7 +107,6 @@ class NotificationPanel extends StatelessWidget {
                 onTap: onMarkAllRead == null
                     ? null
                     : () {
-                        SoundService.playTap();
                         onMarkAllRead!();
                       },
                 borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
@@ -135,7 +133,6 @@ class NotificationPanel extends StatelessWidget {
               onTap: onClose == null
                   ? null
                   : () {
-                      SoundService.playTap();
                       onClose!();
                     },
               borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),

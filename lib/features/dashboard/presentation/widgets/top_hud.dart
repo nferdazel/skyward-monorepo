@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_strings.dart';
-import '../../../../core/services/sound_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/pulse_dot.dart';
 import '../../../../presentation/theme/app_spacing.dart';
@@ -158,7 +157,6 @@ class TopHud extends StatelessWidget {
         onTap: onNotificationTap == null
             ? null
             : () {
-                SoundService.playTap();
                 onNotificationTap!();
               },
         child: Container(
