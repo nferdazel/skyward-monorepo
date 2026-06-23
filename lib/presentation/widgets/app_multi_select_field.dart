@@ -139,14 +139,14 @@ class AppMultiSelectField extends StatelessWidget {
                             Navigator.of(dialogContext).pop();
                           },
                           type: AppButtonType.secondary,
-                          height: 36,
+                          height: 40,
                         ),
                         const Spacer(),
                         AppButton(
                           text: 'CANCEL',
                           onPressed: () => Navigator.of(dialogContext).pop(),
                           type: AppButtonType.secondary,
-                          height: 36,
+                          height: 40,
                         ),
                         const SizedBox(width: AppSpacing.xs),
                         AppButton(
@@ -155,7 +155,7 @@ class AppMultiSelectField extends StatelessWidget {
                             onChanged(working);
                             Navigator.of(dialogContext).pop();
                           },
-                          height: 36,
+                          height: 40,
                         ),
                       ],
                     ),

@@ -24,7 +24,7 @@ class AppTableHeaderCell extends StatelessWidget {
         label,
         style: AppTypography.badgeText.copyWith(
           color: color ?? AppTheme.textMuted,
-          letterSpacing: 0.4,
+          letterSpacing: AppTypography.spacingRelaxed,
         ),
       ),
     );

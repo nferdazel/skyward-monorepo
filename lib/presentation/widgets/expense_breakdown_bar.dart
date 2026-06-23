@@ -89,7 +89,7 @@ class ExpenseBreakdownBar extends StatelessWidget {
                     style: AppTypography.badgeText.copyWith(
                       color: AppTheme.textSecondary,
                       fontSize: 11,
-                      letterSpacing: 0.0,
+                      letterSpacing: AppTypography.spacingNone,
                     ),
                   ),
                 ],

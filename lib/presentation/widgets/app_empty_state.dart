@@ -42,7 +42,7 @@ class AppEmptyState extends StatelessWidget {
                 title,
                 style: AppTypography.badgeText.copyWith(
                   color: AppTypography.textPrimary,
-                  letterSpacing: 0.8,
+                  letterSpacing: AppTypography.spacingSection,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -58,7 +58,7 @@ class AppEmptyState extends StatelessWidget {
                   text: actionLabel!,
                   onPressed: onAction,
                   type: AppButtonType.primary,
-                  height: 38,
+                  height: 40,
                 ),
               ],
             ],

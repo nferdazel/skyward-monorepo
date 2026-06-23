@@ -56,7 +56,7 @@ class AppDialogShell extends StatelessWidget {
                         title.toUpperCase(),
                         style: AppTypography.badgeText.copyWith(
                           color: titleColor ?? AppTheme.primary,
-                          letterSpacing: 0.8,
+                          letterSpacing: AppTypography.spacingSection,
                         ),
                       ),
                     ),

@@ -222,6 +222,7 @@ class _OnboardingOverlayState extends State<OnboardingOverlay> {
                   text: 'SKIP',
                   onPressed: _skip,
                   type: AppButtonType.secondary,
+                  height: 40,
                 ),
               ),
             ],
@@ -260,6 +261,7 @@ class _OnboardingOverlayState extends State<OnboardingOverlay> {
             text: 'BACK',
             onPressed: _back,
             type: AppButtonType.secondary,
+            height: 40,
           )
         else
           const SizedBox(width: 80),
@@ -268,6 +270,7 @@ class _OnboardingOverlayState extends State<OnboardingOverlay> {
         AppButton(
           text: _isLast ? 'START PLAYING' : 'NEXT',
           onPressed: _next,
+          height: 40,
         ),
       ],
     );

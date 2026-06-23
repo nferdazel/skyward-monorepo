@@ -35,7 +35,7 @@ class AppStatText extends StatelessWidget {
             textAlign: textAlign,
             style: AppTypography.badgeText.copyWith(
               color: labelColor ?? AppTheme.textSecondary,
-              letterSpacing: 0.4,
+              letterSpacing: AppTypography.spacingRelaxed,
             ),
           ),
           const SizedBox(height: AppSpacing.xs),
@@ -44,7 +44,7 @@ class AppStatText extends StatelessWidget {
             textAlign: textAlign,
             style: AppTypography.badgeText.copyWith(
               color: valueColor ?? AppTheme.textPrimary,
-              letterSpacing: 0.0,
+              letterSpacing: AppTypography.spacingNone,
             ),
           ),
         ],

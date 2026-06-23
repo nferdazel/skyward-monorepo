@@ -22,7 +22,7 @@ class AppControlLabel extends StatelessWidget {
       label.toUpperCase(),
       style: AppTypography.badgeText.copyWith(
         color: color ?? AppTypography.textSecondary,
-        letterSpacing: 0.5,
+        letterSpacing: AppTypography.spacingRelaxed,
       ),
     );
 

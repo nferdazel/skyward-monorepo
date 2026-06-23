@@ -233,7 +233,7 @@ class _SearchableAirportDropdownState extends State<SearchableAirportDropdown> {
                     AppStrings.noMatchingAirports,
                     style: AppTypography.badgeText.copyWith(
                       color: AppTheme.textMuted,
-                      letterSpacing: 0.8,
+                      letterSpacing: AppTypography.spacingSection,
                     ),
                   ),
                 )
@@ -287,7 +287,7 @@ class _SearchableAirportDropdownState extends State<SearchableAirportDropdown> {
                                   Text(
                                     '${airport.city}, ${airport.country}',
                                     style: AppTypography.bodyMedium.copyWith(
-                                      fontWeight: FontWeight.bold,
+                                      fontWeight: FontWeight.w600,
                                       color: AppTheme.textPrimary,
                                     ),
                                   ),

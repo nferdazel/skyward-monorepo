@@ -25,7 +25,7 @@ class AppButton extends StatelessWidget {
     this.type = AppButtonType.primary,
     this.icon,
     this.width,
-    this.height = 44.0,
+    this.height = 40.0,
   });
 
   @override
