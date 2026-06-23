@@ -137,13 +137,14 @@ class SupabaseBankGateway implements BankGateway {
   Future<List<dynamic>> getAircraftFinancing() async {
     try {
       return await SupabaseManager.client
-          .from('aircraft_financing')
+          .from('loans')
           .select(
-            'id, user_id, aircraft_model_id, fleet_aircraft_id, '
-            'purchase_price, down_payment, principal, interest_rate, '
-            'monthly_payment, term_months, remaining_balance, '
-            'payments_made, missed_payments, status, taken_at, paid_off_at',
+            'id, principal, interest_rate, remaining_balance, weekly_payment, '
+            'status, loan_type, collateral_aircraft_id, '
+            'credit_score_at_origination, missed_payments, '
+            'taken_at, game_date_taken, paid_off_at',
           )
+          .eq('loan_type', 'aircraft_financing')
           .order('taken_at', ascending: false);
     } on PostgrestException catch (e) {
       SupabaseManager.logRpcFailure('getAircraftFinancing', {}, e.message);

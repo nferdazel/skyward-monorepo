@@ -63,11 +63,11 @@ class SupabaseRoutesGateway implements RoutesGateway {
   Future<List<dynamic>> loadRoutes(String userId) async {
     try {
       return await SupabaseManager.client
-          .from('user_routes')
+          .from('route_assignments')
           .select(
             '*, origin:airports!origin_iata(*), '
             'destination:airports!destination_iata(*), '
-            'user_fleet(*, aircraft_models(*))',
+            'fleet_aircraft(*, aircraft_models(*))',
           )
           .eq('user_id', userId)
           .order('created_at', ascending: false);
@@ -105,7 +105,7 @@ class SupabaseRoutesGateway implements RoutesGateway {
   Future<List<dynamic>> loadAvailableFleet(String userId) async {
     try {
       return await SupabaseManager.client
-          .from('user_fleet')
+          .from('fleet_aircraft')
           .select('id, user_id, aircraft_model_id, tail_number, nickname, acquisition_type, condition, status, acquired_at, economy_seats, business_seats, first_class_seats, aircraft_models(id, manufacturer, model_name, range_km, capacity, fuel_burn_per_km, speed_kmh, purchase_price, lease_price_per_month, maintenance_cost_per_hour)')
           .eq('user_id', userId);
     } on PostgrestException catch (e) {

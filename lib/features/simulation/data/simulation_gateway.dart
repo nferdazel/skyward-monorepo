@@ -46,7 +46,8 @@ class SupabaseSimulationGateway implements SimulationGateway {
           .select(
             'id, username, company_name, ceo_name, cash, game_current_time, '
             'hq_airport_iata, auto_grounding_threshold, operational_status, '
-            'consecutive_negative_days, recovery_streak_days, credit_score',
+            'consecutive_negative_days, recovery_streak_days, credit_score, '
+            'actor_type, archetype, credit_tier',
           )
           .eq('id', userId)
           .single();

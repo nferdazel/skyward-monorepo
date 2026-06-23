@@ -170,7 +170,7 @@ void main() {
             'lease_price_per_month': 375000.0,
           }
         ],
-        'user_fleet': [
+        'fleet_aircraft': [
           {
             'id': 'fleet-1',
             'nickname': 'Swift Regional',
@@ -197,7 +197,7 @@ void main() {
             }
           }
         ],
-        'user_routes': [
+        'route_assignments': [
           {
             'id': 'route-1',
             'origin_iata': 'SIN',
@@ -222,7 +222,7 @@ void main() {
               'latitude': -6.1256,
               'longitude': 106.6558,
             },
-            'user_fleet': {
+            'fleet_aircraft': {
               'id': 'fleet-1',
               'tail_number': 'PK-SWF',
               'aircraft_models': {

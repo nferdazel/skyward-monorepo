@@ -207,7 +207,7 @@ final _mockRouteMap = <String, dynamic>{
   'flights_per_week': 14,
   'origin': _mockAirportCgk,
   'destination': _mockAirportSin,
-  'user_fleet': null,
+  'fleet_aircraft': null,
 };
 
 // =============================================================================
@@ -346,7 +346,7 @@ void main() {
                   'flights_per_week': 7,
                   'origin': _mockAirportCgk,
                   'destination': _mockAirportKul,
-                  'user_fleet': null,
+  'fleet_aircraft': null,
                 },
               ],
           );

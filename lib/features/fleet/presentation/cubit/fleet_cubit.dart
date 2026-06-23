@@ -874,11 +874,11 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
     unawaited(_realtimeSubscriptions.clear());
 
     final fleetChannel = SupabaseManager.client
-        .channel('public:user_fleet:user_id=eq.$userId')
+        .channel('public:fleet_aircraft:user_id=eq.$userId')
         .onPostgresChanges(
           event: PostgresChangeEvent.all,
           schema: 'public',
-          table: 'user_fleet',
+          table: 'fleet_aircraft',
           filter: PostgresChangeFilter(
             type: PostgresChangeFilterType.eq,
             column: 'user_id',

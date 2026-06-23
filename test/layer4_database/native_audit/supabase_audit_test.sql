@@ -88,7 +88,7 @@ BEGIN
   ASSERT v_reg_success = TRUE, 'Failed to purchase aircraft: ' || COALESCE(v_reg_message, 'no message');
 
   -- Verify user fleet contains purchased plane
-  SELECT id INTO v_fleet_id FROM user_fleet WHERE user_id = v_user_id AND nickname = 'Audit Tail 1';
+  SELECT id INTO v_fleet_id FROM fleet_aircraft WHERE user_id = v_user_id AND nickname = 'Audit Tail 1';
   ASSERT v_fleet_id IS NOT NULL, 'Purchased aircraft was not found in user fleet';
 
   -- Verify cash balance decremented by purchase price ($120M)
@@ -109,19 +109,19 @@ BEGIN
   ASSERT v_reg_success = TRUE, 'Failed to lease aircraft: ' || COALESCE(v_reg_message, 'no message');
 
   -- Verify fleet contains leased plane
-  ASSERT EXISTS(SELECT 1 FROM user_fleet WHERE user_id = v_user_id AND nickname = 'Audit Tail 2'), 'Leased aircraft not found in user fleet';
+  ASSERT EXISTS(SELECT 1 FROM fleet_aircraft WHERE user_id = v_user_id AND nickname = 'Audit Tail 2'), 'Leased aircraft not found in user fleet';
 
   -- ==========================================================================
   -- 5. TEST: process_simulation_delta RPC
   -- ==========================================================================
   
   -- Route creation connecting SIN & CGK
-  INSERT INTO user_routes (user_id, origin_iata, destination_iata, distance_km, ticket_price, assigned_aircraft_id, flights_per_week)
+  INSERT INTO route_assignments (user_id, origin_iata, destination_iata, distance_km, ticket_price, assigned_aircraft_id, flights_per_week)
   VALUES (v_user_id, 'SIN', 'CGK', 884.00, 250.00, v_fleet_id, 14)
   RETURNING id INTO v_route_id;
 
   -- Activate fleet plane
-  UPDATE user_fleet SET status = 'active' WHERE id = v_fleet_id;
+  UPDATE fleet_aircraft SET status = 'active' WHERE id = v_fleet_id;
 
   -- Run simulation delta
   UPDATE users SET game_current_time = '2020-01-02 00:00:00+00' WHERE id = v_user_id;

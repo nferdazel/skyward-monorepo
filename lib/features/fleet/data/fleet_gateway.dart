@@ -33,7 +33,7 @@ class SupabaseFleetGateway implements FleetGateway {
   Future<List<dynamic>> loadFleet(String userId) async {
     try {
       return await SupabaseManager.client
-          .from('user_fleet')
+          .from('fleet_aircraft')
           .select('id, user_id, aircraft_model_id, tail_number, nickname, acquisition_type, condition, status, acquired_at, economy_seats, business_seats, first_class_seats, aircraft_models(id, manufacturer, model_name, range_km, capacity, fuel_burn_per_km, speed_kmh, purchase_price, lease_price_per_month, maintenance_cost_per_hour)')
           .eq('user_id', userId)
           .order('acquired_at', ascending: false);
@@ -173,7 +173,7 @@ class SupabaseFleetGateway implements FleetGateway {
   ) async {
     try {
       return await SupabaseManager.client
-          .from('user_fleet')
+          .from('fleet_aircraft')
           .select('id, user_id, aircraft_model_id, tail_number, nickname, acquisition_type, condition, status, acquired_at, economy_seats, business_seats, first_class_seats, aircraft_models(id, manufacturer, model_name, range_km, capacity, fuel_burn_per_km, speed_kmh, purchase_price, lease_price_per_month, maintenance_cost_per_hour)')
           .eq('user_id', userId)
           .eq('aircraft_model_id', modelId)
@@ -196,7 +196,7 @@ class SupabaseFleetGateway implements FleetGateway {
   Future<Map<String, dynamic>> fetchSingleAircraft(String aircraftId) async {
     try {
       return await SupabaseManager.client
-          .from('user_fleet')
+          .from('fleet_aircraft')
           .select('id, user_id, aircraft_model_id, tail_number, nickname, acquisition_type, condition, status, acquired_at, economy_seats, business_seats, first_class_seats, aircraft_models(id, manufacturer, model_name, range_km, capacity, fuel_burn_per_km, speed_kmh, purchase_price, lease_price_per_month, maintenance_cost_per_hour)')
           .eq('id', aircraftId)
           .single();

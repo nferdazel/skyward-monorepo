@@ -156,8 +156,8 @@ class UserRoute {
       flightsPerWeek: (map['flights_per_week'] as num?)?.toInt() ?? 7,
       origin: Airport.fromMap(map['origin'] ?? {}),
       destination: Airport.fromMap(map['destination'] ?? {}),
-      assignedAircraft: map['user_fleet'] != null
-          ? UserFleetAircraft.fromMap(map['user_fleet'])
+      assignedAircraft: map['fleet_aircraft'] != null
+          ? UserFleetAircraft.fromMap(map['fleet_aircraft'])
           : null,
     );
   }

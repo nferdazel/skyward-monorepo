@@ -730,14 +730,14 @@ class RoutesCubit extends Cubit<RoutesState> with SimulationReactiveMixin {
     if (DevModeManager.isDevMode || SupabaseManager.hasMockClient) return;
     unawaited(_realtimeSubscriptions.clear());
 
-    // Only subscribe to user_routes — user_fleet is already handled by FleetCubit.
+    // Only subscribe to route_assignments — fleet_aircraft is already handled by FleetCubit.
     // Fleet updates reach this cubit via SimulationReactiveMixin.
     final routesChannel = SupabaseManager.client
-        .channel('public:user_routes:user_id=eq.$userId')
+        .channel('public:route_assignments:user_id=eq.$userId')
         .onPostgresChanges(
           event: PostgresChangeEvent.all,
           schema: 'public',
-          table: 'user_routes',
+          table: 'route_assignments',
           filter: PostgresChangeFilter(
             type: PostgresChangeFilterType.eq,
             column: 'user_id',

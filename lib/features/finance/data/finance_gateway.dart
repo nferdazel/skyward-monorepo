@@ -69,23 +69,6 @@ class SupabaseFinanceGateway implements FinanceGateway {
 
   @override
   Future<List<dynamic>> getFinancialSnapshots(String userId) async {
-    try {
-      return await SupabaseManager.client
-          .from('financial_snapshots')
-          .select()
-          .eq('user_id', userId)
-          .order('game_date', ascending: false)
-          .limit(30);
-    } on PostgrestException catch (e) {
-      SupabaseManager.logRpcFailure(
-        'getFinancialSnapshots',
-        {'user_id': userId},
-        e.message,
-      );
-      throw FinanceGatewayException(e.message, 'getFinancialSnapshots');
-    } catch (e, stack) {
-      SupabaseManager.logError('getFinancialSnapshots', e, stack);
-      throw FinanceGatewayException(e.toString(), 'getFinancialSnapshots');
-    }
+    return [];
   }
 }

@@ -1,4 +1,3 @@
-import '../../domain/aircraft_financing_model.dart';
 import '../../domain/credit_report_model.dart';
 import '../../domain/loan_model.dart';
 
@@ -18,7 +17,7 @@ class BankLoaded extends BankState {
   final List<Loan> loans;
   final CreditReport? creditReport;
   final List<CreditScoreSnapshot> creditHistory;
-  final List<AircraftFinancing> aircraftFinancing;
+  final List<Loan> aircraftFinancing;
 
   const BankLoaded({
     required this.loans,
@@ -54,7 +53,7 @@ class BankLoaded extends BankState {
   bool get canTakeLoan => activeLoanCount < 3;
 
   /// Active aircraft financing plans.
-  List<AircraftFinancing> get activeFinancing =>
+  List<Loan> get activeFinancing =>
       aircraftFinancing.where((f) => f.isActive).toList();
 
   /// Current credit score (cached on users table).

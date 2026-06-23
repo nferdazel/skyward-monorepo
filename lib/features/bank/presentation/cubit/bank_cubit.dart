@@ -13,7 +13,6 @@ import '../../../../core/utils/app_error.dart';
 import '../../../../core/utils/dev_mode_manager.dart';
 import '../../../simulation/presentation/cubit/simulation_cubit.dart';
 import '../../data/bank_gateway.dart';
-import '../../domain/aircraft_financing_model.dart';
 import '../../domain/credit_report_model.dart';
 import '../../domain/loan_model.dart';
 import 'bank_state.dart';
@@ -25,7 +24,7 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
   List<Loan> _cachedLoans = [];
   CreditReport? _cachedCreditReport;
   List<CreditScoreSnapshot> _cachedCreditHistory = [];
-  List<AircraftFinancing> _cachedFinancing = [];
+  List<Loan> _cachedFinancing = [];
   Timer? _realtimeRefreshDebounce;
   String? _userId;
   Future<void>? _activeLoad;
@@ -96,7 +95,7 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
           .toList();
 
       _cachedFinancing = (results[3] as List<dynamic>)
-          .map((m) => AircraftFinancing.fromMap(m as Map<String, dynamic>))
+          .map((m) => Loan.fromMap(m as Map<String, dynamic>))
           .toList();
 
       _emitLoaded();
@@ -233,7 +232,7 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
           // Reload financing data
           final financingData = await _gateway.getAircraftFinancing();
           _cachedFinancing = financingData
-              .map((m) => AircraftFinancing.fromMap(m as Map<String, dynamic>))
+              .map((m) => Loan.fromMap(m as Map<String, dynamic>))
               .toList();
 
           _emitLoaded();
@@ -285,7 +284,7 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
     try {
       final financingData = await _gateway.getAircraftFinancing();
       _cachedFinancing = financingData
-          .map((m) => AircraftFinancing.fromMap(m as Map<String, dynamic>))
+          .map((m) => Loan.fromMap(m as Map<String, dynamic>))
           .toList();
       _emitLoaded();
     } catch (e, stack) {

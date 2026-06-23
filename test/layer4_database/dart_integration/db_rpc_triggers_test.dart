@@ -92,7 +92,7 @@ void main() {
           'latitude': -6.1256,
           'longitude': 106.6558,
         },
-        'user_fleet': aircraftMap,
+        'fleet_aircraft': aircraftMap,
       };
 
       final route = UserRoute.fromMap(routeMap);
