@@ -157,6 +157,9 @@ class GameConstants {
   /// Maximum aircraft operational condition (fully repaired).
   static const double maxCondition = 100.0;
 
+  /// Default annual interest rate for bank loans.
+  static const double defaultLoanInterestRate = 0.05;
+
   /// Default credit score for new players.
   static const int defaultCreditScore = 500;
 

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/constants/game_constants.dart';
+import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/app_formatters.dart';
 import '../../../../presentation/theme/app_spacing.dart';
@@ -58,7 +60,7 @@ class BankPanel extends StatelessWidget {
       BankInitial() || BankLoading() => _buildLoading(),
       BankLoaded(:final loans, :final creditReport) =>
         loans.isEmpty
-            ? _buildEmptyState(context)
+            ? _buildEmptyState(context, creditReport: creditReport)
             : _buildContent(context, loans, creditReport: creditReport),
       BankError(:final hasData, :final loans) =>
         hasData ? _buildContent(context, loans) : _buildEmptyState(context),
@@ -80,17 +82,36 @@ class BankPanel extends StatelessWidget {
     );
   }
 
-  Widget _buildEmptyState(BuildContext context) {
+  Widget _buildEmptyState(BuildContext context, {CreditReport? creditReport}) {
+    final tierDescription = creditReport != null
+        ? _tierDescription(creditReport.creditTier)
+        : null;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (creditReport != null) ...[
+          _buildCreditScoreCard(creditReport),
+          const SizedBox(height: AppSpacing.md),
+        ],
         AppEmptyState(
           icon: Icons.account_balance_outlined,
-          title: 'NO ACTIVE LOANS',
-          description: 'Borrow capital to expand your airline.\n'
-              '\$100K–\$50M  ·  5% interest  ·  12 / 26 / 52 week terms',
-          actionLabel: 'TAKE LOAN',
-          onAction: () => _showLoanDialog(context),
+          title: AppStrings.noActiveLoans,
+          description: [
+            ?tierDescription,
+            AppStrings.borrowCapital,
+            '\$100K–\$50M  ·  ${((creditReport?.baseInterestRate ?? GameConstants.defaultLoanInterestRate) * 100).toStringAsFixed(1)}% APR  ·  12 / 26 / 52 week terms',
+          ].join('\n'),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        Center(
+          child: AppButton(
+            text: AppStrings.takeLoan,
+            onPressed: () => _showLoanDialog(context),
+            type: AppButtonType.primary,
+            height: 40,
+          ),
         ),
       ],
     );
@@ -134,6 +155,12 @@ class BankPanel extends StatelessWidget {
             const SizedBox(height: AppSpacing.sm),
         ],
 
+        // ── Financial summary strip ──
+        if (activeLoans.isNotEmpty && creditReport != null) ...[
+          const SizedBox(height: AppSpacing.md),
+          _buildFinancialSummaryStrip(activeLoans, creditReport),
+        ],
+
         // ── Historical loans ──
         if (historicalLoans.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.md),
@@ -156,7 +183,7 @@ class BankPanel extends StatelessWidget {
         // ── Take loan button ──
         const SizedBox(height: AppSpacing.md),
         AppButton(
-          text: 'TAKE LOAN',
+          text: AppStrings.takeLoan,
           onPressed: activeLoans.length < 3
               ? () => _showLoanDialog(context)
               : null,
@@ -173,7 +200,7 @@ class BankPanel extends StatelessWidget {
         children: [
           Expanded(
             child: AppLabeledValue(
-              label: 'OUTSTANDING',
+              label: AppStrings.outstanding,
               value: AppFormatters.currency.format(totalOutstanding),
               valueColor: AppTheme.warning,
               emphasize: true,
@@ -184,9 +211,64 @@ class BankPanel extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.only(left: AppSpacing.md),
               child: AppLabeledValue(
-                label: 'WEEKLY PAYMENT',
+                label: AppStrings.weeklyPayment,
                 value: '${AppFormatters.currency.format(totalWeekly)}/wk',
                 valueColor: AppTheme.error,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFinancialSummaryStrip(List<Loan> activeLoans, CreditReport creditReport) {
+    final totalOutstanding = activeLoans.fold<double>(
+      0,
+      (sum, l) => sum + l.remainingBalance,
+    );
+    final remainingCapacity = (creditReport.maxUnsecuredLoan - totalOutstanding)
+        .clamp(0.0, creditReport.maxUnsecuredLoan);
+    final nextPayment = activeLoans.first.weeklyPayment;
+
+    return AppInfoStrip(
+      child: Row(
+        children: [
+          Expanded(
+            child: AppLabeledValue(
+              label: 'INTEREST RATE',
+              value: '${(creditReport.baseInterestRate * 100).toStringAsFixed(1)}% APR',
+            ),
+          ),
+          Container(width: 1, height: 28, color: AppTheme.border),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(left: AppSpacing.sm),
+              child: AppLabeledValue(
+                label: 'LOAN LIMIT',
+                value: AppFormatters.compactNumber(creditReport.maxUnsecuredLoan),
+              ),
+            ),
+          ),
+          Container(width: 1, height: 28, color: AppTheme.border),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(left: AppSpacing.sm),
+              child: AppLabeledValue(
+                label: 'REMAINING',
+                value: AppFormatters.compactNumber(remainingCapacity),
+                valueColor: remainingCapacity > 0 ? AppTheme.success : AppTheme.error,
+              ),
+            ),
+          ),
+          Container(width: 1, height: 28, color: AppTheme.border),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(left: AppSpacing.sm),
+              child: AppLabeledValue(
+                label: 'NEXT PAYMENT',
+                value: '${AppFormatters.currency.format(nextPayment)}/wk',
+                valueColor: AppTheme.warning,
               ),
             ),
           ),
@@ -266,6 +348,23 @@ class BankPanel extends StatelessWidget {
       case 'Standard': return AppTheme.primary;
       case 'Subprime': return AppTheme.error;
       default: return AppTheme.textSecondary;
+    }
+  }
+
+  static String _tierDescription(String tier) {
+    switch (tier) {
+      case 'Platinum':
+        return 'Platinum credit — best rates and highest loan limits available.';
+      case 'Gold':
+        return 'Gold credit — excellent rates with high borrowing capacity.';
+      case 'Silver':
+        return 'Silver credit — competitive rates and solid loan limits.';
+      case 'Standard':
+        return 'Standard credit — base rates apply. Improve your score for better terms.';
+      case 'Subprime':
+        return 'Subprime credit — limited borrowing capacity. Focus on profitability to improve.';
+      default:
+        return '';
     }
   }
 
@@ -419,7 +518,7 @@ class _HistoricalLoanRow extends StatelessWidget {
         ),
         const Spacer(),
         AppBadge(
-          label: loan.status.toUpperCase(),
+          label: loan.statusLabel,
           color: loan.isPaidOff ? AppTheme.success : AppTheme.error,
           fontSize: 11,
         ),
@@ -444,7 +543,7 @@ class _TakeLoanDialogState extends State<_TakeLoanDialog> {
   int _termWeeks = 52;
 
   static const _termOptions = [12, 26, 52];
-  static const _interestRate = 0.05;
+  static const _interestRate = GameConstants.defaultLoanInterestRate;
 
   final TextEditingController _principalController = TextEditingController();
 
@@ -466,15 +565,15 @@ class _TakeLoanDialogState extends State<_TakeLoanDialog> {
   @override
   Widget build(BuildContext context) {
     return AppDialogShell(
-      title: 'TAKE LOAN',
-      subtitle: 'Borrow capital for expansion. 5% simple interest, auto-deducted weekly.',
+      title: AppStrings.takeLoan,
+      subtitle: '${AppStrings.borrowCapital} 5% simple interest, auto-deducted weekly.',
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Principal input
           Text(
-            'PRINCIPAL AMOUNT',
+            AppStrings.principalAmount,
             style: AppTypography.microLabel.copyWith(
               color: AppTheme.textSecondary,
             ),
@@ -530,7 +629,7 @@ class _TakeLoanDialogState extends State<_TakeLoanDialog> {
 
           // Term selector
           AppDropdownField<int>(
-            label: 'LOAN TERM',
+            label: AppStrings.loanTerm,
             value: _termWeeks,
             items: _termOptions
                 .map((w) => DropdownMenuItem(
@@ -589,7 +688,7 @@ class _TakeLoanDialogState extends State<_TakeLoanDialog> {
             children: [
               Expanded(
                 child: AppButton(
-                  text: 'CANCEL',
+                  text: AppStrings.cancel,
                   onPressed: isLoading ? null : () => Navigator.pop(context),
                   type: AppButtonType.secondary,
                   height: 40,

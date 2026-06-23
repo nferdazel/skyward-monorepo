@@ -59,6 +59,16 @@ class Loan {
     return 1.0 - (remainingBalance / (principal * (1 + interestRate)));
   }
 
+  /// Human-readable status label.
+  String get statusLabel {
+    switch (status) {
+      case 'active': return 'Active';
+      case 'paid_off': return 'Paid Off';
+      case 'defaulted': return 'Defaulted';
+      default: return status;
+    }
+  }
+
   /// Human-readable loan type label.
   String get loanTypeLabel {
     switch (loanType) {

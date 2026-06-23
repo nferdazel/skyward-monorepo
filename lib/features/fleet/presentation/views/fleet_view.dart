@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/constants/game_constants.dart';
 import '../../../../core/services/sound_service.dart';
 import '../../../../core/utils/app_formatters.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -1129,7 +1130,7 @@ class _FleetViewState extends State<FleetView>
                       ),
                       const SizedBox(width: AppSpacing.xs),
                       AppTableIconAction(
-                        tooltip: 'Finance Aircraft',
+                        tooltip: AppStrings.financeAircraft,
                         icon: Icons.credit_card,
                         size: 28,
                         iconSize: 14,
@@ -1371,8 +1372,8 @@ class _FleetViewState extends State<FleetView>
           final downPayment = model.purchasePrice * downPaymentPct;
           final principal = model.purchasePrice - downPayment;
           final monthlyPayment = principal *
-              (0.05 / 12) /
-              (1 - pow(1 + 0.05 / 12, -termMonths));
+              (GameConstants.defaultLoanInterestRate / 12) /
+              (1 - pow(1 + GameConstants.defaultLoanInterestRate / 12, -termMonths));
           final totalCost = downPayment + (monthlyPayment * termMonths);
 
           return AppDialogShell(
@@ -1450,7 +1451,7 @@ class _FleetViewState extends State<FleetView>
                   children: [
                     Expanded(
                       child: AppButton(
-                        text: 'Cancel',
+                        text: AppStrings.cancel,
                         onPressed: () => Navigator.pop(ctx),
                         type: AppButtonType.secondary,
                         height: 40,
@@ -1459,7 +1460,7 @@ class _FleetViewState extends State<FleetView>
                     const SizedBox(width: AppSpacing.sm),
                     Expanded(
                       child: AppButton(
-                        text: 'Finance Aircraft',
+                        text: AppStrings.financeAircraft,
                         onPressed: () {
                           context.read<BankCubit>().financeAircraft(
                                 model.id,
