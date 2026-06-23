@@ -10,6 +10,7 @@ class AppCard extends StatelessWidget {
   final Color? backgroundColor;
   final Color? borderColor;
   final double borderWidth;
+  final double radius;
   final EdgeInsetsGeometry padding;
   final EdgeInsetsGeometry margin;
   final Border? customBorder;
@@ -21,10 +22,25 @@ class AppCard extends StatelessWidget {
     this.backgroundColor,
     this.borderColor,
     this.borderWidth = 0.5,
+    this.radius = AppSpacing.radiusDefault,
     this.padding = const EdgeInsets.all(AppSpacing.cardPadding),
     this.margin = EdgeInsets.zero,
     this.customBorder,
   });
+
+  /// Panel variant for form sections and filter panels.
+  /// Uses 1.0px border and no border radius (edge-to-edge).
+  const AppCard.panel({
+    super.key,
+    required this.child,
+    this.header,
+    this.backgroundColor,
+    this.borderColor,
+    this.padding = const EdgeInsets.all(AppSpacing.cardPadding),
+    this.margin = EdgeInsets.zero,
+  }) : borderWidth = 1.0,
+       radius = 0,
+       customBorder = null;
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +58,7 @@ class AppCard extends StatelessWidget {
             ? BoxDecoration(border: cardBorder)
             : BoxDecoration(
                 color: backgroundColor ?? AppTheme.surface,
-                borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
+                borderRadius: BorderRadius.circular(radius),
                 border: cardBorder,
               ),
         child: LayoutBuilder(
@@ -86,7 +102,7 @@ class AppCard extends StatelessWidget {
     );
 
     if (customBorder != null) {
-      return ClipRRect(borderRadius: BorderRadius.circular(AppSpacing.radiusDefault), child: card);
+      return ClipRRect(borderRadius: BorderRadius.circular(radius), child: card);
     }
     return card;
   }

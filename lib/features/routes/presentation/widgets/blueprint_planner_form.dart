@@ -227,12 +227,7 @@ class _BlueprintPlannerFormState extends State<BlueprintPlannerForm> {
     required RouteMaintenancePreview? plannerPreview,
     required RoutePlanningAssessment? planningAssessment,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        border: Border.all(color: AppTheme.border, width: 1.0),
-      ),
-      padding: const EdgeInsets.all(AppSpacing.cardPadding),
+    return AppCard(
       child: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -527,11 +522,8 @@ class _BlueprintPlannerFormState extends State<BlueprintPlannerForm> {
               tooltip: AppStrings.weeklyFlightsTooltip,
             ),
             const SizedBox(height: AppSpacing.xs),
-            Container(
-              decoration: BoxDecoration(
-                color: AppTheme.background,
-                border: Border.all(color: AppTheme.border),
-              ),
+            AppCard(
+              backgroundColor: AppTheme.background,
               padding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.sm,
                 vertical: AppSpacing.sm,

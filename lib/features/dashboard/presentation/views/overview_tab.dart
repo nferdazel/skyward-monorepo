@@ -363,7 +363,7 @@ class OverviewTab extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
       child: AppCard(
-        padding: const EdgeInsets.all(AppSpacing.lg),
+        padding: const EdgeInsets.all(AppSpacing.md),
         child: Row(
           children: [
             Expanded(

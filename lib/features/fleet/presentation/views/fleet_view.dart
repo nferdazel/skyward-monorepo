@@ -16,6 +16,7 @@ import '../../../../presentation/theme/app_spacing.dart';
 import '../../../../presentation/theme/app_typography.dart';
 import '../../../../presentation/widgets/app_badge.dart';
 import '../../../../presentation/widgets/app_button.dart';
+import '../../../../presentation/widgets/app_card.dart';
 import '../../../../presentation/widgets/app_dialog_shell.dart';
 import '../../../../presentation/widgets/app_dropdown_field.dart';
 import '../../../../presentation/widgets/app_empty_state.dart';
@@ -886,13 +887,9 @@ class _FleetViewState extends State<FleetView>
       'Long Range (6,000+ km)',
     ];
 
-    return Container(
+    return AppCard(
       padding: const EdgeInsets.all(AppSpacing.sm),
       margin: const EdgeInsets.only(bottom: AppSpacing.blockGap),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        border: Border.all(color: AppTheme.border, width: 1.0),
-      ),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final filterChildren = [

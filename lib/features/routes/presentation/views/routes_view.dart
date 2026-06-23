@@ -15,6 +15,7 @@ import '../../../../core/widgets/pulse_dot.dart';
 import '../../../../presentation/theme/app_spacing.dart';
 import '../../../../presentation/theme/app_typography.dart';
 import '../../../../presentation/widgets/app_button.dart';
+import '../../../../presentation/widgets/app_card.dart';
 import '../../../../presentation/widgets/app_dialog_shell.dart';
 import '../../../../presentation/widgets/app_empty_state.dart';
 import '../../../../presentation/widgets/app_info_strip.dart';
@@ -729,14 +730,9 @@ class _RoutesViewState extends State<RoutesView> {
         .toSet()
         .length;
 
-    return Container(
-      width: 220,
+    return AppCard(
+      backgroundColor: AppTheme.surface.withValues(alpha: 0.92),
       padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: AppTheme.surface.withValues(alpha: 0.92),
-        border: Border.all(color: AppTheme.border, width: 0.5),
-        borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1524,15 +1520,9 @@ class _RoutesViewState extends State<RoutesView> {
       autoGroundingThreshold: autoGroundingThreshold,
     );
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppTheme.background,
-        border: Border.all(
-          color: _viabilityColor(assessment.viability).withValues(alpha: 0.22),
-          width: 0.5,
-        ),
-        borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
-      ),
+    return AppCard(
+      backgroundColor: AppTheme.background,
+      borderColor: _viabilityColor(assessment.viability).withValues(alpha: 0.22),
       padding: const EdgeInsets.all(AppSpacing.sm),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

@@ -408,7 +408,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
     final selectedId = state.selectedCompetitorId;
     if (selectedId == null) {
       return AppCard(
-        padding: const EdgeInsets.all(AppSpacing.xxl),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         child: Center(
           child: Text(
             AppStrings.selectCompetitor,
@@ -426,7 +426,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
     final insights = state.selectedInsights;
     if (insights == null && !state.isLoadingInsights) {
       return AppCard(
-        padding: const EdgeInsets.all(AppSpacing.xxl),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         child: Center(
           child: Text(
             AppStrings.failedToLoadIntel,
@@ -450,7 +450,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
         : null;
 
     return AppCard(
-      padding: const EdgeInsets.all(AppSpacing.xl),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
