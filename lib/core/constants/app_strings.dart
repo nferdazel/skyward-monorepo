@@ -383,6 +383,9 @@ class AppStrings {
   static const String globalRankingsTitle = 'GLOBAL RANKINGS';
   static const String globalRankingsDesc =
       'Track global ASEAN commercial airline metrics. Rankings update dynamically based on company net worth, fleet assets, and realized last-30-day revenue.';
+  static const String leaderboardEmptyTitle = 'NO COMPETITORS YET';
+  static const String leaderboardEmptyDesc =
+      'The leaderboard will populate as airlines begin operations.';
   static const String selectCompetitor = 'SELECT COMPETITOR';
   static const String failedToLoadIntel = 'FAILED TO LOAD INTEL';
   static const String updatingCompetitorIntel =
