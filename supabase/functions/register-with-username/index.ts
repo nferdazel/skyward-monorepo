@@ -37,16 +37,9 @@ const allowedOrigins = [
   "http://localhost:5173",
 ].filter(Boolean);
 
-if (!Deno.env.get("APP_URL")) {
-  console.warn(
-    "register-with-username: APP_URL is not set; CORS will fall back to wildcard."
-  );
-}
-
 function getCorsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get("origin") || "";
-  const corsOrigin =
-    allowedOrigins.includes(origin) ? origin : allowedOrigins[0] || "*";
+  const corsOrigin = allowedOrigins.includes(origin) ? origin : "";
   return {
     "Access-Control-Allow-Origin": corsOrigin,
     "Access-Control-Allow-Headers":
@@ -102,6 +95,12 @@ function resolveServiceRoleKey(): string | null {
 }
 
 Deno.serve(async (request) => {
+  // Reject requests from unknown origins (skip for preflight)
+  const requestOrigin = request.headers.get("origin") || "";
+  if (requestOrigin && !allowedOrigins.includes(requestOrigin)) {
+    return new Response("Forbidden", { status: 403 });
+  }
+
   if (request.method === "OPTIONS") {
     return new Response("ok", { headers: getCorsHeaders(request) });
   }

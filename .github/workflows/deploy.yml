@@ -47,9 +47,15 @@ jobs:
       - name: Run Tests
         run: flutter test
 
+      - name: Audit dependencies
+        run: dart pub outdated
+        continue-on-error: true
+
       - name: Analyze Code
         run: flutter analyze --no-fatal-infos
 
+      # Build uses dart2js (not WASM), so CSP requires 'unsafe-eval'.
+      # If migrating to `flutter build web --wasm`, change CSP to 'wasm-unsafe-eval'.
       - name: Build Flutter Web
         run: flutter build web --release
 

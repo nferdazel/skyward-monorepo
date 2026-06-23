@@ -55,6 +55,11 @@ class AppStrings {
       'Password must be at least 6 characters';
   static const String enterCompanyName = 'Enter your airline company name';
   static const String enterCeoName = 'Enter your CEO name';
+  static const String forgotPassword = 'Forgot password?';
+  static const String resetPasswordTitle = 'Reset Password';
+  static const String resetPasswordMessage = 'A password reset link will be sent to your registered email.';
+  static const String resetPasswordSent = 'Reset link sent! Check your email.';
+  static const String resetPasswordFailed = 'Failed to send reset link. Please try again.';
 
   // Overview Screen
   static const String executiveHudTitle = 'Executive Operations Dashboard';
