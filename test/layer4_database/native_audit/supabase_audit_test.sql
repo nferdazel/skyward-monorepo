@@ -53,7 +53,6 @@ BEGIN
 
   INSERT INTO users (
     username,
-    password_hash,
     company_name,
     ceo_name,
     cash,
@@ -62,7 +61,6 @@ BEGIN
   )
   VALUES (
     'audit_chief',
-    'phase6-legacy-auth-removed',
     'Audit Chief Airlines',
     'Audit CEO',
     COALESCE((SELECT starting_cash FROM global_game_settings LIMIT 1), 15000000.00),
