@@ -13,7 +13,6 @@ class Loan {
   final DateTime? takenAt;
   final DateTime? gameDateTaken;
   final DateTime? paidOffAt;
-  final String? aiCompetitorId;
 
   const Loan({
     required this.id,
@@ -29,7 +28,6 @@ class Loan {
     this.takenAt,
     this.gameDateTaken,
     this.paidOffAt,
-    this.aiCompetitorId,
   });
 
   /// Whether this loan is still being repaid.
@@ -103,7 +101,6 @@ class Loan {
       paidOffAt: map['paid_off_at'] != null
           ? DateTime.tryParse(map['paid_off_at'] as String)
           : null,
-      aiCompetitorId: map['ai_competitor_id'] as String?,
     );
   }
 }

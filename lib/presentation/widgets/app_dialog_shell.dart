@@ -71,7 +71,7 @@ class AppDialogShell extends StatelessWidget {
                   Text(
                     subtitle!,
                     style: AppTypography.captionRegular.copyWith(
-                      color: AppTypography.textSecondary,
+                      color: AppTheme.textSecondary,
                     ),
                   ),
                 ],

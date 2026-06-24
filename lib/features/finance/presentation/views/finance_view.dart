@@ -552,7 +552,7 @@ class _FinanceViewState extends State<FinanceView>
             child: _buildSignalWithHelp(
               AppStrings.financeBurnRatioLabel,
               overview.burnMixLabel,
-              AppTypography.textPrimary,
+              AppTheme.textPrimary,
               'Percentage of expenses from leases vs operations',
             ),
           ),
@@ -746,7 +746,7 @@ class _FinanceViewState extends State<FinanceView>
                 child: AppStatText(
                   label: label,
                   value: value,
-                  valueColor: AppTypography.textPrimary,
+                  valueColor: AppTheme.textPrimary,
                 ),
               ),
             ],
@@ -849,7 +849,7 @@ class _FinanceViewState extends State<FinanceView>
           child: Text(
             entry.description,
             style: AppTypography.bodyMedium.copyWith(
-              color: AppTypography.textPrimary,
+              color: AppTheme.textPrimary,
             ),
           ),
         ),
@@ -859,7 +859,7 @@ class _FinanceViewState extends State<FinanceView>
           child: AppStatText(
             label: _dateOnlyFormat.format(entry.gameDate),
             value: _timeOnlyFormat.format(entry.gameDate),
-            labelColor: AppTypography.textSecondary,
+            labelColor: AppTheme.textSecondary,
             valueColor: AppTheme.textMuted,
           ),
         ),

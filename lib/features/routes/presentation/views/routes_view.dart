@@ -36,11 +36,6 @@ import '../cubit/routes_state.dart';
 class RoutesView extends StatefulWidget {
   const RoutesView({super.key});
 
-  /// Clears the static great-circle arc cache. Call on logout to free memory.
-  static void clearArcCache() {
-    _RoutesViewState._arcCache.clear();
-  }
-
   @override
   State<RoutesView> createState() => _RoutesViewState();
 }

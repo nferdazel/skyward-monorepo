@@ -70,25 +70,12 @@ class BankPanel extends StatelessWidget {
       BankError(:final hasData, :final loans, :final creditReport) =>
         hasData ? _buildContent(context, loans, creditReport: creditReport) : _buildEmptyState(context),
       BankLoanSuccess(:final loans, :final creditReport) => _buildContent(context, loans, creditReport: creditReport),
-      BankSavingsSuccess(:final accounts, :final transactions) => _buildContent(context, _cachedLoansForState(context), creditReport: _cachedCreditForState(context), accounts: accounts, transactions: transactions),
+      BankSavingsSuccess(:final loans, :final creditReport, :final accounts, :final transactions) => _buildContent(context, loans, creditReport: creditReport, accounts: accounts, transactions: transactions),
       _ => _buildLoading(),
     };
   }
 
-  List<Loan> _cachedLoansForState(BuildContext context) {
-    final cubit = context.read<BankCubit>();
-    final state = cubit.state;
-    if (state is BankLoaded) return state.loans;
-    if (state is BankSavingsSuccess) return [];
-    return [];
-  }
 
-  CreditReport? _cachedCreditForState(BuildContext context) {
-    final cubit = context.read<BankCubit>();
-    final state = cubit.state;
-    if (state is BankLoaded) return state.creditReport;
-    return null;
-  }
 
   Widget _buildLoading() {
     return const Padding(
@@ -640,23 +627,7 @@ class _LoanCard extends StatelessWidget {
                     color: AppTheme.textPrimary,
                   ),
                 ),
-                if (loan.aiCompetitorId != null) ...[
-                  const SizedBox(width: AppSpacing.xs),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                    decoration: BoxDecoration(
-                      color: AppTheme.warning.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(AppSpacing.radiusTight),
-                    ),
-                    child: Text(
-                      'BOT',
-                      style: AppTypography.badgeText.copyWith(
-                        color: AppTheme.warning,
-                        fontSize: AppTypography.nanoLabel.fontSize,
-                      ),
-                    ),
-                  ),
-                ],
+
                 const Spacer(),
                 AppBadge(
                   label: '${(loan.interestRate * 100).toStringAsFixed(0)}% APR',

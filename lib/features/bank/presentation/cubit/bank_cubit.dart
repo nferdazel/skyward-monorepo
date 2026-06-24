@@ -431,6 +431,8 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
         if (isClosed) return;
         emit(BankSavingsSuccess(
           message: message,
+          loans: _cachedLoans,
+          creditReport: _cachedCreditReport,
           accounts: _cachedAccounts,
           transactions: _cachedTransactions,
         ));
@@ -474,6 +476,8 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
         if (isClosed) return;
         emit(BankSavingsSuccess(
           message: message,
+          loans: _cachedLoans,
+          creditReport: _cachedCreditReport,
           accounts: _cachedAccounts,
           transactions: _cachedTransactions,
         ));
@@ -517,6 +521,8 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
         if (isClosed) return;
         emit(BankSavingsSuccess(
           message: message,
+          loans: _cachedLoans,
+          creditReport: _cachedCreditReport,
           accounts: _cachedAccounts,
           transactions: _cachedTransactions,
         ));
