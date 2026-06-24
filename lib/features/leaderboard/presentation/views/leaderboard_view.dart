@@ -335,8 +335,16 @@ class _LeaderboardViewState extends State<LeaderboardView> {
         label: semanticLabel,
         child: RankCell(rank: rank, isHuman: isHuman),
       ),
-      // Trend indicator: compare current rank with previous day
-      _buildRankTrendIndicator(rank, entry.previousRank),
+      // Rank trend: rank_history dropped — always show stable
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+        child: Center(
+          child: Text(
+            AppStrings.rankTrendStable,
+            style: AppTypography.badgeText.copyWith(color: AppTheme.textMuted),
+          ),
+        ),
+      ),
       Padding(
         padding: const EdgeInsets.symmetric(
           vertical: AppSpacing.sm,
@@ -773,58 +781,6 @@ class _LeaderboardViewState extends State<LeaderboardView> {
 
   Widget _buildTableHeaderCell(String text) {
     return AppTableHeaderCell(label: text);
-  }
-
-  Widget _buildRankTrendIndicator(int currentRank, int? previousRank) {
-    // No history data yet — show stable placeholder
-    if (previousRank == null) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-        child: Center(
-          child: Text(
-            AppStrings.rankTrendStable,
-            style: AppTypography.badgeText.copyWith(color: AppTheme.textMuted),
-          ),
-        ),
-      );
-    }
-
-    final delta = previousRank - currentRank;
-
-    if (delta > 0) {
-      // Rank improved (moved up)
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-        child: Center(
-          child: Text(
-            '\u2191$delta',
-            style: AppTypography.badgeText.copyWith(color: AppTheme.success),
-          ),
-        ),
-      );
-    } else if (delta < 0) {
-      // Rank dropped (moved down)
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-        child: Center(
-          child: Text(
-            '\u2193${delta.abs()}',
-            style: AppTypography.badgeText.copyWith(color: AppTheme.error),
-          ),
-        ),
-      );
-    } else {
-      // Stable
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-        child: Center(
-          child: Text(
-            AppStrings.rankTrendStable,
-            style: AppTypography.badgeText.copyWith(color: AppTheme.textMuted),
-          ),
-        ),
-      );
-    }
   }
 
   Widget _buildTableCell(
