@@ -51,6 +51,23 @@ $function$;
 -- ============================================================
 -- 4. Migrate existing checking accounts to savings
 -- ============================================================
+-- First, delete orphan savings accounts for users who have both checking AND savings
+DELETE FROM bank_transactions WHERE account_id IN (
+    SELECT ba2.id FROM bank_accounts ba2
+    WHERE ba2.account_type = 'savings'
+    AND EXISTS (
+        SELECT 1 FROM bank_accounts ba1
+        WHERE ba1.user_id = ba2.user_id AND ba1.account_type = 'checking'
+    )
+);
+DELETE FROM bank_accounts ba2
+WHERE ba2.account_type = 'savings'
+AND EXISTS (
+    SELECT 1 FROM bank_accounts ba1
+    WHERE ba1.user_id = ba2.user_id AND ba1.account_type = 'checking'
+);
+
+-- Now convert all remaining checking to savings
 UPDATE bank_accounts SET account_type = 'savings', interest_rate = 0.01
 WHERE account_type = 'checking';
 
