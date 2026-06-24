@@ -126,6 +126,9 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
             message: AppError.extractMessage(e, AppStrings.bankDataLoadFailed),
             hasData: _cachedLoans.isNotEmpty,
             loans: _cachedLoans,
+            creditReport: _cachedCreditReport,
+            accounts: _cachedAccounts,
+            transactions: _cachedTransactions,
           ),
         );
       }
@@ -186,6 +189,8 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
             newCash: newCash,
             loans: _cachedLoans,
             creditReport: _cachedCreditReport,
+            accounts: _cachedAccounts,
+            transactions: _cachedTransactions,
           ));
         } else {
           // Log server-side validation failure to console
@@ -200,6 +205,8 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
             hasData: _cachedLoans.isNotEmpty,
             loans: _cachedLoans,
             creditReport: _cachedCreditReport,
+            accounts: _cachedAccounts,
+            transactions: _cachedTransactions,
           ));
         }
       } else {
@@ -210,6 +217,8 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
           hasData: _cachedLoans.isNotEmpty,
           loans: _cachedLoans,
           creditReport: _cachedCreditReport,
+          accounts: _cachedAccounts,
+          transactions: _cachedTransactions,
         ));
       }
     } catch (e, stack) {
@@ -221,6 +230,8 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
           hasData: _cachedLoans.isNotEmpty,
           loans: _cachedLoans,
           creditReport: _cachedCreditReport,
+          accounts: _cachedAccounts,
+          transactions: _cachedTransactions,
         ),
       );
     }
@@ -260,6 +271,9 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
             message: message,
             hasData: _cachedLoans.isNotEmpty,
             loans: _cachedLoans,
+            creditReport: _cachedCreditReport,
+            accounts: _cachedAccounts,
+            transactions: _cachedTransactions,
           ));
         }
       }
@@ -271,6 +285,9 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
           message: AppError.extractMessage(e, AppStrings.financingProcessFailed),
           hasData: _cachedLoans.isNotEmpty,
           loans: _cachedLoans,
+          creditReport: _cachedCreditReport,
+          accounts: _cachedAccounts,
+          transactions: _cachedTransactions,
         ),
       );
     }
@@ -292,6 +309,9 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
               AppError.extractMessage(e, AppStrings.creditReportLoadFailed),
           hasData: _cachedLoans.isNotEmpty,
           loans: _cachedLoans,
+          creditReport: _cachedCreditReport,
+          accounts: _cachedAccounts,
+          transactions: _cachedTransactions,
         ),
       );
     }
@@ -316,6 +336,9 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
           ),
           hasData: _cachedLoans.isNotEmpty,
           loans: _cachedLoans,
+          creditReport: _cachedCreditReport,
+          accounts: _cachedAccounts,
+          transactions: _cachedTransactions,
         ),
       );
     }
@@ -350,6 +373,8 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
           newCash: 0,
           loans: _cachedLoans,
           creditReport: _cachedCreditReport,
+          accounts: _cachedAccounts,
+          transactions: _cachedTransactions,
         ));
       } else {
         if (isClosed) return;
@@ -358,6 +383,8 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
           hasData: _cachedLoans.isNotEmpty,
           loans: _cachedLoans,
           creditReport: _cachedCreditReport,
+          accounts: _cachedAccounts,
+          transactions: _cachedTransactions,
         ));
       }
     } catch (e, stack) {
@@ -369,6 +396,8 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
           hasData: _cachedLoans.isNotEmpty,
           loans: _cachedLoans,
           creditReport: _cachedCreditReport,
+          accounts: _cachedAccounts,
+          transactions: _cachedTransactions,
         ),
       );
     }
@@ -394,6 +423,9 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
         emit(BankRefinanceSuccess(
           message: message,
           loans: _cachedLoans,
+          creditReport: _cachedCreditReport,
+          accounts: _cachedAccounts,
+          transactions: _cachedTransactions,
         ));
       } else {
         if (isClosed) return;
@@ -401,6 +433,9 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
           message: message,
           hasData: _cachedLoans.isNotEmpty,
           loans: _cachedLoans,
+          creditReport: _cachedCreditReport,
+          accounts: _cachedAccounts,
+          transactions: _cachedTransactions,
         ));
       }
     } catch (e, stack) {
@@ -411,6 +446,9 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
           message: AppError.extractMessage(e, AppStrings.loanRefinanceFailed),
           hasData: _cachedLoans.isNotEmpty,
           loans: _cachedLoans,
+          creditReport: _cachedCreditReport,
+          accounts: _cachedAccounts,
+          transactions: _cachedTransactions,
         ),
       );
     }
@@ -442,6 +480,9 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
           message: message,
           hasData: _cachedLoans.isNotEmpty,
           loans: _cachedLoans,
+          creditReport: _cachedCreditReport,
+          accounts: _cachedAccounts,
+          transactions: _cachedTransactions,
         ));
       }
     } catch (e, stack) {
@@ -451,6 +492,9 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
         message: AppError.extractMessage(e, 'Failed to open savings account.'),
         hasData: _cachedLoans.isNotEmpty,
         loans: _cachedLoans,
+        creditReport: _cachedCreditReport,
+        accounts: _cachedAccounts,
+        transactions: _cachedTransactions,
       ));
     }
   }
@@ -487,6 +531,9 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
           message: message,
           hasData: _cachedLoans.isNotEmpty,
           loans: _cachedLoans,
+          creditReport: _cachedCreditReport,
+          accounts: _cachedAccounts,
+          transactions: _cachedTransactions,
         ));
       }
     } catch (e, stack) {
@@ -496,6 +543,9 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
         message: AppError.extractMessage(e, 'Failed to deposit to savings.'),
         hasData: _cachedLoans.isNotEmpty,
         loans: _cachedLoans,
+        creditReport: _cachedCreditReport,
+        accounts: _cachedAccounts,
+        transactions: _cachedTransactions,
       ));
     }
   }
@@ -532,6 +582,9 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
           message: message,
           hasData: _cachedLoans.isNotEmpty,
           loans: _cachedLoans,
+          creditReport: _cachedCreditReport,
+          accounts: _cachedAccounts,
+          transactions: _cachedTransactions,
         ));
       }
     } catch (e, stack) {
@@ -541,6 +594,9 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
         message: AppError.extractMessage(e, 'Failed to withdraw from savings.'),
         hasData: _cachedLoans.isNotEmpty,
         loans: _cachedLoans,
+        creditReport: _cachedCreditReport,
+        accounts: _cachedAccounts,
+        transactions: _cachedTransactions,
       ));
     }
   }

@@ -85,12 +85,16 @@ class BankError extends BankState {
   final bool hasData;
   final List<Loan> loans;
   final CreditReport? creditReport;
+  final List<BankAccount> accounts;
+  final List<BankTransaction> transactions;
 
   const BankError({
     required this.message,
     this.hasData = false,
     this.loans = const [],
     this.creditReport,
+    this.accounts = const [],
+    this.transactions = const [],
   });
 }
 
@@ -99,22 +103,32 @@ class BankLoanSuccess extends BankState {
   final double newCash;
   final List<Loan> loans;
   final CreditReport? creditReport;
+  final List<BankAccount> accounts;
+  final List<BankTransaction> transactions;
 
   const BankLoanSuccess({
     required this.message,
     required this.newCash,
     required this.loans,
     this.creditReport,
+    this.accounts = const [],
+    this.transactions = const [],
   });
 }
 
 class BankRefinanceSuccess extends BankState {
   final String message;
   final List<Loan> loans;
+  final CreditReport? creditReport;
+  final List<BankAccount> accounts;
+  final List<BankTransaction> transactions;
 
   const BankRefinanceSuccess({
     required this.message,
     required this.loans,
+    this.creditReport,
+    this.accounts = const [],
+    this.transactions = const [],
   });
 }
 

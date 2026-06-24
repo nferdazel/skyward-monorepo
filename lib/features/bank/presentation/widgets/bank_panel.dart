@@ -42,6 +42,9 @@ class BankPanel extends StatelessWidget {
         if (state is BankSavingsSuccess) {
           AppSnackBar.showSuccess(context, state.message);
         }
+        if (state is BankRefinanceSuccess) {
+          AppSnackBar.showSuccess(context, state.message);
+        }
       },
       builder: (context, state) {
         return SingleChildScrollView(
@@ -67,10 +70,14 @@ class BankPanel extends StatelessWidget {
         loans.isEmpty
             ? _buildEmptyState(context, creditReport: creditReport, accounts: accounts, transactions: transactions)
             : _buildContent(context, loans, creditReport: creditReport, accounts: accounts, transactions: transactions),
-      BankError(:final hasData, :final loans, :final creditReport) =>
-        hasData ? _buildContent(context, loans, creditReport: creditReport) : _buildEmptyState(context),
-      BankLoanSuccess(:final loans, :final creditReport) => _buildContent(context, loans, creditReport: creditReport),
-      BankSavingsSuccess(:final loans, :final creditReport, :final accounts, :final transactions) => _buildContent(context, loans, creditReport: creditReport, accounts: accounts, transactions: transactions),
+      BankError(:final hasData, :final loans, :final creditReport, :final accounts, :final transactions) =>
+        hasData ? _buildContent(context, loans, creditReport: creditReport, accounts: accounts, transactions: transactions) : _buildEmptyState(context),
+      BankLoanSuccess(:final loans, :final creditReport, :final accounts, :final transactions) =>
+        _buildContent(context, loans, creditReport: creditReport, accounts: accounts, transactions: transactions),
+      BankSavingsSuccess(:final loans, :final creditReport, :final accounts, :final transactions) =>
+        _buildContent(context, loans, creditReport: creditReport, accounts: accounts, transactions: transactions),
+      BankRefinanceSuccess(:final loans, :final creditReport, :final accounts, :final transactions) =>
+        _buildContent(context, loans, creditReport: creditReport, accounts: accounts, transactions: transactions),
       _ => _buildLoading(),
     };
   }
@@ -1034,7 +1041,7 @@ class _TakeLoanDialogState extends State<_TakeLoanDialog> {
   Widget build(BuildContext context) {
     return AppDialogShell(
       title: AppStrings.takeLoan,
-      subtitle: '${AppStrings.borrowCapital} 5% simple interest, auto-deducted weekly.',
+      subtitle: '${AppStrings.borrowCapital} ${(_interestRate * 100).toStringAsFixed(0)}% simple interest, auto-deducted weekly.',
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
