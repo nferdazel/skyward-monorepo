@@ -13,10 +13,12 @@ class MockFinanceGateway implements FinanceGateway {
   List<dynamic> transactionsToReturn = [];
   Map<String, dynamic> snapshotToReturn = {};
   List<dynamic> financialSnapshotsToReturn = [];
+  List<Map<String, dynamic>> dailySummariesToReturn = [];
   double balanceToReturn = 0.0;
   bool shouldThrowOnTransactions = false;
   bool shouldThrowOnSnapshot = false;
   bool shouldThrowOnFinancialSnapshots = false;
+  bool shouldThrowOnDailySummaries = false;
 
   @override
   Future<List<dynamic>> loadTransactions(String userId) async {
@@ -36,6 +38,14 @@ class MockFinanceGateway implements FinanceGateway {
       throw Exception('Test financial snapshots error');
     }
     return financialSnapshotsToReturn;
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> loadDailySummaries(String userId) async {
+    if (shouldThrowOnDailySummaries) {
+      throw Exception('Test daily summaries error');
+    }
+    return dailySummariesToReturn;
   }
 
   @override

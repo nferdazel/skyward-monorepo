@@ -23,9 +23,13 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
   FinanceSnapshot _cachedSnapshot = const FinanceSnapshot.empty();
   List<BankTransaction> _cachedTransactions = [];
   List<FinanceDailySnapshot> _cachedFinancialSnapshots = [];
+  List<Map<String, dynamic>> _cachedDailySummaries = [];
   Timer? _realtimeRefreshDebounce;
   Future<void>? _activeTransactionLoad;
   Future<void>? _activeSnapshotRefresh;
+
+  /// Pre-aggregated daily summaries for IFRS reporting over extended periods.
+  List<Map<String, dynamic>> get dailySummaries => _cachedDailySummaries;
 
   FinanceCubit({FinanceGateway? gateway})
       : _gateway = gateway ?? const SupabaseFinanceGateway(),
@@ -211,11 +215,13 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
         _gateway.loadTransactions(userId),
         _gateway.getFinanceSnapshot(),
         _gateway.getFinancialSnapshots(userId),
+        _gateway.loadDailySummaries(userId),
       ]);
 
       final txnResponse = results[0] as List<dynamic>;
       final snapshotMap = results[1] as Map<String, dynamic>;
       final snapshotsResponse = results[2] as List<dynamic>;
+      final dailySummariesResponse = results[3] as List<Map<String, dynamic>>;
 
       final transactions = txnResponse
           .map((m) => BankTransaction.fromMap(Map<String, dynamic>.from(m)))
@@ -231,6 +237,7 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
                 netWorth: (s['net_worth'] as num?)?.toDouble() ?? 0.0,
               ))
           .toList();
+      _cachedDailySummaries = dailySummariesResponse;
       PerfDebug.end(
         'finance.transactions_load',
         stopwatch,
