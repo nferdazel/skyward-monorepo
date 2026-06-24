@@ -26,8 +26,8 @@ import '../../../../presentation/widgets/expense_breakdown_bar.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
 import '../../../bank/presentation/widgets/bank_panel.dart';
+import '../../../bank/domain/bank_transaction_model.dart';
 import '../../domain/finance_snapshot.dart';
-import '../../domain/ledger_model.dart';
 import '../cubit/finance_cubit.dart';
 import '../cubit/finance_state.dart';
 
@@ -763,7 +763,7 @@ class _FinanceViewState extends State<FinanceView>
     NumberFormat currencyFormat,
     DateFormat dateFormat,
   ) {
-    if (state.logs.isEmpty) {
+    if (state.transactions.isEmpty) {
       return const AppEmptyState(
         icon: Icons.history_edu_outlined,
         title: AppStrings.financialAuditSheetEmpty,
@@ -783,14 +783,14 @@ class _FinanceViewState extends State<FinanceView>
           // Lazy data rows
           Expanded(
             child: ListView.builder(
-              itemCount: state.logs.length,
+              itemCount: state.transactions.length,
               itemBuilder: (context, index) {
-                final log = state.logs[index];
+                final txn = state.transactions[index];
                 return Table(
                   columnWidths: _ledgerColumnWidths,
                   defaultVerticalAlignment: TableCellVerticalAlignment.middle,
                   children: [
-                    _buildTableEntryRow(log, currencyFormat, dateFormat),
+                    _buildTableEntryRow(txn, currencyFormat, dateFormat),
                   ],
                 );
               },
@@ -823,13 +823,14 @@ class _FinanceViewState extends State<FinanceView>
   }
 
   TableRow _buildTableEntryRow(
-    LedgerEntry entry,
+    BankTransaction txn,
     NumberFormat currencyFormat,
     DateFormat dateFormat,
   ) {
-    final isRev = entry.transactionType == 'revenue';
+    final isRev = txn.transactionType == 'credit';
     final sign = isRev ? '+' : '-';
     final valueColor = isRev ? AppTheme.success : AppTheme.error;
+    final gameDate = txn.gameDate ?? txn.createdAt ?? DateTime.now();
 
     return TableRow(
       decoration: BoxDecoration(
@@ -841,13 +842,13 @@ class _FinanceViewState extends State<FinanceView>
         // Column 1: Category Badge
         AppTableBodyCell(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-          child: Row(children: [_buildCategoryPill(entry.category)]),
+          child: Row(children: [_buildCategoryPill(txn.ifrsCategory ?? '')]),
         ),
         // Column 2: Details Description
         AppTableBodyCell(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
           child: Text(
-            entry.description,
+            txn.description ?? '',
             style: AppTypography.bodyMedium.copyWith(
               color: AppTheme.textPrimary,
             ),
@@ -857,8 +858,8 @@ class _FinanceViewState extends State<FinanceView>
         AppTableBodyCell(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
           child: AppStatText(
-            label: _dateOnlyFormat.format(entry.gameDate),
-            value: _timeOnlyFormat.format(entry.gameDate),
+            label: _dateOnlyFormat.format(gameDate),
+            value: _timeOnlyFormat.format(gameDate),
             labelColor: AppTheme.textSecondary,
             valueColor: AppTheme.textMuted,
           ),
@@ -869,7 +870,7 @@ class _FinanceViewState extends State<FinanceView>
           child: Align(
             alignment: Alignment.centerRight,
             child: Text(
-              '$sign${currencyFormat.format(entry.amount)}',
+              '$sign${currencyFormat.format(txn.amount)}',
               textAlign: TextAlign.right,
               style: AppTypography.badgeText.copyWith(
                 color: valueColor,

@@ -3,7 +3,7 @@ class User {
   final String username;
   final String companyName;
   final String ceoName;
-  final double cashBalance;
+  final double netWorth;
   final DateTime gameCurrentTime;
   final double autoGroundingThreshold;
   final String hqAirportIata;
@@ -16,12 +16,19 @@ class User {
   final String? archetype;
   final String? creditTier;
 
+  /// Deprecated: cash is now sourced from bank_accounts.balance via
+  /// the get_user_balance() RPC. Kept as a getter alias for backward
+  /// compatibility during migration. Always returns 0; callers should
+  /// use SimulationState.cashBalance or bank_accounts instead.
+  @Deprecated('Use bank_accounts.balance via get_user_balance() RPC')
+  double get cashBalance => 0.0;
+
   User({
     required this.id,
     required this.username,
     required this.companyName,
     required this.ceoName,
-    required this.cashBalance,
+    this.netWorth = 0.0,
     required this.gameCurrentTime,
     this.autoGroundingThreshold = 30.0,
     this.hqAirportIata = 'SIN',
@@ -41,9 +48,7 @@ class User {
       username: map['user_username'] ?? map['username'] ?? '',
       companyName: map['company_name'] ?? '',
       ceoName: map['ceo_name'] ?? '',
-      cashBalance:
-          (map['cash'] as num? ?? map['cash_balance'] as num?)?.toDouble() ??
-          0.0,
+      netWorth: (map['net_worth'] as num?)?.toDouble() ?? 0.0,
       gameCurrentTime: map['game_current_time'] != null
           ? DateTime.parse(map['game_current_time'])
           : DateTime.parse('2020-01-01T00:00:00Z'),
@@ -67,7 +72,7 @@ class User {
     String? username,
     String? companyName,
     String? ceoName,
-    double? cashBalance,
+    double? netWorth,
     DateTime? gameCurrentTime,
     double? autoGroundingThreshold,
     String? hqAirportIata,
@@ -85,7 +90,7 @@ class User {
       username: username ?? this.username,
       companyName: companyName ?? this.companyName,
       ceoName: ceoName ?? this.ceoName,
-      cashBalance: cashBalance ?? this.cashBalance,
+      netWorth: netWorth ?? this.netWorth,
       gameCurrentTime: gameCurrentTime ?? this.gameCurrentTime,
       autoGroundingThreshold:
           autoGroundingThreshold ?? this.autoGroundingThreshold,

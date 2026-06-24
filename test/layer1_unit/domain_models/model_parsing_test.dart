@@ -14,7 +14,6 @@ void main() {
         'username': 'ceo_sky',
         'company_name': 'Skyward Airways',
         'ceo_name': 'Sarah CEO',
-        'cash': 12000000.50,
         'game_current_time': '2026-05-30T12:00:00Z',
         'auto_grounding_threshold': 45.0,
         'hq_airport_iata': 'CGK',
@@ -25,7 +24,6 @@ void main() {
       expect(user.username, 'ceo_sky');
       expect(user.companyName, 'Skyward Airways');
       expect(user.ceoName, 'Sarah CEO');
-      expect(user.cashBalance, 12000000.50);
       expect(user.gameCurrentTime, DateTime.parse('2026-05-30T12:00:00Z'));
       expect(user.autoGroundingThreshold, 45.0);
       expect(user.hqAirportIata, 'CGK');
@@ -37,7 +35,7 @@ void main() {
       expect(user.username, '');
       expect(user.companyName, '');
       expect(user.ceoName, '');
-      expect(user.cashBalance, 0.0);
+      expect(user.netWorth, 0.0);
       expect(user.autoGroundingThreshold, 30.0);
       expect(user.hqAirportIata, 'SIN');
     });
@@ -186,11 +184,11 @@ void main() {
       expect(route.destination.iata, 'SIN');
     });
 
-    test('LedgerEntry.fromMap parses safely', () {
+    test('LedgerEntry.fromMap parses safely with IFRS category', () {
       final map = {
         'id': 'ledger-111',
         'transaction_type': 'revenue',
-        'category': 'ticket_sales',
+        'ifrs_category': 'ticket_sales',
         'amount': 25000.50,
         'description': 'Flight tickets SIN-CGK',
         'game_date': '2026-05-30T15:00:00Z',

@@ -16,6 +16,7 @@ abstract class SimulationGateway {
   Future<List<dynamic>> processSimulationDelta();
   Future<Map<String, dynamic>> loadUserProfile(String userId);
   Future<List<dynamic>> loadGameSettings();
+  Future<double> getUserBalance(String userId);
 }
 
 class SupabaseSimulationGateway implements SimulationGateway {
@@ -44,10 +45,10 @@ class SupabaseSimulationGateway implements SimulationGateway {
       return await SupabaseManager.client
           .from('users')
           .select(
-            'id, username, company_name, ceo_name, cash, game_current_time, '
+            'id, username, company_name, ceo_name, game_current_time, '
             'hq_airport_iata, auto_grounding_threshold, operational_status, '
             'consecutive_negative_days, recovery_streak_days, credit_score, '
-            'actor_type, archetype, credit_tier',
+            'actor_type, archetype, credit_tier, net_worth',
           )
           .eq('id', userId)
           .single();
@@ -77,6 +78,31 @@ class SupabaseSimulationGateway implements SimulationGateway {
     } catch (e, stack) {
       SupabaseManager.logError('loadGameSettings', e, stack);
       throw SimulationGatewayException(e.toString(), 'loadGameSettings');
+    }
+  }
+
+  @override
+  Future<double> getUserBalance(String userId) async {
+    try {
+      final response = await SupabaseManager.client.rpc(
+        'get_user_balance',
+        params: {'p_user_id': userId},
+      );
+      if (response is num) return response.toDouble();
+      if (response is Map && response.containsKey('balance')) {
+        return (response['balance'] as num).toDouble();
+      }
+      return 0.0;
+    } on PostgrestException catch (e) {
+      SupabaseManager.logRpcFailure(
+        'get_user_balance',
+        {'p_user_id': userId},
+        e.message,
+      );
+      throw SimulationGatewayException(e.message, 'getUserBalance');
+    } catch (e, stack) {
+      SupabaseManager.logError('getUserBalance', e, stack);
+      throw SimulationGatewayException(e.toString(), 'getUserBalance');
     }
   }
 }

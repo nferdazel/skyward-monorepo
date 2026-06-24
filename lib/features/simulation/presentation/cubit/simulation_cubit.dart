@@ -153,10 +153,11 @@ class SimulationCubit extends Cubit<SimulationState>
   void applyBackendUserUpdate(User updatedUser) {
     // Reuse the sync-complete transition so dependent cubits refresh after
     // backend world ticks that arrive through realtime.
+    // Note: cashBalance is NOT sourced from User anymore — it comes from
+    // bank_accounts.balance via the sync loop. We only update non-cash fields.
     _safeEmit(
       state.copyWith(
         gameTime: updatedUser.gameCurrentTime,
-        cashBalance: updatedUser.cashBalance,
         isSyncing: false,
         errorMessage: null,
         operationalStatus: updatedUser.operationalStatus,
@@ -206,10 +207,12 @@ class SimulationCubit extends Cubit<SimulationState>
       final results = await Future.wait([
         _gateway.processSimulationDelta(),
         _gateway.loadUserProfile(userId),
+        _gateway.getUserBalance(userId),
       ]);
 
       final List<dynamic> response = results[0] as List<dynamic>;
       final Map<String, dynamic> userProfile = results[1] as Map<String, dynamic>;
+      final double bankBalance = results[2] as double;
 
       double elapsedGameDays = 0.0;
       int flightsRun = 0;
@@ -258,7 +261,7 @@ class SimulationCubit extends Cubit<SimulationState>
       _safeEmit(
         state.copyWith(
           gameTime: authoritativeUser.gameCurrentTime,
-          cashBalance: authoritativeUser.cashBalance,
+          cashBalance: bankBalance,
           fuelPricePerLiter: fuelPrice,
           gameSpeedMultiplier: gameSpeedMultiplier,
           isSyncing: false,
@@ -343,6 +346,8 @@ class SimulationCubit extends Cubit<SimulationState>
     stopLoop();
     _retryTimer?.cancel();
     _retryTimer = null;
+    _balanceRefreshDebounce?.cancel();
+    _balanceRefreshDebounce = null;
     if (_lifecycleObserverRegistered) {
       _maybeBinding()?.removeObserver(this);
       _lifecycleObserverRegistered = false;
@@ -354,7 +359,8 @@ class SimulationCubit extends Cubit<SimulationState>
   void _setupRealtime(String userId) {
     if (DevModeManager.isDevMode || SupabaseManager.hasMockClient) return;
 
-    final channel = SupabaseManager.client
+    // Subscribe to users table for game-time and operational status changes.
+    final userChannel = SupabaseManager.client
         .channel('public:users:id=eq.$userId')
         .onPostgresChanges(
           event: PostgresChangeEvent.update,
@@ -372,6 +378,39 @@ class SimulationCubit extends Cubit<SimulationState>
         )
         .subscribe();
 
-    _realtimeSubscriptions.add(channel);
+    // Subscribe to bank_transactions for cash balance updates.
+    final bankChannel = SupabaseManager.client
+        .channel('public:bank_transactions:user=eq.$userId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'bank_transactions',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'user_id',
+            value: userId,
+          ),
+          callback: (_) => _scheduleRealtimeBalanceRefresh(userId),
+        )
+        .subscribe();
+
+    _realtimeSubscriptions.add(userChannel);
+    _realtimeSubscriptions.add(bankChannel);
+  }
+
+  Timer? _balanceRefreshDebounce;
+
+  void _scheduleRealtimeBalanceRefresh(String userId) {
+    _balanceRefreshDebounce?.cancel();
+    _balanceRefreshDebounce = Timer(const Duration(milliseconds: 300), () async {
+      try {
+        final balance = await _gateway.getUserBalance(userId);
+        if (!isClosed) {
+          _safeEmit(state.copyWith(cashBalance: balance));
+        }
+      } catch (_) {
+        // Silently ignore balance fetch errors in realtime callbacks
+      }
+    });
   }
 }

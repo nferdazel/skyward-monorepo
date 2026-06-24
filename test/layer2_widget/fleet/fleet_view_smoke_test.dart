@@ -35,7 +35,6 @@ void main() {
           username: 'testpilot',
           companyName: 'Test Airlines',
           ceoName: 'CEO Test',
-          cashBalance: 15000000,
           gameCurrentTime: DateTime.parse('2020-01-01T00:00:00Z'),
         ),
         token: 'test-token',

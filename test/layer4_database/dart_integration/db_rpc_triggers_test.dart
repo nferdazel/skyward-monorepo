@@ -26,13 +26,13 @@ void main() {
         'username': 'chief_test',
         'company_name': 'Harness Airways',
         'ceo_name': 'Harness CEO',
-        'cash_balance': 9876543.21,
         'game_current_time': '2026-05-30T12:00:00Z',
       };
       
       final user = User.fromMap(userMap);
       expect(user.id, 'user-uuid-1');
-      expect(user.cashBalance, 9876543.21);
+      // Cash is now sourced from bank_accounts.balance, not users.cash
+      expect(user.netWorth, 0.0);
       expect(user.companyName, 'Harness Airways');
 
       // 2. Verify fleet aircraft models RPC parser logic

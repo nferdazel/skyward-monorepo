@@ -12,7 +12,7 @@ import 'package:skyward/features/routes/presentation/cubit/routes_state.dart';
 import 'package:skyward/features/finance/presentation/cubit/finance_state.dart';
 import 'package:skyward/features/simulation/presentation/cubit/simulation_cubit.dart';
 import 'package:skyward/features/simulation/presentation/cubit/simulation_state.dart';
-import 'package:skyward/features/finance/domain/ledger_model.dart';
+import 'package:skyward/features/bank/domain/bank_transaction_model.dart';
 import 'package:skyward/features/fleet/domain/fleet_models.dart';
 import 'package:skyward/features/leaderboard/domain/leaderboard_models.dart';
 import 'package:skyward/features/leaderboard/presentation/cubit/leaderboard_state.dart';
@@ -51,7 +51,6 @@ void main() {
             username: 'chief',
             companyName: 'Chief Airways',
             ceoName: 'Alex',
-            cashBalance: 10000000.0,
             gameCurrentTime: DateTime.parse('2026-05-30T12:00:00Z'),
           ),
           token: 'token-abc',
@@ -62,16 +61,16 @@ void main() {
             username: 'chief',
             companyName: 'Chief Airways',
             ceoName: 'Alex',
-            cashBalance: 15000000.0, // Balance updated
+            netWorth: 5000000.0,
             gameCurrentTime: DateTime.parse('2026-05-30T12:00:00Z'),
           );
           cubit.updateActiveUser(updated);
         },
         expect: () => [
           isA<AuthAuthenticated>().having(
-            (a) => a.user.cashBalance,
-            'cashBalance',
-            15000000.0,
+            (a) => a.user.netWorth,
+            'netWorth',
+            5000000.0,
           ),
         ],
       );
@@ -105,7 +104,6 @@ void main() {
               username: 'chief',
               companyName: 'Chief Airways',
               ceoName: 'Alex',
-              cashBalance: 16000000.0,
               gameCurrentTime: DateTime.parse('2026-06-02T12:00:00Z'),
             ),
           );
@@ -113,7 +111,6 @@ void main() {
         expect: () => [
           isA<SimulationState>()
               .having((state) => state.isSyncing, 'isSyncing', false)
-              .having((state) => state.cashBalance, 'cashBalance', 16000000.0)
               .having(
                 (state) => state.gameTime,
                 'gameTime',
@@ -328,13 +325,16 @@ void main() {
 
     group('Finance State Shapes', () {
       test('loading-oriented finance states can preserve loaded payload', () {
-        final logs = [
-          LedgerEntry(
-            id: 'ledger-1',
-            transactionType: 'revenue',
-            category: 'ticket_sales',
+        final transactions = [
+          BankTransaction(
+            id: 'txn-1',
+            accountId: 'account-1',
+            userId: 'user-1',
+            transactionType: 'credit',
             amount: 12345.0,
+            balanceAfter: 12345.0,
             description: 'Test revenue',
+            ifrsCategory: 'ticket_sales',
             gameDate: DateTime.parse('2026-05-31T00:00:00Z'),
             createdAt: DateTime.parse('2026-05-31T00:00:00Z'),
           ),
@@ -343,7 +343,7 @@ void main() {
         final loadingState = FinanceLoading(
           metrics: FinanceMetrics(
             snapshot: const FinanceSnapshot.empty(),
-            logs: logs,
+            transactions: transactions,
             dailySnapshots: [
               FinanceDailySnapshot(
                 gameDate: DateTime.parse('2026-05-31T00:00:00Z'),
@@ -369,7 +369,7 @@ void main() {
           ),
         );
 
-        expect(loadingState.logs, hasLength(1));
+        expect(loadingState.transactions, hasLength(1));
         expect(loadingState.dailySnapshots, hasLength(1));
         expect(loadingState.totalRevenue, 12345.0);
         expect(loadingState.netProfit, 12345.0);

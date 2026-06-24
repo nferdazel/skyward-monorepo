@@ -152,7 +152,7 @@ class _AuthenticatedDashboardShellState
     _simulationCubit.startLoop(
       userId: user.id,
       initialGameTime: user.gameCurrentTime,
-      initialCash: user.cashBalance,
+      initialCash: 0.0, // Cash is now sourced from bank_accounts via sync
       initialOperationalStatus: user.operationalStatus,
       initialConsecutiveNegativeDays: user.consecutiveNegativeDays,
       initialRecoveryStreakDays: user.recoveryStreakDays,

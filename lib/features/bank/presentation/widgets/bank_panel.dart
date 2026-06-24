@@ -39,9 +39,6 @@ class BankPanel extends StatelessWidget {
         if (state is BankLoanSuccess) {
           AppSnackBar.showSuccess(context, state.message);
         }
-        if (state is BankSavingsSuccess) {
-          AppSnackBar.showSuccess(context, state.message);
-        }
         if (state is BankRefinanceSuccess) {
           AppSnackBar.showSuccess(context, state.message);
         }
@@ -267,8 +264,9 @@ class BankPanel extends StatelessWidget {
   // ── Account Summary ─────────────────────────────────────────────────────
 
   Widget _buildAccountSummary(BuildContext context, List<BankAccount> accounts) {
-    final savings = accounts.where((a) => a.isSavings).firstOrNull;
-    final checking = accounts.where((a) => a.isChecking).firstOrNull;
+    // Show the operating (checking) account as the primary account
+    final operating = accounts.where((a) => a.isChecking).firstOrNull ??
+        accounts.firstOrNull;
 
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -283,46 +281,26 @@ class BankPanel extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
-          Row(
-            children: [
-              if (savings != null) ...[
-                Expanded(
-                  child: _AccountTile(
-                    icon: Icons.savings_outlined,
-                    label: 'Savings',
-                    balance: savings.balance,
-                    color: AppTheme.success,
-                    interestRate: savings.interestRate,
-                  ),
-                ),
-              ],
-              if (savings != null && checking != null)
-                const SizedBox(width: AppSpacing.md),
-              if (checking != null) ...[
-                Expanded(
-                  child: _AccountTile(
-                    icon: Icons.account_balance_wallet_outlined,
-                    label: 'Checking',
-                    balance: checking.balance,
-                    color: AppTheme.primary,
-                  ),
-                ),
-              ],
-            ],
-          ),
+          if (operating != null)
+            _AccountTile(
+              icon: Icons.account_balance_outlined,
+              label: 'Operating',
+              balance: operating.balance,
+              color: AppTheme.primary,
+            ),
         ],
       ),
     );
   }
 
-  // ── Savings Section ─────────────────────────────────────────────────────
+  // ── Operating Account Section ────────────────────────────────────────────
 
   Widget _buildSavingsSection(BuildContext context, {List<BankAccount> accounts = const [], List<BankTransaction> transactions = const []}) {
-    final savings = accounts.where((a) => a.isSavings).firstOrNull;
+    final operating = accounts.where((a) => a.isChecking).firstOrNull ??
+        accounts.firstOrNull;
 
-    // Savings is now the default account — it should always exist.
-    // If somehow missing, show nothing rather than a creation prompt.
-    if (savings == null) return const SizedBox.shrink();
+    // If no account exists, show nothing.
+    if (operating == null) return const SizedBox.shrink();
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -337,42 +315,16 @@ class BankPanel extends StatelessWidget {
               Row(
                 children: [
                   Text(
-                    'SAVINGS ACCOUNT',
+                    'OPERATING ACCOUNT',
                     style: AppTypography.microLabel.copyWith(
                       color: AppTheme.textMuted,
                     ),
                   ),
                   const Spacer(),
                   AppBadge(
-                    label: '${(savings.interestRate * 100).toStringAsFixed(1)}% APY',
+                    label: AppFormatters.currency.format(operating.balance),
                     color: AppTheme.success,
                     fontSize: 11,
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Row(
-                children: [
-                  Expanded(
-                    child: AppButton(
-                      text: 'DEPOSIT',
-                      icon: Icons.arrow_downward,
-                      onPressed: () => _showSavingsDialog(context, isDeposit: true),
-                      type: AppButtonType.primary,
-                      height: 40,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: AppButton(
-                      text: 'WITHDRAW',
-                      icon: Icons.arrow_upward,
-                      onPressed: savings.balance > 0
-                          ? () => _showSavingsDialog(context, isDeposit: false)
-                          : null,
-                      type: AppButtonType.secondary,
-                      height: 40,
-                    ),
                   ),
                 ],
               ),
@@ -396,18 +348,6 @@ class BankPanel extends StatelessWidget {
           ],
         ],
       ],
-    );
-  }
-
-  // ── Savings Dialog ──────────────────────────────────────────────────────
-
-  void _showSavingsDialog(BuildContext context, {required bool isDeposit}) {
-    showDialog<void>(
-      context: context,
-      builder: (_) => BlocProvider.value(
-        value: context.read<BankCubit>(),
-        child: _SavingsActionDialog(isDeposit: isDeposit),
-      ),
     );
   }
 
@@ -719,14 +659,12 @@ class _AccountTile extends StatelessWidget {
   final String label;
   final double balance;
   final Color color;
-  final double? interestRate;
 
   const _AccountTile({
     required this.icon,
     required this.label,
     required this.balance,
     required this.color,
-    this.interestRate,
   });
 
   @override
@@ -759,15 +697,6 @@ class _AccountTile extends StatelessWidget {
               color: AppTheme.textPrimary,
             ),
           ),
-          if (interestRate != null && interestRate! > 0) ...[
-            const SizedBox(height: 2),
-            Text(
-              '${(interestRate! * 100).toStringAsFixed(1)}% APY',
-              style: AppTypography.captionLight.copyWith(
-                color: AppTheme.textMuted,
-              ),
-            ),
-          ],
         ],
       ),
     );
@@ -785,10 +714,9 @@ class _TransactionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDeposit = transaction.transactionType == 'deposit' ||
-        transaction.transactionType == 'interest';
-    final color = isDeposit ? AppTheme.success : AppTheme.error;
-    final icon = isDeposit ? Icons.arrow_downward : Icons.arrow_upward;
+    final isCredit = transaction.transactionType == 'credit';
+    final color = isCredit ? AppTheme.success : AppTheme.error;
+    final icon = isCredit ? Icons.arrow_downward : Icons.arrow_upward;
 
     return Row(
       children: [
@@ -811,7 +739,7 @@ class _TransactionRow extends StatelessWidget {
           ),
         ),
         Text(
-          '${isDeposit ? '+' : '-'}${AppFormatters.currency.format(transaction.amount)}',
+          '${isCredit ? '+' : '-'}${AppFormatters.currency.format(transaction.amount)}',
           style: AppTypography.badgeText.copyWith(color: color, fontSize: 11),
         ),
       ],
@@ -820,157 +748,13 @@ class _TransactionRow extends StatelessWidget {
 
   String _typeLabel(String type) {
     switch (type) {
-      case 'deposit':
-        return 'Deposit';
-      case 'withdrawal':
-        return 'Withdrawal';
-      case 'interest':
-        return 'Interest Accrued';
+      case 'credit':
+        return 'Credit';
+      case 'debit':
+        return 'Debit';
       default:
         return type;
     }
-  }
-}
-
-// ============================================================================
-// Savings action dialog (deposit / withdraw)
-// ============================================================================
-
-class _SavingsActionDialog extends StatefulWidget {
-  final bool isDeposit;
-
-  const _SavingsActionDialog({required this.isDeposit});
-
-  @override
-  State<_SavingsActionDialog> createState() => _SavingsActionDialogState();
-}
-
-class _SavingsActionDialogState extends State<_SavingsActionDialog> {
-  double _amount = 100000;
-  final TextEditingController _amountController = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    _amountController.text = _amount.toStringAsFixed(0);
-  }
-
-  @override
-  void dispose() {
-    _amountController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final title = widget.isDeposit ? 'Deposit to Savings' : 'Withdraw from Savings';
-
-    return AppDialogShell(
-      title: title,
-      subtitle: widget.isDeposit
-          ? 'Move cash into your savings account to earn interest.'
-          : 'Withdraw funds from savings back to your available cash.',
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Amount',
-            style: AppTypography.microLabel.copyWith(
-              color: AppTheme.textSecondary,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          TextField(
-            controller: _amountController,
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            style: AppTypography.bodyMedium.copyWith(color: AppTheme.textPrimary),
-            decoration: InputDecoration(
-              prefixText: '\$ ',
-              prefixStyle: AppTypography.hudValue.copyWith(
-                color: AppTheme.textSecondary,
-              ),
-              hintText: '10000 – 50000000',
-              hintStyle: AppTypography.captionRegular.copyWith(
-                color: AppTheme.textMuted,
-              ),
-            ),
-            onChanged: (value) {
-              final parsed = double.tryParse(value);
-              if (parsed != null) {
-                setState(() => _amount = parsed.clamp(10000, 50000000));
-              }
-            },
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          SliderTheme(
-            data: SliderTheme.of(context).copyWith(
-              activeTrackColor: AppTheme.primary,
-              inactiveTrackColor: AppTheme.border,
-              thumbColor: AppTheme.primary,
-              overlayColor: AppTheme.primary.withValues(alpha: 0.1),
-              trackHeight: 2,
-            ),
-            child: Slider(
-              value: _amount,
-              min: 10000,
-              max: 50000000,
-              divisions: 4999,
-              onChanged: (value) {
-                setState(() {
-                  _amount = value;
-                  _amountController.text = value.toStringAsFixed(0);
-                });
-              },
-            ),
-          ),
-        ],
-      ),
-      actions: BlocConsumer<BankCubit, BankState>(
-        listener: (context, state) {
-          if (state is BankSavingsSuccess) {
-            Navigator.pop(context);
-          }
-        },
-        builder: (context, state) {
-          final isLoading = state is BankLoading;
-
-          return Row(
-            children: [
-              Expanded(
-                child: AppButton(
-                  text: AppStrings.cancel,
-                  onPressed: isLoading ? null : () => Navigator.pop(context),
-                  type: AppButtonType.secondary,
-                  height: 40,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: AppButton(
-                  text: 'CONFIRM',
-                  icon: Icons.check,
-                  isLoading: isLoading,
-                  onPressed: _amount >= 10000 && !isLoading
-                      ? () {
-                          final cubit = context.read<BankCubit>();
-                          if (widget.isDeposit) {
-                            cubit.depositToSavings(_amount);
-                          } else {
-                            cubit.withdrawFromSavings(_amount);
-                          }
-                        }
-                      : null,
-                  type: AppButtonType.primary,
-                  height: 40,
-                ),
-              ),
-            ],
-          );
-        },
-      ),
-    );
   }
 }
 

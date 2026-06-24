@@ -10,10 +10,10 @@ import '../../../../core/realtime/realtime_subscription_bag.dart';
 import '../../../../core/utils/app_error.dart';
 import '../../../../core/utils/dev_mode_manager.dart';
 import '../../../../core/utils/perf_debug.dart';
+import '../../../bank/domain/bank_transaction_model.dart';
 import '../../../simulation/presentation/cubit/simulation_cubit.dart';
 import '../../data/finance_gateway.dart';
 import '../../domain/finance_snapshot.dart';
-import '../../domain/ledger_model.dart';
 import 'finance_state.dart';
 
 class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
@@ -21,10 +21,10 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
   final RealtimeSubscriptionBag _realtimeSubscriptions =
       RealtimeSubscriptionBag();
   FinanceSnapshot _cachedSnapshot = const FinanceSnapshot.empty();
-  List<LedgerEntry> _cachedLogs = [];
+  List<BankTransaction> _cachedTransactions = [];
   List<FinanceDailySnapshot> _cachedFinancialSnapshots = [];
   Timer? _realtimeRefreshDebounce;
-  Future<void>? _activeLedgerLoad;
+  Future<void>? _activeTransactionLoad;
   Future<void>? _activeSnapshotRefresh;
 
   FinanceCubit({FinanceGateway? gateway})
@@ -32,7 +32,7 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
         super(const FinanceInitial());
 
   FinanceDataState _buildFinanceState(
-    List<LedgerEntry> logs, {
+    List<BankTransaction> transactions, {
     FinanceSnapshot? snapshot,
     List<FinanceDailySnapshot>? financialSnapshots,
   }) {
@@ -47,15 +47,15 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
     double totalRevenue = 0.0;
     double totalExpense = 0.0;
 
-    for (final entry in logs) {
-      final amt = entry.amount;
-      final dayKey = DateTime(
-        entry.gameDate.year,
-        entry.gameDate.month,
-        entry.gameDate.day,
-      );
+    for (final txn in transactions) {
+      final amt = txn.amount;
+      final gameDate = txn.gameDate ?? txn.createdAt ?? DateTime.now();
+      final dayKey = DateTime(gameDate.year, gameDate.month, gameDate.day);
       final bucket = dailyBuckets[dayKey] ?? (revenue: 0.0, expense: 0.0);
-      if (entry.transactionType == 'revenue') {
+
+      // Credit = revenue (money in), Debit = expense (money out)
+      final isRevenue = txn.transactionType == 'credit';
+      if (isRevenue) {
         totalRevenue += amt;
         dailyBuckets[dayKey] = (
           revenue: bucket.revenue + amt,
@@ -69,7 +69,9 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
         );
       }
 
-      switch (entry.category) {
+      // Map IFRS categories to legacy metric buckets
+      final category = txn.ifrsCategory ?? '';
+      switch (category) {
         case 'ticket_sales':
           totalTicketSales += amt;
           break;
@@ -134,7 +136,7 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
     return FinanceLoaded(
       metrics: FinanceMetrics(
         snapshot: effectiveSnapshot,
-        logs: logs,
+        transactions: transactions,
         dailySnapshots: dailySnapshots,
         financialSnapshots: effectiveFinancialSnapshots,
         totalTicketSales: totalTicketSales,
@@ -179,44 +181,46 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
     return super.close();
   }
 
-  // Fetch financial logs and compile yield summaries
+  /// Fetch bank transactions and compile financial metrics.
   Future<void> loadLedger(String userId, {bool silent = false}) async {
-    if (_activeLedgerLoad != null) {
-      await _activeLedgerLoad;
+    if (_activeTransactionLoad != null) {
+      await _activeTransactionLoad;
       return;
     }
-    _activeLedgerLoad = _loadLedgerInternal(userId, silent: silent);
+    _activeTransactionLoad = _loadTransactionsInternal(userId, silent: silent);
     try {
-      await _activeLedgerLoad;
+      await _activeTransactionLoad;
     } finally {
-      _activeLedgerLoad = null;
+      _activeTransactionLoad = null;
     }
   }
 
-  Future<void> _loadLedgerInternal(String userId, {bool silent = false}) async {
-    final stopwatch = PerfDebug.start('finance.ledger_load');
+  Future<void> _loadTransactionsInternal(String userId, {bool silent = false}) async {
+    final stopwatch = PerfDebug.start('finance.transactions_load');
     if (!silent) {
       final snapshot = _snapshotState();
       emit(FinanceLoading(metrics: snapshot.metrics));
     }
     try {
       if (DevModeManager.isDevMode) {
-        _devLoadMockLedger();
+        _devLoadMockTransactions();
         return;
       }
 
       final results = await Future.wait<dynamic>([
-        _gateway.loadLedger(userId),
+        _gateway.loadTransactions(userId),
         _gateway.getFinanceSnapshot(),
         _gateway.getFinancialSnapshots(userId),
       ]);
 
-      final ledgerResponse = results[0] as List<dynamic>;
+      final txnResponse = results[0] as List<dynamic>;
       final snapshotMap = results[1] as Map<String, dynamic>;
       final snapshotsResponse = results[2] as List<dynamic>;
 
-      final logs = ledgerResponse.map((l) => LedgerEntry.fromMap(l)).toList();
-      _cachedLogs = logs;
+      final transactions = txnResponse
+          .map((m) => BankTransaction.fromMap(Map<String, dynamic>.from(m)))
+          .toList();
+      _cachedTransactions = transactions;
       _cachedSnapshot = FinanceSnapshot.fromMap(snapshotMap);
       _cachedFinancialSnapshots = snapshotsResponse
           .map((s) => FinanceDailySnapshot(
@@ -228,30 +232,30 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
               ))
           .toList();
       PerfDebug.end(
-        'finance.ledger_load',
+        'finance.transactions_load',
         stopwatch,
         fields: {
           'silent': silent,
-          'logs': logs.length,
+          'transactions': transactions.length,
           'hasSnapshot': _cachedSnapshot != const FinanceSnapshot.empty(),
         },
       );
 
       if (isClosed) return;
-      emit(_buildFinanceState(logs, snapshot: _cachedSnapshot, financialSnapshots: _cachedFinancialSnapshots));
+      emit(_buildFinanceState(transactions, snapshot: _cachedSnapshot, financialSnapshots: _cachedFinancialSnapshots));
     } catch (e, stack) {
       PerfDebug.end(
-        'finance.ledger_load',
+        'finance.transactions_load',
         stopwatch,
         fields: {'silent': silent, 'error': true},
       );
-      AppError.log('loadLedger', e, stack);
+      AppError.log('loadTransactions', e, stack);
       final snapshot = _snapshotState();
       if (isClosed) return;
       emit(
         FinanceError(
           message: AppError.extractMessage(e, AppStrings.ledgerLoadFailed),
-          hasData: snapshot.logs.isNotEmpty,
+          hasData: snapshot.transactions.isNotEmpty,
           metrics: snapshot.metrics,
         ),
       );
@@ -285,7 +289,7 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
         fields: {'silent': silent},
       );
       if (isClosed) return;
-      emit(_buildFinanceState(_cachedLogs, snapshot: _cachedSnapshot));
+      emit(_buildFinanceState(_cachedTransactions, snapshot: _cachedSnapshot));
     } catch (e) {
       PerfDebug.end(
         'finance.snapshot_refresh',
@@ -309,54 +313,69 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
     });
   }
 
-  // Seed detailed mock ledger logs for local development visual fidelity
-  void _devLoadMockLedger() {
-    final mockLogs = [
-      LedgerEntry(
-        id: 'mock-ledger-1',
-        transactionType: 'expense',
-        category: 'aircraft_lease',
+  /// Seed detailed mock bank transactions for local development visual fidelity.
+  void _devLoadMockTransactions() {
+    final mockTransactions = [
+      BankTransaction(
+        id: 'mock-txn-1',
+        accountId: 'mock-account',
+        userId: 'dev-user-uuid',
+        transactionType: 'debit',
         amount: 130000.00,
+        balanceAfter: 9870000.00,
         description: 'Leasing fees for active fleet over 1.50 game days',
+        ifrsCategory: 'aircraft_lease',
         gameDate: DateTime.parse('2020-01-02T12:00:00Z'),
         createdAt: DateTime.now(),
       ),
-      LedgerEntry(
-        id: 'mock-ledger-2',
-        transactionType: 'revenue',
-        category: 'ticket_sales',
+      BankTransaction(
+        id: 'mock-txn-2',
+        accountId: 'mock-account',
+        userId: 'dev-user-uuid',
+        transactionType: 'credit',
         amount: 390660.00,
+        balanceAfter: 10260660.00,
         description: 'Ticket sales for 14 flight cycles: CGK -> SIN',
+        ifrsCategory: 'ticket_sales',
         gameDate: DateTime.parse('2020-01-02T10:00:00Z'),
         createdAt: DateTime.now(),
       ),
-      LedgerEntry(
-        id: 'mock-ledger-3',
-        transactionType: 'expense',
-        category: 'operations',
+      BankTransaction(
+        id: 'mock-txn-3',
+        accountId: 'mock-account',
+        userId: 'dev-user-uuid',
+        transactionType: 'debit',
         amount: 124134.36,
+        balanceAfter: 10136525.64,
         description:
             'Fuel, crew maintenance, & airport landing fees for 14 flights: CGK -> SIN',
+        ifrsCategory: 'operations',
         gameDate: DateTime.parse('2020-01-02T10:00:00Z'),
         createdAt: DateTime.now(),
       ),
-      LedgerEntry(
-        id: 'mock-ledger-4',
-        transactionType: 'expense',
-        category: 'aircraft_lease_init',
+      BankTransaction(
+        id: 'mock-txn-4',
+        accountId: 'mock-account',
+        userId: 'dev-user-uuid',
+        transactionType: 'debit',
         amount: 130000.00,
+        balanceAfter: 10000000.00,
         description:
             'Leased aircraft ATR 72-600 (Short-Haul Hopper) - Initial month deposit',
+        ifrsCategory: 'aircraft_lease_init',
         gameDate: DateTime.parse('2020-01-01T04:00:00Z'),
         createdAt: DateTime.now(),
       ),
-      LedgerEntry(
-        id: 'mock-ledger-5',
-        transactionType: 'expense',
-        category: 'aircraft_purchase',
+      BankTransaction(
+        id: 'mock-txn-5',
+        accountId: 'mock-account',
+        userId: 'dev-user-uuid',
+        transactionType: 'debit',
         amount: 111000000.00,
+        balanceAfter: -101000000.00,
         description:
             'Purchased aircraft Airbus A320neo with Call Sign: Primary Eagle',
+        ifrsCategory: 'aircraft_purchase',
         gameDate: DateTime.parse('2020-01-01T00:30:00Z'),
         createdAt: DateTime.now(),
       ),
@@ -379,22 +398,21 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
       rollingNet30d: 136525.64,
       ledgerWindowDays: 30,
     );
-    _cachedLogs = mockLogs;
-    emit(_buildFinanceState(mockLogs, snapshot: _cachedSnapshot));
+    _cachedTransactions = mockTransactions;
+    emit(_buildFinanceState(mockTransactions, snapshot: _cachedSnapshot));
   }
 
   void _setupRealtime(String userId) {
     if (DevModeManager.isDevMode || SupabaseManager.hasMockClient) return;
     unawaited(_realtimeSubscriptions.clear());
 
-    // Only subscribe to financial_ledger — user/fleet/routes changes
-    // are covered by SimulationReactiveMixin.
-    final ledgerChannel = SupabaseManager.client
-        .channel('public:financial_ledger:user_id=eq.$userId')
+    // Subscribe to bank_transactions — covers all financial activity.
+    final txnChannel = SupabaseManager.client
+        .channel('public:bank_transactions:user_id=eq.$userId')
         .onPostgresChanges(
           event: PostgresChangeEvent.all,
           schema: 'public',
-          table: 'financial_ledger',
+          table: 'bank_transactions',
           filter: PostgresChangeFilter(
             type: PostgresChangeFilterType.eq,
             column: 'user_id',
@@ -404,6 +422,6 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
         )
         .subscribe();
 
-    _realtimeSubscriptions.add(ledgerChannel);
+    _realtimeSubscriptions.add(txnChannel);
   }
 }

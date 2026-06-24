@@ -61,6 +61,16 @@ class _FleetViewState extends State<FleetView>
     6: FlexColumnWidth(1.0), // ACTIONS
   };
 
+  static const _catalogColumnWidths = <int, TableColumnWidth>{
+    0: FlexColumnWidth(2.4), // AIRCRAFT
+    1: FlexColumnWidth(1.2), // CLASS
+    2: FlexColumnWidth(1.0), // RANGE
+    3: FlexColumnWidth(0.9), // SEATS
+    4: FlexColumnWidth(1.0), // BURN
+    5: FlexColumnWidth(1.7), // PRICING
+    6: FlexColumnWidth(1.2), // ACTIONS
+  };
+
   @override
   void initState() {
     super.initState();
@@ -983,187 +993,213 @@ class _FleetViewState extends State<FleetView>
     bool isActionLoading,
   ) {
     return AppTableShell(
-      child: Table(
-        columnWidths: const {
-          0: FlexColumnWidth(2.4), // AIRCRAFT
-          1: FlexColumnWidth(1.2), // CLASS
-          2: FlexColumnWidth(1.0), // RANGE
-          3: FlexColumnWidth(0.9), // SEATS
-          4: FlexColumnWidth(1.0), // BURN
-          5: FlexColumnWidth(1.7), // PRICING
-          6: FlexColumnWidth(1.2), // ACTIONS
-        },
-        defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+      child: Column(
         children: [
-          TableRow(
-            decoration: BoxDecoration(
-              color: AppTheme.surfaceRaised,
-            ),
+          // Fixed header row
+          Table(
+            columnWidths: _catalogColumnWidths,
+            defaultVerticalAlignment: TableCellVerticalAlignment.middle,
             children: [
-              _tableHeaderCell(AppStrings.aircraftHeader),
-              _tableHeaderCell(AppStrings.classHeader),
-              _tableHeaderCell(AppStrings.rangeHeader),
-              _tableHeaderCell(AppStrings.seatsHeader),
-              _tableHeaderCell(AppStrings.burnHeader),
-              _tableHeaderCell(AppStrings.pricingHeader),
-              _tableHeaderCell(AppStrings.actionsHeader),
+              TableRow(
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceRaised,
+                ),
+                children: [
+                  _tableHeaderCell(AppStrings.aircraftHeader),
+                  _tableHeaderCell(AppStrings.classHeader),
+                  _tableHeaderCell(AppStrings.rangeHeader),
+                  _tableHeaderCell(AppStrings.seatsHeader),
+                  _tableHeaderCell(AppStrings.burnHeader),
+                  _tableHeaderCell(AppStrings.pricingHeader),
+                  _tableHeaderCell(AppStrings.actionsHeader),
+                ],
+              ),
             ],
           ),
-          ...catalog.map((model) {
-            return TableRow(
-              decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(color: AppTheme.border, width: 1.0),
+          // Scrollable data rows
+          Expanded(
+            child: ListView.builder(
+              itemCount: catalog.length,
+              itemBuilder: (context, index) {
+                final model = catalog[index];
+                return _buildCatalogRow(
+                  context,
+                  model,
+                  userId,
+                  currencyFormat,
+                  isActionLoading,
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCatalogRow(
+    BuildContext context,
+    AircraftModel model,
+    String userId,
+    NumberFormat currencyFormat,
+    bool isActionLoading,
+  ) {
+    return Table(
+      columnWidths: _catalogColumnWidths,
+      defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+      children: [
+        TableRow(
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: AppTheme.border, width: 1.0),
+            ),
+          ),
+          children: [
+            _tableCell(
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    model.modelName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.bodyMedium.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    model.manufacturer.toUpperCase(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.badgeText.copyWith(
+                      color: AppTheme.textSecondary,
+                      letterSpacing: AppTypography.spacingRelaxed,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            _tableCell(
+              Text(
+                model.type.replaceAll('_', ' ').toUpperCase(),
+                style: AppTypography.badgeText.copyWith(
+                  color: AppTheme.primary,
                 ),
               ),
-              children: [
-                _tableCell(
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        model.modelName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.bodyMedium.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        model.manufacturer.toUpperCase(),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.badgeText.copyWith(
-                          color: AppTheme.textSecondary,
-                          letterSpacing: AppTypography.spacingRelaxed,
-                        ),
-                      ),
-                    ],
+            ),
+            _tableCell(
+              Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  '${model.rangeKm} KM',
+                  textAlign: TextAlign.right,
+                  style: AppTypography.monoValue.copyWith(
+                    color: AppTheme.textPrimary,
                   ),
                 ),
-                _tableCell(
+              ),
+            ),
+            _tableCell(
+              Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  '${model.capacity} PAX',
+                  textAlign: TextAlign.right,
+                  style: AppTypography.monoValue.copyWith(
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+              ),
+            ),
+            _tableCell(
+              Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  '${model.fuelBurnPerKm} L/KM',
+                  textAlign: TextAlign.right,
+                  style: AppTypography.monoValue.copyWith(
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+              ),
+            ),
+            _tableCell(
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
                   Text(
-                    model.type.replaceAll('_', ' ').toUpperCase(),
-                    style: AppTypography.badgeText.copyWith(
+                    'Lease ${currencyFormat.format(model.leasePricePerMonth)}/mo',
+                    textAlign: TextAlign.right,
+                    style: AppTypography.monoValue.copyWith(
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    'Buy ${currencyFormat.format(model.purchasePrice)}',
+                    textAlign: TextAlign.right,
+                    style: AppTypography.monoValue.copyWith(
                       color: AppTheme.primary,
                     ),
                   ),
-                ),
-                _tableCell(
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: Text(
-                      '${model.rangeKm} KM',
-                      textAlign: TextAlign.right,
-                      style: AppTypography.monoValue.copyWith(
-                        color: AppTheme.textPrimary,
-                      ),
-                    ),
+                ],
+              ),
+            ),
+            _tableCell(
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  AppTableIconAction(
+                    tooltip: AppStrings.leaseAircraftTooltip,
+                    icon: Icons.access_time,
+                    size: 32,
+                    iconSize: 16,
+                    onPressed: isActionLoading
+                        ? null
+                        : () => _showAcquireSeatConfigDialog(
+                            context,
+                            model,
+                            userId,
+                            true,
+                          ),
                   ),
-                ),
-                _tableCell(
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: Text(
-                      '${model.capacity} PAX',
-                      textAlign: TextAlign.right,
-                      style: AppTypography.monoValue.copyWith(
-                        color: AppTheme.textPrimary,
-                      ),
-                    ),
+                  const SizedBox(width: AppSpacing.xs),
+                  AppTableIconAction(
+                    tooltip: AppStrings.buyAircraftTooltip,
+                    icon: Icons.shopping_cart,
+                    size: 32,
+                    iconSize: 16,
+                    onPressed: isActionLoading
+                        ? null
+                        : () => _showAcquireSeatConfigDialog(
+                            context,
+                            model,
+                            userId,
+                            false,
+                          ),
                   ),
-                ),
-                _tableCell(
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: Text(
-                      '${model.fuelBurnPerKm} L/KM',
-                      textAlign: TextAlign.right,
-                      style: AppTypography.monoValue.copyWith(
-                        color: AppTheme.textPrimary,
-                      ),
-                    ),
+                  const SizedBox(width: AppSpacing.xs),
+                  AppTableIconAction(
+                    tooltip: AppStrings.financeAircraft,
+                    icon: Icons.credit_card,
+                    size: 32,
+                    iconSize: 16,
+                    onPressed: isActionLoading
+                        ? null
+                        : () => _showFinanceDialog(
+                            context,
+                            model,
+                            userId,
+                          ),
                   ),
-                ),
-                _tableCell(
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        'Lease ${currencyFormat.format(model.leasePricePerMonth)}/mo',
-                        textAlign: TextAlign.right,
-                        style: AppTypography.monoValue.copyWith(
-                          color: AppTheme.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        'Buy ${currencyFormat.format(model.purchasePrice)}',
-                        textAlign: TextAlign.right,
-                        style: AppTypography.monoValue.copyWith(
-                          color: AppTheme.primary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                _tableCell(
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      AppTableIconAction(
-                        tooltip: AppStrings.leaseAircraftTooltip,
-                        icon: Icons.access_time,
-                        size: 32,
-                        iconSize: 16,
-                        onPressed: isActionLoading
-                            ? null
-                            : () => _showAcquireSeatConfigDialog(
-                                context,
-                                model,
-                                userId,
-                                true,
-                              ),
-                      ),
-                      const SizedBox(width: AppSpacing.xs),
-                      AppTableIconAction(
-                        tooltip: AppStrings.buyAircraftTooltip,
-                        icon: Icons.shopping_cart,
-                        size: 32,
-                        iconSize: 16,
-                        onPressed: isActionLoading
-                            ? null
-                            : () => _showAcquireSeatConfigDialog(
-                                context,
-                                model,
-                                userId,
-                                false,
-                              ),
-                      ),
-                      const SizedBox(width: AppSpacing.xs),
-                      AppTableIconAction(
-                        tooltip: AppStrings.financeAircraft,
-                        icon: Icons.credit_card,
-                        size: 32,
-                        iconSize: 16,
-                        onPressed: isActionLoading
-                            ? null
-                            : () => _showFinanceDialog(
-                                context,
-                                model,
-                                userId,
-                              ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            );
-          }),
-        ],
-      ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -1707,12 +1743,6 @@ class _FleetViewState extends State<FleetView>
   void _applyCashBalance(BuildContext context, double newCash) {
     final simCubit = context.read<SimulationCubit>();
     simCubit.applyImmediateCashBalance(newCash);
-    final authState = context.read<AuthCubit>().state;
-    if (authState is AuthAuthenticated) {
-      context.read<AuthCubit>().updateActiveUser(
-        authState.user.copyWith(cashBalance: newCash),
-      );
-    }
   }
 
   // WIDGET HELPERS

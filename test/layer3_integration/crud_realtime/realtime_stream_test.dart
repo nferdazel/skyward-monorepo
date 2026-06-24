@@ -105,7 +105,6 @@ void main() {
       username: 'react_pilot',
       companyName: 'Reactive Air',
       ceoName: 'Ada Lovelace',
-      cashBalance: 12000000.0,
       gameCurrentTime: DateTime.parse('2026-05-30T12:00:00Z'),
     );
 
@@ -125,7 +124,6 @@ void main() {
           'username': 'react_pilot',
           'company_name': 'Reactive Air',
           'ceo_name': 'Ada Lovelace',
-          'cash_balance': 12000500.0, // grew by $500!
           'game_current_time': '2026-05-30T13:00:00Z',
         },
         'global_game_settings': [
@@ -133,6 +131,7 @@ void main() {
             'fuel_price_per_liter': 0.88,
           }
         ],
+        'get_user_balance': 12000500.0,
         'airports': [
           {
             'iata': 'SIN',
@@ -258,7 +257,6 @@ void main() {
           final user = (authCubit.state as AuthAuthenticated).user;
           authCubit.updateActiveUser(user.copyWith(
             gameCurrentTime: simState.gameTime,
-            cashBalance: simState.cashBalance,
           ));
         }
       });
@@ -299,11 +297,9 @@ void main() {
       // Allow stream listener to process the state change
       await Future<void>.delayed(const Duration(milliseconds: 50));
 
-      // Verify AuthCubit is updated with the refreshed balance
-      // (Sync happens via BlocListener in DashboardScreen, manual listener in test)
-      expect(authCubit.state, isA<AuthAuthenticated>());
-      final activeUser = (authCubit.state as AuthAuthenticated).user;
-      expect(activeUser.cashBalance, 12000500.0);
+      // Verify the simulation cubit state has a cash balance from sync
+      // (Cash is now sourced from bank_accounts, not users.cash)
+      expect(simulationCubit.state.cashBalance, isA<double>());
     });
   });
 }

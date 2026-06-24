@@ -24,6 +24,7 @@ class MockSimulationGateway implements SimulationGateway {
       'time_scale_multiplier': 2.0,
     },
   ];
+  double balanceToReturn = 10000000.0;
   bool shouldThrowOnDelta = false;
   bool shouldThrowOnProfile = false;
   bool shouldThrowOnSettings = false;
@@ -48,6 +49,11 @@ class MockSimulationGateway implements SimulationGateway {
     loadGameSettingsCallCount++;
     return settingsToReturn;
   }
+
+  @override
+  Future<double> getUserBalance(String userId) async {
+    return balanceToReturn;
+  }
 }
 
 /// Gateway whose futures are controlled by pre-created Completers.
@@ -60,6 +66,7 @@ class DelayedSimulationGateway implements SimulationGateway {
       Completer<Map<String, dynamic>>();
   final Completer<List<dynamic>> settingsCompleter =
       Completer<List<dynamic>>();
+  final Completer<double> balanceCompleter = Completer<double>();
 
   int loadGameSettingsCallCount = 0;
 
@@ -75,6 +82,9 @@ class DelayedSimulationGateway implements SimulationGateway {
     loadGameSettingsCallCount++;
     return settingsCompleter.future;
   }
+
+  @override
+  Future<double> getUserBalance(String userId) => balanceCompleter.future;
 }
 
 // =============================================================================
@@ -86,7 +96,6 @@ final _mockUserProfile = <String, dynamic>{
   'username': 'test_ceo',
   'company_name': 'Test Airlines',
   'ceo_name': 'Test CEO',
-  'cash': 10000000.0,
   'game_current_time': '2026-06-22T12:00:00.000Z',
   'auto_grounding_threshold': 40.0,
   'hq_airport_iata': 'SIN',
@@ -224,6 +233,9 @@ void main() {
               'time_scale_multiplier': 2.0,
             },
           ]);
+          await Future<void>.delayed(Duration.zero);
+
+          delayedGateway.balanceCompleter.complete(10000000.0);
 
           // Both futures should resolve to the same result.
           final result1 = await future1;
@@ -252,7 +264,6 @@ void main() {
             username: 'test_ceo',
             companyName: 'Test Airlines',
             ceoName: 'Test CEO',
-            cashBalance: 8500000.0,
             gameCurrentTime: DateTime.parse('2026-06-23T00:00:00.000Z'),
             operationalStatus: 'Active',
             consecutiveNegativeDays: 2,
@@ -267,7 +278,6 @@ void main() {
                 'gameTime',
                 '2026-06-23T00:00:00.000Z',
               )
-              .having((s) => s.cashBalance, 'cashBalance', 8500000.0)
               .having((s) => s.isSyncing, 'isSyncing', false)
               .having((s) => s.errorMessage, 'errorMessage', isNull)
               .having(

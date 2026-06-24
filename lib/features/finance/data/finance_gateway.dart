@@ -13,34 +13,37 @@ class FinanceGatewayException implements Exception {
 }
 
 abstract class FinanceGateway {
-  Future<List<dynamic>> loadLedger(String userId);
+  Future<List<dynamic>> loadTransactions(String userId);
   Future<Map<String, dynamic>> getFinanceSnapshot();
   Future<List<dynamic>> getFinancialSnapshots(String userId);
+  Future<double> getUserBalance(String userId);
 }
 
 class SupabaseFinanceGateway implements FinanceGateway {
   const SupabaseFinanceGateway();
 
   @override
-  Future<List<dynamic>> loadLedger(String userId) async {
+  Future<List<dynamic>> loadTransactions(String userId) async {
     try {
       return await SupabaseManager.client
-          .from('financial_ledger')
+          .from('bank_transactions')
           .select(
-            'id, transaction_type, category, amount, description, game_date, created_at',
+            'id, transaction_type, amount, balance_after, description, '
+            'game_date, created_at, ifrs_category, ifrs_subcategory, '
+            'cost_center_type, cost_center_id',
           )
           .eq('user_id', userId)
           .order('game_date', ascending: false);
     } on PostgrestException catch (e) {
       SupabaseManager.logRpcFailure(
-        'loadLedger',
+        'loadTransactions',
         {'user_id': userId},
         e.message,
       );
-      throw FinanceGatewayException(e.message, 'loadLedger');
+      throw FinanceGatewayException(e.message, 'loadTransactions');
     } catch (e, stack) {
-      SupabaseManager.logError('loadLedger', e, stack);
-      throw FinanceGatewayException(e.toString(), 'loadLedger');
+      SupabaseManager.logError('loadTransactions', e, stack);
+      throw FinanceGatewayException(e.toString(), 'loadTransactions');
     }
   }
 
@@ -70,5 +73,30 @@ class SupabaseFinanceGateway implements FinanceGateway {
   @override
   Future<List<dynamic>> getFinancialSnapshots(String userId) async {
     return [];
+  }
+
+  @override
+  Future<double> getUserBalance(String userId) async {
+    try {
+      final response = await SupabaseManager.client.rpc(
+        'get_user_balance',
+        params: {'p_user_id': userId},
+      );
+      if (response is num) return response.toDouble();
+      if (response is Map && response.containsKey('balance')) {
+        return (response['balance'] as num).toDouble();
+      }
+      return 0.0;
+    } on PostgrestException catch (e) {
+      SupabaseManager.logRpcFailure(
+        'get_user_balance',
+        {'p_user_id': userId},
+        e.message,
+      );
+      throw FinanceGatewayException(e.message, 'getUserBalance');
+    } catch (e, stack) {
+      SupabaseManager.logError('getUserBalance', e, stack);
+      throw FinanceGatewayException(e.toString(), 'getUserBalance');
+    }
   }
 }

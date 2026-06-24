@@ -35,8 +35,6 @@ abstract class BankGateway {
   Future<List<BankAccount>> getBankAccounts();
   Future<List<BankTransaction>> getBankTransactions(String accountId);
   Future<Map<String, dynamic>> createSavingsAccount();
-  Future<Map<String, dynamic>> depositToSavings(double amount);
-  Future<Map<String, dynamic>> withdrawFromSavings(double amount);
 }
 
 class SupabaseBankGateway implements BankGateway {
@@ -293,40 +291,6 @@ class SupabaseBankGateway implements BankGateway {
     } catch (e, stack) {
       SupabaseManager.logError('createSavingsAccount', e, stack);
       throw BankGatewayException(e.toString(), 'createSavingsAccount');
-    }
-  }
-
-  @override
-  Future<Map<String, dynamic>> depositToSavings(double amount) async {
-    try {
-      final response = await SupabaseManager.client.rpc(
-        'deposit_to_savings',
-        params: {'p_amount': amount},
-      );
-      return Map<String, dynamic>.from(response);
-    } on PostgrestException catch (e) {
-      SupabaseManager.logRpcFailure('deposit_to_savings', {'p_amount': amount}, e.message);
-      throw BankGatewayException(e.message, 'depositToSavings');
-    } catch (e, stack) {
-      SupabaseManager.logError('depositToSavings', e, stack);
-      throw BankGatewayException(e.toString(), 'depositToSavings');
-    }
-  }
-
-  @override
-  Future<Map<String, dynamic>> withdrawFromSavings(double amount) async {
-    try {
-      final response = await SupabaseManager.client.rpc(
-        'withdraw_from_savings',
-        params: {'p_amount': amount},
-      );
-      return Map<String, dynamic>.from(response);
-    } on PostgrestException catch (e) {
-      SupabaseManager.logRpcFailure('withdraw_from_savings', {'p_amount': amount}, e.message);
-      throw BankGatewayException(e.message, 'withdrawFromSavings');
-    } catch (e, stack) {
-      SupabaseManager.logError('withdrawFromSavings', e, stack);
-      throw BankGatewayException(e.toString(), 'withdrawFromSavings');
     }
   }
 }

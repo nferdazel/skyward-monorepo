@@ -1,5 +1,5 @@
+import '../../../bank/domain/bank_transaction_model.dart';
 import '../../domain/finance_snapshot.dart';
-import '../../domain/ledger_model.dart';
 
 abstract class FinanceState {
   const FinanceState();
@@ -25,7 +25,7 @@ class FinanceDailySnapshot {
 /// Adding a new metric requires editing only this class and the cubit builder.
 class FinanceMetrics {
   final FinanceSnapshot snapshot;
-  final List<LedgerEntry> logs;
+  final List<BankTransaction> transactions;
   final List<FinanceDailySnapshot> dailySnapshots;
   final List<FinanceDailySnapshot> financialSnapshots;
   final double totalTicketSales;
@@ -45,7 +45,7 @@ class FinanceMetrics {
 
   const FinanceMetrics({
     required this.snapshot,
-    required this.logs,
+    required this.transactions,
     required this.dailySnapshots,
     this.financialSnapshots = const [],
     required this.totalTicketSales,
@@ -67,7 +67,7 @@ class FinanceMetrics {
   /// Default/empty constructor for use in [FinanceError] fallbacks.
   const FinanceMetrics.empty()
       : snapshot = const FinanceSnapshot.empty(),
-        logs = const [],
+        transactions = const [],
         dailySnapshots = const [],
         financialSnapshots = const [],
         totalTicketSales = 0.0,
@@ -93,7 +93,7 @@ abstract class FinanceDataState extends FinanceState {
 
   // ── Delegating getters so view code is unchanged ──
   FinanceSnapshot get snapshot => metrics.snapshot;
-  List<LedgerEntry> get logs => metrics.logs;
+  List<BankTransaction> get transactions => metrics.transactions;
   List<FinanceDailySnapshot> get dailySnapshots => metrics.dailySnapshots;
   List<FinanceDailySnapshot> get financialSnapshots => metrics.financialSnapshots;
   double get totalTicketSales => metrics.totalTicketSales;

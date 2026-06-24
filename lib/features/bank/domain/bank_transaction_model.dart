@@ -8,6 +8,10 @@ class BankTransaction {
   final String? description;
   final String? referenceType;
   final String? referenceId;
+  final String? ifrsCategory;
+  final String? ifrsSubcategory;
+  final String? costCenterType;
+  final String? costCenterId;
   final DateTime? gameDate;
   final DateTime? createdAt;
 
@@ -21,6 +25,10 @@ class BankTransaction {
     this.description,
     this.referenceType,
     this.referenceId,
+    this.ifrsCategory,
+    this.ifrsSubcategory,
+    this.costCenterType,
+    this.costCenterId,
     this.gameDate,
     this.createdAt,
   });
@@ -36,6 +44,10 @@ class BankTransaction {
       description: map['description'] as String?,
       referenceType: map['reference_type'] as String?,
       referenceId: map['reference_id'] as String?,
+      ifrsCategory: map['ifrs_category'] as String?,
+      ifrsSubcategory: map['ifrs_subcategory'] as String?,
+      costCenterType: map['cost_center_type'] as String?,
+      costCenterId: map['cost_center_id'] as String?,
       gameDate: map['game_date'] != null
           ? DateTime.parse(map['game_date'] as String)
           : null,

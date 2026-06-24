@@ -10,17 +10,18 @@ import 'package:skyward/features/finance/presentation/cubit/finance_state.dart';
 // =============================================================================
 
 class MockFinanceGateway implements FinanceGateway {
-  List<dynamic> ledgerToReturn = [];
+  List<dynamic> transactionsToReturn = [];
   Map<String, dynamic> snapshotToReturn = {};
   List<dynamic> financialSnapshotsToReturn = [];
-  bool shouldThrowOnLedger = false;
+  double balanceToReturn = 0.0;
+  bool shouldThrowOnTransactions = false;
   bool shouldThrowOnSnapshot = false;
   bool shouldThrowOnFinancialSnapshots = false;
 
   @override
-  Future<List<dynamic>> loadLedger(String userId) async {
-    if (shouldThrowOnLedger) throw Exception('Test ledger error');
-    return ledgerToReturn;
+  Future<List<dynamic>> loadTransactions(String userId) async {
+    if (shouldThrowOnTransactions) throw Exception('Test transactions error');
+    return transactionsToReturn;
   }
 
   @override
@@ -36,28 +37,39 @@ class MockFinanceGateway implements FinanceGateway {
     }
     return financialSnapshotsToReturn;
   }
+
+  @override
+  Future<double> getUserBalance(String userId) async {
+    return balanceToReturn;
+  }
 }
 
 // =============================================================================
 // Test Data
 // =============================================================================
 
-final _mockLedgerRevenue = <String, dynamic>{
-  'id': 'ledger-1',
-  'transaction_type': 'revenue',
-  'category': 'ticket_sales',
+final _mockTxnCredit = <String, dynamic>{
+  'id': 'txn-1',
+  'account_id': 'account-1',
+  'user_id': 'user-1',
+  'transaction_type': 'credit',
   'amount': 50000.0,
+  'balance_after': 50000.0,
   'description': 'Ticket sales for 7 flights: CGK → SIN',
+  'ifrs_category': 'ticket_sales',
   'game_date': '2026-06-01T10:00:00.000Z',
   'created_at': '2026-06-01T10:00:00.000Z',
 };
 
-final _mockLedgerExpense = <String, dynamic>{
-  'id': 'ledger-2',
-  'transaction_type': 'expense',
-  'category': 'operations',
+final _mockTxnDebit = <String, dynamic>{
+  'id': 'txn-2',
+  'account_id': 'account-1',
+  'user_id': 'user-1',
+  'transaction_type': 'debit',
   'amount': 12000.0,
+  'balance_after': 38000.0,
   'description': 'Fuel and crew costs for 7 flights',
+  'ifrs_category': 'operations',
   'game_date': '2026-06-01T10:00:00.000Z',
   'created_at': '2026-06-01T10:00:00.000Z',
 };
@@ -116,7 +128,7 @@ void main() {
     });
 
     // =========================================================================
-    // loadLedger
+    // loadLedger (now loads transactions)
     // =========================================================================
 
     group('loadLedger', () {
@@ -124,7 +136,7 @@ void main() {
         'success: emits FinanceLoading then FinanceLoaded with parsed data',
         build: () {
           final gateway = MockFinanceGateway()
-            ..ledgerToReturn = [_mockLedgerRevenue]
+            ..transactionsToReturn = [_mockTxnCredit]
             ..snapshotToReturn = _mockSnapshotMap;
           return FinanceCubit(gateway: gateway);
         },
@@ -132,15 +144,15 @@ void main() {
         expect: () => [
           isA<FinanceLoading>(),
           isA<FinanceLoaded>()
-              .having((s) => s.logs.length, 'logs length', 1)
+              .having((s) => s.transactions.length, 'transactions length', 1)
               .having(
-                (s) => s.logs.first.transactionType,
+                (s) => s.transactions.first.transactionType,
                 'transaction type',
-                'revenue',
+                'credit',
               )
               .having(
-                (s) => s.logs.first.category,
-                'category',
+                (s) => s.transactions.first.ifrsCategory,
+                'ifrs category',
                 'ticket_sales',
               )
               .having((s) => s.totalRevenue, 'totalRevenue', 50000.0)
@@ -157,10 +169,10 @@ void main() {
       );
 
       blocTest<FinanceCubit, FinanceState>(
-        'success: correctly classifies revenue and expense entries',
+        'success: correctly classifies credit and debit entries',
         build: () {
           final gateway = MockFinanceGateway()
-            ..ledgerToReturn = [_mockLedgerRevenue, _mockLedgerExpense]
+            ..transactionsToReturn = [_mockTxnCredit, _mockTxnDebit]
             ..snapshotToReturn = _mockSnapshotMap;
           return FinanceCubit(gateway: gateway);
         },
@@ -168,7 +180,7 @@ void main() {
         expect: () => [
           isA<FinanceLoading>(),
           isA<FinanceLoaded>()
-              .having((s) => s.logs.length, 'logs length', 2)
+              .having((s) => s.transactions.length, 'transactions length', 2)
               .having((s) => s.totalRevenue, 'totalRevenue', 50000.0)
               .having((s) => s.totalExpense, 'totalExpense', 12000.0)
               .having((s) => s.netProfit, 'netProfit', 38000.0)
@@ -178,10 +190,10 @@ void main() {
       );
 
       blocTest<FinanceCubit, FinanceState>(
-        'success: computes daily snapshots from ledger entries',
+        'success: computes daily snapshots from transactions',
         build: () {
           final gateway = MockFinanceGateway()
-            ..ledgerToReturn = [_mockLedgerRevenue, _mockLedgerExpense]
+            ..transactionsToReturn = [_mockTxnCredit, _mockTxnDebit]
             ..snapshotToReturn = _mockSnapshotMap;
           return FinanceCubit(gateway: gateway);
         },
@@ -228,10 +240,10 @@ void main() {
       );
 
       blocTest<FinanceCubit, FinanceState>(
-        'error: emits FinanceLoading then FinanceError when ledger gateway throws',
+        'error: emits FinanceLoading then FinanceError when gateway throws',
         build: () {
           final gateway = MockFinanceGateway()
-            ..shouldThrowOnLedger = true
+            ..shouldThrowOnTransactions = true
             ..snapshotToReturn = _mockSnapshotMap;
           return FinanceCubit(gateway: gateway);
         },
@@ -252,7 +264,7 @@ void main() {
         'error: emits FinanceLoading then FinanceError when snapshot gateway throws',
         build: () {
           final gateway = MockFinanceGateway()
-            ..ledgerToReturn = [_mockLedgerRevenue]
+            ..transactionsToReturn = [_mockTxnCredit]
             ..shouldThrowOnSnapshot = true;
           return FinanceCubit(gateway: gateway);
         },
@@ -271,23 +283,23 @@ void main() {
         'error: preserves previous data in FinanceError when loading fails after initial load',
         () async {
           final gateway = MockFinanceGateway()
-            ..ledgerToReturn = [_mockLedgerRevenue]
+            ..transactionsToReturn = [_mockTxnCredit]
             ..snapshotToReturn = _mockSnapshotMap;
           final cubit = FinanceCubit(gateway: gateway);
 
           // First load succeeds
           await cubit.loadLedger('user-1');
           expect(cubit.state, isA<FinanceLoaded>());
-          expect((cubit.state as FinanceLoaded).logs.length, 1);
+          expect((cubit.state as FinanceLoaded).transactions.length, 1);
 
           // Second load throws — gateway fails
-          gateway.shouldThrowOnLedger = true;
+          gateway.shouldThrowOnTransactions = true;
           await cubit.loadLedger('user-1');
 
           expect(cubit.state, isA<FinanceError>());
           final error = cubit.state as FinanceError;
           expect(error.hasData, isTrue);
-          expect(error.logs.length, 1);
+          expect(error.transactions.length, 1);
           expect(error.message, contains('Failed to load ledger'));
 
           await cubit.close();
@@ -304,7 +316,7 @@ void main() {
         'refreshSnapshot silently updates state with new snapshot data',
         () async {
           final gateway = MockFinanceGateway()
-            ..ledgerToReturn = [_mockLedgerRevenue]
+            ..transactionsToReturn = [_mockTxnCredit]
             ..snapshotToReturn = _mockSnapshotMap;
           final cubit = FinanceCubit(gateway: gateway);
 
@@ -324,8 +336,8 @@ void main() {
           final refreshed = cubit.state as FinanceLoaded;
           expect(refreshed.snapshot.cash, 8000000.0);
           expect(refreshed.snapshot.rollingRevenue30d, 100000.0);
-          // Ledger data should be preserved from the initial load
-          expect(refreshed.logs.length, 1);
+          // Transaction data should be preserved from the initial load
+          expect(refreshed.transactions.length, 1);
 
           await cubit.close();
         },
@@ -335,7 +347,7 @@ void main() {
         'refreshSnapshot error silently swallows error without changing state',
         () async {
           final gateway = MockFinanceGateway()
-            ..ledgerToReturn = [_mockLedgerRevenue]
+            ..transactionsToReturn = [_mockTxnCredit]
             ..snapshotToReturn = _mockSnapshotMap;
           final cubit = FinanceCubit(gateway: gateway);
 
@@ -350,7 +362,7 @@ void main() {
           expect(cubit.state, isA<FinanceLoaded>());
           final stateAfter = cubit.state as FinanceLoaded;
           expect(stateAfter.snapshot.cash, stateBefore.snapshot.cash);
-          expect(stateAfter.logs.length, stateBefore.logs.length);
+          expect(stateAfter.transactions.length, stateBefore.transactions.length);
 
           await cubit.close();
         },
@@ -372,7 +384,7 @@ void main() {
 
         expect(cubit.state, isA<FinanceLoaded>());
         final loaded = cubit.state as FinanceLoaded;
-        expect(loaded.logs, isNotEmpty);
+        expect(loaded.transactions, isNotEmpty);
         expect(loaded.snapshot.cash, 10000000.0);
         expect(loaded.snapshot.companyName, 'Skyward Star Airlines');
         expect(loaded.totalRevenue, greaterThan(0));
