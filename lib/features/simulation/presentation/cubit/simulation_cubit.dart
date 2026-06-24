@@ -4,7 +4,7 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'
-    show PostgresChangeEvent, PostgresChangeFilter, PostgresChangeFilterType;
+    show PostgresChangeEvent, PostgresChangeFilter, PostgresChangeFilterType, PostgrestException;
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/game_constants.dart';
@@ -275,6 +275,18 @@ class SimulationCubit extends Cubit<SimulationState>
       // 4. Return the updated user for the caller to handle (event-based communication)
       return authoritativeUser;
     } catch (e, stack) {
+      // Detect 401 Unauthorized — token expired, don't retry
+      if (e is PostgrestException && e.code == '401') {
+        AppError.log('simulation_delta_sync_401', e, stack);
+        _safeEmit(
+          state.copyWith(
+            isSyncing: false,
+            errorMessage: 'Session expired. Please sign in again.',
+          ),
+        );
+        return null;
+      }
+
       AppError.log('simulation_delta_sync', e, stack);
       _safeEmit(
         state.copyWith(

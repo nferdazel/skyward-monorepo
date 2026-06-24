@@ -9,6 +9,7 @@ import 'features/auth/presentation/cubit/auth_state.dart';
 import 'features/auth/presentation/views/auth_screen.dart';
 import 'features/dashboard/presentation/views/dashboard_screen.dart';
 import 'features/settings/presentation/cubit/settings_cubit.dart';
+import 'presentation/widgets/app_snackbar.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -67,20 +68,29 @@ class AppRouter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<AuthCubit, AuthState>(
-      builder: (context, state) {
-        if (state is AuthInitial || state is AuthLoading) {
-          return const Scaffold(
-            body: Center(
-              child: TerminalLoader(message: 'RESTORING CEO OPERATIONS...'),
-            ),
-          );
-        } else if (state is AuthAuthenticated) {
-          return const DashboardScreen();
-        } else {
-          return AuthScreen();
+    return BlocListener<AuthCubit, AuthState>(
+      listenWhen: (previous, current) =>
+          current is AuthError && previous is! AuthError,
+      listener: (context, state) {
+        if (state is AuthError) {
+          AppSnackBar.showError(context, state.message);
         }
       },
+      child: BlocBuilder<AuthCubit, AuthState>(
+        builder: (context, state) {
+          if (state is AuthInitial || state is AuthLoading) {
+            return const Scaffold(
+              body: Center(
+                child: TerminalLoader(message: 'RESTORING CEO OPERATIONS...'),
+              ),
+            );
+          } else if (state is AuthAuthenticated) {
+            return const DashboardScreen();
+          } else {
+            return AuthScreen();
+          }
+        },
+      ),
     );
   }
 }

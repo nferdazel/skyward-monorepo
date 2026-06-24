@@ -78,10 +78,21 @@ class SupabaseManager {
       debug: false,
     );
     _isInitialized = true;
+
+    // Listen for auth state changes (token refresh, sign out, etc.)
+    client.auth.onAuthStateChange.listen((data) {
+      final event = data.event;
+      if (event == AuthChangeEvent.signedOut) {
+        debugPrint('[AUTH] User signed out');
+      } else if (event == AuthChangeEvent.tokenRefreshed) {
+        debugPrint('[AUTH] Token refreshed');
+      }
+    });
   }
 
   // Centrally log Supabase client network/execution exceptions
   static void logError(String action, dynamic error, [dynamic stackTrace]) {
+    if (!kDebugMode) return;
     debugPrint('==================================================');
     debugPrint('[SUPABASE EXCEPTION] Action: $action');
     debugPrint(
@@ -100,6 +111,7 @@ class SupabaseManager {
     Map<String, dynamic> params,
     String errorMessage,
   ) {
+    if (!kDebugMode) return;
     debugPrint('==================================================');
     debugPrint('[SUPABASE RPC FAILURE] Stored Procedure: $functionName');
     debugPrint(

@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'
     show PostgresChangeEvent, PostgresChangeFilter, PostgresChangeFilterType;
@@ -193,12 +192,11 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
             transactions: _cachedTransactions,
           ));
         } else {
-          // Log server-side validation failure to console
-          debugPrint('==================================================');
-          debugPrint('[BANK] take_loan RPC returned success=false');
-          debugPrint('[BANK] Message: $message');
-          debugPrint('[BANK] Principal: $principal, Term: $termWeeks weeks');
-          debugPrint('==================================================');
+          // Log server-side validation failure
+          SupabaseManager.logRpcFailure('take_loan', {
+            'principal': principal,
+            'term_weeks': termWeeks,
+          }, message);
           if (isClosed) return;
           emit(BankError(
             message: message,
