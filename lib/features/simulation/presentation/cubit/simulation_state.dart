@@ -1,4 +1,5 @@
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/constants/game_constants.dart';
 
 class SimulationState {
   static const Object _unset = Object();
@@ -17,8 +18,8 @@ class SimulationState {
   const SimulationState({
     required this.gameTime,
     required this.cashBalance,
-    this.fuelPricePerLiter = 0.85,
-    this.gameSpeedMultiplier = 60.0,
+    this.fuelPricePerLiter = GameConstants.fuelPricePerLiter,
+    this.gameSpeedMultiplier = GameConstants.defaultGameSpeedMultiplier,
     this.isSyncing = false,
     this.lastFlightsRun = 0,
     this.lastElapsedDays = 0.0,
@@ -32,8 +33,8 @@ class SimulationState {
     return SimulationState(
       gameTime: initialTime,
       cashBalance: initialCash,
-      fuelPricePerLiter: 0.85,
-      gameSpeedMultiplier: 60.0,
+      fuelPricePerLiter: GameConstants.fuelPricePerLiter,
+      gameSpeedMultiplier: GameConstants.defaultGameSpeedMultiplier,
       operationalStatus: AppStrings.statusActive,
       consecutiveNegativeDays: 0,
       recoveryStreakDays: 0,

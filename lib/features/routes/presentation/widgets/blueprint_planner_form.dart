@@ -305,7 +305,7 @@ class _BlueprintPlannerFormState extends State<BlueprintPlannerForm> {
                           _buildSummaryStat(
                             AppStrings.elasticityCapLabel,
                             widget.currencyFormat.format(
-                              50.00 + (state.calculatedDistance * 0.12),
+                              GameConstants.ticketBaseFare + (state.calculatedDistance * GameConstants.ticketPerKmRate),
                             ),
                             isWarning: true,
                           ),
@@ -663,7 +663,7 @@ class _BlueprintPlannerFormState extends State<BlueprintPlannerForm> {
   }
 
   Widget _buildRealtimeElasticityIndicator(double dist, double proposedPrice) {
-    final cap = 50.00 + (dist * 0.12);
+    final cap = GameConstants.ticketBaseFare + (dist * GameConstants.ticketPerKmRate);
     final ratio = proposedPrice / cap;
 
     String status = AppStrings.optimalLabel;
