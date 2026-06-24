@@ -32,6 +32,8 @@ function checkRateLimit(ip: string): boolean {
 }
 
 // CORS — restrict to allowed origins
+// NOTE: APP_URL must be set as a Supabase secret (e.g. "https://skyward.sachiel.id")
+// for production CORS to work. Without it, only localhost origins are allowed.
 const allowedOrigins = [
   Deno.env.get("APP_URL") || "",
   "http://localhost:3000",
@@ -67,6 +69,14 @@ function jsonResponse(
       "Content-Type": "application/json",
     },
   });
+}
+
+function extractClientIp(req: Request): string {
+  const xff = req.headers.get("x-forwarded-for") || "";
+  const parts = xff.split(",").map((s) => s.trim()).filter(Boolean);
+  return parts.length > 0
+    ? parts[parts.length - 1]
+    : req.headers.get("x-real-ip") || "unknown";
 }
 
 function normalizeUsername(username: string): string {
@@ -113,8 +123,7 @@ Deno.serve(async (request) => {
   }
 
   // Rate limiting
-  const ip = request.headers.get("x-forwarded-for") ||
-    request.headers.get("x-real-ip") || "unknown";
+  const ip = extractClientIp(request);
   if (!checkRateLimit(ip)) {
     return jsonResponse(429, {
       success: false,
@@ -167,6 +176,14 @@ Deno.serve(async (request) => {
     return jsonResponse(400, {
       success: false,
       message: "New password must be at least 8 characters.",
+    }, request);
+  }
+
+  const MAX_PASSWORD_LENGTH = 128;
+  if (newPassword.length > MAX_PASSWORD_LENGTH) {
+    return jsonResponse(400, {
+      success: false,
+      message: "Password must not exceed 128 characters.",
     }, request);
   }
 

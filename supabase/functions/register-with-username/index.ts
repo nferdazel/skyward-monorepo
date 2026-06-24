@@ -31,6 +31,8 @@ function checkRateLimit(ip: string): boolean {
 }
 
 // CORS — restrict to allowed origins
+// NOTE: APP_URL must be set as a Supabase secret (e.g. "https://skyward.sachiel.id")
+// for production CORS to work. Without it, only localhost origins are allowed.
 const allowedOrigins = [
   Deno.env.get("APP_URL") || "",
   "http://localhost:3000",
@@ -66,6 +68,14 @@ function jsonResponse(
       "Content-Type": "application/json",
     },
   });
+}
+
+function extractClientIp(req: Request): string {
+  const xff = req.headers.get("x-forwarded-for") || "";
+  const parts = xff.split(",").map((s) => s.trim()).filter(Boolean);
+  return parts.length > 0
+    ? parts[parts.length - 1]
+    : req.headers.get("x-real-ip") || "unknown";
 }
 
 function normalizeUsername(username: string): string {
@@ -112,8 +122,7 @@ Deno.serve(async (request) => {
   }
 
   // Rate limiting
-  const ip = request.headers.get("x-forwarded-for") ||
-    request.headers.get("x-real-ip") || "unknown";
+  const ip = extractClientIp(request);
   if (!checkRateLimit(ip)) {
     return jsonResponse(429, {
       success: false,
@@ -160,10 +169,25 @@ Deno.serve(async (request) => {
     }, request);
   }
 
+  if (username.length > 50) {
+    return jsonResponse(400, {
+      success: false,
+      message: "Username must not exceed 50 characters.",
+    }, request);
+  }
+
   if (!password || password.length < 8) {
     return jsonResponse(400, {
       success: false,
       message: "Password must be at least 8 characters.",
+    }, request);
+  }
+
+  const MAX_PASSWORD_LENGTH = 128;
+  if (password.length > MAX_PASSWORD_LENGTH) {
+    return jsonResponse(400, {
+      success: false,
+      message: "Password must not exceed 128 characters.",
     }, request);
   }
 
@@ -174,10 +198,24 @@ Deno.serve(async (request) => {
     }, request);
   }
 
+  if (companyName.length > 100) {
+    return jsonResponse(400, {
+      success: false,
+      message: "Company name must not exceed 100 characters.",
+    }, request);
+  }
+
   if (!ceoName) {
     return jsonResponse(400, {
       success: false,
       message: "CEO name is required.",
+    }, request);
+  }
+
+  if (ceoName.length > 100) {
+    return jsonResponse(400, {
+      success: false,
+      message: "CEO name must not exceed 100 characters.",
     }, request);
   }
 
@@ -208,10 +246,15 @@ Deno.serve(async (request) => {
       code: "code" in error ? error.code : null,
       cause: "cause" in error ? error.cause : null,
     });
-    const status = /already|registered|exists/i.test(error.message) ? 409 : 400;
-    return jsonResponse(status, {
+    const isDuplicate = /already|registered|exists|duplicate/i.test(
+      error.message,
+    );
+    const message = isDuplicate
+      ? "This username or company name is already taken."
+      : "Registration failed. Please try again.";
+    return jsonResponse(isDuplicate ? 409 : 400, {
       success: false,
-      message: error.message || "Registration failed. Please try again.",
+      message,
     }, request);
   }
 

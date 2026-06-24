@@ -2,3 +2,6 @@ project_id = "test-project"
 
 [functions.register-with-username]
 verify_jwt = false
+
+[functions.reset-password]
+verify_jwt = false
