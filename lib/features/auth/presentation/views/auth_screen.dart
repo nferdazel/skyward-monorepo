@@ -11,6 +11,7 @@ import '../../../../presentation/widgets/app_button.dart';
 import '../../../../presentation/widgets/app_dialog_shell.dart';
 import '../../../../presentation/widgets/app_snackbar.dart';
 import '../../../../presentation/widgets/skyward_logo.dart';
+import '../../data/auth_gateway.dart';
 import '../cubit/auth_cubit.dart';
 import '../cubit/auth_state.dart';
 
@@ -118,6 +119,9 @@ class _AuthScreenState extends State<AuthScreen> {
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
                           return AppStrings.enterValidUsername;
+                        }
+                        if (value.trim().length < 4) {
+                          return AppStrings.usernameMinLength;
                         }
                         return null;
                       },
@@ -324,7 +328,9 @@ class _AuthScreenState extends State<AuthScreen> {
                           if (context.mounted) {
                             AppSnackBar.showError(
                               context,
-                              AppStrings.resetPasswordFailed,
+                              e is AuthGatewayException
+                                  ? e.message
+                                  : AppStrings.resetPasswordFailed,
                             );
                           }
                         }
