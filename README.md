@@ -1,6 +1,6 @@
 # Skyward
 
-![Tests](https://img.shields.io/badge/tests-232%20passed-brightgreen)
+![Tests](https://img.shields.io/badge/tests-230%20passed-brightgreen)
 ![Flutter](https://img.shields.io/badge/Flutter-3.44-blue)
 ![Dart](https://img.shields.io/badge/Dart-3.12-blue)
 ![Supabase](https://img.shields.io/badge/Supabase-Postgres-3ecf8e)
