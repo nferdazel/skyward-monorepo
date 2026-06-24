@@ -10,6 +10,7 @@ import 'package:skyward/features/fleet/presentation/cubit/fleet_cubit.dart';
 import 'package:skyward/features/fleet/presentation/views/fleet_view.dart';
 import 'package:skyward/features/routes/presentation/cubit/routes_cubit.dart';
 import 'package:skyward/features/simulation/presentation/cubit/simulation_cubit.dart';
+import 'package:skyward/features/bank/presentation/cubit/bank_cubit.dart';
 
 void main() {
   testWidgets('FleetView renders without crashing', (tester) async {
@@ -17,12 +18,14 @@ void main() {
     final fleetCubit = FleetCubit();
     final routesCubit = RoutesCubit();
     final simulationCubit = SimulationCubit();
+    final bankCubit = BankCubit();
 
     addTearDown(() {
       authCubit.close();
       fleetCubit.close();
       routesCubit.close();
       simulationCubit.close();
+      bankCubit.close();
     });
 
     authCubit.emit(
@@ -46,6 +49,7 @@ void main() {
           BlocProvider<FleetCubit>.value(value: fleetCubit),
           BlocProvider<RoutesCubit>.value(value: routesCubit),
           BlocProvider<SimulationCubit>.value(value: simulationCubit),
+          BlocProvider<BankCubit>.value(value: bankCubit),
         ],
         child: MaterialApp(
           theme: AppTheme.darkTheme,
