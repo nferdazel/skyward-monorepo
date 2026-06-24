@@ -47,8 +47,8 @@ class SupabaseSimulationGateway implements SimulationGateway {
           .select(
             'id, username, company_name, ceo_name, game_current_time, '
             'hq_airport_iata, auto_grounding_threshold, operational_status, '
-            'consecutive_negative_days, recovery_streak_days, credit_score, '
-            'actor_type, archetype, credit_tier, net_worth',
+            'consecutive_negative_days, recovery_streak_days, '
+            'actor_type, net_worth',
           )
           .eq('id', userId)
           .single();
@@ -68,10 +68,22 @@ class SupabaseSimulationGateway implements SimulationGateway {
   @override
   Future<List<dynamic>> loadGameSettings() async {
     try {
-      return await SupabaseManager.client
-          .from('global_game_settings')
-          .select('fuel_price_per_liter, time_scale_multiplier')
-          .limit(1);
+      final response = await SupabaseManager.client
+          .from('game_config')
+          .select('key, value')
+          .inFilter('key', ['fuel_price_per_liter', 'time_scale_multiplier']);
+
+      // Convert KV rows into a flat map for downstream consumption.
+      final Map<String, dynamic> flat = {};
+      for (final row in response) {
+        final key = row['key'] as String?;
+        if (key != null) {
+          flat[key] = row['value'];
+        }
+      }
+      // Return as a single-element list to preserve the existing
+      // contract expected by SimulationCubit's cache parsing.
+      return [flat];
     } on PostgrestException catch (e) {
       SupabaseManager.logRpcFailure('loadGameSettings', {}, e.message);
       throw SimulationGatewayException(e.message, 'loadGameSettings');

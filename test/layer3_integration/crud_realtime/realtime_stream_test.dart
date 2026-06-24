@@ -66,6 +66,9 @@ class FakePostgrestFilterBuilder<T> extends Fake implements PostgrestFilterBuild
   PostgrestFilterBuilder<T> eq(String column, Object value) => this;
 
   @override
+  PostgrestFilterBuilder<T> inFilter(String column, List values) => this;
+
+  @override
   PostgrestFilterBuilder<T> order(String column, {bool? ascending, bool? nullsFirst, String? referencedTable}) => this;
 
   @override
@@ -126,9 +129,10 @@ void main() {
           'ceo_name': 'Ada Lovelace',
           'game_current_time': '2026-05-30T13:00:00Z',
         },
-        'global_game_settings': [
+        'game_config': [
           {
-            'fuel_price_per_liter': 0.88,
+            'key': 'fuel_price_per_liter',
+            'value': 0.88,
           }
         ],
         'get_user_balance': 12000500.0,

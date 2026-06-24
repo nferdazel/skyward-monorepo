@@ -160,10 +160,7 @@ class GameConstants {
   /// Default annual interest rate for bank loans.
   static const double defaultLoanInterestRate = 0.05;
 
-  /// Default credit score for new players.
-  static const int defaultCreditScore = 500;
-
-  /// TTL for cached global game settings to avoid redundant Supabase fetches.
+  /// TTL for cached game_config settings to avoid redundant Supabase fetches.
   static const Duration settingsCacheTtl = Duration(minutes: 5);
 
   /// Simulated elapsed game days per dev-mode sync tick (~1 game hour).

@@ -33,7 +33,7 @@ class SimulationCubit extends Cubit<SimulationState>
   int _retryCount = 0;
   static const int _maxRetries = 5;
 
-  // Cache for global_game_settings to avoid redundant fetches
+  // Cache for game_config settings to avoid redundant fetches
   static Map<String, dynamic>? _cachedGameSettings;
   static DateTime? _cachedSettingsTime;
 
@@ -69,7 +69,6 @@ class SimulationCubit extends Cubit<SimulationState>
     String initialOperationalStatus = AppStrings.statusActive,
     int initialConsecutiveNegativeDays = 0,
     int initialRecoveryStreakDays = 0,
-    int initialCreditScore = GameConstants.defaultCreditScore,
   }) async {
     _currentUserId = userId;
 
@@ -85,7 +84,6 @@ class SimulationCubit extends Cubit<SimulationState>
         operationalStatus: initialOperationalStatus,
         consecutiveNegativeDays: initialConsecutiveNegativeDays,
         recoveryStreakDays: initialRecoveryStreakDays,
-        creditScore: initialCreditScore,
       ),
     );
 
@@ -163,7 +161,6 @@ class SimulationCubit extends Cubit<SimulationState>
         operationalStatus: updatedUser.operationalStatus,
         consecutiveNegativeDays: updatedUser.consecutiveNegativeDays,
         recoveryStreakDays: updatedUser.recoveryStreakDays,
-        creditScore: updatedUser.creditScore,
       ),
     );
   }
@@ -271,7 +268,6 @@ class SimulationCubit extends Cubit<SimulationState>
           operationalStatus: authoritativeUser.operationalStatus,
           consecutiveNegativeDays: authoritativeUser.consecutiveNegativeDays,
           recoveryStreakDays: authoritativeUser.recoveryStreakDays,
-          creditScore: authoritativeUser.creditScore,
         ),
       );
 

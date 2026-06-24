@@ -156,7 +156,6 @@ class _AuthenticatedDashboardShellState
       initialOperationalStatus: user.operationalStatus,
       initialConsecutiveNegativeDays: user.consecutiveNegativeDays,
       initialRecoveryStreakDays: user.recoveryStreakDays,
-      initialCreditScore: user.creditScore,
     );
 
     _fleetCubit

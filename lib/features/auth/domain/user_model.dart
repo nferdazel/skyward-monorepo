@@ -11,10 +11,7 @@ class User {
   final int consecutiveNegativeDays;
   final int recoveryStreakDays;
   final bool onboardingCompleted;
-  final int creditScore;
   final String actorType;
-  final String? archetype;
-  final String? creditTier;
 
   /// Deprecated: cash is now sourced from bank_accounts.balance via
   /// the get_user_balance() RPC. Kept as a getter alias for backward
@@ -36,10 +33,7 @@ class User {
     this.consecutiveNegativeDays = 0,
     this.recoveryStreakDays = 0,
     this.onboardingCompleted = false,
-    this.creditScore = 500,
     this.actorType = 'player',
-    this.archetype,
-    this.creditTier,
   });
 
   factory User.fromMap(Map<String, dynamic> map) {
@@ -60,10 +54,7 @@ class User {
           (map['consecutive_negative_days'] as num?)?.toInt() ?? 0,
       recoveryStreakDays: (map['recovery_streak_days'] as num?)?.toInt() ?? 0,
       onboardingCompleted: map['onboarding_completed'] as bool? ?? false,
-      creditScore: (map['credit_score'] as num?)?.toInt() ?? 500,
       actorType: map['actor_type'] as String? ?? 'player',
-      archetype: map['archetype'] as String?,
-      creditTier: map['credit_tier'] as String?,
     );
   }
 
@@ -80,10 +71,7 @@ class User {
     int? consecutiveNegativeDays,
     int? recoveryStreakDays,
     bool? onboardingCompleted,
-    int? creditScore,
     String? actorType,
-    String? archetype,
-    String? creditTier,
   }) {
     return User(
       id: id ?? this.id,
@@ -100,10 +88,7 @@ class User {
           consecutiveNegativeDays ?? this.consecutiveNegativeDays,
       recoveryStreakDays: recoveryStreakDays ?? this.recoveryStreakDays,
       onboardingCompleted: onboardingCompleted ?? this.onboardingCompleted,
-      creditScore: creditScore ?? this.creditScore,
       actorType: actorType ?? this.actorType,
-      archetype: archetype ?? this.archetype,
-      creditTier: creditTier ?? this.creditTier,
     );
   }
 }
