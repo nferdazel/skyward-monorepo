@@ -3,8 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_strings.dart';
-import '../../../../core/utils/app_formatters.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/app_formatters.dart';
 import '../../../../core/utils/lazy_tab_cubit.dart';
 import '../../../../core/utils/perf_debug.dart';
 import '../../../../presentation/theme/app_spacing.dart';
@@ -57,7 +57,12 @@ class DashboardScreen extends StatelessWidget {
       builder: (context, authState) {
         if (authState is! AuthAuthenticated) {
           return const Scaffold(
-            body: Center(child: CircularProgressIndicator(color: AppTheme.primary, strokeWidth: 2)),
+            body: Center(
+              child: CircularProgressIndicator(
+                color: AppTheme.primary,
+                strokeWidth: 2,
+              ),
+            ),
           );
         }
 
@@ -101,7 +106,6 @@ class _AuthenticatedDashboardShellState
 
   // ── Credit tier tracking for milestone notifications ──
   String? _lastCreditTier;
-
 
   int get _unreadCount => _notifications.where((n) => !n.isRead).length;
 
@@ -325,19 +329,25 @@ class _AuthenticatedDashboardShellState
     if (fleetState is FleetLoaded) {
       for (final aircraft in fleetState.fleet) {
         if (aircraft.condition < 40) {
-          newNotifications.add(GameNotification(
-            title: 'FLEET CONDITION CRITICAL',
-            message: '${aircraft.nickname} (${aircraft.model.modelName}) at ${aircraft.condition.toStringAsFixed(0)}% — immediate repair needed.',
-            type: NotificationType.error,
-            timestamp: now,
-          ));
+          newNotifications.add(
+            GameNotification(
+              title: 'FLEET CONDITION CRITICAL',
+              message:
+                  '${aircraft.nickname} (${aircraft.model.modelName}) at ${aircraft.condition.toStringAsFixed(0)}% — immediate repair needed.',
+              type: NotificationType.error,
+              timestamp: now,
+            ),
+          );
         } else if (aircraft.condition < 60) {
-          newNotifications.add(GameNotification(
-            title: 'FLEET CONDITION WARNING',
-            message: '${aircraft.nickname} (${aircraft.model.modelName}) at ${aircraft.condition.toStringAsFixed(0)}% — schedule maintenance.',
-            type: NotificationType.warning,
-            timestamp: now,
-          ));
+          newNotifications.add(
+            GameNotification(
+              title: 'FLEET CONDITION WARNING',
+              message:
+                  '${aircraft.nickname} (${aircraft.model.modelName}) at ${aircraft.condition.toStringAsFixed(0)}% — schedule maintenance.',
+              type: NotificationType.warning,
+              timestamp: now,
+            ),
+          );
         }
       }
     }
@@ -345,25 +355,32 @@ class _AuthenticatedDashboardShellState
     // Cash runway warnings
     final simState = _simulationCubit.state;
     if (simState.cashBalance < 0) {
-      newNotifications.add(GameNotification(
-        title: 'NEGATIVE CASH BALANCE',
-        message: 'Cash at \$${AppFormatters.currency.format(simState.cashBalance)}. Distress status imminent.',
-        type: NotificationType.error,
-        timestamp: now,
-      ));
+      newNotifications.add(
+        GameNotification(
+          title: 'NEGATIVE CASH BALANCE',
+          message:
+              'Cash at \$${AppFormatters.currency.format(simState.cashBalance)}. Distress status imminent.',
+          type: NotificationType.error,
+          timestamp: now,
+        ),
+      );
     }
 
     // Route warnings
     final routesState = _routesCubit.state;
     if (routesState is RoutesLoaded) {
-      final unassigned = routesState.routes.where((r) => r.assignedAircraftId == null).length;
+      final unassigned = routesState.routes
+          .where((r) => r.assignedAircraftId == null)
+          .length;
       if (unassigned > 0) {
-        newNotifications.add(GameNotification(
-          title: 'UNASSIGNED ROUTES',
-          message: '$unassigned route(s) have no aircraft assigned.',
-          type: NotificationType.warning,
-          timestamp: now,
-        ));
+        newNotifications.add(
+          GameNotification(
+            title: 'UNASSIGNED ROUTES',
+            message: '$unassigned route(s) have no aircraft assigned.',
+            type: NotificationType.warning,
+            timestamp: now,
+          ),
+        );
       }
     }
 
@@ -373,43 +390,87 @@ class _AuthenticatedDashboardShellState
         ? bankState.creditReport?.currentScore
         : null;
     if (creditScore != null) {
-      final currentTier = creditScore >= 900 ? 'AAA'
-          : creditScore >= 800 ? 'AA'
-          : creditScore >= 700 ? 'A'
-          : creditScore >= 600 ? 'BBB'
-          : creditScore >= 500 ? 'BB'
+      final currentTier = creditScore >= 900
+          ? 'AAA'
+          : creditScore >= 800
+          ? 'AA'
+          : creditScore >= 700
+          ? 'A'
+          : creditScore >= 600
+          ? 'BBB'
+          : creditScore >= 500
+          ? 'BB'
           : 'B';
 
       if (_lastCreditTier != null && currentTier != _lastCreditTier) {
-        final tierIndex = ['B', 'BB', 'BBB', 'A', 'AA', 'AAA'].indexOf(currentTier);
-        final lastTierIndex = ['B', 'BB', 'BBB', 'A', 'AA', 'AAA'].indexOf(_lastCreditTier!);
+        final tierIndex = [
+          'B',
+          'BB',
+          'BBB',
+          'A',
+          'AA',
+          'AAA',
+        ].indexOf(currentTier);
+        final lastTierIndex = [
+          'B',
+          'BB',
+          'BBB',
+          'A',
+          'AA',
+          'AAA',
+        ].indexOf(_lastCreditTier!);
 
         if (tierIndex > lastTierIndex) {
           // Tier upgraded
           final messages = {
-            'AAA': ('CREDIT UPGRADE', 'You reached AAA tier! Lowest interest rates unlocked.', NotificationType.success),
-            'AA': ('CREDIT UPGRADE', 'You reached AA tier! Improved loan terms available.', NotificationType.success),
-            'A': ('CREDIT UPGRADE', 'You reached A tier! Better financing options unlocked.', NotificationType.success),
-            'BBB': ('CREDIT UPGRADE', 'You reached BBB tier. Keep building your credit.', NotificationType.info),
-            'BB': ('CREDIT UPGRADE', 'You reached BB tier. Continue improving operations.', NotificationType.info),
+            'AAA': (
+              'CREDIT UPGRADE',
+              'You reached AAA tier! Lowest interest rates unlocked.',
+              NotificationType.success,
+            ),
+            'AA': (
+              'CREDIT UPGRADE',
+              'You reached AA tier! Improved loan terms available.',
+              NotificationType.success,
+            ),
+            'A': (
+              'CREDIT UPGRADE',
+              'You reached A tier! Better financing options unlocked.',
+              NotificationType.success,
+            ),
+            'BBB': (
+              'CREDIT UPGRADE',
+              'You reached BBB tier. Keep building your credit.',
+              NotificationType.info,
+            ),
+            'BB': (
+              'CREDIT UPGRADE',
+              'You reached BB tier. Continue improving operations.',
+              NotificationType.info,
+            ),
           };
           final msg = messages[currentTier];
           if (msg != null) {
-            newNotifications.add(GameNotification(
-              title: msg.$1,
-              message: msg.$2,
-              type: msg.$3,
-              timestamp: now,
-            ));
+            newNotifications.add(
+              GameNotification(
+                title: msg.$1,
+                message: msg.$2,
+                type: msg.$3,
+                timestamp: now,
+              ),
+            );
           }
         } else if (tierIndex < lastTierIndex) {
           // Tier downgraded
-          newNotifications.add(GameNotification(
-            title: 'CREDIT DOWNGRADE',
-            message: 'Credit tier dropped to $currentTier. Review financial health.',
-            type: NotificationType.warning,
-            timestamp: now,
-          ));
+          newNotifications.add(
+            GameNotification(
+              title: 'CREDIT DOWNGRADE',
+              message:
+                  'Credit tier dropped to $currentTier. Review financial health.',
+              type: NotificationType.warning,
+              timestamp: now,
+            ),
+          );
         }
       }
       _lastCreditTier = currentTier;
@@ -417,13 +478,22 @@ class _AuthenticatedDashboardShellState
 
     // Loan default warnings
     if (bankState is BankLoaded) {
-      for (final loan in bankState.loans.where((l) => l.isActive && l.missedPayments > 0)) {
-        newNotifications.add(GameNotification(
-          title: loan.missedPayments >= 3 ? 'LOAN DEFAULT RISK' : 'LOAN PAYMENT MISSED',
-          message: 'Loan of \$${AppFormatters.currency.format(loan.principal)} has ${loan.missedPayments} missed payment(s). Late fees accumulating.',
-          type: loan.missedPayments >= 3 ? NotificationType.error : NotificationType.warning,
-          timestamp: now,
-        ));
+      for (final loan in bankState.loans.where(
+        (l) => l.isActive && l.missedPayments > 0,
+      )) {
+        newNotifications.add(
+          GameNotification(
+            title: loan.missedPayments >= 3
+                ? 'LOAN DEFAULT RISK'
+                : 'LOAN PAYMENT MISSED',
+            message:
+                'Loan of \$${AppFormatters.currency.format(loan.principal)} has ${loan.missedPayments} missed payment(s). Late fees accumulating.',
+            type: loan.missedPayments >= 3
+                ? NotificationType.error
+                : NotificationType.warning,
+            timestamp: now,
+          ),
+        );
       }
     }
 
@@ -433,14 +503,14 @@ class _AuthenticatedDashboardShellState
     // Play notification sound if new notifications arrived
     if (newNotifications.isNotEmpty &&
         (newNotifications.length != _notifications.length ||
-            !_notificationsAreIdentical(_notifications, newNotifications))) {
-    }
+            !_notificationsAreIdentical(_notifications, newNotifications))) {}
 
     // Defer setState to after the current frame to avoid
     // "setState() or markNeedsBuild() called during build" when
     // multiple BlocListeners trigger _refreshNotifications in the
     // same frame as a BlocBuilder rebuild.
-    if (mounted && !_notificationsAreIdentical(_notifications, newNotifications)) {
+    if (mounted &&
+        !_notificationsAreIdentical(_notifications, newNotifications)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           setState(() {
@@ -468,7 +538,14 @@ class _AuthenticatedDashboardShellState
   Widget build(BuildContext context) {
     final authState = context.read<AuthCubit>().state;
     if (authState is! AuthAuthenticated) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator(color: AppTheme.primary, strokeWidth: 2)));
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(
+            color: AppTheme.primary,
+            strokeWidth: 2,
+          ),
+        ),
+      );
     }
 
     return MultiBlocProvider(
@@ -574,38 +651,37 @@ class _AuthenticatedDashboardShellState
               Expanded(
                 child: Column(
                   children: [
-                // Status bar
-                BlocBuilder<SimulationCubit, SimulationState>(
-                  buildWhen: (previous, current) =>
-                      previous.gameTime != current.gameTime ||
-                      previous.cashBalance != current.cashBalance ||
-                      previous.isSyncing != current.isSyncing,
-                  builder: (context, simState) {
-                    return TopHud(
-                        authState: authState,
-                        simState: simState,
-                        currencyFormat: currencyFormat,
-                        dateFormat: dateFormat,
-                        unreadCount: _unreadCount,
-                        onNotificationTap: _toggleNotificationPanel,
-                      );
-                  },
-                ),
-                // Network error status bar
-                BlocBuilder<SimulationCubit, SimulationState>(
-                  buildWhen: (previous, current) =>
-                      previous.errorMessage != current.errorMessage,
-                  builder: (context, simState) =>
-                      _buildNetworkStatusBar(simState),
-                ),
-                // Content area
+                    // Status bar
+                    BlocBuilder<SimulationCubit, SimulationState>(
+                      buildWhen: (previous, current) =>
+                          previous.gameTime != current.gameTime ||
+                          previous.cashBalance != current.cashBalance ||
+                          previous.isSyncing != current.isSyncing,
+                      builder: (context, simState) {
+                        return TopHud(
+                          authState: authState,
+                          simState: simState,
+                          currencyFormat: currencyFormat,
+                          dateFormat: dateFormat,
+                          unreadCount: _unreadCount,
+                          onNotificationTap: _toggleNotificationPanel,
+                        );
+                      },
+                    ),
+                    // Network error status bar
+                    BlocBuilder<SimulationCubit, SimulationState>(
+                      buildWhen: (previous, current) =>
+                          previous.errorMessage != current.errorMessage,
+                      builder: (context, simState) =>
+                          _buildNetworkStatusBar(simState),
+                    ),
+                    // Content area
                     Expanded(
                       child: Container(
-                        padding: EdgeInsets.all(
-                          AppSpacing.pagePadding * scale,
-                        ),
+                        padding: EdgeInsets.all(AppSpacing.pagePadding * scale),
                         child: BlocBuilder<NavigationCubit, NavigationState>(
-                          buildWhen: (prev, cur) => prev.activeIndex != cur.activeIndex,
+                          buildWhen: (prev, cur) =>
+                              prev.activeIndex != cur.activeIndex,
                           builder: (context, navState) {
                             return BlocBuilder<LazyTabCubit, LazyTabState>(
                               builder: (context, lazyState) {
@@ -618,13 +694,13 @@ class _AuthenticatedDashboardShellState
                                           lazyState.loadedIndexes.contains(
                                             index,
                                           )
-                                              ? _buildTabChild(
-                                                  context,
-                                                  index,
-                                                  currencyFormat,
-                                                  dateFormat,
-                                                )
-                                              : const SizedBox.shrink(),
+                                          ? _buildTabChild(
+                                              context,
+                                              index,
+                                              currencyFormat,
+                                              dateFormat,
+                                            )
+                                          : const SizedBox.shrink(),
                                     ),
                                   ),
                                 );
@@ -649,5 +725,4 @@ class _AuthenticatedDashboardShellState
       ),
     );
   }
-
 }

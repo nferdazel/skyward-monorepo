@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../core/theme/app_theme.dart';
 
 /// Skyward brand logo — matches the favicon design.
@@ -7,11 +8,7 @@ class SkywardLogo extends StatelessWidget {
   final double size;
   final bool showBackground;
 
-  const SkywardLogo({
-    super.key,
-    this.size = 48,
-    this.showBackground = true,
-  });
+  const SkywardLogo({super.key, this.size = 48, this.showBackground = true});
 
   @override
   Widget build(BuildContext context) {
@@ -81,18 +78,18 @@ class _SkywardLogoPainter extends CustomPainter {
 
     // Fuselage
     final fuselage = Path()
-      ..moveTo(cx, cy - s * 0.35)           // nose
-      ..lineTo(cx + s * 0.06, cy - s * 0.1)  // right fuselage
-      ..lineTo(cx + s * 0.06, cy + s * 0.2)  // right tail
-      ..lineTo(cx + s * 0.12, cy + s * 0.3)  // right stabilizer
+      ..moveTo(cx, cy - s * 0.35) // nose
+      ..lineTo(cx + s * 0.06, cy - s * 0.1) // right fuselage
+      ..lineTo(cx + s * 0.06, cy + s * 0.2) // right tail
+      ..lineTo(cx + s * 0.12, cy + s * 0.3) // right stabilizer
       ..lineTo(cx + s * 0.06, cy + s * 0.28) // right stabilizer inner
       ..lineTo(cx + s * 0.06, cy + s * 0.35) // tail tip
-      ..lineTo(cx, cy + s * 0.25)            // tail center
+      ..lineTo(cx, cy + s * 0.25) // tail center
       ..lineTo(cx - s * 0.06, cy + s * 0.35) // left tail tip
       ..lineTo(cx - s * 0.06, cy + s * 0.28) // left stabilizer inner
-      ..lineTo(cx - s * 0.12, cy + s * 0.3)  // left stabilizer
-      ..lineTo(cx - s * 0.06, cy + s * 0.2)  // left tail
-      ..lineTo(cx - s * 0.06, cy - s * 0.1)  // left fuselage
+      ..lineTo(cx - s * 0.12, cy + s * 0.3) // left stabilizer
+      ..lineTo(cx - s * 0.06, cy + s * 0.2) // left tail
+      ..lineTo(cx - s * 0.06, cy - s * 0.1) // left fuselage
       ..close();
     canvas.drawPath(fuselage, planePaint);
 
@@ -103,7 +100,7 @@ class _SkywardLogoPainter extends CustomPainter {
       ..lineTo(cx - s * 0.38, cy + s * 0.1)
       ..lineTo(cx - s * 0.04, cy + s * 0.05)
       ..close();
-    
+
     final wingPaint = Paint()
       ..color = primaryColor.withValues(alpha: 0.6)
       ..style = PaintingStyle.fill;

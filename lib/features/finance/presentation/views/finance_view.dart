@@ -3,8 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_strings.dart';
-import '../../../../core/utils/app_formatters.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/app_formatters.dart';
 import '../../../../core/utils/lazy_tab_cubit.dart';
 import '../../../../core/utils/perf_debug.dart';
 import '../../../../presentation/theme/app_spacing.dart';
@@ -14,19 +14,19 @@ import '../../../../presentation/widgets/app_button.dart';
 import '../../../../presentation/widgets/app_card.dart';
 import '../../../../presentation/widgets/app_empty_state.dart';
 import '../../../../presentation/widgets/app_info_strip.dart';
-import '../../../../presentation/widgets/app_section_header.dart';
-import '../../../../presentation/widgets/app_stat_text.dart';
-import '../../../../presentation/widgets/app_sparkline.dart';
 import '../../../../presentation/widgets/app_line_chart.dart';
-import '../../../../presentation/widgets/help_tooltip.dart';
+import '../../../../presentation/widgets/app_section_header.dart';
+import '../../../../presentation/widgets/app_sparkline.dart';
+import '../../../../presentation/widgets/app_stat_text.dart';
+import '../../../../presentation/widgets/app_tab_item.dart';
 import '../../../../presentation/widgets/app_table_cells.dart';
 import '../../../../presentation/widgets/app_table_shell.dart';
-import '../../../../presentation/widgets/app_tab_item.dart';
 import '../../../../presentation/widgets/expense_breakdown_bar.dart';
+import '../../../../presentation/widgets/help_tooltip.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
-import '../../../bank/presentation/widgets/bank_panel.dart';
 import '../../../bank/domain/bank_transaction_model.dart';
+import '../../../bank/presentation/widgets/bank_panel.dart';
 import '../../domain/finance_snapshot.dart';
 import '../cubit/finance_cubit.dart';
 import '../cubit/finance_state.dart';
@@ -48,10 +48,10 @@ class _FinanceViewState extends State<FinanceView>
   late final LazyTabCubit _lazyTabCubit;
 
   static const _ledgerColumnWidths = <int, TableColumnWidth>{
-    0: FlexColumnWidth(3),  // Category Badge
+    0: FlexColumnWidth(3), // Category Badge
     1: FlexColumnWidth(11), // Detailed description
-    2: FlexColumnWidth(3),  // Game calendar date
-    3: FlexColumnWidth(3),  // Cash flow yield
+    2: FlexColumnWidth(3), // Game calendar date
+    3: FlexColumnWidth(3), // Cash flow yield
   };
 
   @override
@@ -88,7 +88,12 @@ class _FinanceViewState extends State<FinanceView>
   Widget build(BuildContext context) {
     final authState = context.read<AuthCubit>().state;
     if (authState is! AuthAuthenticated) {
-      return Center(child: Text(AppStrings.unauthorized, style: AppTypography.bodyMedium.copyWith(color: AppTheme.textMuted)));
+      return Center(
+        child: Text(
+          AppStrings.unauthorized,
+          style: AppTypography.bodyMedium.copyWith(color: AppTheme.textMuted),
+        ),
+      );
     }
 
     return BlocProvider<LazyTabCubit>.value(
@@ -135,11 +140,16 @@ class _FinanceViewState extends State<FinanceView>
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          CircularProgressIndicator(color: AppTheme.primary, strokeWidth: 2),
+                          CircularProgressIndicator(
+                            color: AppTheme.primary,
+                            strokeWidth: 2,
+                          ),
                           const SizedBox(height: AppSpacing.lg),
                           Text(
                             AppStrings.loadingFinancialData,
-                            style: AppTypography.microLabel.copyWith(color: AppTheme.textMuted),
+                            style: AppTypography.microLabel.copyWith(
+                              color: AppTheme.textMuted,
+                            ),
                           ),
                         ],
                       ),
@@ -169,9 +179,8 @@ class _FinanceViewState extends State<FinanceView>
                           AppButton(
                             text: AppStrings.retryLabel,
                             icon: Icons.refresh,
-                            onPressed: () => context
-                                .read<FinanceCubit>()
-                                .loadLedger(userId),
+                            onPressed: () =>
+                                context.read<FinanceCubit>().loadLedger(userId),
                             type: AppButtonType.secondary,
                             height: 40,
                           ),
@@ -211,11 +220,16 @@ class _FinanceViewState extends State<FinanceView>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const CircularProgressIndicator(color: AppTheme.primary, strokeWidth: 2),
+                        const CircularProgressIndicator(
+                          color: AppTheme.primary,
+                          strokeWidth: 2,
+                        ),
                         const SizedBox(height: AppSpacing.lg),
                         Text(
                           AppStrings.loadingControls,
-                          style: AppTypography.microLabel.copyWith(color: AppTheme.textMuted),
+                          style: AppTypography.microLabel.copyWith(
+                            color: AppTheme.textMuted,
+                          ),
                         ),
                       ],
                     ),
@@ -247,15 +261,17 @@ class _FinanceViewState extends State<FinanceView>
           const SizedBox(height: AppSpacing.sectionGap),
           const AppSectionHeader(title: AppStrings.rollingOperationsTitle),
           const SizedBox(height: AppSpacing.blockGap),
-          _buildExecutiveSummary(context, state, AppFormatters.currencyDetailed),
+          _buildExecutiveSummary(
+            context,
+            state,
+            AppFormatters.currencyDetailed,
+          ),
           const SizedBox(height: AppSpacing.blockGap),
           _buildFinanceSignals(overview, state),
           const SizedBox(height: AppSpacing.sectionGap),
           _buildExpenseBreakdownBar(state, AppFormatters.currencyDetailed),
           const SizedBox(height: AppSpacing.sectionGap),
-          const AppSectionHeader(
-            title: AppStrings.ledgerCategoryAnalytics,
-          ),
+          const AppSectionHeader(title: AppStrings.ledgerCategoryAnalytics),
           const SizedBox(height: AppSpacing.blockGap),
           _buildCategoryAnalyticsGrid(state, AppFormatters.currencyDetailed),
         ],
@@ -267,9 +283,7 @@ class _FinanceViewState extends State<FinanceView>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const AppSectionHeader(
-          title: AppStrings.auditedTransactionLogs,
-        ),
+        const AppSectionHeader(title: AppStrings.auditedTransactionLogs),
         const SizedBox(height: AppSpacing.blockGap),
         Expanded(
           child: _buildLedgerLogs(
@@ -315,10 +329,7 @@ class _FinanceViewState extends State<FinanceView>
               Icons.account_balance_wallet_outlined,
               sparkline: dailySnapshots.length >= 3
                   ? AppSparkline(
-                      data: dailySnapshots
-                          .take(7)
-                          .map((d) => d.net)
-                          .toList(),
+                      data: dailySnapshots.take(7).map((d) => d.net).toList(),
                       width: 60,
                       height: 24,
                       color: AppTheme.success,
@@ -332,10 +343,7 @@ class _FinanceViewState extends State<FinanceView>
               Icons.account_balance_outlined,
               sparkline: dailySnapshots.length >= 3
                   ? AppSparkline(
-                      data: dailySnapshots
-                          .take(7)
-                          .map((d) => d.net)
-                          .toList(),
+                      data: dailySnapshots.take(7).map((d) => d.net).toList(),
                       width: 60,
                       height: 24,
                       color: AppTheme.primary,
@@ -375,8 +383,12 @@ class _FinanceViewState extends State<FinanceView>
   Widget _buildNetWorthTrend(List<FinanceDailySnapshot> snapshots) {
     if (snapshots.length < 3) return const SizedBox.shrink();
 
-    final data =
-        snapshots.take(30).map((s) => s.netWorth).toList().reversed.toList();
+    final data = snapshots
+        .take(30)
+        .map((s) => s.netWorth)
+        .toList()
+        .reversed
+        .toList();
 
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -385,17 +397,16 @@ class _FinanceViewState extends State<FinanceView>
         children: [
           Text(
             'NET WORTH TREND',
-            style: AppTypography.microLabel.copyWith(
-              color: AppTheme.textMuted,
-            ),
+            style: AppTypography.microLabel.copyWith(color: AppTheme.textMuted),
           ),
           const SizedBox(height: AppSpacing.md),
           AppLineChart(
             data: data,
             width: double.infinity,
             height: 60,
-            lineColor:
-                data.last >= data.first ? AppTheme.success : AppTheme.error,
+            lineColor: data.last >= data.first
+                ? AppTheme.success
+                : AppTheme.error,
           ),
         ],
       ),
@@ -424,10 +435,7 @@ class _FinanceViewState extends State<FinanceView>
             Icons.trending_up,
             sparkline: dailySnapshots.length >= 3
                 ? AppSparkline(
-                    data: dailySnapshots
-                        .take(7)
-                        .map((d) => d.revenue)
-                        .toList(),
+                    data: dailySnapshots.take(7).map((d) => d.revenue).toList(),
                     width: 60,
                     height: 24,
                     color: AppTheme.success,
@@ -444,10 +452,7 @@ class _FinanceViewState extends State<FinanceView>
             Icons.trending_down,
             sparkline: dailySnapshots.length >= 3
                 ? AppSparkline(
-                    data: dailySnapshots
-                        .take(7)
-                        .map((d) => d.expense)
-                        .toList(),
+                    data: dailySnapshots.take(7).map((d) => d.expense).toList(),
                     width: 60,
                     height: 24,
                     color: AppTheme.error,
@@ -464,10 +469,7 @@ class _FinanceViewState extends State<FinanceView>
             Icons.account_balance_outlined,
             sparkline: dailySnapshots.length >= 3
                 ? AppSparkline(
-                    data: dailySnapshots
-                        .take(7)
-                        .map((d) => d.net)
-                        .toList(),
+                    data: dailySnapshots.take(7).map((d) => d.net).toList(),
                     width: 60,
                     height: 24,
                     color: netColor,
@@ -490,53 +492,54 @@ class _FinanceViewState extends State<FinanceView>
       label: '$label: $value',
       child: AppCard(
         customBorder: Border(
-        top: BorderSide(color: color, width: 1.5),
-        left: BorderSide(color: AppTheme.border, width: 0.5),
-        right: BorderSide(color: AppTheme.border, width: 0.5),
-        bottom: BorderSide(color: AppTheme.border, width: 0.5),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: AppTypography.microLabel.copyWith(
-                    color: AppTheme.textMuted,
+          top: BorderSide(color: color, width: 1.5),
+          left: BorderSide(color: AppTheme.border, width: 0.5),
+          right: BorderSide(color: AppTheme.border, width: 0.5),
+          bottom: BorderSide(color: AppTheme.border, width: 0.5),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: AppTypography.microLabel.copyWith(
+                      color: AppTheme.textMuted,
+                    ),
                   ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  value,
-                  style: AppTypography.dataEmphasis.copyWith(
-                    color: color,
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    value,
+                    style: AppTypography.dataEmphasis.copyWith(color: color),
                   ),
-                ),
-                if (sparkline != null) ...[
-                  const SizedBox(height: AppSpacing.xs),
-                  SizedBox(height: AppSpacing.lg, child: sparkline),
+                  if (sparkline != null) ...[
+                    const SizedBox(height: AppSpacing.xs),
+                    SizedBox(height: AppSpacing.lg, child: sparkline),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.sm),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
+              ),
+              child: Icon(icon, color: color, size: 20),
             ),
-            child: Icon(icon, color: color, size: 20),
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildFinanceSignals(_FinanceOverview overview, FinanceDataState state) {
+  Widget _buildFinanceSignals(
+    _FinanceOverview overview,
+    FinanceDataState state,
+  ) {
     return AppInfoStrip(
       child: Row(
         children: [
@@ -658,9 +661,7 @@ class _FinanceViewState extends State<FinanceView>
               ),
               Text(
                 currencyFormat.format(state.totalExpense),
-                style: AppTypography.monoValue.copyWith(
-                  color: AppTheme.error,
-                ),
+                style: AppTypography.monoValue.copyWith(color: AppTheme.error),
               ),
             ],
           ),
@@ -803,9 +804,7 @@ class _FinanceViewState extends State<FinanceView>
 
   TableRow _buildTableHeaderRow() {
     return TableRow(
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceRaised,
-      ),
+      decoration: BoxDecoration(color: AppTheme.surfaceRaised),
       children: [
         _buildHeaderCell(AppStrings.auditedCategoryHeader),
         _buildHeaderCell(AppStrings.transactionDetailsHeader),
@@ -818,7 +817,10 @@ class _FinanceViewState extends State<FinanceView>
   Widget _buildHeaderCell(String text) {
     return AppTableHeaderCell(
       label: text,
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
     );
   }
 
@@ -834,19 +836,23 @@ class _FinanceViewState extends State<FinanceView>
 
     return TableRow(
       decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: AppTheme.border, width: 1.0),
-        ),
+        border: Border(bottom: BorderSide(color: AppTheme.border, width: 1.0)),
       ),
       children: [
         // Column 1: Category Badge
         AppTableBodyCell(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
+          ),
           child: Row(children: [_buildCategoryPill(txn.ifrsCategory ?? '')]),
         ),
         // Column 2: Details Description
         AppTableBodyCell(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
+          ),
           child: Text(
             txn.description ?? '',
             style: AppTypography.bodyMedium.copyWith(
@@ -856,7 +862,10 @@ class _FinanceViewState extends State<FinanceView>
         ),
         // Column 3: Game calendar date
         AppTableBodyCell(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
+          ),
           child: AppStatText(
             label: _dateOnlyFormat.format(gameDate),
             value: _timeOnlyFormat.format(gameDate),
@@ -866,7 +875,10 @@ class _FinanceViewState extends State<FinanceView>
         ),
         // Column 4: Cash flow yield
         AppTableBodyCell(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
+          ),
           child: Align(
             alignment: Alignment.centerRight,
             child: Text(
@@ -923,7 +935,8 @@ class _FinanceOverview {
     final rollingExpense = state.snapshot.rollingExpense30d;
     final rollingRevenue = state.snapshot.rollingRevenue30d;
     final runwayDays = rollingExpense > 0
-        ? state.snapshot.cash / (rollingExpense / state.snapshot.ledgerWindowDays)
+        ? state.snapshot.cash /
+              (rollingExpense / state.snapshot.ledgerWindowDays)
         : null;
     final runwayLabel = runwayDays == null
         ? AppStrings.runwayUnknown
