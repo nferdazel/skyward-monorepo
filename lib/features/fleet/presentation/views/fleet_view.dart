@@ -34,6 +34,7 @@ import '../../../routes/presentation/cubit/routes_cubit.dart';
 import '../../../routes/presentation/cubit/routes_state.dart';
 import '../../../simulation/presentation/cubit/simulation_cubit.dart';
 import '../../../bank/presentation/cubit/bank_cubit.dart';
+import '../../../bank/presentation/cubit/bank_state.dart';
 import '../../domain/fleet_models.dart';
 import '../cubit/fleet_cubit.dart';
 import '../cubit/fleet_state.dart';
@@ -106,17 +107,28 @@ class _FleetViewState extends State<FleetView>
     final autoGroundingThreshold = authState.user.autoGroundingThreshold;
     return BlocProvider<LazyTabCubit>.value(
       value: _lazyTabCubit,
-      child: BlocListener<FleetCubit, FleetState>(
-        listener: (context, state) {
-          if (state is FleetActionSuccess) {
-            final message = state.fleet.length == 1
-                ? '${state.message} Your first airframe is operational!'
-                : state.message;
-            AppSnackBar.showSuccess(context, message);
-          } else if (state is FleetError) {
-            AppSnackBar.showError(context, state.message);
-          }
-        },
+      child: MultiBlocListener(
+        listeners: [
+          BlocListener<FleetCubit, FleetState>(
+            listener: (context, state) {
+              if (state is FleetActionSuccess) {
+                final message = state.fleet.length == 1
+                    ? '${state.message} Your first airframe is operational!'
+                    : state.message;
+                AppSnackBar.showSuccess(context, message);
+              } else if (state is FleetError) {
+                AppSnackBar.showError(context, state.message);
+              }
+            },
+          ),
+          BlocListener<BankCubit, BankState>(
+            listener: (context, state) {
+              if (state is BankError) {
+                AppSnackBar.showError(context, state.message);
+              }
+            },
+          ),
+        ],
         child: Scaffold(
           backgroundColor: Colors.transparent,
           body: Column(
@@ -979,7 +991,7 @@ class _FleetViewState extends State<FleetView>
           3: FlexColumnWidth(0.9), // SEATS
           4: FlexColumnWidth(1.0), // BURN
           5: FlexColumnWidth(1.7), // PRICING
-          6: FlexColumnWidth(1.0), // ACTIONS
+          6: FlexColumnWidth(1.2), // ACTIONS
         },
         defaultVerticalAlignment: TableCellVerticalAlignment.middle,
         children: [
@@ -1408,7 +1420,7 @@ class _FleetViewState extends State<FleetView>
                 AppDropdownField<int>(
                   label: 'FINANCING TERM',
                   value: termMonths,
-                  items: [36, 60, 120]
+                  items: [12, 24, 36, 48, 60]
                       .map((m) => DropdownMenuItem(
                             value: m,
                             child: Text(
@@ -1463,13 +1475,13 @@ class _FleetViewState extends State<FleetView>
                     Expanded(
                       child: AppButton(
                         text: AppStrings.financeAircraft,
-                        onPressed: () {
-                          context.read<BankCubit>().financeAircraft(
+                        onPressed: () async {
+                          await context.read<BankCubit>().financeAircraft(
                                 model.id,
                                 downPaymentPct,
                                 termMonths,
                               );
-                          Navigator.pop(ctx);
+                          if (context.mounted) Navigator.pop(ctx);
                         },
                         type: AppButtonType.primary,
                         height: 40,

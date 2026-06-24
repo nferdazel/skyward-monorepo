@@ -34,7 +34,10 @@ Future<void> _persistOnboardingToDatabase(String userId) async {
   try {
     await SupabaseManager.client
         .from('users')
-        .update({'onboarding_completed': true}).eq('id', userId);
+        .update({'onboarding_completed': true}).eq(
+          'auth_user_id',
+          SupabaseManager.client.auth.currentUser?.id ?? '',
+        );
   } catch (e) {
     // Non-fatal: local cache is the primary gate; DB sync is best-effort.
     SupabaseManager.logError('persist_onboarding_completed', e);

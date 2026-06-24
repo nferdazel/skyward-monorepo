@@ -109,17 +109,22 @@ class BankPanel extends StatelessWidget {
         // ── Account Summary ──
         if (accounts.isNotEmpty) ...[
           _buildAccountSummary(context, accounts),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: AppSpacing.lg),
         ],
 
         // ── Savings Section ──
         _buildSavingsSection(context, accounts: accounts, transactions: transactions),
-        const SizedBox(height: AppSpacing.md),
+        const SizedBox(height: AppSpacing.lg),
 
         if (creditReport != null) ...[
+          Divider(color: AppTheme.border, height: 1),
+          const SizedBox(height: AppSpacing.lg),
           _buildCreditScoreCard(creditReport),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: AppSpacing.lg),
         ],
+
+        Divider(color: AppTheme.border, height: 1),
+        const SizedBox(height: AppSpacing.lg),
         AppEmptyState(
           icon: Icons.account_balance_outlined,
           title: AppStrings.noActiveLoans,
@@ -129,7 +134,7 @@ class BankPanel extends StatelessWidget {
             '\$100K–\$50M  ·  ${((creditReport?.baseInterestRate ?? GameConstants.defaultLoanInterestRate) * 100).toStringAsFixed(1)}% APR  ·  12 / 26 / 52 week terms',
           ].join('\n'),
         ),
-        const SizedBox(height: AppSpacing.md),
+        const SizedBox(height: AppSpacing.lg),
         Center(
           child: AppButton(
             text: AppStrings.takeLoan,
@@ -164,43 +169,43 @@ class BankPanel extends StatelessWidget {
         // ── Account Summary ──
         if (accounts.isNotEmpty) ...[
           _buildAccountSummary(context, accounts),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: AppSpacing.lg),
         ],
 
         // ── Savings Section ──
         _buildSavingsSection(context, accounts: accounts, transactions: transactions),
-        const SizedBox(height: AppSpacing.md),
+        const SizedBox(height: AppSpacing.lg),
 
         // ── Credit score card ──
         if (creditReport != null) ...[
+          Divider(color: AppTheme.border, height: 1),
+          const SizedBox(height: AppSpacing.lg),
           _buildCreditScoreCard(creditReport),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: AppSpacing.lg),
         ],
 
-        // ── Summary strip ──
+        // ── Loans section ──
         if (activeLoans.isNotEmpty) ...[
+          Divider(color: AppTheme.border, height: 1),
+          const SizedBox(height: AppSpacing.lg),
           _buildSummaryStrip(totalOutstanding, totalWeekly),
           const SizedBox(height: AppSpacing.md),
-        ],
-
-        // ── Active loans ──
-        for (int i = 0; i < activeLoans.length; i++) ...[
-          _LoanCard(loan: activeLoans[i]),
-          if (i < activeLoans.length - 1)
-            const SizedBox(height: AppSpacing.sm),
-        ],
-
-        // ── Financial summary strip ──
-        if (activeLoans.isNotEmpty && creditReport != null) ...[
-          const SizedBox(height: AppSpacing.md),
-          _buildFinancialSummaryStrip(activeLoans, creditReport),
+          for (int i = 0; i < activeLoans.length; i++) ...[
+            _LoanCard(loan: activeLoans[i]),
+            if (i < activeLoans.length - 1)
+              const SizedBox(height: AppSpacing.sm),
+          ],
+          if (creditReport != null) ...[
+            const SizedBox(height: AppSpacing.md),
+            _buildFinancialSummaryStrip(activeLoans, creditReport),
+          ],
         ],
 
         // ── Historical loans ──
         if (historicalLoans.isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: AppSpacing.lg),
           Divider(color: AppTheme.border, height: 1),
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: AppSpacing.md),
           Text(
             'HISTORY',
             style: AppTypography.microLabel.copyWith(
@@ -216,7 +221,9 @@ class BankPanel extends StatelessWidget {
         ],
 
         // ── Take loan button ──
-        const SizedBox(height: AppSpacing.md),
+        const SizedBox(height: AppSpacing.lg),
+        Divider(color: AppTheme.border, height: 1),
+        const SizedBox(height: AppSpacing.lg),
         AppButton(
           text: AppStrings.takeLoan,
           onPressed: activeLoans.length < 3
@@ -260,8 +267,8 @@ class BankPanel extends StatelessWidget {
   // ── Account Summary ─────────────────────────────────────────────────────
 
   Widget _buildAccountSummary(BuildContext context, List<BankAccount> accounts) {
-    final checking = accounts.where((a) => a.isChecking).firstOrNull;
     final savings = accounts.where((a) => a.isSavings).firstOrNull;
+    final checking = accounts.where((a) => a.isChecking).firstOrNull;
 
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -278,18 +285,6 @@ class BankPanel extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           Row(
             children: [
-              if (checking != null) ...[
-                Expanded(
-                  child: _AccountTile(
-                    icon: Icons.account_balance_wallet_outlined,
-                    label: 'Checking',
-                    balance: checking.balance,
-                    color: AppTheme.primary,
-                  ),
-                ),
-              ],
-              if (checking != null && savings != null)
-                const SizedBox(width: AppSpacing.md),
               if (savings != null) ...[
                 Expanded(
                   child: _AccountTile(
@@ -298,6 +293,18 @@ class BankPanel extends StatelessWidget {
                     balance: savings.balance,
                     color: AppTheme.success,
                     interestRate: savings.interestRate,
+                  ),
+                ),
+              ],
+              if (savings != null && checking != null)
+                const SizedBox(width: AppSpacing.md),
+              if (checking != null) ...[
+                Expanded(
+                  child: _AccountTile(
+                    icon: Icons.account_balance_wallet_outlined,
+                    label: 'Checking',
+                    balance: checking.balance,
+                    color: AppTheme.primary,
                   ),
                 ),
               ],
@@ -313,48 +320,14 @@ class BankPanel extends StatelessWidget {
   Widget _buildSavingsSection(BuildContext context, {List<BankAccount> accounts = const [], List<BankTransaction> transactions = const []}) {
     final savings = accounts.where((a) => a.isSavings).firstOrNull;
 
-    if (savings == null) {
-      return AppCard(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.savings_outlined,
-              size: 32,
-              color: AppTheme.textMuted,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              'Open a Savings Account',
-              style: AppTypography.bodyMedium.copyWith(
-                color: AppTheme.textPrimary,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              'Earn interest on your deposits',
-              style: AppTypography.captionRegular.copyWith(
-                color: AppTheme.textMuted,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            AppButton(
-              text: 'OPEN SAVINGS ACCOUNT',
-              onPressed: () => context.read<BankCubit>().createSavingsAccount(),
-              type: AppButtonType.primary,
-              height: 40,
-            ),
-          ],
-        ),
-      );
-    }
+    // Savings is now the default account — it should always exist.
+    // If somehow missing, show nothing rather than a creation prompt.
+    if (savings == null) return const SizedBox.shrink();
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Deposit/Withdraw controls
         AppCard(
           padding: const EdgeInsets.all(AppSpacing.lg),
           child: Column(
@@ -407,7 +380,6 @@ class BankPanel extends StatelessWidget {
           ),
         ),
 
-        // Recent transactions
         if (transactions.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.md),
           Text(
@@ -896,8 +868,8 @@ class _SavingsActionDialogState extends State<_SavingsActionDialog> {
     return AppDialogShell(
       title: title,
       subtitle: widget.isDeposit
-          ? 'Move cash from your checking account into savings to earn interest.'
-          : 'Withdraw funds from savings back to your checking account.',
+          ? 'Move cash into your savings account to earn interest.'
+          : 'Withdraw funds from savings back to your available cash.',
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,

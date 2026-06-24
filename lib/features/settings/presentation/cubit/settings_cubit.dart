@@ -108,6 +108,10 @@ class SettingsCubit extends Cubit<SettingsState> {
     emit(state.copyWith(fareMultiplier: value));
   }
 
+  void resetSaveSuccess() {
+    emit(state.copyWith(isSaveSuccess: false));
+  }
+
   Future<void> loadAirports(String currentHq) async {
     emit(state.copyWith(isLoadingAirports: true, selectedHq: currentHq));
     try {

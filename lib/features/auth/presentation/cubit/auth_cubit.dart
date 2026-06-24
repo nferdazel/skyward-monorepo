@@ -169,6 +169,19 @@ class AuthCubit extends Cubit<AuthState> {
     if (error is AuthGatewayException) {
       return error.message;
     }
-    return error.toString();
+    final raw = error.toString();
+    if (raw.contains('Invalid login credentials')) {
+      return 'Incorrect username or password.';
+    }
+    if (raw.contains('User already registered')) {
+      return 'This username is already taken.';
+    }
+    if (raw.contains('Password should be at least')) {
+      return 'Password must be at least 8 characters.';
+    }
+    if (raw.contains('signup_disabled')) {
+      return 'Registration is currently disabled.';
+    }
+    return raw;
   }
 }

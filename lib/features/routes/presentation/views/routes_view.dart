@@ -16,7 +16,6 @@ import '../../../../presentation/theme/app_typography.dart';
 import '../../../../presentation/widgets/app_button.dart';
 import '../../../../presentation/widgets/app_card.dart';
 import '../../../../presentation/widgets/app_dialog_shell.dart';
-import '../../../../presentation/widgets/app_empty_state.dart';
 import '../../../../presentation/widgets/app_info_strip.dart';
 import '../../../../presentation/widgets/app_labeled_value.dart';
 import '../../../../presentation/widgets/app_snackbar.dart';
@@ -177,22 +176,6 @@ class _RoutesViewState extends State<RoutesView> {
               ),
             ),
 
-            // ── Empty State Overlay ──
-            if (routes.isEmpty)
-              Center(
-                child: Container(
-                  padding: const EdgeInsets.all(AppSpacing.xxxl),
-                  child: AppEmptyState(
-                    icon: Icons.map_outlined,
-                    title: AppStrings.noActiveConnections,
-                    description: AppStrings.noActiveConnectionsDesc,
-                    actionLabel: AppStrings.openBlueprintPlannerCta,
-                    onAction: () {
-                      AppSnackBar.showInfo(context, AppStrings.blueprintPlannerHint);
-                    },
-                  ),
-                ),
-              ),
           ],
         );
       },

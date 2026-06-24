@@ -84,9 +84,12 @@ class _SettingsViewState extends State<SettingsView> {
     }
 
     return BlocConsumer<SettingsCubit, SettingsState>(
+      listenWhen: (previous, current) =>
+          current.isSaveSuccess && !previous.isSaveSuccess,
       listener: (context, state) {
         if (state.isSaveSuccess) {
           AppSnackBar.showSuccess(context, AppStrings.settingsSavedSuccess);
+          context.read<SettingsCubit>().resetSaveSuccess();
         } else if (state.errorMessage != null) {
           AppSnackBar.showError(
             context,
