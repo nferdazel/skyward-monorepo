@@ -34,11 +34,13 @@ class SettingsView extends StatefulWidget {
 class _SettingsViewState extends State<SettingsView> {
   late TextEditingController _companyController;
   late FocusNode _companyFocusNode;
+  late TextEditingController _deleteConfirmController;
 
   @override
   void initState() {
     super.initState();
     _companyFocusNode = FocusNode();
+    _deleteConfirmController = TextEditingController();
     final authState = context.read<AuthCubit>().state;
     String initialCompany = '';
     if (authState is AuthAuthenticated) {
@@ -60,6 +62,7 @@ class _SettingsViewState extends State<SettingsView> {
   void dispose() {
     _companyController.dispose();
     _companyFocusNode.dispose();
+    _deleteConfirmController.dispose();
     super.dispose();
   }
 
@@ -619,6 +622,29 @@ class _SettingsViewState extends State<SettingsView> {
               width: double.infinity,
             ),
           ),
+          const SizedBox(height: AppSpacing.md),
+          Divider(color: AppTheme.error.withValues(alpha: 0.3), height: 1),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            'Permanently delete your account and all associated data.',
+            style: AppTypography.captionRegular.copyWith(
+              color: AppTheme.error,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          SizedBox(
+            width: double.infinity,
+            child: AppButton(
+              text: AppStrings.deleteAccountButton,
+              onPressed: state.isSaving
+                  ? null
+                  : () => _showDeleteAccountConfirmation(context, userId),
+              type: AppButtonType.secondary,
+              icon: Icons.delete_forever_outlined,
+              width: double.infinity,
+            ),
+          ),
         ],
       ),
     );
@@ -739,6 +765,133 @@ class _SettingsViewState extends State<SettingsView> {
               ),
             ],
           ),
+        );
+      },
+    );
+  }
+
+  void _showDeleteAccountConfirmation(BuildContext context, String userId) {
+    final authState = context.read<AuthCubit>().state;
+    final username =
+        authState is AuthAuthenticated ? authState.user.username : '';
+
+    _deleteConfirmController.clear();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final canConfirm =
+                _deleteConfirmController.text.trim() == username;
+
+            return AppDialogShell(
+              title: AppStrings.deleteAccountConfirmTitle,
+              titleColor: AppTheme.error,
+              maxWidth: 520,
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    AppStrings.deleteAccountConfirmDesc,
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  Text(
+                    AppStrings.deleteAccountTypeConfirm,
+                    style: AppTypography.badgeText.copyWith(
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    username,
+                    style: AppTypography.hudValue.copyWith(
+                      color: AppTheme.warning,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  TextFormField(
+                    controller: _deleteConfirmController,
+                    autofocus: true,
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: AppTheme.textPrimary,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: username,
+                      hintStyle: AppTypography.captionRegular.copyWith(
+                        color: AppTheme.textMuted,
+                      ),
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md,
+                        vertical: AppSpacing.sm,
+                      ),
+                    ),
+                    onChanged: (_) => setDialogState(() {}),
+                  ),
+                ],
+              ),
+              actions: Row(
+                children: [
+                  Expanded(
+                    child: AppButton(
+                      text: AppStrings.abortOperation,
+                      onPressed: () {
+                        _deleteConfirmController.clear();
+                        Navigator.of(dialogContext).pop();
+                      },
+                      type: AppButtonType.secondary,
+                      height: 40,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: AppButton(
+                      text: AppStrings.deleteAccountButton,
+                      onPressed: canConfirm
+                          ? () async {
+                              Navigator.of(dialogContext).pop();
+
+                              final settingsCubit =
+                                  context.read<SettingsCubit>();
+                              final authCubit = context.read<AuthCubit>();
+
+                              final success =
+                                  await settingsCubit.deleteAccount();
+
+                              if (context.mounted) {
+                                if (success) {
+                                  AppSnackBar.showSuccess(
+                                    context,
+                                    AppStrings.deleteAccountSuccess,
+                                  );
+                                  await authCubit.logout();
+                                } else {
+                                  AppSnackBar.showError(
+                                    context,
+                                    '${AppStrings.deleteAccountFailed}'
+                                    '${settingsCubit.state.errorMessage ?? AppStrings.unknownError}',
+                                  );
+                                }
+                              }
+                            }
+                          : null,
+                      isLoading: context.select<SettingsCubit, bool>(
+                        (c) => c.state.isSaving,
+                      ),
+                      icon: Icons.delete_forever_outlined,
+                      height: 40,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
         );
       },
     );

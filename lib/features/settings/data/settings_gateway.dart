@@ -16,6 +16,7 @@ abstract class SettingsGateway {
   Future<List<dynamic>> loadAirports();
   Future<List<dynamic>> saveAirlineSettings(Map<String, dynamic> params);
   Future<List<dynamic>> resetUserAirline();
+  Future<Map<String, dynamic>> deleteAccount();
 }
 
 class SupabaseSettingsGateway implements SettingsGateway {
@@ -69,6 +70,32 @@ class SupabaseSettingsGateway implements SettingsGateway {
     } catch (e, stack) {
       SupabaseManager.logError('resetUserAirline', e, stack);
       throw SettingsGatewayException(e.toString(), 'resetUserAirline');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> deleteAccount() async {
+    try {
+      final response =
+          await SupabaseManager.client.functions.invoke('delete-account');
+      final data = response.data;
+      final payload = data is Map<String, dynamic>
+          ? data
+          : data is Map
+              ? Map<String, dynamic>.from(data)
+              : <String, dynamic>{};
+      if (response.status >= 400 || payload['success'] != true) {
+        throw SettingsGatewayException(
+          payload['message'] as String? ?? 'Delete account failed.',
+          'deleteAccount',
+        );
+      }
+      return payload;
+    } on SettingsGatewayException {
+      rethrow;
+    } catch (e, stack) {
+      SupabaseManager.logError('deleteAccount', e, stack);
+      throw SettingsGatewayException(e.toString(), 'deleteAccount');
     }
   }
 }

@@ -289,4 +289,25 @@ class SettingsCubit extends Cubit<SettingsState> {
       return false;
     }
   }
+
+  /// Permanently delete the authenticated user's account and all data.
+  Future<bool> deleteAccount() async {
+    emit(state.copyWith(isSaving: true));
+    try {
+      if (!DevModeManager.isDevMode) {
+        await _gateway.deleteAccount();
+      }
+      if (isClosed) return false;
+      emit(state.copyWith(isSaving: false, isSaveSuccess: true));
+      return true;
+    } catch (e, stack) {
+      AppError.log('deleteAccount', e, stack);
+      if (isClosed) return false;
+      emit(state.copyWith(
+        isSaving: false,
+        errorMessage: AppError.extractMessage(e, 'Failed to delete account'),
+      ));
+      return false;
+    }
+  }
 }

@@ -11,6 +11,7 @@ import 'package:skyward/features/settings/presentation/cubit/settings_cubit.dart
 class MockSettingsGateway implements SettingsGateway {
   List<dynamic> airportsToReturn = [];
   List<dynamic> rpcToReturn = [];
+  Map<String, dynamic> deleteAccountToReturn = const {'success': true};
   bool shouldThrow = false;
   String? throwMessage;
 
@@ -30,6 +31,12 @@ class MockSettingsGateway implements SettingsGateway {
   Future<List<dynamic>> resetUserAirline() async {
     if (shouldThrow) throw Exception(throwMessage ?? 'Test reset error');
     return rpcToReturn;
+  }
+
+  @override
+  Future<Map<String, dynamic>> deleteAccount() async {
+    if (shouldThrow) throw Exception(throwMessage ?? 'Test delete error');
+    return deleteAccountToReturn;
   }
 }
 

@@ -379,6 +379,19 @@ class AppStrings {
   static const String fareMultiplierLabel = 'DEFAULT FARE MULTIPLIER';
   static const String fareMultiplierDesc =
       'Multiplier applied to recommended base fares when creating new routes.';
+  static const String deleteAccountButton = 'DELETE ACCOUNT';
+  static const String deleteAccountConfirmTitle = 'DELETE ACCOUNT PERMANENTLY';
+  static const String deleteAccountConfirmDesc =
+      'This will permanently delete your account and ALL associated data including:\n\n'
+      '• Fleet and aircraft\n'
+      '• Routes and assignments\n'
+      '• Financial records and loans\n'
+      '• Achievements and credit history\n'
+      '• Bank account and transactions\n\n'
+      'This action CANNOT be undone.';
+  static const String deleteAccountTypeConfirm = 'Type your username to confirm:';
+  static const String deleteAccountSuccess = 'Account deleted successfully.';
+  static const String deleteAccountFailed = 'Failed to delete account: ';
 
   // Leaderboard Screen
   static const String globalRankingsTitle = 'GLOBAL RANKINGS';
