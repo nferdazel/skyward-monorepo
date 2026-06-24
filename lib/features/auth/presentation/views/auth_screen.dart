@@ -60,15 +60,15 @@ class _AuthScreenState extends State<AuthScreen> {
       final cubit = context.read<AuthCubit>();
       if (isLoginMode) {
         cubit.login(
-          username: _usernameController.text,
+          username: _usernameController.text.trim(),
           password: _passwordController.text,
         );
       } else {
         cubit.register(
-          username: _usernameController.text,
+          username: _usernameController.text.trim(),
           password: _passwordController.text,
-          companyName: _companyController.text,
-          ceoName: _ceoController.text,
+          companyName: _companyController.text.trim(),
+          ceoName: _ceoController.text.trim(),
         );
       }
     }
@@ -566,6 +566,8 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty)
+                    return AppStrings.enterValidPassword;
+                  if (value.trim().isEmpty)
                     return AppStrings.enterValidPassword;
                   if (value.length < 8)
                     return AppStrings.passwordMinLength;
