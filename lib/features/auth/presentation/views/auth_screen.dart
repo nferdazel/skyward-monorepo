@@ -81,7 +81,9 @@ class _AuthScreenState extends State<AuthScreen> {
     final hqController = TextEditingController();
     final newPasswordController = TextEditingController();
     final confirmPasswordController = TextEditingController();
-    final formKey = GlobalKey<FormState>();
+    final formKey1 = GlobalKey<FormState>();
+    final formKey2 = GlobalKey<FormState>();
+    final formKey3 = GlobalKey<FormState>();
     bool isLoading = false;
     int step = 1;
 
@@ -96,7 +98,7 @@ class _AuthScreenState extends State<AuthScreen> {
             if (step == 1) {
               title = AppStrings.resetPasswordTitle;
               content = Form(
-                key: formKey,
+                key: formKey1,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -132,7 +134,7 @@ class _AuthScreenState extends State<AuthScreen> {
             } else if (step == 2) {
               title = AppStrings.verifyIdentity;
               content = Form(
-                key: formKey,
+                key: formKey2,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -179,7 +181,7 @@ class _AuthScreenState extends State<AuthScreen> {
             } else {
               title = AppStrings.resetPasswordTitle;
               content = Form(
-                key: formKey,
+                key: formKey3,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -240,8 +242,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       onPressed: isLoading
                           ? null
                           : () {
-                              if (!(formKey.currentState?.validate() ?? false)) return;
-                              formKey.currentState!.reset();
+                              if (!(formKey1.currentState?.validate() ?? false)) return;
                               setDialogState(() => step = 2);
                             },
                       height: 40,
@@ -279,7 +280,6 @@ class _AuthScreenState extends State<AuthScreen> {
                                 );
                                 return;
                               }
-                              formKey.currentState!.reset();
                               setDialogState(() => step = 3);
                             },
                       height: 40,
@@ -304,7 +304,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       text: AppStrings.resetPasswordButton,
                       isLoading: isLoading,
                       onPressed: () async {
-                        if (!(formKey.currentState?.validate() ?? false)) return;
+                        if (!(formKey3.currentState?.validate() ?? false)) return;
                         setDialogState(() => isLoading = true);
                         try {
                           final authCubit = context.read<AuthCubit>();
