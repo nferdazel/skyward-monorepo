@@ -38,9 +38,15 @@ const allowedOrigins = [
   "http://localhost:5173",
 ].filter(Boolean);
 
+function isOriginAllowed(origin: string): boolean {
+  if (allowedOrigins.includes(origin)) return true;
+  if (/^http:\/\/localhost:\d+$/.test(origin)) return true;
+  return false;
+}
+
 function getCorsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get("origin") || "";
-  const corsOrigin = allowedOrigins.includes(origin) ? origin : "";
+  const corsOrigin = isOriginAllowed(origin) ? origin : "";
   return {
     "Access-Control-Allow-Origin": corsOrigin,
     "Access-Control-Allow-Headers":
@@ -98,7 +104,7 @@ function resolveServiceRoleKey(): string | null {
 Deno.serve(async (request) => {
   // Reject requests from unknown origins (skip for preflight)
   const requestOrigin = request.headers.get("origin") || "";
-  if (requestOrigin && !allowedOrigins.includes(requestOrigin)) {
+  if (requestOrigin && !isOriginAllowed(requestOrigin)) {
     return new Response("Forbidden", { status: 403 });
   }
 
