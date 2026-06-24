@@ -252,6 +252,16 @@ class _LeaderboardViewState extends State<LeaderboardView> {
     );
   }
 
+  static const _leaderboardColumnWidths = <int, TableColumnWidth>{
+    0: FixedColumnWidth(50), // Rank
+    1: FixedColumnWidth(30), // Trend indicator
+    2: FlexColumnWidth(5), // Company + CEO
+    3: FlexColumnWidth(3), // Cash
+    4: FlexColumnWidth(3), // Net Worth
+    5: FixedColumnWidth(100), // Fleet
+    6: FlexColumnWidth(3), // Revenue
+  };
+
   Widget _buildDesktopRankings(
     BuildContext context,
     List<LeaderboardEntry> rankings,
@@ -263,157 +273,180 @@ class _LeaderboardViewState extends State<LeaderboardView> {
         : null;
 
     return AppTableShell(
-      child: Table(
-        columnWidths: const {
-          0: FixedColumnWidth(50), // Rank
-          1: FixedColumnWidth(30), // Trend indicator
-          2: FlexColumnWidth(5), // Company + CEO
-          3: FlexColumnWidth(3), // Cash
-          4: FlexColumnWidth(3), // Net Worth
-          5: FixedColumnWidth(100), // Fleet
-          6: FlexColumnWidth(3), // Revenue
-        },
-        defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+      child: Column(
         children: [
-          // Table Header
-          TableRow(
-            decoration: BoxDecoration(color: AppTheme.surfaceRaised),
+          // Fixed header row
+          Table(
+            columnWidths: _leaderboardColumnWidths,
+            defaultVerticalAlignment: TableCellVerticalAlignment.middle,
             children: [
-              _buildTableHeaderCell(AppStrings.rankLabel),
-              _buildTableHeaderCell(''), // Trend column (no label)
-              _buildTableHeaderCell(AppStrings.companyLabel),
-              _buildTableHeaderCell(AppStrings.cashLabel),
-              _buildTableHeaderCell(AppStrings.netWorthLabel),
-              _buildTableHeaderCell(AppStrings.fleetLabel),
-              _buildTableHeaderCell(AppStrings.monthRevenueLabel),
+              TableRow(
+                decoration: BoxDecoration(color: AppTheme.surfaceRaised),
+                children: [
+                  _buildTableHeaderCell(AppStrings.rankLabel),
+                  _buildTableHeaderCell(''), // Trend column (no label)
+                  _buildTableHeaderCell(AppStrings.companyLabel),
+                  _buildTableHeaderCell(AppStrings.cashLabel),
+                  _buildTableHeaderCell(AppStrings.netWorthLabel),
+                  _buildTableHeaderCell(AppStrings.fleetLabel),
+                  _buildTableHeaderCell(AppStrings.monthRevenueLabel),
+                ],
+              ),
             ],
           ),
-          // Table Rows
-          ...List.generate(rankings.length, (index) {
-            final entry = rankings[index];
-            final rank = index + 1;
-            final isHuman = !entry.isBot;
-            final isSelected = selectedId == entry.id;
+          // Scrollable data rows
+          Expanded(
+            child: ListView.builder(
+              itemCount: rankings.length,
+              itemBuilder: (context, index) {
+                final entry = rankings[index];
+                final rank = index + 1;
+                final isHuman = !entry.isBot;
+                final isSelected = selectedId == entry.id;
 
-            final semanticLabel =
-                'Rank $rank: ${entry.companyName}, Net worth ${AppFormatters.currency.format(entry.netWorth)}';
-            final rowChildren = [
-              Semantics(
-                label: semanticLabel,
-                child: RankCell(rank: rank, isHuman: isHuman),
-              ),
-              // Trend indicator: compare current rank with previous day
-              _buildRankTrendIndicator(rank, entry.previousRank),
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  vertical: AppSpacing.sm,
-                  horizontal: AppSpacing.sm,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            entry.companyName,
-                            style: AppTypography.bodyMedium.copyWith(
-                              fontWeight: isHuman
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
-                              color: isHuman
-                                  ? AppTheme.primary
-                                  : AppTheme.textPrimary,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (!isHuman) ...[
-                          const SizedBox(width: AppSpacing.xs),
-                          const AIBadge(),
-                        ],
-                        if (entry.creditTier != null &&
-                            entry.creditTier != 'Standard')
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 4,
-                              vertical: 1,
-                            ),
-                            margin: const EdgeInsets.only(left: AppSpacing.xs),
-                            decoration: BoxDecoration(
-                              color: _tierColor(
-                                entry.creditTier,
-                              ).withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(
-                                AppSpacing.radiusTight,
-                              ),
-                            ),
-                            child: Text(
-                              entry.creditTier!,
-                              style: AppTypography.badgeText.copyWith(
-                                color: _tierColor(entry.creditTier),
-                                fontSize: AppTypography.nanoLabel.fontSize,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      entry.ceoName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTypography.captionRegular.copyWith(
-                        color: AppTheme.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              _buildTableCell(
-                AppFormatters.currency.format(entry.cash),
-                isMono: true,
-              ),
-              _buildTableCell(
-                AppFormatters.currency.format(entry.netWorth),
-                color: AppTheme.success,
-                isBold: true,
-                isMono: true,
-              ),
-              _buildTableCell(
-                '${entry.fleetSize} ${AppStrings.fleetLabel.toLowerCase()}',
-                isBold: isHuman,
-                isMono: true,
-              ),
-              _buildTableCell(
-                AppFormatters.currency.format(entry.monthlyRevenue),
-                isMono: true,
-              ),
-            ];
-
-            return TableRow(
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? AppTheme.primary.withValues(alpha: 0.08)
-                    : (isHuman
-                          ? AppTheme.primary.withValues(alpha: 0.03)
-                          : null),
-                border: Border(
-                  bottom: BorderSide(color: AppTheme.border, width: 1.0),
-                ),
-              ),
-              children: rowChildren.map((cell) {
-                return TableCell(
-                  child: InkWell(
-                    onTap: () => cubit.selectCompetitor(entry),
-                    child: cell,
-                  ),
+                return _buildLeaderboardRow(
+                  context,
+                  entry,
+                  rank,
+                  isHuman,
+                  isSelected,
+                  cubit,
                 );
-              }).toList(),
-            );
-          }),
+              },
+            ),
+          ),
         ],
       ),
+    );
+  }
+
+  Widget _buildLeaderboardRow(
+    BuildContext context,
+    LeaderboardEntry entry,
+    int rank,
+    bool isHuman,
+    bool isSelected,
+    LeaderboardCubit cubit,
+  ) {
+    final semanticLabel =
+        'Rank $rank: ${entry.companyName}, Net worth ${AppFormatters.currency.format(entry.netWorth)}';
+    final rowChildren = [
+      Semantics(
+        label: semanticLabel,
+        child: RankCell(rank: rank, isHuman: isHuman),
+      ),
+      // Trend indicator: compare current rank with previous day
+      _buildRankTrendIndicator(rank, entry.previousRank),
+      Padding(
+        padding: const EdgeInsets.symmetric(
+          vertical: AppSpacing.sm,
+          horizontal: AppSpacing.sm,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Flexible(
+                  child: Text(
+                    entry.companyName,
+                    style: AppTypography.bodyMedium.copyWith(
+                      fontWeight:
+                          isHuman ? FontWeight.bold : FontWeight.normal,
+                      color:
+                          isHuman ? AppTheme.primary : AppTheme.textPrimary,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (!isHuman) ...[
+                  const SizedBox(width: AppSpacing.xs),
+                  const AIBadge(),
+                ],
+                if (entry.creditTier != null &&
+                    entry.creditTier != 'Standard')
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 1,
+                    ),
+                    margin: const EdgeInsets.only(left: AppSpacing.xs),
+                    decoration: BoxDecoration(
+                      color: _tierColor(
+                        entry.creditTier,
+                      ).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(
+                        AppSpacing.radiusTight,
+                      ),
+                    ),
+                    child: Text(
+                      entry.creditTier!,
+                      style: AppTypography.badgeText.copyWith(
+                        color: _tierColor(entry.creditTier),
+                        fontSize: AppTypography.nanoLabel.fontSize,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              entry.ceoName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.captionRegular.copyWith(
+                color: AppTheme.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+      _buildTableCell(
+        AppFormatters.currency.format(entry.cash),
+        isMono: true,
+      ),
+      _buildTableCell(
+        AppFormatters.currency.format(entry.netWorth),
+        color: AppTheme.success,
+        isBold: true,
+        isMono: true,
+      ),
+      _buildTableCell(
+        '${entry.fleetSize} ${AppStrings.fleetLabel.toLowerCase()}',
+        isBold: isHuman,
+        isMono: true,
+      ),
+      _buildTableCell(
+        AppFormatters.currency.format(entry.monthlyRevenue),
+        isMono: true,
+      ),
+    ];
+
+    return Table(
+      columnWidths: _leaderboardColumnWidths,
+      defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+      children: [
+        TableRow(
+          decoration: BoxDecoration(
+            color: isSelected
+                ? AppTheme.primary.withValues(alpha: 0.08)
+                : (isHuman
+                      ? AppTheme.primary.withValues(alpha: 0.03)
+                      : null),
+            border: Border(
+              bottom: BorderSide(color: AppTheme.border, width: 1.0),
+            ),
+          ),
+          children: rowChildren.map((cell) {
+            return TableCell(
+              child: InkWell(
+                onTap: () => cubit.selectCompetitor(entry),
+                child: cell,
+              ),
+            );
+          }).toList(),
+        ),
+      ],
     );
   }
 
