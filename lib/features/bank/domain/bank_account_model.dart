@@ -33,6 +33,6 @@ class BankAccount {
     );
   }
 
-  bool get isChecking => accountType == 'checking';
+  bool get isChecking => accountType == 'operating';
   bool get isSavings => accountType == 'savings';
 }

@@ -71,7 +71,7 @@ class SupabaseSimulationGateway implements SimulationGateway {
       final response = await SupabaseManager.client
           .from('game_config')
           .select('key, value')
-          .inFilter('key', ['fuel_price_per_liter', 'time_scale_multiplier']);
+          .inFilter('key', ['fuel_price_per_liter']);
 
       // Convert KV rows into a flat map for downstream consumption.
       final Map<String, dynamic> flat = {};

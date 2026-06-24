@@ -452,51 +452,6 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
     }
   }
 
-  /// Open a new savings account.
-  Future<void> createSavingsAccount() async {
-    emit(const BankLoading());
-
-    try {
-      final result = await _gateway.createSavingsAccount();
-      final success = result['success'] as bool? ?? false;
-      final message = result['message'] as String? ?? '';
-
-      if (success) {
-        _cachedAccounts = await _gateway.getBankAccounts();
-        _cachedTransactions = [];
-        if (isClosed) return;
-        emit(BankSavingsSuccess(
-          message: message,
-          loans: _cachedLoans,
-          creditReport: _cachedCreditReport,
-          accounts: _cachedAccounts,
-          transactions: _cachedTransactions,
-        ));
-      } else {
-        if (isClosed) return;
-        emit(BankError(
-          message: message,
-          hasData: _cachedLoans.isNotEmpty,
-          loans: _cachedLoans,
-          creditReport: _cachedCreditReport,
-          accounts: _cachedAccounts,
-          transactions: _cachedTransactions,
-        ));
-      }
-    } catch (e, stack) {
-      AppError.log('createSavingsAccount', e, stack);
-      if (isClosed) return;
-      emit(BankError(
-        message: AppError.extractMessage(e, 'Failed to open savings account.'),
-        hasData: _cachedLoans.isNotEmpty,
-        loans: _cachedLoans,
-        creditReport: _cachedCreditReport,
-        accounts: _cachedAccounts,
-        transactions: _cachedTransactions,
-      ));
-    }
-  }
-
   /// Load bank transactions for a specific account.
   Future<void> loadBankTransactions(String accountId) async {
     try {
@@ -504,6 +459,8 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
       _emitLoaded();
     } catch (e, stack) {
       AppError.log('loadBankTransactions', e, stack);
+      if (isClosed) return;
+      emit(BankError(message: AppError.extractMessage(e, 'Failed to load transactions')));
     }
   }
 

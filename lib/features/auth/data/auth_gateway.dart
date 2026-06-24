@@ -163,7 +163,7 @@ class SupabaseAuthGateway implements AuthGateway {
     final response = await SupabaseManager.client
         .from('users')
         .select(
-          'id, username, company_name, ceo_name, cash, game_current_time, '
+          'id, username, company_name, ceo_name, net_worth, game_current_time, '
           'auto_grounding_threshold, hq_airport_iata, operational_status, '
           'consecutive_negative_days, recovery_streak_days, '
           'onboarding_completed, actor_type',

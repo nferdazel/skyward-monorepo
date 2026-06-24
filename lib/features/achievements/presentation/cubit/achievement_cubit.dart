@@ -67,9 +67,11 @@ class AchievementCubit extends Cubit<AchievementState>
           response.map((e) => Achievement.fromMap(e as Map<String, dynamic>)).toList();
 
       _lastRefreshAt = DateTime.now();
+      if (isClosed) return;
       emit(AchievementLoaded(achievements: achievements));
     } catch (e, stack) {
       AppError.log('loadAchievements', e, stack);
+      if (isClosed) return;
       if (!silent) {
         emit(
           AchievementError(

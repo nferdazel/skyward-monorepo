@@ -443,7 +443,7 @@ void main() {
           isA<RoutesError>().having(
             (s) => s.message,
             'message',
-            contains('Exception:'),
+            'Route creation failed.',
           ),
           isA<RoutesLoaded>(),
         ],
@@ -546,7 +546,7 @@ void main() {
           isA<RoutesError>().having(
             (s) => s.message,
             'message',
-            contains('Exception:'),
+            'Aircraft assignment failed.',
           ),
           isA<RoutesLoaded>(),
         ],
@@ -642,7 +642,7 @@ void main() {
           isA<RoutesError>().having(
             (s) => s.message,
             'message',
-            contains('Exception:'),
+            'Route deletion failed.',
           ),
           isA<RoutesLoaded>(),
         ],
@@ -748,7 +748,7 @@ void main() {
           isA<RoutesError>().having(
             (s) => s.message,
             'message',
-            contains('Exception:'),
+            'Route update failed.',
           ),
           isA<RoutesLoaded>(),
         ],

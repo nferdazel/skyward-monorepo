@@ -129,7 +129,7 @@ class RoutesCubit extends Cubit<RoutesState> with SimulationReactiveMixin {
       if (isClosed) return false;
       emit(
         RoutesError(
-          message: e.toString(),
+          message: AppError.extractMessage(e, failureMessage),
           hasData: true,
           routes: snapshot.routes,
           airports: snapshot.airports,
