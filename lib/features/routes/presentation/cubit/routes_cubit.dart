@@ -660,7 +660,6 @@ class RoutesCubit extends Cubit<RoutesState> with SimulationReactiveMixin {
         acquisitionType: 'purchase',
         condition: 82.50,
         status: 'active',
-        acquiredAt: DateTime.now(),
         model: AircraftModel(
           id: 'mock-a320',
           manufacturer: 'Airbus',
@@ -681,7 +680,6 @@ class RoutesCubit extends Cubit<RoutesState> with SimulationReactiveMixin {
         acquisitionType: 'lease',
         condition: 45.00,
         status: 'active',
-        acquiredAt: DateTime.now(),
         model: AircraftModel(
           id: 'mock-atr72',
           manufacturer: 'ATR',

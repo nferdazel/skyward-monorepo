@@ -47,8 +47,8 @@ class SupabaseBankGateway implements BankGateway {
           .select(
             'id, principal, interest_rate, remaining_balance, weekly_payment, '
             'status, loan_type, collateral_aircraft_id, '
-            'credit_score_at_origination, missed_payments, '
-            'taken_at, game_date_taken, paid_off_at',
+            'missed_payments, '
+            'taken_at',
           )
           .eq('user_id', userId)
           .order('taken_at', ascending: false);
@@ -145,8 +145,8 @@ class SupabaseBankGateway implements BankGateway {
           .select(
             'id, principal, interest_rate, remaining_balance, weekly_payment, '
             'status, loan_type, collateral_aircraft_id, '
-            'credit_score_at_origination, missed_payments, '
-            'taken_at, game_date_taken, paid_off_at',
+            'missed_payments, '
+            'taken_at',
           )
           .eq('loan_type', 'aircraft_financing')
           .order('taken_at', ascending: false);

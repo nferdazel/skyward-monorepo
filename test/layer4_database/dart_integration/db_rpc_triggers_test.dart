@@ -42,7 +42,6 @@ void main() {
         'acquisition_type': 'purchase',
         'condition': 95.50,
         'status': 'active',
-        'acquired_at': '2026-05-30T12:15:00Z',
         'tail_number': 'PK-SWF',
         'economy_seats': 150,
         'business_seats': 15,

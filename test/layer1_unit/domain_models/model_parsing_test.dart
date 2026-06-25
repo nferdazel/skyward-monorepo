@@ -120,7 +120,6 @@ void main() {
           acquisitionType: 'purchase',
           condition: 80.0,
           status: 'active',
-          acquiredAt: DateTime.parse('2026-05-30T10:00:00Z'),
           model: AircraftModel(
             id: 'model-787',
             manufacturer: 'Boeing',

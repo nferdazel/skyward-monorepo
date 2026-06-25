@@ -8,11 +8,8 @@ class Loan {
   final String status;
   final String loanType;
   final String? collateralAircraftId;
-  final int? creditScoreAtOrigination;
   final int missedPayments;
   final DateTime? takenAt;
-  final DateTime? gameDateTaken;
-  final DateTime? paidOffAt;
 
   const Loan({
     required this.id,
@@ -23,11 +20,8 @@ class Loan {
     required this.status,
     this.loanType = 'unsecured',
     this.collateralAircraftId,
-    this.creditScoreAtOrigination,
     this.missedPayments = 0,
     this.takenAt,
-    this.gameDateTaken,
-    this.paidOffAt,
   });
 
   /// Whether this loan is still being repaid.
@@ -89,17 +83,9 @@ class Loan {
       status: map['status'] as String? ?? 'active',
       loanType: map['loan_type'] as String? ?? 'unsecured',
       collateralAircraftId: map['collateral_aircraft_id'] as String?,
-      creditScoreAtOrigination:
-          (map['credit_score_at_origination'] as num?)?.toInt(),
       missedPayments: (map['missed_payments'] as num?)?.toInt() ?? 0,
       takenAt: map['taken_at'] != null
           ? DateTime.tryParse(map['taken_at'] as String)
-          : null,
-      gameDateTaken: map['game_date_taken'] != null
-          ? DateTime.tryParse(map['game_date_taken'] as String)
-          : null,
-      paidOffAt: map['paid_off_at'] != null
-          ? DateTime.tryParse(map['paid_off_at'] as String)
           : null,
     );
   }

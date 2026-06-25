@@ -190,7 +190,6 @@ void main() {
             acquisitionType: 'lease',
             condition: 92.0,
             status: 'active',
-            acquiredAt: DateTime.parse('2026-05-31T00:00:00Z'),
             model: model,
           ),
         ];
@@ -256,7 +255,6 @@ void main() {
           acquisitionType: 'purchase',
           condition: 88.0,
           status: 'active',
-          acquiredAt: DateTime.parse('2026-05-31T00:00:00Z'),
           model: AircraftModel(
             id: 'm-1',
             manufacturer: 'Airbus',

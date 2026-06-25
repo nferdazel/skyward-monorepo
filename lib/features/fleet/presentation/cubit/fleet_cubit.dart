@@ -302,7 +302,6 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
         acquisitionType: 'purchase',
         condition: GameConstants.maxCondition,
         status: 'active',
-        acquiredAt: DateTime.now(),
         model: model,
         economySeats: economy,
         businessSeats: business,
@@ -388,7 +387,6 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
         acquisitionType: 'lease',
         condition: GameConstants.maxCondition,
         status: 'active',
-        acquiredAt: DateTime.now(),
         model: model,
         economySeats: economy,
         businessSeats: business,
@@ -471,7 +469,6 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
           acquisitionType: target.acquisitionType,
           condition: GameConstants.maxCondition,
           status: 'active',
-          acquiredAt: target.acquiredAt,
           model: target.model,
           economySeats: target.economySeats,
           businessSeats: target.businessSeats,
@@ -699,7 +696,6 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
           acquisitionType: old.acquisitionType,
           condition: old.condition,
           status: old.status,
-          acquiredAt: old.acquiredAt,
           model: old.model,
           economySeats: economy,
           businessSeats: business,
@@ -852,7 +848,6 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
         acquisitionType: 'purchase',
         condition: 82.50,
         status: 'active',
-        acquiredAt: DateTime.now().subtract(const Duration(days: 10)),
         model: _cachedCatalog[1], // A320neo
       ),
       UserFleetAircraft(
@@ -861,7 +856,6 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
         acquisitionType: 'lease',
         condition: 45.00,
         status: 'active',
-        acquiredAt: DateTime.now().subtract(const Duration(days: 3)),
         model: _cachedCatalog[0], // ATR 72
       ),
     ];

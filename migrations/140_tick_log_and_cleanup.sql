@@ -328,7 +328,7 @@ BEGIN
             PERFORM process_aircraft_financing_payments(p_user_id, p_target_game_time);
         END LOOP;
 
-        PERFORM accrue_savings_interest(p_user_id, p_target_game_time);
+        -- accrue_savings_interest removed (operating accounts do not earn interest)
         PERFORM process_credit_at_day_boundary(p_user_id, p_target_game_time);
         PERFORM check_achievements(p_user_id, p_target_game_time);
 

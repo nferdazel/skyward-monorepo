@@ -97,7 +97,6 @@ void main() {
           acquisitionType: 'purchase',
           condition: 88.0,
           status: 'active',
-          acquiredAt: DateTime.parse('2026-06-01T00:00:00Z'),
           model: AircraftModel(
             id: 'a320',
             manufacturer: 'Airbus',
@@ -142,7 +141,6 @@ void main() {
           acquisitionType: 'purchase',
           condition: 100.0,
           status: 'active',
-          acquiredAt: DateTime.parse('2026-06-01T00:00:00Z'),
           model: AircraftModel(
             id: 'a320',
             manufacturer: 'Airbus',
@@ -165,7 +163,6 @@ void main() {
           acquisitionType: 'purchase',
           condition: 100.0,
           status: 'active',
-          acquiredAt: DateTime.parse('2026-06-01T00:00:00Z'),
           model: AircraftModel(
             id: 'a320',
             manufacturer: 'Airbus',
@@ -289,7 +286,6 @@ void main() {
         acquisitionType: 'lease',
         condition: 28.0,
         status: 'grounded',
-        acquiredAt: DateTime.parse('2026-06-01T00:00:00Z'),
         model: AircraftModel(
           id: 'atr72',
           manufacturer: 'ATR',
@@ -346,7 +342,6 @@ void main() {
           acquisitionType: 'lease',
           condition: 100.0,
           status: 'active',
-          acquiredAt: DateTime.parse('2026-06-01T00:00:00Z'),
           model: AircraftModel(
             id: 'a320',
             manufacturer: 'Airbus',

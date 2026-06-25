@@ -180,7 +180,6 @@ void main() {
             'acquisition_type': 'lease',
             'condition': 99.4,
             'status': 'active',
-            'acquired_at': '2026-05-30T12:30:00Z',
             'economy_seats': 146,
             'business_seats': 0,
             'first_class_seats': 0,

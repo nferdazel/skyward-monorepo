@@ -190,7 +190,6 @@ final _mockFleetEntry = <String, dynamic>{
   'acquisition_type': 'purchase',
   'condition': 90.0,
   'status': 'active',
-  'acquired_at': '2026-05-31T00:00:00.000Z',
   'economy_seats': 60,
   'business_seats': 8,
   'first_class_seats': 4,

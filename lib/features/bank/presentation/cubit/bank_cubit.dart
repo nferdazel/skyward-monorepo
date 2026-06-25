@@ -516,7 +516,6 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
         status: 'active',
         loanType: 'unsecured',
         takenAt: now.subtract(const Duration(days: 30)),
-        gameDateTaken: now.subtract(const Duration(days: 30)),
       ),
       Loan(
         id: 'mock-loan-2',
@@ -527,8 +526,6 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
         status: 'paid_off',
         loanType: 'secured',
         takenAt: now.subtract(const Duration(days: 120)),
-        gameDateTaken: now.subtract(const Duration(days: 120)),
-        paidOffAt: now.subtract(const Duration(days: 10)),
       ),
     ];
     _cachedCreditReport = const CreditReport(
@@ -565,7 +562,6 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
       status: 'active',
       loanType: 'unsecured',
       takenAt: now,
-      gameDateTaken: now,
     );
 
     _cachedLoans = [newLoan, ..._cachedLoans];

@@ -52,7 +52,6 @@ class UserFleetAircraft {
   final String acquisitionType;
   final double condition;
   final String status;
-  final DateTime acquiredAt;
   final AircraftModel model;
   final int economySeats;
   final int businessSeats;
@@ -65,7 +64,6 @@ class UserFleetAircraft {
     required this.acquisitionType,
     required this.condition,
     required this.status,
-    required this.acquiredAt,
     required this.model,
     this.economySeats = 0,
     this.businessSeats = 0,
@@ -80,9 +78,6 @@ class UserFleetAircraft {
       acquisitionType: map['acquisition_type'] ?? 'purchase',
       condition: (map['condition'] as num?)?.toDouble() ?? 100.0,
       status: map['status'] ?? 'grounded',
-      acquiredAt: map['acquired_at'] != null
-          ? DateTime.parse(map['acquired_at'])
-          : DateTime.now(),
       model: AircraftModel.fromMap(map['aircraft_models'] ?? {}),
       economySeats: (map['economy_seats'] as num?)?.toInt() ?? 0,
       businessSeats: (map['business_seats'] as num?)?.toInt() ?? 0,
