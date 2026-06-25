@@ -66,7 +66,8 @@ final _mockTxnCredit = <String, dynamic>{
   'amount': 50000.0,
   'balance_after': 50000.0,
   'description': 'Ticket sales for 7 flights: CGK → SIN',
-  'ifrs_category': 'ticket_sales',
+  'ifrs_category': 'revenue',
+  'ifrs_subcategory': 'route_revenue',
   'game_date': '2026-06-01T10:00:00.000Z',
 };
 
@@ -75,10 +76,11 @@ final _mockTxnDebit = <String, dynamic>{
   'account_id': 'account-1',
   'user_id': 'user-1',
   'transaction_type': 'debit',
-  'amount': 12000.0,
+  'amount': -12000.0,
   'balance_after': 38000.0,
   'description': 'Fuel and crew costs for 7 flights',
-  'ifrs_category': 'operations',
+  'ifrs_category': 'cogs',
+  'ifrs_subcategory': 'fuel_cost',
   'game_date': '2026-06-01T10:00:00.000Z',
 };
 
@@ -95,7 +97,7 @@ final _mockSnapshotMap = <String, dynamic>{
   'leased_fleet_count': 0,
   'active_route_count': 0,
   'rolling_revenue_30d': 50000.0,
-  'rolling_expense_30d': 12000.0,
+  'rolling_expense_30d': -12000.0,
   'rolling_net_30d': 38000.0,
   'ledger_window_days': 30,
 };
@@ -113,7 +115,7 @@ final _updatedSnapshotMap = <String, dynamic>{
   'leased_fleet_count': 0,
   'active_route_count': 0,
   'rolling_revenue_30d': 100000.0,
-  'rolling_expense_30d': 24000.0,
+  'rolling_expense_30d': -24000.0,
   'rolling_net_30d': 76000.0,
   'ledger_window_days': 30,
 };
@@ -161,7 +163,7 @@ void main() {
               .having(
                 (s) => s.transactions.first.ifrsCategory,
                 'ifrs category',
-                'ticket_sales',
+                'revenue',
               )
               .having((s) => s.totalRevenue, 'totalRevenue', 50000.0)
               .having((s) => s.totalExpense, 'totalExpense', 0.0)
@@ -224,26 +226,10 @@ void main() {
                 'day expense',
                 12000.0,
               )
-              .having(
-                (s) => s.dailySnapshots.first.net,
-                'day net',
-                38000.0,
-              )
-              .having(
-                (s) => s.averageDailyNet,
-                'averageDailyNet',
-                38000.0,
-              )
-              .having(
-                (s) => s.latestDailyNet,
-                'latestDailyNet',
-                38000.0,
-              )
-              .having(
-                (s) => s.worstDailyNet,
-                'worstDailyNet',
-                38000.0,
-              ),
+              .having((s) => s.dailySnapshots.first.net, 'day net', 38000.0)
+              .having((s) => s.averageDailyNet, 'averageDailyNet', 38000.0)
+              .having((s) => s.latestDailyNet, 'latestDailyNet', 38000.0)
+              .having((s) => s.worstDailyNet, 'worstDailyNet', 38000.0),
         ],
       );
 
@@ -331,10 +317,7 @@ void main() {
           // Load initial data
           await cubit.loadLedger('user-1');
           expect(cubit.state, isA<FinanceLoaded>());
-          expect(
-            (cubit.state as FinanceLoaded).snapshot.cash,
-            10000000.0,
-          );
+          expect((cubit.state as FinanceLoaded).snapshot.cash, 10000000.0);
 
           // Update snapshot return value and refresh
           gateway.snapshotToReturn = _updatedSnapshotMap;
@@ -344,6 +327,7 @@ void main() {
           final refreshed = cubit.state as FinanceLoaded;
           expect(refreshed.snapshot.cash, 8000000.0);
           expect(refreshed.snapshot.rollingRevenue30d, 100000.0);
+          expect(refreshed.snapshot.rollingExpense30d, 24000.0);
           // Transaction data should be preserved from the initial load
           expect(refreshed.transactions.length, 1);
 
@@ -370,7 +354,28 @@ void main() {
           expect(cubit.state, isA<FinanceLoaded>());
           final stateAfter = cubit.state as FinanceLoaded;
           expect(stateAfter.snapshot.cash, stateBefore.snapshot.cash);
-          expect(stateAfter.transactions.length, stateBefore.transactions.length);
+          expect(
+            stateAfter.transactions.length,
+            stateBefore.transactions.length,
+          );
+
+          await cubit.close();
+        },
+      );
+
+      test(
+        'FinanceSnapshot normalizes negative rolling expense magnitude',
+        () async {
+          final gateway = MockFinanceGateway()
+            ..transactionsToReturn = [_mockTxnCredit, _mockTxnDebit]
+            ..snapshotToReturn = _mockSnapshotMap;
+          final cubit = FinanceCubit(gateway: gateway);
+
+          await cubit.loadLedger('user-1');
+
+          final loaded = cubit.state as FinanceLoaded;
+          expect(loaded.snapshot.rollingExpense30d, 12000.0);
+          expect(loaded.snapshot.rollingNet30d, 38000.0);
 
           await cubit.close();
         },
@@ -384,7 +389,8 @@ void main() {
     group('dev mode fallback', () {
       test('dev mode works when no gateway is provided', () async {
         SupabaseManager.enableDevMode();
-        final cubit = FinanceCubit(); // No gateway → uses SupabaseFinanceGateway
+        final cubit =
+            FinanceCubit(); // No gateway → uses SupabaseFinanceGateway
 
         expect(cubit.state, const FinanceInitial());
 

@@ -51,6 +51,11 @@ class FinanceSnapshot {
       ledgerWindowDays = 30;
 
   factory FinanceSnapshot.fromMap(Map<String, dynamic> map) {
+    final rollingRevenue =
+        (map['rolling_revenue_30d'] as num?)?.toDouble() ?? 0.0;
+    final rollingExpenseRaw =
+        (map['rolling_expense_30d'] as num?)?.toDouble() ?? 0.0;
+    final rollingExpense = rollingExpenseRaw.abs();
     return FinanceSnapshot(
       actorId: map['actor_id']?.toString() ?? '',
       isBot: map['is_bot'] as bool? ?? false,
@@ -65,11 +70,11 @@ class FinanceSnapshot {
       ownedFleetCount: (map['owned_fleet_count'] as num?)?.toInt() ?? 0,
       leasedFleetCount: (map['leased_fleet_count'] as num?)?.toInt() ?? 0,
       activeRouteCount: (map['active_route_count'] as num?)?.toInt() ?? 0,
-      rollingRevenue30d:
-          (map['rolling_revenue_30d'] as num?)?.toDouble() ?? 0.0,
-      rollingExpense30d:
-          (map['rolling_expense_30d'] as num?)?.toDouble() ?? 0.0,
-      rollingNet30d: (map['rolling_net_30d'] as num?)?.toDouble() ?? 0.0,
+      rollingRevenue30d: rollingRevenue,
+      rollingExpense30d: rollingExpense,
+      rollingNet30d:
+          (map['rolling_net_30d'] as num?)?.toDouble() ??
+          (rollingRevenue - rollingExpense),
       ledgerWindowDays: (map['ledger_window_days'] as num?)?.toInt() ?? 30,
     );
   }

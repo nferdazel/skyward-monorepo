@@ -39,11 +39,9 @@ class SupabaseFinanceGateway implements FinanceGateway {
           .order('game_date', ascending: false)
           .limit(5000);
     } on PostgrestException catch (e) {
-      SupabaseManager.logRpcFailure(
-        'loadTransactions',
-        {'user_id': userId},
-        e.message,
-      );
+      SupabaseManager.logRpcFailure('loadTransactions', {
+        'user_id': userId,
+      }, e.message);
       throw FinanceGatewayException(e.message, 'loadTransactions');
     } catch (e, stack) {
       SupabaseManager.logError('loadTransactions', e, stack);
@@ -60,11 +58,9 @@ class SupabaseFinanceGateway implements FinanceGateway {
           .eq('user_id', userId)
           .order('game_date', ascending: false);
     } on PostgrestException catch (e) {
-      SupabaseManager.logRpcFailure(
-        'loadDailySummaries',
-        {'user_id': userId},
-        e.message,
-      );
+      SupabaseManager.logRpcFailure('loadDailySummaries', {
+        'user_id': userId,
+      }, e.message);
       throw FinanceGatewayException(e.message, 'loadDailySummaries');
     } catch (e, stack) {
       SupabaseManager.logError('loadDailySummaries', e, stack);
@@ -83,11 +79,7 @@ class SupabaseFinanceGateway implements FinanceGateway {
       }
       return <String, dynamic>{};
     } on PostgrestException catch (e) {
-      SupabaseManager.logRpcFailure(
-        'get_finance_snapshot',
-        {},
-        e.message,
-      );
+      SupabaseManager.logRpcFailure('get_finance_snapshot', {}, e.message);
       throw FinanceGatewayException(e.message, 'getFinanceSnapshot');
     } catch (e, stack) {
       SupabaseManager.logError('getFinanceSnapshot', e, stack);
@@ -111,20 +103,25 @@ class SupabaseFinanceGateway implements FinanceGateway {
         // RPC does not exist — fall through to table query.
       }
 
-      // Fallback: query daily summaries grouped by period for net-worth trend.
+      // Fallback: the daily summary table has no net_worth column. Return the
+      // current snapshot as a single point so the caller gets a valid payload
+      // without querying phantom columns.
       final response = await SupabaseManager.client
-          .from('bank_transaction_daily_summary')
-          .select('game_date, net_worth')
-          .eq('user_id', userId)
-          .order('game_date', ascending: false)
-          .limit(90);
-      return response;
+          .from('users')
+          .select('game_current_time, net_worth')
+          .eq('id', userId)
+          .maybeSingle();
+      if (response == null) return const [];
+      return [
+        {
+          'game_date': response['game_current_time'],
+          'net_worth': response['net_worth'],
+        },
+      ];
     } on PostgrestException catch (e) {
-      SupabaseManager.logRpcFailure(
-        'getFinancialSnapshots',
-        {'user_id': userId},
-        e.message,
-      );
+      SupabaseManager.logRpcFailure('getFinancialSnapshots', {
+        'user_id': userId,
+      }, e.message);
       throw FinanceGatewayException(e.message, 'getFinancialSnapshots');
     } catch (e, stack) {
       SupabaseManager.logError('getFinancialSnapshots', e, stack);
@@ -145,11 +142,9 @@ class SupabaseFinanceGateway implements FinanceGateway {
       }
       return 0.0;
     } on PostgrestException catch (e) {
-      SupabaseManager.logRpcFailure(
-        'get_user_balance',
-        {'p_user_id': userId},
-        e.message,
-      );
+      SupabaseManager.logRpcFailure('get_user_balance', {
+        'p_user_id': userId,
+      }, e.message);
       throw FinanceGatewayException(e.message, 'getUserBalance');
     } catch (e, stack) {
       SupabaseManager.logError('getUserBalance', e, stack);

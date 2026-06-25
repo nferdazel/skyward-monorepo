@@ -837,6 +837,7 @@ class _FinanceViewState extends State<FinanceView>
   ) {
     final isRev = txn.transactionType == 'credit';
     final sign = isRev ? '+' : '-';
+    final displayAmount = txn.amount.abs();
     final valueColor = isRev ? AppTheme.success : AppTheme.error;
     final gameDate = txn.gameDate ?? DateTime(2020, 1, 1);
 
@@ -851,7 +852,14 @@ class _FinanceViewState extends State<FinanceView>
             horizontal: AppSpacing.md,
             vertical: AppSpacing.sm,
           ),
-          child: Row(children: [_buildCategoryPill(txn.ifrsCategory ?? '')]),
+          child: Row(
+            children: [
+              _buildCategoryPill(
+                txn.ifrsCategory ?? '',
+                txn.ifrsSubcategory ?? '',
+              ),
+            ],
+          ),
         ),
         // Column 2: Details Description
         AppTableBodyCell(
@@ -888,7 +896,7 @@ class _FinanceViewState extends State<FinanceView>
           child: Align(
             alignment: Alignment.centerRight,
             child: Text(
-              '$sign${currencyFormat.format(txn.amount)}',
+              '$sign${currencyFormat.format(displayAmount)}',
               textAlign: TextAlign.right,
               style: AppTypography.badgeText.copyWith(
                 color: valueColor,
@@ -901,21 +909,42 @@ class _FinanceViewState extends State<FinanceView>
     );
   }
 
-  Widget _buildCategoryPill(String category) {
-    switch (category) {
+  Widget _buildCategoryPill(String category, String subcategory) {
+    final effectiveKey = subcategory.isNotEmpty ? subcategory : category;
+    switch (effectiveKey) {
       case 'ticket_sales':
+      case 'route_revenue':
+      case 'cargo_revenue':
         return AppBadge.success(label: AppStrings.ticketSalesBadge);
       case 'operations':
+      case 'fuel_cost':
+      case 'crew_cost':
+      case 'maintenance_cost':
+      case 'airport_fees':
         return AppBadge.warning(label: AppStrings.operationsBadge);
       case 'aircraft_lease':
       case 'aircraft_lease_init':
+      case 'aircraft_lease_exit':
         return AppBadge.error(label: AppStrings.aircraftLeaseBadge);
       case 'aircraft_repair':
         return AppBadge.error(label: AppStrings.aircraftRepairBadge);
       case 'aircraft_purchase':
+      case 'aircraft_purchase_deposit':
         return AppBadge.primary(label: AppStrings.aircraftPurchaseBadge);
+      case 'revenue':
+        return AppBadge.success(label: effectiveKey.replaceAll('_', ' '));
+      case 'cogs':
+      case 'opex':
+        return AppBadge.warning(label: effectiveKey.replaceAll('_', ' '));
+      case 'investing':
+      case 'financing':
+      case 'loan_payment':
+      case 'loan_disbursement':
+      case 'loan_refinance':
+      case 'financing_payment':
+        return AppBadge.secondary(label: effectiveKey.replaceAll('_', ' '));
       default:
-        return AppBadge.secondary(label: category.replaceAll('_', ' '));
+        return AppBadge.secondary(label: effectiveKey.replaceAll('_', ' '));
     }
   }
 }

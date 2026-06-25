@@ -30,12 +30,25 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
   int _consecutiveSnapshotFailures = 0;
   static const int _maxSilentFailures = 5;
 
+  static const _leaseSubcategories = {
+    'aircraft_lease',
+    'aircraft_lease_init',
+    'aircraft_lease_exit',
+  };
+
+  static const _repairSubcategories = {'aircraft_repair'};
+
+  static const _purchaseSubcategories = {
+    'aircraft_purchase',
+    'aircraft_purchase_deposit',
+  };
+
   /// Pre-aggregated daily summaries for IFRS reporting over extended periods.
   List<Map<String, dynamic>> get dailySummaries => _cachedDailySummaries;
 
   FinanceCubit({FinanceGateway? gateway})
-      : _gateway = gateway ?? const SupabaseFinanceGateway(),
-        super(const FinanceInitial());
+    : _gateway = gateway ?? const SupabaseFinanceGateway(),
+      super(const FinanceInitial());
 
   FinanceDataState _buildFinanceState(
     List<BankTransaction> transactions, {
@@ -44,7 +57,8 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
     List<Map<String, dynamic>>? dailySummaries,
   }) {
     final effectiveSnapshot = snapshot ?? _cachedSnapshot;
-    final effectiveFinancialSnapshots = financialSnapshots ?? _cachedFinancialSnapshots;
+    final effectiveFinancialSnapshots =
+        financialSnapshots ?? _cachedFinancialSnapshots;
     final effectiveDailySummaries = dailySummaries ?? _cachedDailySummaries;
     final dailyBuckets = <DateTime, ({double revenue, double expense})>{};
     double totalTicketSales = 0.0;
@@ -57,6 +71,7 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
 
     for (final txn in transactions) {
       final amt = txn.amount;
+      final absAmt = amt.abs();
       final gameDate = txn.gameDate ?? DateTime(2020, 1, 1);
       final dayKey = DateTime(gameDate.year, gameDate.month, gameDate.day);
       final bucket = dailyBuckets[dayKey] ?? (revenue: 0.0, expense: 0.0);
@@ -70,33 +85,30 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
           expense: bucket.expense,
         );
       } else {
-        totalExpense += amt;
+        totalExpense += absAmt;
         dailyBuckets[dayKey] = (
           revenue: bucket.revenue,
-          expense: bucket.expense + amt,
+          expense: bucket.expense + absAmt,
         );
       }
 
-      // Map IFRS categories to legacy metric buckets
       final category = txn.ifrsCategory ?? '';
-      switch (category) {
-        case 'ticket_sales':
-          totalTicketSales += amt;
-          break;
-        case 'operations':
-          totalOperations += amt;
-          break;
-        case 'aircraft_lease':
-        case 'aircraft_lease_init':
-        case 'aircraft_lease_exit':
-          totalLease += amt;
-          break;
-        case 'aircraft_repair':
-          totalRepair += amt;
-          break;
-        case 'aircraft_purchase':
-          totalPurchase += amt;
-          break;
+      final subcategory = txn.ifrsSubcategory ?? '';
+
+      if (_isTicketSales(category, subcategory)) {
+        totalTicketSales += absAmt;
+      }
+      if (_isOperationsExpense(category, subcategory) && !isRevenue) {
+        totalOperations += absAmt;
+      }
+      if (_isLeaseExpense(category, subcategory) && !isRevenue) {
+        totalLease += absAmt;
+      }
+      if (_isRepairExpense(category, subcategory) && !isRevenue) {
+        totalRepair += absAmt;
+      }
+      if (_isPurchaseExpense(category, subcategory) && !isRevenue) {
+        totalPurchase += absAmt;
       }
     }
 
@@ -173,6 +185,40 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
     return const FinanceLoaded(metrics: FinanceMetrics.empty());
   }
 
+  bool _isTicketSales(String category, String subcategory) {
+    return category == 'revenue' ||
+        category == 'ticket_sales' ||
+        subcategory == 'ticket_sales' ||
+        subcategory == 'route_revenue' ||
+        subcategory == 'cargo_revenue';
+  }
+
+  bool _isOperationsExpense(String category, String subcategory) {
+    return category == 'cogs' ||
+        category == 'opex' ||
+        category == 'operations' ||
+        subcategory == 'operations' ||
+        subcategory == 'fuel_cost' ||
+        subcategory == 'crew_cost' ||
+        subcategory == 'maintenance_cost' ||
+        subcategory == 'airport_fees';
+  }
+
+  bool _isLeaseExpense(String category, String subcategory) {
+    return _leaseSubcategories.contains(category) ||
+        _leaseSubcategories.contains(subcategory);
+  }
+
+  bool _isRepairExpense(String category, String subcategory) {
+    return _repairSubcategories.contains(category) ||
+        _repairSubcategories.contains(subcategory);
+  }
+
+  bool _isPurchaseExpense(String category, String subcategory) {
+    return _purchaseSubcategories.contains(category) ||
+        _purchaseSubcategories.contains(subcategory);
+  }
+
   void setupReactivity(SimulationCubit simCubit, String userId) {
     subscribeToSimulation(
       simCubit,
@@ -204,7 +250,10 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
     }
   }
 
-  Future<void> _loadTransactionsInternal(String userId, {bool silent = false}) async {
+  Future<void> _loadTransactionsInternal(
+    String userId, {
+    bool silent = false,
+  }) async {
     final stopwatch = PerfDebug.start('finance.transactions_load');
     if (!silent) {
       final snapshot = _snapshotState();
@@ -234,13 +283,15 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
       _cachedTransactions = transactions;
       _cachedSnapshot = FinanceSnapshot.fromMap(snapshotMap);
       _cachedFinancialSnapshots = snapshotsResponse
-          .map((s) => FinanceDailySnapshot(
-                gameDate: DateTime.parse(s['game_date'] as String),
-                revenue: 0,
-                expense: 0,
-                net: 0,
-                netWorth: (s['net_worth'] as num?)?.toDouble() ?? 0.0,
-              ))
+          .map(
+            (s) => FinanceDailySnapshot(
+              gameDate: DateTime.parse(s['game_date'] as String),
+              revenue: 0,
+              expense: 0,
+              net: 0,
+              netWorth: (s['net_worth'] as num?)?.toDouble() ?? 0.0,
+            ),
+          )
           .toList();
       _cachedDailySummaries = dailySummariesResponse;
       PerfDebug.end(
@@ -254,7 +305,13 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
       );
 
       if (isClosed) return;
-      emit(_buildFinanceState(transactions, snapshot: _cachedSnapshot, financialSnapshots: _cachedFinancialSnapshots));
+      emit(
+        _buildFinanceState(
+          transactions,
+          snapshot: _cachedSnapshot,
+          financialSnapshots: _cachedFinancialSnapshots,
+        ),
+      );
     } catch (e, stack) {
       PerfDebug.end(
         'finance.transactions_load',
@@ -317,7 +374,10 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
         final snapshot = _snapshotState();
         emit(
           FinanceError(
-            message: AppError.extractMessage(e, AppStrings.snapshotRefreshFailed),
+            message: AppError.extractMessage(
+              e,
+              AppStrings.snapshotRefreshFailed,
+            ),
             hasData: snapshot.transactions.isNotEmpty,
             metrics: snapshot.metrics,
           ),
@@ -345,10 +405,11 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
         accountId: 'mock-account',
         userId: 'dev-user-uuid',
         transactionType: 'debit',
-        amount: 130000.00,
+        amount: -130000.00,
         balanceAfter: 9870000.00,
         description: 'Leasing fees for active fleet over 1.50 game days',
-        ifrsCategory: 'aircraft_lease',
+        ifrsCategory: 'opex',
+        ifrsSubcategory: 'aircraft_lease',
         gameDate: DateTime.parse('2020-01-02T12:00:00Z'),
       ),
       BankTransaction(
@@ -359,7 +420,8 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
         amount: 390660.00,
         balanceAfter: 10260660.00,
         description: 'Ticket sales for 14 flight cycles: CGK -> SIN',
-        ifrsCategory: 'ticket_sales',
+        ifrsCategory: 'revenue',
+        ifrsSubcategory: 'route_revenue',
         gameDate: DateTime.parse('2020-01-02T10:00:00Z'),
       ),
       BankTransaction(
@@ -367,11 +429,12 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
         accountId: 'mock-account',
         userId: 'dev-user-uuid',
         transactionType: 'debit',
-        amount: 124134.36,
+        amount: -124134.36,
         balanceAfter: 10136525.64,
         description:
             'Fuel, crew maintenance, & airport landing fees for 14 flights: CGK -> SIN',
-        ifrsCategory: 'operations',
+        ifrsCategory: 'cogs',
+        ifrsSubcategory: 'fuel_cost',
         gameDate: DateTime.parse('2020-01-02T10:00:00Z'),
       ),
       BankTransaction(
@@ -379,11 +442,12 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
         accountId: 'mock-account',
         userId: 'dev-user-uuid',
         transactionType: 'debit',
-        amount: 130000.00,
+        amount: -130000.00,
         balanceAfter: 10000000.00,
         description:
             'Leased aircraft ATR 72-600 (Short-Haul Hopper) - Initial month deposit',
-        ifrsCategory: 'aircraft_lease_init',
+        ifrsCategory: 'investing',
+        ifrsSubcategory: 'aircraft_lease_init',
         gameDate: DateTime.parse('2020-01-01T04:00:00Z'),
       ),
       BankTransaction(
@@ -391,11 +455,12 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
         accountId: 'mock-account',
         userId: 'dev-user-uuid',
         transactionType: 'debit',
-        amount: 111000000.00,
+        amount: -111000000.00,
         balanceAfter: -101000000.00,
         description:
             'Purchased aircraft Airbus A320neo with Call Sign: Primary Eagle',
-        ifrsCategory: 'aircraft_purchase',
+        ifrsCategory: 'investing',
+        ifrsSubcategory: 'aircraft_purchase',
         gameDate: DateTime.parse('2020-01-01T00:30:00Z'),
       ),
     ];
