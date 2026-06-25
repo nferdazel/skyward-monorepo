@@ -1,6 +1,6 @@
 # Skyward
 
-![Tests](https://img.shields.io/badge/tests-230%20passed-brightgreen)
+![Tests](https://img.shields.io/badge/tests-239%20passed-brightgreen)
 ![Flutter](https://img.shields.io/badge/Flutter-3.44-blue)
 ![Dart](https://img.shields.io/badge/Dart-3.12-blue)
 ![Supabase](https://img.shields.io/badge/Supabase-Postgres-3ecf8e)
@@ -10,19 +10,27 @@ Skyward is a Flutter airline-tycoon simulation with a Supabase/Postgres backend.
 The app handles UI, local session flow, and command dispatch. The backend owns
 authoritative simulation, economy, world time, and operational validation.
 
+Last verified against code, docs, and linked live audit state on `2026-06-26`.
+
 ## Current shape
 
 - Flutter frontend with feature-first modules
 - Cubit-only app state
-- Supabase-backed auth, simulation, finance, routes, fleet, leaderboard, bank, and achievement
+- Supabase-backed auth, simulation, finance, routes, fleet, leaderboard, bank, and achievement surfaces
 - backend-owned world clock through `season_clock`
-- human and bot actors sharing the same authoritative simulation rules
+- bank-centric cash model:
+  - `bank_accounts` is canonical cash
+  - `bank_transactions` is canonical money trail
+- auth-bound gameplay RPC wrappers using `auth.uid()`
+- live-proven account bootstrap and delete-account flows
+- human and bot actors sharing the same authoritative simulation rules where intended
 
 ## Core features
 
 - fleet acquisition, repair, seat configuration, and disposal
 - route planning, pricing, assignment, and schedule management
-- finance snapshots plus rolling ledger analytics
+- current finance snapshots plus rolling operating analytics
+- bank transaction history as the live financial activity surface
 - bank/loan system with credit scoring and aircraft financing
 - achievements system with rank history tracking
 - AI competitor leaderboard with Intel panel
@@ -58,6 +66,8 @@ For the maintained backend/runtime record, use:
 - [docs/README.md](docs/README.md)
 - [docs/architecture/ai-handover.md](docs/architecture/ai-handover.md)
 - [docs/architecture/supabase-contracts.md](docs/architecture/supabase-contracts.md)
+- [docs/architecture/database.md](docs/architecture/database.md)
+- [docs/operations/audit-queries.md](docs/operations/audit-queries.md)
 
 ## Local setup
 
@@ -107,6 +117,21 @@ flutter analyze
 flutter test
 ```
 
+### Live audit passes
+
+Rollback-style native SQL audits:
+
+```bash
+SUPABASE_DISABLE_TELEMETRY=1 supabase db query --linked -f test/layer4_database/native_audit/supabase_audit_test.sql
+SUPABASE_DISABLE_TELEMETRY=1 supabase db query --linked -f test/layer4_database/native_audit/finance_credit_regression_test.sql
+```
+
+Delete-account end-to-end audit:
+
+```bash
+test/layer4_database/native_audit/delete_account_e2e_audit.sh
+```
+
 ## Deployment
 
 Production web deployment is prepared for Vercel.
@@ -124,6 +149,7 @@ Required GitHub secrets:
 - `lib/`: Flutter application code
 - `docs/` and `migrations/`: maintained SQL and backend/runtime docs
 - `test/`: unit, widget, integration, and database-oriented test layers
+- `.opencode/`: local agent context docs kept in sync during backend passes
 
 ## License
 

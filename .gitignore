@@ -54,6 +54,6 @@ app.*.map.json
 /android/app/release
 
 AUDIT_CHARTER.md
+AGENTS.md
 
 .opencode
-
