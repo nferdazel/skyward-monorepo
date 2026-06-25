@@ -609,7 +609,6 @@ class RoutesCubit extends Cubit<RoutesState> with SimulationReactiveMixin {
         latitude: -6.1256,
         longitude: 106.6558,
         demandIndex: 95,
-        airportTax: 1200.00,
       ),
       Airport(
         iata: 'SIN',
@@ -619,7 +618,6 @@ class RoutesCubit extends Cubit<RoutesState> with SimulationReactiveMixin {
         latitude: 1.3644,
         longitude: 103.9915,
         demandIndex: 98,
-        airportTax: 1500.00,
       ),
       Airport(
         iata: 'KUL',
@@ -629,7 +627,6 @@ class RoutesCubit extends Cubit<RoutesState> with SimulationReactiveMixin {
         latitude: 2.7456,
         longitude: 101.7099,
         demandIndex: 90,
-        airportTax: 1100.00,
       ),
       Airport(
         iata: 'BKK',
@@ -639,7 +636,6 @@ class RoutesCubit extends Cubit<RoutesState> with SimulationReactiveMixin {
         latitude: 13.6900,
         longitude: 100.7501,
         demandIndex: 95,
-        airportTax: 1250.00,
       ),
       Airport(
         iata: 'HND',
@@ -649,7 +645,6 @@ class RoutesCubit extends Cubit<RoutesState> with SimulationReactiveMixin {
         latitude: 35.5494,
         longitude: 139.7798,
         demandIndex: 98,
-        airportTax: 1400.00,
       ),
     ];
 

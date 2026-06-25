@@ -71,7 +71,6 @@ class Airport {
   final double latitude;
   final double longitude;
   final int demandIndex;
-  final double airportTax;
 
   const Airport({
     required this.iata,
@@ -81,7 +80,6 @@ class Airport {
     required this.latitude,
     required this.longitude,
     required this.demandIndex,
-    required this.airportTax,
   });
 
   factory Airport.fromMap(Map<String, dynamic> map) {
@@ -93,7 +91,6 @@ class Airport {
       latitude: (map['latitude'] as num?)?.toDouble() ?? 0.0,
       longitude: (map['longitude'] as num?)?.toDouble() ?? 0.0,
       demandIndex: (map['demand_index'] as num?)?.toInt() ?? 50,
-      airportTax: (map['airport_tax'] as num?)?.toDouble() ?? 1000.00,
     );
   }
 
@@ -245,8 +242,7 @@ class UserRoute {
     final fuelCost =
         distanceKm * model.fuelBurnPerKm * GameConstants.fuelPricePerLiter;
     final maintenanceCost = flightDurationHours * model.maintenanceCostPerHour;
-    final airportTaxes = origin.airportTax + destination.airportTax;
-    return fuelCost + maintenanceCost + airportTaxes;
+    return fuelCost + maintenanceCost;
   }
 
   static RouteViabilityBand calculateViabilityBand({

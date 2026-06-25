@@ -90,9 +90,8 @@ class BlueprintPlannerFormCubit extends Cubit<BlueprintPlannerFormState> {
     final fuelCost =
         dist * GameConstants.plannerReferenceFuelBurnPerKm * GameConstants.fuelPricePerLiter;
     final maintCost = flightDuration * GameConstants.plannerReferenceMaintCostPerHour;
-    final airportTaxes = org.airportTax + dest.airportTax;
 
-    return ((fuelCost + maintCost + airportTaxes) /
+    return ((fuelCost + maintCost) /
             (GameConstants.plannerReferenceCapacity *
                 GameConstants.plannerReferenceTargetLoadFactor)) *
         GameConstants.plannerMarkupMultiplier;

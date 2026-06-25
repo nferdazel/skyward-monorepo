@@ -145,7 +145,6 @@ void main() {
             'latitude': 1.3644,
             'longitude': 103.9915,
             'demand_index': 98,
-            'airport_tax': 1500.0,
           },
           {
             'iata': 'CGK',
@@ -155,7 +154,6 @@ void main() {
             'latitude': -6.1256,
             'longitude': 106.6558,
             'demand_index': 95,
-            'airport_tax': 1200.0,
           }
         ],
         'aircraft_models': [

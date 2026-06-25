@@ -553,7 +553,6 @@ class _SettingsViewState extends State<SettingsView> {
             latitude: 0.0,
             longitude: 0.0,
             demandIndex: 50,
-            airportTax: 0.0,
           ),
         )
         .toList();
@@ -572,7 +571,6 @@ class _SettingsViewState extends State<SettingsView> {
           latitude: 0.0,
           longitude: 0.0,
           demandIndex: 50,
-          airportTax: 0.0,
         ),
       );
       if (selectedAirport.name.isEmpty) selectedAirport = null;

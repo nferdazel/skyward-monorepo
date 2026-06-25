@@ -142,7 +142,6 @@ final _mockAirportCgk = <String, dynamic>{
   'latitude': -6.1256,
   'longitude': 106.6558,
   'demand_index': 95,
-  'airport_tax': 1200.00,
 };
 
 final _mockAirportSin = <String, dynamic>{
@@ -153,7 +152,6 @@ final _mockAirportSin = <String, dynamic>{
   'latitude': 1.3644,
   'longitude': 103.9915,
   'demand_index': 98,
-  'airport_tax': 1500.00,
 };
 
 final _mockAirportKul = <String, dynamic>{
@@ -164,7 +162,6 @@ final _mockAirportKul = <String, dynamic>{
   'latitude': 2.7456,
   'longitude': 101.7099,
   'demand_index': 90,
-  'airport_tax': 1100.00,
 };
 
 final _mockAircraftModel = <String, dynamic>{

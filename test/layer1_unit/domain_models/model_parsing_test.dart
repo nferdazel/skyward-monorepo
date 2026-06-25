@@ -76,7 +76,6 @@ void main() {
         'acquisition_type': 'lease',
         'condition': 88.5,
         'status': 'active',
-        'acquired_at': '2026-05-30T10:00:00Z',
         'economy_seats': 150,
         'business_seats': 18,
         'first_class_seats': 0,
@@ -150,14 +149,12 @@ void main() {
         'latitude': -6.1256,
         'longitude': 106.6558,
         'demand_index': 95,
-        'airport_tax': 1200.00,
       };
 
       final airport = Airport.fromMap(map);
       expect(airport.iata, 'CGK');
       expect(airport.name, 'Soekarno-Hatta');
       expect(airport.demandIndex, 95);
-      expect(airport.airportTax, 1200.0);
     });
 
     test('UserRoute.fromMap parses successfully', () {

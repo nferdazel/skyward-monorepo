@@ -14,7 +14,6 @@ void main() {
         latitude: -6.1256,
         longitude: 106.6558,
         demandIndex: 95,
-        airportTax: 1200.0,
       ),
       Airport(
         iata: 'SIN',
@@ -24,7 +23,6 @@ void main() {
         latitude: 1.3644,
         longitude: 103.9915,
         demandIndex: 98,
-        airportTax: 1500.0,
       ),
     ];
 
