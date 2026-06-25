@@ -1824,11 +1824,11 @@ EXISTS (SELECT 1 FROM public.route_assignments r WHERE r.user_id = p_user_id AND
 FROM public.fleet_aircraft f JOIN public.aircraft_models m ON m.id = f.aircraft_model_id
 WHERE f.user_id = p_user_id AND (p_include_assigned OR NOT EXISTS (SELECT 1 FROM public.route_assignments r WHERE r.user_id = p_user_id AND r.assigned_aircraft_id = f.id))),
 destination_candidates AS (
-SELECT dst.iata AS destination_iata, dst.demand_index AS destination_demand_index, dst.airport_tax AS destination_airport_tax,
+SELECT dst.iata AS destination_iata, dst.demand_index AS destination_demand_index,
 ROUND((6371.0 * 2.0 * ASIN(SQRT(POWER(SIN(RADIANS(dst.latitude - org.latitude) / 2.0), 2) + COS(RADIANS(org.latitude)) * COS(RADIANS(dst.latitude)) * POWER(SIN(RADIANS(dst.longitude - org.longitude) / 2.0), 2))))::NUMERIC, 2) AS route_distance_km
 FROM public.airports dst CROSS JOIN origin_airport org WHERE dst.iata <> org.iata AND (p_destination_iata IS NULL OR dst.iata = p_destination_iata)),
 candidate_pairs AS (
-SELECT ac.*, dc.destination_iata, dc.destination_demand_index, dc.destination_airport_tax, dc.route_distance_km, org.iata AS origin_iata, org.demand_index AS origin_demand_index, org.airport_tax AS origin_airport_tax
+SELECT ac.*, dc.destination_iata, dc.destination_demand_index, dc.route_distance_km, org.iata AS origin_iata, org.demand_index AS origin_demand_index
 FROM aircraft_candidates ac CROSS JOIN destination_candidates dc CROSS JOIN origin_airport org WHERE dc.route_distance_km <= ac.model_range_km),
 seat_presets AS (
 SELECT cp.*, seat_profile.preset_economy_seats, seat_profile.preset_business_seats, seat_profile.preset_first_class_seats,
@@ -1845,7 +1845,7 @@ fp.route_distance_km, fp.evaluated_ticket_price,
 CASE WHEN COALESCE(fp.route_distance_km, 0.0) <= 0.0 OR COALESCE(fp.model_speed_kmh, 0) <= 0 THEN 0 ELSE FLOOR(168.0 / NULLIF((COALESCE(fp.route_distance_km, 0.0) / fp.model_speed_kmh::DOUBLE PRECISION) + 1.0, 0.0))::INT END AS computed_weekly_flights,
 fp.preset_economy_seats, fp.preset_business_seats, fp.preset_first_class_seats, fp.passenger_capacity,
 GREATEST(0, LEAST(COALESCE(fp.passenger_capacity, 0), FLOOR(COALESCE(fp.passenger_capacity, 0) * 0.95 * GREATEST(0.55, LEAST(1.00, 0.55 + (((((COALESCE(fp.origin_demand_index, 50) + COALESCE(fp.destination_demand_index, 50))::NUMERIC) / 2.0) / 100.0) * 0.45))) * GREATEST(0.00, LEAST(1.50, 1.5 - 0.8 * POWER(COALESCE(fp.evaluated_ticket_price, 0.00) / NULLIF(50.00 + (COALESCE(fp.route_distance_km, 0.0)::NUMERIC * 0.12), 0.00), 2))))::INT)) AS computed_expected_passengers_per_flight,
-ROUND((fp.route_distance_km * fp.model_fuel_burn_per_km * s.fuel_price_per_liter + (((fp.route_distance_km / NULLIF(fp.model_speed_kmh::DOUBLE PRECISION, 0.0)) + 1.0) * fp.model_maintenance_cost_per_hour) + fp.origin_airport_tax + fp.destination_airport_tax)::NUMERIC, 2) AS computed_direct_cost_per_flight
+ROUND((fp.route_distance_km * fp.model_fuel_burn_per_km * s.fuel_price_per_liter + (((fp.route_distance_km / NULLIF(fp.model_speed_kmh::DOUBLE PRECISION, 0.0)) + 1.0) * fp.model_maintenance_cost_per_hour))::NUMERIC, 2) AS computed_direct_cost_per_flight
 FROM fare_points fp CROSS JOIN settings s),
 ranked AS (
 SELECT s.candidate_aircraft_id, s.candidate_tail_number, s.candidate_model_name, s.candidate_acquisition_type, s.candidate_currently_assigned,
@@ -2610,6 +2610,7 @@ v_time_fraction := LEAST(v_elapsed_days / 7.0, 1.0);
 FOR v_route IN
 SELECT ur.*, am.fuel_burn_per_km, am.speed_kmh, am.turnaround_hours,
 am.capacity, am.lease_price_per_month, am.maintenance_cost_per_hour,
+fa.acquisition_type,
 a1.demand_index AS origin_demand, a2.demand_index AS dest_demand
 FROM route_assignments ur
 JOIN fleet_aircraft fa ON fa.id = ur.assigned_aircraft_id
@@ -2680,8 +2681,7 @@ v_gross_damage := v_wear_per_cycle * v_route.flights_per_week * v_elapsed_days /
 v_self_healing_credit := v_gross_damage * (1.0 - v_auto_repair_rate);
 v_net_damage := GREATEST(0, v_gross_damage - v_self_healing_credit);
 UPDATE fleet_aircraft
-SET condition = GREATEST(0, condition - v_net_damage),
-total_flights = total_flights + (v_route.flights_per_week * v_elapsed_days / 7.0)::INT
+SET condition = GREATEST(0, condition - v_net_damage)
 WHERE id = v_route.assigned_aircraft_id;
 v_flights_run := v_flights_run + (v_route.flights_per_week * v_elapsed_days / 7.0)::INT;
 END LOOP;
