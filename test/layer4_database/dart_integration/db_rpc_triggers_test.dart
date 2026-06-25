@@ -19,6 +19,22 @@ void main() {
       expect(content, contains('process_simulation_delta'));
     });
 
+    test('Verify finance / credit regression SQL audit exists and covers key contracts', () async {
+      final sqlFile = File(
+        'test/layer4_database/native_audit/finance_credit_regression_test.sql',
+      );
+
+      expect(sqlFile.existsSync(), isTrue);
+
+      final content = await sqlFile.readAsString();
+      expect(content, contains('BEGIN;'));
+      expect(content, contains('ROLLBACK;'));
+      expect(content, contains('finance_aircraft'));
+      expect(content, contains('calculate_user_net_worth'));
+      expect(content, contains('aircraft_lease_idle'));
+      expect(content, contains('process_player_simulation_to_time'));
+    });
+
     test('Data Model JSON and RPC Parser Validation', () {
       // 1. Verify user profile RPC parser math
       final userMap = {
