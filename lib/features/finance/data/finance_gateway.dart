@@ -31,8 +31,7 @@ class SupabaseFinanceGateway implements FinanceGateway {
           .from('bank_transactions')
           .select(
             'id, transaction_type, amount, balance_after, description, '
-            'game_date, created_at, ifrs_category, ifrs_subcategory, '
-            'cost_center_type, cost_center_id',
+            'game_date, ifrs_category, ifrs_subcategory',
           )
           .eq('user_id', userId)
           .gte('game_date', thirtyDaysAgo.toIso8601String())

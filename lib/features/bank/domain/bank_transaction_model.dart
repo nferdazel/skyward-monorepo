@@ -6,14 +6,9 @@ class BankTransaction {
   final double amount;
   final double balanceAfter;
   final String? description;
-  final String? referenceType;
-  final String? referenceId;
   final String? ifrsCategory;
   final String? ifrsSubcategory;
-  final String? costCenterType;
-  final String? costCenterId;
   final DateTime? gameDate;
-  final DateTime? createdAt;
 
   const BankTransaction({
     required this.id,
@@ -23,14 +18,9 @@ class BankTransaction {
     required this.amount,
     required this.balanceAfter,
     this.description,
-    this.referenceType,
-    this.referenceId,
     this.ifrsCategory,
     this.ifrsSubcategory,
-    this.costCenterType,
-    this.costCenterId,
     this.gameDate,
-    this.createdAt,
   });
 
   factory BankTransaction.fromMap(Map<String, dynamic> map) {
@@ -42,17 +32,10 @@ class BankTransaction {
       amount: (map['amount'] as num?)?.toDouble() ?? 0.0,
       balanceAfter: (map['balance_after'] as num?)?.toDouble() ?? 0.0,
       description: map['description'] as String?,
-      referenceType: map['reference_type'] as String?,
-      referenceId: map['reference_id'] as String?,
       ifrsCategory: map['ifrs_category'] as String?,
       ifrsSubcategory: map['ifrs_subcategory'] as String?,
-      costCenterType: map['cost_center_type'] as String?,
-      costCenterId: map['cost_center_id'] as String?,
       gameDate: map['game_date'] != null
           ? DateTime.parse(map['game_date'] as String)
-          : null,
-      createdAt: map['created_at'] != null
-          ? DateTime.parse(map['created_at'] as String)
           : null,
     );
   }

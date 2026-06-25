@@ -275,7 +275,7 @@ class SupabaseBankGateway implements BankGateway {
           .from('bank_transactions')
           .select()
           .eq('account_id', accountId)
-          .order('created_at', ascending: false)
+          .order('game_date', ascending: false)
           .limit(50);
       return (response as List)
           .map((m) => BankTransaction.fromMap(Map<String, dynamic>.from(m)))

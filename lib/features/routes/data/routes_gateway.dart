@@ -70,7 +70,7 @@ class SupabaseRoutesGateway implements RoutesGateway {
             'fleet_aircraft(*, aircraft_models(*))',
           )
           .eq('user_id', userId)
-          .order('created_at', ascending: false);
+          .order('distance_km', ascending: false);
     } on PostgrestException catch (e) {
       SupabaseManager.logRpcFailure('loadRoutes', {'user_id': userId}, e.message);
       throw RoutesGatewayException(e.message, 'loadRoutes');

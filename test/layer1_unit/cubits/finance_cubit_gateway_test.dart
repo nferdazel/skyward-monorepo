@@ -68,7 +68,6 @@ final _mockTxnCredit = <String, dynamic>{
   'description': 'Ticket sales for 7 flights: CGK → SIN',
   'ifrs_category': 'ticket_sales',
   'game_date': '2026-06-01T10:00:00.000Z',
-  'created_at': '2026-06-01T10:00:00.000Z',
 };
 
 final _mockTxnDebit = <String, dynamic>{
@@ -81,7 +80,6 @@ final _mockTxnDebit = <String, dynamic>{
   'description': 'Fuel and crew costs for 7 flights',
   'ifrs_category': 'operations',
   'game_date': '2026-06-01T10:00:00.000Z',
-  'created_at': '2026-06-01T10:00:00.000Z',
 };
 
 final _mockSnapshotMap = <String, dynamic>{

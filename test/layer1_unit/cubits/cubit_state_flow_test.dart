@@ -334,7 +334,6 @@ void main() {
             description: 'Test revenue',
             ifrsCategory: 'ticket_sales',
             gameDate: DateTime.parse('2026-05-31T00:00:00Z'),
-            createdAt: DateTime.parse('2026-05-31T00:00:00Z'),
           ),
         ];
 

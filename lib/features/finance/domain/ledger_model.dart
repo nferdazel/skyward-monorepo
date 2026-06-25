@@ -13,7 +13,6 @@ class LedgerEntry {
   final double amount;
   final String description;
   final DateTime gameDate;
-  final DateTime createdAt;
 
   const LedgerEntry({
     required this.id,
@@ -22,7 +21,6 @@ class LedgerEntry {
     required this.amount,
     required this.description,
     required this.gameDate,
-    required this.createdAt,
   });
 
   factory LedgerEntry.fromMap(Map<String, dynamic> map) {
@@ -35,9 +33,6 @@ class LedgerEntry {
       gameDate: map['game_date'] != null
           ? DateTime.parse(map['game_date'])
           : DateTime.now(),
-      createdAt: map['created_at'] != null
-          ? DateTime.parse(map['created_at'])
-          : DateTime.now(),
     );
   }
 
@@ -49,8 +44,7 @@ class LedgerEntry {
       category: txn.ifrsCategory ?? '',
       amount: txn.amount,
       description: txn.description ?? '',
-      gameDate: txn.gameDate ?? txn.createdAt ?? DateTime.now(),
-      createdAt: txn.createdAt ?? DateTime.now(),
+      gameDate: txn.gameDate ?? DateTime.now(),
     );
   }
 }

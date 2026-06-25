@@ -53,7 +53,7 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
 
     for (final txn in transactions) {
       final amt = txn.amount;
-      final gameDate = txn.gameDate ?? txn.createdAt ?? DateTime.now();
+      final gameDate = txn.gameDate ?? DateTime.now();
       final dayKey = DateTime(gameDate.year, gameDate.month, gameDate.day);
       final bucket = dailyBuckets[dayKey] ?? (revenue: 0.0, expense: 0.0);
 
@@ -333,7 +333,6 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
         description: 'Leasing fees for active fleet over 1.50 game days',
         ifrsCategory: 'aircraft_lease',
         gameDate: DateTime.parse('2020-01-02T12:00:00Z'),
-        createdAt: DateTime.now(),
       ),
       BankTransaction(
         id: 'mock-txn-2',
@@ -345,7 +344,6 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
         description: 'Ticket sales for 14 flight cycles: CGK -> SIN',
         ifrsCategory: 'ticket_sales',
         gameDate: DateTime.parse('2020-01-02T10:00:00Z'),
-        createdAt: DateTime.now(),
       ),
       BankTransaction(
         id: 'mock-txn-3',
@@ -358,7 +356,6 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
             'Fuel, crew maintenance, & airport landing fees for 14 flights: CGK -> SIN',
         ifrsCategory: 'operations',
         gameDate: DateTime.parse('2020-01-02T10:00:00Z'),
-        createdAt: DateTime.now(),
       ),
       BankTransaction(
         id: 'mock-txn-4',
@@ -371,7 +368,6 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
             'Leased aircraft ATR 72-600 (Short-Haul Hopper) - Initial month deposit',
         ifrsCategory: 'aircraft_lease_init',
         gameDate: DateTime.parse('2020-01-01T04:00:00Z'),
-        createdAt: DateTime.now(),
       ),
       BankTransaction(
         id: 'mock-txn-5',
@@ -384,7 +380,6 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
             'Purchased aircraft Airbus A320neo with Call Sign: Primary Eagle',
         ifrsCategory: 'aircraft_purchase',
         gameDate: DateTime.parse('2020-01-01T00:30:00Z'),
-        createdAt: DateTime.now(),
       ),
     ];
 
