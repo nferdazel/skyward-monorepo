@@ -53,7 +53,7 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
 
     for (final txn in transactions) {
       final amt = txn.amount;
-      final gameDate = txn.gameDate ?? DateTime.now();
+      final gameDate = txn.gameDate ?? DateTime(2020, 1, 1);
       final dayKey = DateTime(gameDate.year, gameDate.month, gameDate.day);
       final bucket = dailyBuckets[dayKey] ?? (revenue: 0.0, expense: 0.0);
 

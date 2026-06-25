@@ -566,7 +566,7 @@ The client also reads some tables directly through Supabase queries:
 - `financial_ledger`
 - `users`
 - `airports`
-- `global_game_settings`
+- `game_config`
 - `game_events` (active world events)
 - `financial_snapshots` (daily financial history for trends)
 - `loans` (active and historical loan records)

@@ -39,7 +39,7 @@ gateway. There are nine gateways in total:
 | Gateway | Supabase surface |
 |---------|-----------------|
 | `AuthGateway` | `register-with-username` Edge Function |
-| `SimulationGateway` | `process_simulation_delta`, `users`, `global_game_settings` |
+| `SimulationGateway` | `process_simulation_delta`, `users`, `game_config` |
 | `FleetGateway` | `purchase_aircraft`, `lease_aircraft`, `repair_aircraft`, `sell_aircraft`, `terminate_aircraft_lease`, `configure_aircraft_seats` |
 | `RoutesGateway` | `create_route`, `assign_aircraft_to_route`, `update_route_frequency_and_price`, `delete_route` |
 | `FinanceGateway` | `get_finance_snapshot` |

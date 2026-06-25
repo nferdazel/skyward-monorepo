@@ -106,9 +106,10 @@ Security Phase 6 note:
 - the legacy `sessions` table and the custom-session auth functions have been
   removed from the live runtime model
 
-### `global_game_settings`
+### `game_config`
 Global game configuration used by nearly every simulation RPC.
 Contains starting cash, fuel price, safety limits, bot count, and lease deposit settings.
+Key-value store (key TEXT PK, value JSONB). Migrated from the legacy `global_game_settings` table in Phase 1.
 
 ### `aircraft_models`
 Static aircraft catalog used for acquisition and planning.

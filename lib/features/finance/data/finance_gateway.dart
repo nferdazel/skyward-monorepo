@@ -32,8 +32,8 @@ class SupabaseFinanceGateway implements FinanceGateway {
       return await SupabaseManager.client
           .from('bank_transactions')
           .select(
-            'id, transaction_type, amount, balance_after, description, '
-            'game_date, ifrs_category, ifrs_subcategory',
+            'id, account_id, user_id, transaction_type, amount, balance_after, '
+            'description, game_date, ifrs_category, ifrs_subcategory',
           )
           .eq('user_id', userId)
           .order('game_date', ascending: false)

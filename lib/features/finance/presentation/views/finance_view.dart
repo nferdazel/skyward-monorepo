@@ -832,7 +832,7 @@ class _FinanceViewState extends State<FinanceView>
     final isRev = txn.transactionType == 'credit';
     final sign = isRev ? '+' : '-';
     final valueColor = isRev ? AppTheme.success : AppTheme.error;
-    final gameDate = txn.gameDate ?? DateTime.now();
+    final gameDate = txn.gameDate ?? DateTime(2020, 1, 1);
 
     return TableRow(
       decoration: BoxDecoration(

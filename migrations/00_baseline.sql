@@ -3217,7 +3217,7 @@ PERFORM debit_bank_account(p_user_id, v_price, 'investing', 'aircraft_purchase',
 INSERT INTO fleet_aircraft (user_id, aircraft_model_id, nickname, acquisition_type, condition, status, tail_number, economy_seats, business_seats, first_class_seats)
 VALUES (p_user_id, p_model_id, TRIM(p_nickname), 'purchase', 100.00, 'active', v_tail, v_economy, v_business, v_first);
 v_cash := get_user_balance(p_user_id);
-RETURN QUERY SELECT TRUE, 'Successfully purchased ' || v_model_name || ' [' || v_tail || ']'::VARCHAR, v_cash;
+RETURN QUERY SELECT TRUE, ('Successfully purchased ' || v_model_name || ' [' || v_tail || ']')::VARCHAR, v_cash;
 END;
 $function$;
 

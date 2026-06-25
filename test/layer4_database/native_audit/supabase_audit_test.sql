@@ -63,8 +63,8 @@ BEGIN
     'audit_chief',
     'Audit Chief Airlines',
     'Audit CEO',
-    COALESCE((SELECT starting_cash FROM global_game_settings LIMIT 1), 15000000.00),
-    COALESCE((SELECT starting_cash FROM global_game_settings LIMIT 1), 15000000.00),
+    COALESCE(get_config_numeric('starting_cash'), 15000000.00),
+    COALESCE(get_config_numeric('starting_cash'), 15000000.00),
     NOW()
   )
   RETURNING id INTO v_user_id;
@@ -73,14 +73,14 @@ BEGIN
 
   -- Verify starting cash
   SELECT cash INTO v_starting_balance FROM users WHERE id = v_user_id;
-  ASSERT v_starting_balance = (SELECT COALESCE(starting_cash, 15000000.00) FROM global_game_settings LIMIT 1), 'Starting cash balance should match global settings starting cash';
+  ASSERT v_starting_balance = COALESCE(get_config_numeric('starting_cash'), 15000000.00), 'Starting cash balance should match game_config starting_cash';
 
   -- ==========================================================================
   -- 3. TEST: purchase_aircraft RPC & BUY MATH
   -- ==========================================================================
   
-  -- Set user's cash balance to afford the purchase
-  UPDATE users SET cash = 150000000.00 WHERE id = v_user_id;
+  -- Set user's cash balance to afford the purchase (bank-centric architecture)
+  UPDATE bank_accounts SET balance = 150000000.00 WHERE user_id = v_user_id AND account_type = 'operating';
 
   SELECT success, message INTO v_reg_success, v_reg_message
   FROM purchase_aircraft(v_user_id, v_model_id, 'Audit Tail 1');
@@ -92,12 +92,12 @@ BEGIN
   ASSERT v_fleet_id IS NOT NULL, 'Purchased aircraft was not found in user fleet';
 
   -- Verify cash balance decremented by purchase price ($120M)
-  SELECT cash INTO v_ending_balance FROM users WHERE id = v_user_id;
+  SELECT balance INTO v_ending_balance FROM bank_accounts WHERE user_id = v_user_id AND account_type = 'operating';
   ASSERT v_ending_balance = 30000000.00, 'Cash balance should be decremented by purchase price';
 
-  -- Verify ledger record created
-  SELECT COUNT(*) INTO v_ledger_count FROM financial_ledger WHERE user_id = v_user_id AND category = 'aircraft_purchase';
-  ASSERT v_ledger_count = 1, 'Ledger entry should be created for aircraft purchase';
+  -- Verify transaction record created (bank-centric architecture)
+  SELECT COUNT(*) INTO v_ledger_count FROM bank_transactions WHERE user_id = v_user_id AND ifrs_subcategory = 'aircraft_purchase';
+  ASSERT v_ledger_count = 1, 'Bank transaction entry should be created for aircraft purchase';
 
   -- ==========================================================================
   -- 4. TEST: lease_aircraft RPC & LEASE MATH
