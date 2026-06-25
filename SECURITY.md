@@ -1,5 +1,7 @@
 # Security Policy
 
+Last reviewed on `2026-06-26`.
+
 ## Reporting a Vulnerability
 
 If you discover a security vulnerability in Skyward, please report it responsibly.
@@ -23,8 +25,10 @@ Instead, please email: fredinix@proton.me
 
 This policy covers:
 - The Flutter application code
-- Supabase database functions and RLS policies
+- Supabase Auth integration
+- Supabase database functions, triggers, and RLS policies
 - Edge functions
+- Scheduler / operational SQL surfaces that affect the live runtime
 - CI/CD pipeline configuration
 
 ## Out of Scope
