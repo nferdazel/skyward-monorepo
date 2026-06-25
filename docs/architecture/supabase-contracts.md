@@ -26,8 +26,11 @@ This is the live Flutter-to-Supabase contract surface.
   - normalizes the username
   - derives the synthetic `@skyward.sachiel.id` auth email
   - creates an auto-confirmed Supabase Auth user through admin auth APIs
-  - relies on the `auth.users` bootstrap trigger to create the matching
+  - expects the authenticated bootstrap flow to create the matching
     `public.users` actor row
+  - live DB verification confirms `handle_new_auth_user()` is attached to
+    `auth.users`, but that trigger attachment is not declared by the public
+    migrations in this repo
 - phase note:
   - Security Phase 6 removed the legacy `register_company`, `login_company`,
     and `validate_session` RPCs entirely
@@ -233,7 +236,8 @@ This is the live Flutter-to-Supabase contract surface.
   - resolves the future Supabase Auth identity anchor to `public.users.id`
 
 `handle_new_auth_user`
-- caller: trigger on `auth.users`
+- caller: live `auth.users` bootstrap trigger; attachment is live-verified but
+  not declared by the public migrations in this repo
 - current behavior:
   - validates synthetic-email/metadata bootstrap assumptions
   - creates the matching `public.users` row with future auth ownership linkage

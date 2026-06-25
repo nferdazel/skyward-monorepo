@@ -85,8 +85,10 @@ Security Phase 1 note:
   completed
 
 Security Phase 2 note:
-- new users can now be bootstrapped from `auth.users` into `public.users`
-  through an insert trigger
+- new users are intended to be bootstrapped from `auth.users` into
+  `public.users`
+- live DB verification confirms the auth-side trigger attachment exists, but
+  the repo's public migrations do not declare that attachment by themselves
 - the planned username-only auth UX depends on synthetic auth emails and
   server-side auto-confirmed auth user creation
 

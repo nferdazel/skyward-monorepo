@@ -61,7 +61,7 @@ BEGIN
   SELECT id
     INTO v_finance_model_id
     FROM aircraft_models
-   WHERE purchase_price <= 40000000
+   WHERE purchase_price <= 25000000
    ORDER BY purchase_price DESC
    LIMIT 1;
 

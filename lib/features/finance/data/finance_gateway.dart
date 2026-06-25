@@ -90,22 +90,10 @@ class SupabaseFinanceGateway implements FinanceGateway {
   @override
   Future<List<dynamic>> getFinancialSnapshots(String userId) async {
     try {
-      // Attempt to call an RPC that returns net-worth snapshots if available.
-      try {
-        final rpcResponse = await SupabaseManager.client.rpc(
-          'get_financial_snapshots',
-          params: {'p_user_id': userId},
-        );
-        if (rpcResponse is List<dynamic> && rpcResponse.isNotEmpty) {
-          return rpcResponse;
-        }
-      } on PostgrestException {
-        // RPC does not exist — fall through to table query.
-      }
-
-      // Fallback: the daily summary table has no net_worth column. Return the
-      // current snapshot as a single point so the caller gets a valid payload
-      // without querying phantom columns.
+      // The live schema does not expose a get_financial_snapshots RPC.
+      // Until a real historical net-worth surface exists, return the current
+      // net-worth snapshot as a single chart point instead of probing a
+      // phantom contract and silently swallowing the error.
       final response = await SupabaseManager.client
           .from('users')
           .select('game_current_time, net_worth')
