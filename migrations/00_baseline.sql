@@ -2395,7 +2395,7 @@ PERFORM debit_bank_account(p_user_id, v_lease_deposit, 'investing', 'aircraft_le
 INSERT INTO fleet_aircraft (user_id, aircraft_model_id, nickname, acquisition_type, condition, status, tail_number, economy_seats, business_seats, first_class_seats)
 VALUES (p_user_id, p_model_id, TRIM(p_nickname), 'lease', 100.00, 'active', v_tail, v_economy, v_business, v_first);
 v_cash := get_user_balance(p_user_id);
-RETURN QUERY SELECT TRUE, 'Successfully leased ' || v_model_name || ' [' || v_tail || ']'::VARCHAR, v_cash;
+RETURN QUERY SELECT TRUE, ('Successfully leased ' || v_model_name || ' [' || v_tail || ']')::VARCHAR, v_cash;
 END;
 $function$;
 
@@ -3578,7 +3578,7 @@ PERFORM credit_bank_account(p_user_id, v_sale_value, 'investing', 'aircraft_sale
 v_user.game_current_time);
 DELETE FROM fleet_aircraft WHERE id = p_fleet_id AND user_id = p_user_id;
 new_cash := get_user_balance(p_user_id);
-RETURN QUERY SELECT TRUE, 'Aircraft sold for $' || ROUND(v_sale_value, 2)::TEXT || '.'::VARCHAR, new_cash;
+RETURN QUERY SELECT TRUE, ('Aircraft sold for $' || ROUND(v_sale_value, 2)::TEXT || '.')::VARCHAR, new_cash;
 END;
 $function$;
 
