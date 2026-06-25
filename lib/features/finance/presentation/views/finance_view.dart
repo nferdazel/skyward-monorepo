@@ -912,11 +912,9 @@ class _FinanceViewState extends State<FinanceView>
   Widget _buildCategoryPill(String category, String subcategory) {
     final effectiveKey = subcategory.isNotEmpty ? subcategory : category;
     switch (effectiveKey) {
-      case 'ticket_sales':
       case 'route_revenue':
       case 'cargo_revenue':
         return AppBadge.success(label: AppStrings.ticketSalesBadge);
-      case 'operations':
       case 'fuel_cost':
       case 'crew_cost':
       case 'maintenance_cost':

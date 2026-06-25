@@ -187,8 +187,6 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
 
   bool _isTicketSales(String category, String subcategory) {
     return category == 'revenue' ||
-        category == 'ticket_sales' ||
-        subcategory == 'ticket_sales' ||
         subcategory == 'route_revenue' ||
         subcategory == 'cargo_revenue';
   }
@@ -196,8 +194,6 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
   bool _isOperationsExpense(String category, String subcategory) {
     return category == 'cogs' ||
         category == 'opex' ||
-        category == 'operations' ||
-        subcategory == 'operations' ||
         subcategory == 'fuel_cost' ||
         subcategory == 'crew_cost' ||
         subcategory == 'maintenance_cost' ||
