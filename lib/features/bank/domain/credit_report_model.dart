@@ -96,7 +96,7 @@ class CreditScoreSnapshot {
       profitHistory: (map['profit_history_score'] as num?)?.toInt() ?? 100,
       gameDate: map['game_date'] != null
           ? DateTime.parse(map['game_date'] as String)
-          : DateTime.now(),
+          : DateTime(2020, 1, 1),
     );
   }
 }

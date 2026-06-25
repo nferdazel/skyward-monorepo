@@ -26,7 +26,7 @@ class Achievement {
       achievementName: map['achievement_name'] ?? '',
       description: map['description'] ?? '',
       unlockedAt: DateTime.parse(
-        map['unlocked_at'] ?? DateTime.now().toIso8601String(),
+        map['unlocked_at'] ?? DateTime(2020, 1, 1).toIso8601String(),
       ),
       gameDate: map['game_date'] != null
           ? DateTime.tryParse(map['game_date'])

@@ -32,7 +32,7 @@ class LedgerEntry {
       description: map['description'] ?? '',
       gameDate: map['game_date'] != null
           ? DateTime.parse(map['game_date'])
-          : DateTime.now(),
+          : DateTime(2020, 1, 1),
     );
   }
 
@@ -44,7 +44,7 @@ class LedgerEntry {
       category: txn.ifrsCategory ?? '',
       amount: txn.amount,
       description: txn.description ?? '',
-      gameDate: txn.gameDate ?? DateTime.now(),
+      gameDate: txn.gameDate ?? DateTime(2020, 1, 1),
     );
   }
 }
