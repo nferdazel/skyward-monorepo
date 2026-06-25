@@ -26,7 +26,9 @@ class SupabaseFinanceGateway implements FinanceGateway {
   @override
   Future<List<dynamic>> loadTransactions(String userId) async {
     try {
-      final thirtyDaysAgo = DateTime.now().subtract(const Duration(days: 30));
+      // NOTE: game_date stores GAME TIME (starting 2020-01-01), not real-world
+      // time. A real-time date filter would return 0 rows for new players whose
+      // game clock hasn't reached "now". The .limit(5000) caps the result set.
       return await SupabaseManager.client
           .from('bank_transactions')
           .select(
@@ -34,7 +36,6 @@ class SupabaseFinanceGateway implements FinanceGateway {
             'game_date, ifrs_category, ifrs_subcategory',
           )
           .eq('user_id', userId)
-          .gte('game_date', thirtyDaysAgo.toIso8601String())
           .order('game_date', ascending: false)
           .limit(5000);
     } on PostgrestException catch (e) {
