@@ -42,6 +42,7 @@ class FinanceMetrics {
   final double expenseConcentration;
   final double leaseExpenseShare;
   final double repairExpenseShare;
+  final List<Map<String, dynamic>> dailySummaries;
 
   const FinanceMetrics({
     required this.snapshot,
@@ -62,6 +63,7 @@ class FinanceMetrics {
     required this.expenseConcentration,
     required this.leaseExpenseShare,
     required this.repairExpenseShare,
+    this.dailySummaries = const [],
   });
 
   /// Default/empty constructor for use in [FinanceError] fallbacks.
@@ -83,7 +85,8 @@ class FinanceMetrics {
         worstDailyNet = 0.0,
         expenseConcentration = 0.0,
         leaseExpenseShare = 0.0,
-        repairExpenseShare = 0.0;
+        repairExpenseShare = 0.0,
+        dailySummaries = const [];
 }
 
 abstract class FinanceDataState extends FinanceState {
@@ -110,6 +113,7 @@ abstract class FinanceDataState extends FinanceState {
   double get expenseConcentration => metrics.expenseConcentration;
   double get leaseExpenseShare => metrics.leaseExpenseShare;
   double get repairExpenseShare => metrics.repairExpenseShare;
+  List<Map<String, dynamic>> get dailySummaries => metrics.dailySummaries;
 }
 
 class FinanceInitial extends FinanceState {

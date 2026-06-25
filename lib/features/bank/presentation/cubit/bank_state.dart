@@ -72,12 +72,11 @@ class BankLoaded extends BankState {
   BankAccount? get checkingAccount =>
       accounts.where((a) => a.isChecking).firstOrNull;
 
-  /// Savings account (null if not yet opened).
-  BankAccount? get savingsAccount =>
-      accounts.where((a) => a.isSavings).firstOrNull;
+  /// Savings account — not supported (always null).
+  BankAccount? get savingsAccount => null;
 
-  /// Whether the user has a savings account.
-  bool get hasSavings => savingsAccount != null;
+  /// Whether the user has a savings account (always false).
+  bool get hasSavings => false;
 }
 
 class BankError extends BankState {

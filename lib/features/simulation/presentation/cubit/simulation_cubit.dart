@@ -392,6 +392,41 @@ class SimulationCubit extends Cubit<SimulationState>
 
     _realtimeSubscriptions.add(userChannel);
     _realtimeSubscriptions.add(bankChannel);
+
+    // Subscribe to fleet_aircraft — changes affect net worth.
+    final fleetChannel = SupabaseManager.client
+        .channel('public:fleet_aircraft:user=eq.$userId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'fleet_aircraft',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'user_id',
+            value: userId,
+          ),
+          callback: (_) => _scheduleRealtimeBalanceRefresh(userId),
+        )
+        .subscribe();
+
+    // Subscribe to route_assignments — changes affect revenue.
+    final routeChannel = SupabaseManager.client
+        .channel('public:route_assignments:user=eq.$userId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'route_assignments',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'user_id',
+            value: userId,
+          ),
+          callback: (_) => _scheduleRealtimeBalanceRefresh(userId),
+        )
+        .subscribe();
+
+    _realtimeSubscriptions.add(fleetChannel);
+    _realtimeSubscriptions.add(routeChannel);
   }
 
   Timer? _balanceRefreshDebounce;

@@ -128,6 +128,7 @@ class UserRoute {
   final Airport origin;
   final Airport destination;
   final UserFleetAircraft? assignedAircraft;
+  final String status;
 
   const UserRoute({
     required this.id,
@@ -140,6 +141,7 @@ class UserRoute {
     required this.origin,
     required this.destination,
     this.assignedAircraft,
+    this.status = 'active',
   });
 
   factory UserRoute.fromMap(Map<String, dynamic> map) {
@@ -156,6 +158,7 @@ class UserRoute {
       assignedAircraft: map['fleet_aircraft'] != null
           ? UserFleetAircraft.fromMap(map['fleet_aircraft'])
           : null,
+      status: map['status'] as String? ?? 'active',
     );
   }
 
@@ -210,21 +213,32 @@ class UserRoute {
     required double ticketPrice,
     required int originDemandIndex,
     required int destinationDemandIndex,
+    double? airportDemandFactor,
+    double? competitionFactor,
+    double? congestionFactor,
+    double? hubBonus,
   }) {
     if (capacity <= 0) return 0;
     final pricingDemand = calculateDemandMultiplier(
       distanceKm: distanceKm,
       ticketPrice: ticketPrice,
     );
-    final airportDemand = calculateAirportDemandFactor(
-      originDemandIndex: originDemandIndex,
-      destinationDemandIndex: destinationDemandIndex,
-    );
+    final airportDemand = airportDemandFactor ??
+        calculateAirportDemandFactor(
+          originDemandIndex: originDemandIndex,
+          destinationDemandIndex: destinationDemandIndex,
+        );
+    final competition = competitionFactor ?? 1.0;
+    final congestion = congestionFactor ?? 1.0;
+    final hub = hubBonus ?? 1.0;
     final passengers =
         (capacity *
                 GameConstants.routeBaseLoadFactor *
                 airportDemand *
-                pricingDemand)
+                pricingDemand *
+                competition *
+                congestion *
+                hub)
             .floor();
     if (passengers < 0) return 0;
     if (passengers > capacity) return capacity;

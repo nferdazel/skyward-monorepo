@@ -27,6 +27,8 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
   Timer? _realtimeRefreshDebounce;
   Future<void>? _activeTransactionLoad;
   Future<void>? _activeSnapshotRefresh;
+  int _consecutiveSnapshotFailures = 0;
+  static const int _maxSilentFailures = 5;
 
   /// Pre-aggregated daily summaries for IFRS reporting over extended periods.
   List<Map<String, dynamic>> get dailySummaries => _cachedDailySummaries;
@@ -39,9 +41,11 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
     List<BankTransaction> transactions, {
     FinanceSnapshot? snapshot,
     List<FinanceDailySnapshot>? financialSnapshots,
+    List<Map<String, dynamic>>? dailySummaries,
   }) {
     final effectiveSnapshot = snapshot ?? _cachedSnapshot;
     final effectiveFinancialSnapshots = financialSnapshots ?? _cachedFinancialSnapshots;
+    final effectiveDailySummaries = dailySummaries ?? _cachedDailySummaries;
     final dailyBuckets = <DateTime, ({double revenue, double expense})>{};
     double totalTicketSales = 0.0;
     double totalOperations = 0.0;
@@ -157,6 +161,7 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
         expenseConcentration: expenseConcentration,
         leaseExpenseShare: leaseExpenseShare,
         repairExpenseShare: repairExpenseShare,
+        dailySummaries: effectiveDailySummaries,
       ),
     );
   }
@@ -290,6 +295,7 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
     try {
       final snapshotMap = await _gateway.getFinanceSnapshot();
       _cachedSnapshot = FinanceSnapshot.fromMap(snapshotMap);
+      _consecutiveSnapshotFailures = 0;
       PerfDebug.end(
         'finance.snapshot_refresh',
         stopwatch,
@@ -298,6 +304,7 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
       if (isClosed) return;
       emit(_buildFinanceState(_cachedTransactions, snapshot: _cachedSnapshot));
     } catch (e) {
+      _consecutiveSnapshotFailures++;
       PerfDebug.end(
         'finance.snapshot_refresh',
         stopwatch,
@@ -305,6 +312,16 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
       );
       if (!silent) {
         AppError.log('refreshFinanceSnapshot', e);
+      }
+      if (_consecutiveSnapshotFailures >= _maxSilentFailures && !isClosed) {
+        final snapshot = _snapshotState();
+        emit(
+          FinanceError(
+            message: AppError.extractMessage(e, AppStrings.snapshotRefreshFailed),
+            hasData: snapshot.transactions.isNotEmpty,
+            metrics: snapshot.metrics,
+          ),
+        );
       }
     }
   }

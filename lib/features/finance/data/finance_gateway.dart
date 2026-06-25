@@ -97,7 +97,39 @@ class SupabaseFinanceGateway implements FinanceGateway {
 
   @override
   Future<List<dynamic>> getFinancialSnapshots(String userId) async {
-    return [];
+    try {
+      // Attempt to call an RPC that returns net-worth snapshots if available.
+      try {
+        final rpcResponse = await SupabaseManager.client.rpc(
+          'get_financial_snapshots',
+          params: {'p_user_id': userId},
+        );
+        if (rpcResponse is List<dynamic> && rpcResponse.isNotEmpty) {
+          return rpcResponse;
+        }
+      } on PostgrestException {
+        // RPC does not exist — fall through to table query.
+      }
+
+      // Fallback: query daily summaries grouped by period for net-worth trend.
+      final response = await SupabaseManager.client
+          .from('bank_transaction_daily_summary')
+          .select('game_date, net_worth')
+          .eq('user_id', userId)
+          .order('game_date', ascending: false)
+          .limit(90);
+      return response;
+    } on PostgrestException catch (e) {
+      SupabaseManager.logRpcFailure(
+        'getFinancialSnapshots',
+        {'user_id': userId},
+        e.message,
+      );
+      throw FinanceGatewayException(e.message, 'getFinancialSnapshots');
+    } catch (e, stack) {
+      SupabaseManager.logError('getFinancialSnapshots', e, stack);
+      throw FinanceGatewayException(e.toString(), 'getFinancialSnapshots');
+    }
   }
 
   @override

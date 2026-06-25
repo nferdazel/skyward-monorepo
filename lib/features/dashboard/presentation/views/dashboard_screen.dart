@@ -18,6 +18,7 @@ import '../../../auth/presentation/cubit/auth_state.dart';
 import '../../../bank/presentation/cubit/bank_cubit.dart';
 import '../../../bank/presentation/cubit/bank_state.dart';
 import '../../../finance/presentation/cubit/finance_cubit.dart';
+import '../../../finance/presentation/cubit/finance_state.dart';
 import '../../../finance/presentation/views/finance_view.dart';
 import '../../../fleet/presentation/cubit/fleet_cubit.dart';
 import '../../../fleet/presentation/cubit/fleet_state.dart';
@@ -189,15 +190,26 @@ class _AuthenticatedDashboardShellState
           ..setupReactivity(_simulationCubit, user.id);
         break;
       case 4:
+        final financeDataState = _financeCubit.state;
+        final fleetState = _fleetCubit.state;
+        final humanNetWorth = financeDataState is FinanceDataState
+            ? financeDataState.snapshot.netWorth
+            : 0.0;
+        final humanMonthlyRevenue = financeDataState is FinanceDataState
+            ? financeDataState.snapshot.rollingRevenue30d
+            : 0.0;
+        final humanFleetSize = fleetState is FleetLoaded
+            ? fleetState.fleet.length
+            : 0;
         _leaderboardCubit
           ..loadRankings(
             humanUserId: user.id,
             humanCompanyName: user.companyName,
             humanCeoName: user.ceoName,
             humanCash: simulationState.cashBalance,
-            humanNetWorth: 0.0,
-            humanFleetSize: 0,
-            humanMonthlyRevenue: 0.0,
+            humanNetWorth: humanNetWorth,
+            humanFleetSize: humanFleetSize,
+            humanMonthlyRevenue: humanMonthlyRevenue,
           )
           ..setupReactivity(
             _simulationCubit,

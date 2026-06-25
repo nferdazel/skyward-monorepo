@@ -38,6 +38,7 @@ abstract class RoutesGateway {
     required int flightsPerWeek,
   });
   Future<List<dynamic>> deleteRoute({required String routeId});
+  Future<List<dynamic>> getOwnerRouteOptimizer(String userId);
 }
 
 class SupabaseRoutesGateway implements RoutesGateway {
@@ -70,6 +71,7 @@ class SupabaseRoutesGateway implements RoutesGateway {
             'fleet_aircraft(*, aircraft_models(*))',
           )
           .eq('user_id', userId)
+          .eq('status', 'active')
           .order('distance_km', ascending: false);
     } on PostgrestException catch (e) {
       SupabaseManager.logRpcFailure('loadRoutes', {'user_id': userId}, e.message);
@@ -223,6 +225,27 @@ class SupabaseRoutesGateway implements RoutesGateway {
     } catch (e, stack) {
       SupabaseManager.logError('deleteRoute', e, stack);
       throw RoutesGatewayException(e.toString(), 'deleteRoute');
+    }
+  }
+
+  @override
+  Future<List<dynamic>> getOwnerRouteOptimizer(String userId) async {
+    final params = {'p_user_id': userId};
+    try {
+      return await SupabaseManager.client.rpc(
+        'get_owner_route_optimizer',
+        params: params,
+      );
+    } on PostgrestException catch (e) {
+      SupabaseManager.logRpcFailure(
+        'get_owner_route_optimizer',
+        params,
+        e.message,
+      );
+      throw RoutesGatewayException(e.message, 'getOwnerRouteOptimizer');
+    } catch (e, stack) {
+      SupabaseManager.logError('getOwnerRouteOptimizer', e, stack);
+      throw RoutesGatewayException(e.toString(), 'getOwnerRouteOptimizer');
     }
   }
 }

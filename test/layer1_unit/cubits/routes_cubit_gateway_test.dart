@@ -79,6 +79,12 @@ class MockRoutesGateway implements RoutesGateway {
     if (shouldThrow) throw Exception('Test delete error');
     return rpcToReturn;
   }
+
+  @override
+  Future<List<dynamic>> getOwnerRouteOptimizer(String userId) async {
+    if (shouldThrow) throw Exception('Test optimizer error');
+    return rpcToReturn;
+  }
 }
 
 /// Gateway that only throws on createRoute; all other methods delegate to

@@ -104,16 +104,8 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
 
       _cachedAccounts = results[4] as List<BankAccount>;
 
-      // Load transactions for savings account if it exists
-      final savingsAccount = _cachedAccounts
-          .where((a) => a.isSavings)
-          .firstOrNull;
-      if (savingsAccount != null) {
-        _cachedTransactions =
-            await _gateway.getBankTransactions(savingsAccount.id);
-      } else {
-        _cachedTransactions = [];
-      }
+      // Savings accounts are not supported — always operating accounts.
+      _cachedTransactions = [];
 
       _emitLoaded();
     } catch (e, stack) {
@@ -460,7 +452,14 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
     } catch (e, stack) {
       AppError.log('loadBankTransactions', e, stack);
       if (isClosed) return;
-      emit(BankError(message: AppError.extractMessage(e, 'Failed to load transactions')));
+      emit(BankError(
+        message: AppError.extractMessage(e, 'Failed to load transactions'),
+        hasData: _cachedLoans.isNotEmpty,
+        loans: _cachedLoans,
+        creditReport: _cachedCreditReport,
+        accounts: _cachedAccounts,
+        transactions: _cachedTransactions,
+      ));
     }
   }
 

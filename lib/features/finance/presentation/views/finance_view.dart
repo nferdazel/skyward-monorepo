@@ -31,6 +31,12 @@ import '../../domain/finance_snapshot.dart';
 import '../cubit/finance_cubit.dart';
 import '../cubit/finance_state.dart';
 
+/// Finance-scoped lazy tab cubit to avoid namespace collision with
+/// the dashboard's [LazyTabCubit] when both are in the widget tree.
+class FinanceSubTabCubit extends LazyTabCubit {
+  FinanceSubTabCubit({super.initialIndex});
+}
+
 class FinanceView extends StatefulWidget {
   const FinanceView({super.key});
 
@@ -45,7 +51,7 @@ class _FinanceViewState extends State<FinanceView>
   static final _timeOnlyFormat = DateFormat('HH:mm');
 
   late final TabController _tabController;
-  late final LazyTabCubit _lazyTabCubit;
+  late final FinanceSubTabCubit _lazyTabCubit;
 
   static const _ledgerColumnWidths = <int, TableColumnWidth>{
     0: FlexColumnWidth(3), // Category Badge
@@ -57,7 +63,7 @@ class _FinanceViewState extends State<FinanceView>
   @override
   void initState() {
     super.initState();
-    _lazyTabCubit = LazyTabCubit();
+    _lazyTabCubit = FinanceSubTabCubit();
     _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) return;
@@ -96,7 +102,7 @@ class _FinanceViewState extends State<FinanceView>
       );
     }
 
-    return BlocProvider<LazyTabCubit>.value(
+    return BlocProvider<FinanceSubTabCubit>.value(
       value: _lazyTabCubit,
       child: Scaffold(
         backgroundColor: Colors.transparent,
@@ -120,7 +126,7 @@ class _FinanceViewState extends State<FinanceView>
                 ),
                 const SizedBox(width: AppSpacing.xxl),
                 AppTabItem(
-                  label: 'BANK',
+                  label: AppStrings.bankTab,
                   isActive: _tabController.index == 2,
                   onTap: () => _onTabTap(2),
                 ),
@@ -190,7 +196,7 @@ class _FinanceViewState extends State<FinanceView>
                   }
 
                   if (state is FinanceDataState) {
-                    return BlocBuilder<LazyTabCubit, LazyTabState>(
+                    return BlocBuilder<FinanceSubTabCubit, LazyTabState>(
                       builder: (context, tabState) {
                         return IndexedStack(
                           index: tabState.activeIndex,
@@ -257,7 +263,7 @@ class _FinanceViewState extends State<FinanceView>
             state.dailySnapshots,
           ),
           const SizedBox(height: AppSpacing.blockGap),
-          _buildNetWorthTrend(state.financialSnapshots),
+          _buildNetWorthTrend(state.dailySnapshots),
           const SizedBox(height: AppSpacing.sectionGap),
           const AppSectionHeader(title: AppStrings.rollingOperationsTitle),
           const SizedBox(height: AppSpacing.blockGap),
@@ -934,9 +940,11 @@ class _FinanceOverview {
   static _FinanceOverview fromState(FinanceDataState state) {
     final rollingExpense = state.snapshot.rollingExpense30d;
     final rollingRevenue = state.snapshot.rollingRevenue30d;
-    final runwayDays = rollingExpense > 0
-        ? state.snapshot.cash /
-              (rollingExpense / state.snapshot.ledgerWindowDays)
+    final dailyBurnRate = state.snapshot.ledgerWindowDays > 0
+        ? rollingExpense / state.snapshot.ledgerWindowDays
+        : 0.0;
+    final runwayDays = (rollingExpense > 0 && dailyBurnRate > 0)
+        ? state.snapshot.cash / dailyBurnRate
         : null;
     final runwayLabel = runwayDays == null
         ? AppStrings.runwayUnknown
