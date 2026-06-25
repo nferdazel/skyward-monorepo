@@ -1,11 +1,8 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_strings.dart';
-import '../../../../core/constants/game_constants.dart';
 import '../../../../core/utils/app_formatters.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/condition_colors.dart';
@@ -1414,6 +1411,18 @@ class _FleetViewState extends State<FleetView>
   ) {
     double downPaymentPct = 0.20;
     int termMonths = 60;
+    final bankState = context.read<BankCubit>().state;
+    final creditReport = switch (bankState) {
+      BankLoaded(:final creditReport) => creditReport,
+      BankLoanSuccess(:final creditReport) => creditReport,
+      BankSavingsSuccess(:final creditReport) => creditReport,
+      BankRefinanceSuccess(:final creditReport) => creditReport,
+      BankError(:final creditReport) => creditReport,
+      _ => null,
+    };
+    final securedRate = creditReport?.securedInterestRate ?? 0.10;
+    final maxFinancingAmount =
+        creditReport?.maxFinancingAmount ?? model.purchasePrice;
 
     showDialog(
       context: context,
@@ -1421,10 +1430,11 @@ class _FleetViewState extends State<FleetView>
         builder: (ctx, setDialogState) {
           final downPayment = model.purchasePrice * downPaymentPct;
           final principal = model.purchasePrice - downPayment;
-          final monthlyPayment = principal *
-              (GameConstants.defaultLoanInterestRate / 12) /
-              (1 - pow(1 + GameConstants.defaultLoanInterestRate / 12, -termMonths));
+          final totalRepayable = principal * (1 + securedRate);
+          final monthlyPayment = totalRepayable / termMonths;
+          final weeklyPayment = monthlyPayment / 4.33;
           final totalCost = downPayment + (monthlyPayment * termMonths);
+          final isEligible = model.purchasePrice <= maxFinancingAmount;
 
           return AppDialogShell(
             title: 'FINANCE: ${model.manufacturer} ${model.modelName}',
@@ -1432,6 +1442,15 @@ class _FleetViewState extends State<FleetView>
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Text(
+                  isEligible
+                      ? 'Secured pricing uses your current credit tier.'
+                      : 'This aircraft exceeds your current financing cap.',
+                  style: AppTypography.captionRegular.copyWith(
+                    color: isEligible ? AppTheme.textMuted : AppTheme.warning,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
                 // Down payment slider
                 Text(
                   'Down Payment: ${(downPaymentPct * 100).round()}%',
@@ -1481,10 +1500,20 @@ class _FleetViewState extends State<FleetView>
                     children: [
                       _summaryRow('Aircraft Price',
                           '\$${_formatNumber(model.purchasePrice)}'),
+                      _summaryRow(
+                        'Financing Cap',
+                        '\$${_formatNumber(maxFinancingAmount)}',
+                      ),
+                      _summaryRow(
+                        'Secured Rate',
+                        '${(securedRate * 100).toStringAsFixed(1)}% APR',
+                      ),
                       _summaryRow('Down Payment',
                           '\$${_formatNumber(downPayment)}'),
-                      _summaryRow('Monthly Payment',
+                      _summaryRow('Monthly Servicing',
                           '\$${_formatNumber(monthlyPayment)}'),
+                      _summaryRow('Weekly Servicing',
+                          '\$${_formatNumber(weeklyPayment)}'),
                       _summaryRow(
                           'Total Cost', '\$${_formatNumber(totalCost)}'),
                       _summaryRow(
@@ -1511,14 +1540,16 @@ class _FleetViewState extends State<FleetView>
                     Expanded(
                       child: AppButton(
                         text: AppStrings.financeAircraft,
-                        onPressed: () async {
-                          await context.read<BankCubit>().financeAircraft(
-                                model.id,
-                                downPaymentPct,
-                                termMonths,
-                              );
-                          if (context.mounted) Navigator.pop(ctx);
-                        },
+                        onPressed: !isEligible
+                            ? null
+                            : () async {
+                                await context.read<BankCubit>().financeAircraft(
+                                      model.id,
+                                      downPaymentPct,
+                                      termMonths,
+                                    );
+                                if (context.mounted) Navigator.pop(ctx);
+                              },
                         type: AppButtonType.primary,
                         height: 40,
                       ),

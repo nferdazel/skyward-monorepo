@@ -538,7 +538,11 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
       maxUnsecuredLoan: 30000000,
       maxSecuredLoan: 75000000,
       maxFinancingAmount: 60000000,
-      baseInterestRate: 0.04,
+      baseInterestRate: 0.05,
+      unsecuredInterestRate: 0.05,
+      securedInterestRate: 0.04,
+      minLoanAmount: 100000,
+      maxActiveLoans: 3,
       suggestions: ['Maintain consistent route operations.'],
     );
     _cachedCreditHistory = [];

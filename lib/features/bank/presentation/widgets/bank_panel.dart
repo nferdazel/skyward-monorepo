@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -128,7 +130,7 @@ class BankPanel extends StatelessWidget {
           description: [
             ?tierDescription,
             AppStrings.borrowCapital,
-            '\$100K–\$50M  ·  ${((creditReport?.baseInterestRate ?? GameConstants.defaultLoanInterestRate) * 100).toStringAsFixed(1)}% APR  ·  12 / 26 / 52 week terms',
+            _loanTermsDescription(creditReport),
           ].join('\n'),
         ),
         const SizedBox(height: AppSpacing.lg),
@@ -366,7 +368,7 @@ class BankPanel extends StatelessWidget {
           Expanded(
             child: AppLabeledValue(
               label: 'INTEREST RATE',
-              value: '${(creditReport.baseInterestRate * 100).toStringAsFixed(1)}% APR',
+              value: '${(creditReport.unsecuredInterestRate * 100).toStringAsFixed(1)}% APR',
             ),
           ),
           Container(width: 1, height: 28, color: AppTheme.border),
@@ -448,7 +450,7 @@ class BankPanel extends StatelessWidget {
                 Text('CREDIT RATING', style: AppTypography.sectionHeaderMedium),
                 const SizedBox(height: AppSpacing.xs),
                 Text(
-                  'Max Loan: \$${_formatNumber(report.maxUnsecuredLoan)}  ·  ${(report.baseInterestRate * 100).toStringAsFixed(1)}% APR',
+                  'Unsecured: \$${_formatNumber(report.maxUnsecuredLoan)}  ·  ${(report.unsecuredInterestRate * 100).toStringAsFixed(1)}% APR  ·  Secured: ${(report.securedInterestRate * 100).toStringAsFixed(1)}% APR',
                   style: AppTypography.captionRegular,
                 ),
                 if (report.suggestions.isNotEmpty) ...[
@@ -497,6 +499,16 @@ class BankPanel extends StatelessWidget {
   }
 
   static String _formatNumber(double value) => AppFormatters.compactNumber(value);
+
+  static String _loanTermsDescription(CreditReport? report) {
+    final minLoan = report?.minLoanAmount ?? 100000;
+    final maxLoan = report?.maxUnsecuredLoan ?? 5000000;
+    final rate = report?.unsecuredInterestRate ??
+        report?.baseInterestRate ??
+        GameConstants.defaultLoanInterestRate;
+    final maxActiveLoans = report?.maxActiveLoans ?? 3;
+    return '${AppFormatters.compactNumber(minLoan)}–${AppFormatters.compactNumber(maxLoan)}  ·  ${(rate * 100).toStringAsFixed(1)}% APR unsecured  ·  max $maxActiveLoans active loans';
+  }
 
   // ── Loan Dialog ─────────────────────────────────────────────────────────
 
@@ -790,14 +802,27 @@ class _TakeLoanDialogState extends State<_TakeLoanDialog> {
     super.dispose();
   }
 
-  double get _totalRepayable => _principal * (1 + _interestRate);
-  double get _weeklyPayment => _totalRepayable / _termWeeks;
-
   @override
   Widget build(BuildContext context) {
+    final bankState = context.watch<BankCubit>().state;
+    final creditReport = switch (bankState) {
+      BankLoaded(:final creditReport) => creditReport,
+      BankLoanSuccess(:final creditReport) => creditReport,
+      BankSavingsSuccess(:final creditReport) => creditReport,
+      BankRefinanceSuccess(:final creditReport) => creditReport,
+      BankError(:final creditReport) => creditReport,
+      _ => null,
+    };
+    final minLoan = creditReport?.minLoanAmount ?? 100000;
+    final maxLoan = max(minLoan, creditReport?.maxUnsecuredLoan ?? 5000000);
+    final effectivePrincipal = _principal.clamp(minLoan, maxLoan).toDouble();
+    final interestRate = creditReport?.unsecuredInterestRate ?? _interestRate;
+    final totalRepayable = effectivePrincipal * (1 + interestRate);
+    final weeklyPayment = totalRepayable / _termWeeks;
+
     return AppDialogShell(
       title: AppStrings.takeLoan,
-      subtitle: '${AppStrings.borrowCapital} ${(_interestRate * 100).toStringAsFixed(0)}% simple interest, auto-deducted weekly.',
+      subtitle: '${AppStrings.borrowCapital} ${(interestRate * 100).toStringAsFixed(1)}% simple interest, auto-deducted weekly.',
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -820,7 +845,7 @@ class _TakeLoanDialogState extends State<_TakeLoanDialog> {
               prefixStyle: AppTypography.hudValue.copyWith(
                 color: AppTheme.textSecondary,
               ),
-              hintText: '100000 – 50000000',
+              hintText: '${minLoan.toStringAsFixed(0)} – ${maxLoan.toStringAsFixed(0)}',
               hintStyle: AppTypography.captionRegular.copyWith(
                 color: AppTheme.textMuted,
               ),
@@ -828,7 +853,7 @@ class _TakeLoanDialogState extends State<_TakeLoanDialog> {
             onChanged: (value) {
               final parsed = double.tryParse(value);
               if (parsed != null) {
-                setState(() => _principal = parsed.clamp(100000, 50000000));
+                setState(() => _principal = parsed.clamp(minLoan, maxLoan));
               }
             },
           ),
@@ -844,10 +869,10 @@ class _TakeLoanDialogState extends State<_TakeLoanDialog> {
               trackHeight: 2,
             ),
             child: Slider(
-              value: _principal,
-              min: 100000,
-              max: 50000000,
-              divisions: 499,
+              value: effectivePrincipal,
+              min: minLoan,
+              max: maxLoan,
+              divisions: maxLoan > minLoan ? 100 : 1,
               onChanged: (value) {
                 setState(() {
                   _principal = value;
@@ -886,19 +911,19 @@ class _TakeLoanDialogState extends State<_TakeLoanDialog> {
               children: [
                 _summaryRow(
                   'You receive',
-                  AppFormatters.currency.format(_principal),
+                  AppFormatters.currency.format(effectivePrincipal),
                   AppTheme.success,
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 _summaryRow(
                   'Total repayable',
-                  AppFormatters.currency.format(_totalRepayable),
+                  AppFormatters.currency.format(totalRepayable),
                   AppTheme.warning,
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 _summaryRow(
                   'Weekly payment',
-                  '${AppFormatters.currency.format(_weeklyPayment)}/wk',
+                  '${AppFormatters.currency.format(weeklyPayment)}/wk',
                   AppTheme.error,
                 ),
               ],
@@ -931,8 +956,13 @@ class _TakeLoanDialogState extends State<_TakeLoanDialog> {
                   text: 'CONFIRM',
                   icon: Icons.check,
                   isLoading: isLoading,
-                  onPressed: _principal >= 100000 && _principal <= 50000000 && !isLoading
-                      ? () => context.read<BankCubit>().takeLoan(_principal, _termWeeks)
+                  onPressed: effectivePrincipal >= minLoan &&
+                          effectivePrincipal <= maxLoan &&
+                          !isLoading
+                      ? () => context.read<BankCubit>().takeLoan(
+                            effectivePrincipal,
+                            _termWeeks,
+                          )
                       : null,
                   type: AppButtonType.primary,
                   height: 40,

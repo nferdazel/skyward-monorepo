@@ -11,6 +11,10 @@ class CreditReport {
   final double maxSecuredLoan;
   final double maxFinancingAmount;
   final double baseInterestRate;
+  final double unsecuredInterestRate;
+  final double securedInterestRate;
+  final double minLoanAmount;
+  final int maxActiveLoans;
   final List<String> suggestions;
 
   const CreditReport({
@@ -25,6 +29,10 @@ class CreditReport {
     required this.maxSecuredLoan,
     required this.maxFinancingAmount,
     required this.baseInterestRate,
+    required this.unsecuredInterestRate,
+    required this.securedInterestRate,
+    required this.minLoanAmount,
+    required this.maxActiveLoans,
     required this.suggestions,
   });
 
@@ -55,9 +63,17 @@ class CreditReport {
       maxSecuredLoan:
           (map['max_secured_loan'] as num?)?.toDouble() ?? 20000000,
       maxFinancingAmount:
-          (map['max_financing_amount'] as num?)?.toDouble() ?? 15000000,
+          (map['max_financing_amount'] as num?)?.toDouble() ?? 25000000,
       baseInterestRate:
-          (map['base_interest_rate'] as num?)?.toDouble() ?? 0.07,
+          (map['base_interest_rate'] as num?)?.toDouble() ?? 0.12,
+      unsecuredInterestRate:
+          (map['unsecured_interest_rate'] as num?)?.toDouble() ??
+              (map['base_interest_rate'] as num?)?.toDouble() ??
+              0.12,
+      securedInterestRate:
+          (map['secured_interest_rate'] as num?)?.toDouble() ?? 0.10,
+      minLoanAmount: (map['min_loan_amount'] as num?)?.toDouble() ?? 100000,
+      maxActiveLoans: (map['max_active_loans'] as num?)?.toInt() ?? 3,
       suggestions: (map['suggestions'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
