@@ -33,6 +33,9 @@ class Loan {
   /// Whether this loan has defaulted (missed payments).
   bool get isDefaulted => status == 'defaulted';
 
+  /// Whether this loan ended in repossession.
+  bool get isRepossessed => status == 'repossessed';
+
   /// Whether this is a secured loan with collateral.
   bool get isSecured => loanType == 'secured';
 
@@ -41,6 +44,9 @@ class Loan {
 
   /// Whether this is a credit line.
   bool get isCreditLine => loanType == 'credit_line';
+
+  /// Whether this is an aircraft financing product.
+  bool get isAircraftFinancing => loanType == 'aircraft_financing';
 
   /// Whether this loan is at risk of default (3+ missed payments).
   bool get isAtRisk => missedPayments >= 3;
@@ -54,10 +60,16 @@ class Loan {
   /// Human-readable status label.
   String get statusLabel {
     switch (status) {
-      case 'active': return 'Active';
-      case 'paid_off': return 'Paid Off';
-      case 'defaulted': return 'Defaulted';
-      default: return status;
+      case 'active':
+        return 'Active';
+      case 'paid_off':
+        return 'Paid Off';
+      case 'defaulted':
+        return 'Defaulted';
+      case 'repossessed':
+        return 'Repossessed';
+      default:
+        return status;
     }
   }
 
@@ -68,6 +80,8 @@ class Loan {
         return 'Secured';
       case 'credit_line':
         return 'Credit Line';
+      case 'aircraft_financing':
+        return 'Aircraft Financing';
       default:
         return 'Unsecured';
     }
