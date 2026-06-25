@@ -1,140 +1,90 @@
-# Skyward Docs And Migrations
+# Skyward Docs
 
-Last verified on 2026-06-22.
+Last verified on 2026-06-26.
 
-This folder is the maintenance record for Skyward's Supabase-backed runtime.
-Use it as an operator guide, not as a chronological diary.
+This folder is the current maintenance record for Skyward's live runtime.
+It is intentionally organized by operational question, not by historical phase.
 
 ## Start Here
 
 If you only open four files, open these:
 
-1. [ai-handover.md](architecture/ai-handover.md)
-2. [supabase-contracts.md](architecture/supabase-contracts.md)
-3. [database.md](architecture/database.md)
-4. [audit-queries.md](operations/audit-queries.md)
+1. [architecture/ai-handover.md](architecture/ai-handover.md)
+2. [architecture/supabase-contracts.md](architecture/supabase-contracts.md)
+3. [architecture/database.md](architecture/database.md)
+4. [operations/audit-queries.md](operations/audit-queries.md)
 
 ## Current Runtime State
 
-Backend/runtime milestones already in place:
-- shared season-clock world time
-- deterministic daily simulation segmentation
-- realtime UI reflection for `users`, `user_fleet`, `user_routes`, and `financial_ledger`
-- finance snapshot RPC and retention/compaction audit surfaces
-- owner/operator optimizer tooling
-- Supabase Auth username-only flow via synthetic emails
-- auth-bound gameplay RPC wrappers
-- RLS on the app-facing read surface
-- removal of the legacy custom-session auth system
-- gateway pattern (9 gateways: Auth, Simulation, Fleet, Routes, Finance, Leaderboard, Settings, Bank, Achievement)
-- event system (`game_events` table with time-bounded fuel, demand, tax, and weather effects)
-- notification panel, onboarding overlay, and help tooltip UI widgets
-- financial snapshots for historical trend visualization
-- hub-and-spoke bonus, airport congestion, and catch-up subsidy mechanics
-- aviation depth: turnaround times, fare-class elasticity, crew costs, seasonal demand, maintenance milestones
-- cargo revenue and non-linear aircraft degradation
-- bank/loan system with credit scoring and aircraft financing
-- achievements system with rank history tracking
+Live runtime characteristics:
+- Flutter frontend with Cubit-only app state
+- Supabase/Postgres authoritative backend
+- bank-centric cash model:
+  - `bank_accounts` is canonical cash
+  - `bank_transactions` is canonical money movement
+- auth-bound gameplay RPC wrappers using `auth.uid()`
+- username-only auth UX backed by synthetic auth emails
+- live `auth.users -> handle_new_auth_user()` bootstrap trigger, proven in the linked DB
+- shared season clock in `season_clock`
+- deterministic daily simulation boundaries for player and bot processing
+- route/fleet/bank/settings writes go through RPCs
+- realtime reflection on `users`, `fleet_aircraft`, `route_assignments`,
+  `bank_transactions`, `achievements`, and `loans`
+- bank / credit / financing system with shared player-facing and bot-facing policy
+- rollback-style native SQL audits for fleet, routes, finance, and core bank RPCs
+- live-proven `delete-account` Edge Function path with end-to-end deletion audit
 
-## How To Use This Folder
+## Documentation Layout
 
-Use docs by question:
-- "What is the app/backend shape right now?"
-  Open [ai-handover.md](architecture/ai-handover.md)
-- "What RPCs or direct table reads does Flutter rely on?"
-  Open [supabase-contracts.md](architecture/supabase-contracts.md)
-- "What is the current database/security model?"
-  Open [database.md](architecture/database.md)
-- "How do I troubleshoot suspicious simulation behavior?"
-  Open [simulation-guide.md](operations/simulation-guide.md)
-- "What SQL should I run against live Supabase?"
-  Open [audit-queries.md](operations/audit-queries.md)
-- "How does the private owner/operator optimizer work?"
-  Open [owner-tools.md](operations/owner-tools.md)
-- "What is the current UI/UX design system?"
-  Open [ui-design-system.md](architecture/ui-design-system.md)
+Architecture docs:
+- [architecture/overview.md](architecture/overview.md)
+- [architecture/ai-handover.md](architecture/ai-handover.md)
+- [architecture/database.md](architecture/database.md)
+- [architecture/supabase-contracts.md](architecture/supabase-contracts.md)
+- [architecture/ui-design-system.md](architecture/ui-design-system.md)
 
-## Documentation Set
-
-Core maintenance docs:
-- `architecture/ai-handover.md`
-- `architecture/supabase-contracts.md`
-- `architecture/database.md`
-
-Operational/reference docs:
-- `operations/simulation-guide.md`
-- `operations/audit-queries.md`
-- `operations/owner-tools.md`
-
-UI/UX docs:
-- `architecture/ui-design-system.md`
+Operations docs:
+- [operations/audit-queries.md](operations/audit-queries.md)
+- [operations/simulation-guide.md](operations/simulation-guide.md)
+- [operations/owner-tools.md](operations/owner-tools.md)
 
 Standards:
-- `standards/maintainer-standard.md`
-- [SECURITY.md](../SECURITY.md)
+- [standards/maintainer-standard.md](standards/maintainer-standard.md)
+- [../SECURITY.md](../SECURITY.md)
 
-## Migration Bands
+## Migrations
 
 Apply migrations in numeric order.
 
+Current repo migration set:
+- `00_baseline.sql`
+- `01_critical_fixes.sql`
+- `02_fix_stale_refs.sql`
+- `03_fix_search_path.sql`
+- `04_critical_fixes_v2.sql`
+- `05_bot_fixes.sql`
+- `06_simulation_credit_fixes.sql`
+- `07_data_fixes.sql`
+- `08_finance_phase1_cash_movement.sql`
+- `09_finance_phase3_net_worth_consistency.sql`
+- `10_finance_phase4_credit_consistency.sql`
+- `11_finance_phase5_lease_carrying_cost.sql`
+- `12_actor_parity_route_economics.sql`
+- `13_actor_parity_daily_servicing.sql`
+- `14_credit_policy_unification.sql`
+- `15_acquisition_progression_rebalance.sql`
+- `16_bot_humanization_inertia.sql`
+- `17_bot_decision_tick_alignment.sql`
+
 High-level grouping:
-- `01`-`18`
-  Foundation schema, legacy auth, economy, reset, bots, maintenance
-- `19`-`24`
-  Regression audits and bot hardening
-- `25`-`37`
-  Realtime, balancing, replenishment, leaderboard fixes, offline-anchor fix,
-  RPC write-boundary work
-- `38`-`45`
-  Season clock, scheduler, actor tick, world guardrails, deterministic daily simulation
-- `46`-`61`
-  Capacity/retention audits, compaction foundations, finance snapshot,
-  route/cabin hardening, fleet disposal, owner/operator optimizer
-- `62`-`68`
-  Security hardening: Supabase Auth identity, auth bootstrap, RPC auth binding,
-  RLS, and legacy custom-session removal
-- `69`
-  `financial_snapshots` UI read wiring
-- `70`-`78`
-  Security/race-condition fixes, route distance validation (Haversine), bot
-  bankruptcy soft-delete, RLS policy fixes, performance indexes, sell-aircraft
-  operation ordering, tail-number collision retry, password-hash column drop,
-  game balance (competition, premium cabins, bot purchasing), event system
-  (`game_events`), catch-up subsidy, hub bonus, `financial_snapshots` table,
-  aviation depth (turnaround, fare-class elasticity, crew costs, seasonal
-  demand, A/C-check milestones), cargo revenue, non-linear degradation
-- `79`
-  Achievements system
-- `80`-`81`
-  Missing DB object fixes
-- `82`
-  Rank history
-- `83`
-  Onboarding completed column
-- `84`
-  Bank loan system
-- `85`
-  Credit rating and aircraft financing
-- `86`
-  Fare buckets and depreciation
-- `87`
-  Credit system enhanced
-- `88`-`90`
-  Bank schema fixes and ledger constraint
-- `91`
-  Bot financial behavior
-- `92`
-  Critical DB fixes
-
-## Current Time Authority
-
-Supabase owns production game time.
-
-- `season_clock.current_game_time` is the shared season time
-- `users.game_current_time` and `ai_competitors.game_current_time` are actor progress cursors
-- `process_world_tick()` advances the season and actors
-- Flutter observes backend time through realtime and `process_simulation_delta()`
-- production Flutter does not locally advance game time
+- `00`-`07`
+  Baseline schema plus early correctness fixes
+- `08`-`11`
+  Finance stabilization, bank-centric cash, net-worth reconciliation, lease carrying cost
+- `12`-`15`
+  Actor parity, credit-policy unification, acquisition progression rebalance
+- `16`-`17`
+  Bot humanization inertia and decision-tick alignment
 
 ## Standard Verification
 
@@ -152,6 +102,11 @@ from get_world_tick_guardrail_report();
 
 ```sql
 select *
+from get_world_tick_scheduler_health();
+```
+
+```sql
+select *
 from get_database_size_report();
 ```
 
@@ -161,12 +116,23 @@ from get_table_size_report()
 limit 20;
 ```
 
-```sql
-select *
-from get_world_tick_log_compaction_report();
+## Native / E2E Audits
+
+Rollback-style native SQL:
+
+```bash
+SUPABASE_DISABLE_TELEMETRY=1 supabase db query --linked -f test/layer4_database/native_audit/supabase_audit_test.sql
+SUPABASE_DISABLE_TELEMETRY=1 supabase db query --linked -f test/layer4_database/native_audit/finance_credit_regression_test.sql
 ```
 
-```sql
-select *
-from get_financial_ledger_compaction_report();
+Delete-account end-to-end audit:
+
+```bash
+test/layer4_database/native_audit/delete_account_e2e_audit.sh
 ```
+
+## Maintenance Rule
+
+Stale docs are defects.
+If a backend contract, table name, trigger story, or audit status changes, the
+matching docs must be updated in the same workstream.

@@ -1,6 +1,6 @@
 # Skyward Simulation Troubleshooting
 
-Last verified on 2026-06-22.
+Last verified on 2026-06-26.
 
 ## Phantom ledger rows after reset
 
@@ -10,7 +10,7 @@ Symptom:
 
 Root cause:
 - stale buffered simulation values survived reset
-- a later `process_simulation_delta()` flush wrote the old buffers into `financial_ledger`
+- a later `process_simulation_delta()` flush wrote stale financial effects after reset
 
 Fix:
 - `17_reset_airline_buffer_cleanup.sql`
@@ -38,12 +38,12 @@ Current behavior:
 
 When simulation behavior looks suspicious, inspect:
 1. `season_clock.current_game_time`
-2. `users.game_current_time` or `ai_competitors.game_current_time`
+2. `users.game_current_time`
 3. actor lag between the season clock and actor cursor
 4. `world_tick_log.players_processed` / `world_tick_log.bots_processed`
 5. buffered revenue/cost fields and assigned route/aircraft status
 6. active `game_events` rows that may be modifying fuel prices or demand
-7. `financial_snapshots` for daily trend anomalies
+7. `bank_transactions` for unexpected cash movements
 
 Fast guardrail check:
 
@@ -84,10 +84,10 @@ maintenance becomes increasingly costly.
 
 Maintenance milestones: A-check every 500 flights (10% condition penalty if
 skipped), C-check every 3000 flights (25% condition penalty if skipped). Track
-via `user_fleet.total_flights`, `last_a_check_at`, `last_c_check_at`.
+via `fleet_aircraft.total_flights`, `last_a_check_at`, `last_c_check_at`.
 
 Cargo revenue: 10% of ticket revenue, scaling with route distance up to 5000 km.
-Logged as `financial_ledger.category = 'cargo'`.
+In the current finance model, inspect the resulting cash trail in `bank_transactions`.
 
 ## Bank loan payment processing
 

@@ -1,6 +1,6 @@
 # Skyward UI/UX Extraction
 
-Last verified against code on 2026-06-22 (post v4 redesign).
+Last verified against code on 2026-06-26.
 
 This document extracts the current UI/UX structure, design language, and screen responsibilities from the live Flutter codebase so redesign work can stay grounded in the actual product.
 

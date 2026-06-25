@@ -1,6 +1,6 @@
 # Skyward AI Handover
 
-Last verified against code on 2026-06-22.
+Last verified against code on 2026-06-26.
 
 ## Current shape
 
@@ -44,8 +44,8 @@ gateway. There are nine gateways in total:
 | `RoutesGateway` | `create_route`, `assign_aircraft_to_route`, `update_route_frequency_and_price`, `delete_route` |
 | `FinanceGateway` | `get_finance_snapshot` |
 | `LeaderboardGateway` | `get_global_leaderboard`, `get_competitor_insights` |
-| `SettingsGateway` | `reset_user_airline`, `save_airline_settings` |
-| `BankGateway` | `take_loan`, `get_credit_report`, `refinance_loan`, `finance_aircraft` |
+| `SettingsGateway` | `reset_user_airline`, `save_airline_settings`, `delete-account` |
+| `BankGateway` | `take_loan`, `get_credit_report`, `repay_loan`, `refinance_loan`, `finance_aircraft` |
 | `AchievementGateway` | achievement tracking and rank history reads |
 
 Each gateway defines an abstract interface and a `Supabase*Gateway`
@@ -93,8 +93,8 @@ Security migration note:
 
 Production game time is backend-owned:
 - `season_clock.current_game_time` is the shared season time
-- `users.game_current_time` and `ai_competitors.game_current_time` are actor
-  progress cursors
+- `users.game_current_time` is the human-player progress cursor
+- bot progression is backend-owned and advanced by the world-tick path
 - `process_world_tick()` advances the season and actors
 - `process_simulation_delta()` is a Flutter compatibility reconciliation RPC
 - production Flutter does not locally advance game time
@@ -121,6 +121,9 @@ Recent work tightened:
 - onboarding overlay for first-time player guidance
 - help tooltip widget for contextual inline explanations
 - financial snapshots power historical trend charts in the Finance tab
+- bank/credit native SQL audit now proves `take_loan`, `repay_loan`,
+  `refinance_loan`, and `get_credit_report`
+- delete-account now has a live-proven end-to-end audit script
 
 Leaderboard sorting was intentionally removed.
 Rankings now always default to net worth order.

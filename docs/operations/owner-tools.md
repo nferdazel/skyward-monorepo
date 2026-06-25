@@ -3,7 +3,7 @@
 > **Note:** Replace `<your_user_id>` and `<your_username>` with your actual account values.
 > Find them with: `SELECT id, username FROM users WHERE company_name = '<your_company>';`
 
-Last verified against code on 2026-06-22.
+Last verified against code on 2026-06-26.
 
 This document covers the private operator surfaces added for the game owner.
 

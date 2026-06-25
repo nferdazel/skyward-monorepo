@@ -1,6 +1,6 @@
 # Skyward Supabase Contract Map
 
-Last verified against code on 2026-06-22.
+Last verified against code on 2026-06-26.
 
 This is the live Flutter-to-Supabase contract surface.
 
@@ -93,8 +93,8 @@ This is the live Flutter-to-Supabase contract surface.
   - `p_target_game_time`
   - `p_season_id`
 - current behavior:
-  - processes active bots from `ai_competitors.game_current_time` to the target
-    season game time through deterministic game-day boundaries
+  - processes active backend-owned bot actors to the target season game time
+    through deterministic game-day boundaries
   - applies active game event multipliers (fuel price, demand)
   - applies seasonal demand modifiers, fare-class elasticity, crew costs
   - tracks A-check and C-check maintenance milestones
@@ -156,58 +156,8 @@ This is the live Flutter-to-Supabase contract surface.
   - returns rolling 30-day revenue, expense, and net values
   - supports both human players and AI competitors through one shared contract
 
-`data_retention_policy`
-- caller: backend audit / future compaction RPCs
-- current behavior:
-  - stores retention thresholds and capacity warning thresholds
-  - does not trigger deletion by itself
-
-`get_world_tick_log_compaction_report`
-- caller: backend audit / storage-maintenance dry runs
-- params: none
-- current behavior:
-  - reads `data_retention_policy.world_tick_log_raw_real_days`
-  - groups eligible raw `world_tick_log` rows by UTC day and status
-  - reports the exact buckets that `compact_world_tick_log(FALSE)` would write
-    into `world_tick_daily_summary`
-
-`compact_world_tick_log`
-- caller: manual backend maintenance only
-- params:
-  - `p_dry_run`
-- current behavior:
-  - defaults to dry-run mode
-  - returns the same candidate buckets as `get_world_tick_log_compaction_report`
-  - when called with `FALSE`, upserts `world_tick_daily_summary` and deletes
-    raw `world_tick_log` rows older than the configured retention cutoff
-  - after migration `49`, uses the summary-table primary-key constraint name
-    explicitly to avoid PL/pgSQL output-column ambiguity in `ON CONFLICT`
-  - is intentionally not granted to anon clients
-
-`get_financial_ledger_compaction_report`
-- caller: backend audit / storage-maintenance dry runs
-- params: none
-- current behavior:
-  - reads `data_retention_policy.player_ledger_raw_game_days`
-  - reads `data_retention_policy.bot_ledger_raw_game_days`
-  - groups eligible raw `financial_ledger` rows by actor, UTC game date, month,
-    transaction type, and category
-  - uses actor-relative `game_current_time` cutoffs rather than wall-clock time
-
-`compact_financial_ledger`
-- caller: manual backend maintenance only
-- params:
-  - `p_dry_run`
-- current behavior:
-  - defaults to dry-run mode
-  - returns the same candidate buckets as
-    `get_financial_ledger_compaction_report()`
-  - when called with `FALSE`, upserts `financial_ledger_summary` and deletes
-    raw ledger rows older than each actor's configured game-day cutoff
-  - is intentionally not granted to anon clients
-
 `assign_active_season_id`
-- caller: database insert triggers on `users` and `ai_competitors`
+- caller: database insert trigger path on `users`
 - current behavior:
   - assigns the active season when `season_id` is missing
   - starts newly inserted actors at the active season game time
@@ -378,7 +328,7 @@ This is the live Flutter-to-Supabase contract surface.
   - requires an owned aircraft
   - blocks disposal while the aircraft is still assigned
   - credits condition-adjusted residual value
-  - writes `financial_ledger.category = 'aircraft_sale'`
+  - writes a `bank_transactions` sale row
   - removes the fleet row
 
 `terminate_aircraft_lease`
@@ -392,7 +342,7 @@ This is the live Flutter-to-Supabase contract surface.
   - requires a leased aircraft
   - blocks disposal while the aircraft is still assigned
   - charges a lease exit fee
-  - writes `financial_ledger.category = 'aircraft_lease_exit'`
+  - writes a `bank_transactions` lease-exit row
   - removes the fleet row
 
 `configure_aircraft_seats`
@@ -480,20 +430,32 @@ This is the live Flutter-to-Supabase contract surface.
 `take_loan`
 - caller: `BankCubit.takeLoan()`
 - params:
+  - `p_principal`
+  - `p_term_weeks`
   - `p_loan_type`
-  - `p_amount`
-  - `p_aircraft_model_id` (optional, for aircraft financing)
+  - `p_collateral_aircraft_id` (optional)
 - current behavior:
   - auth-bound wrapper resolves player from `auth.uid()`
-  - validates credit score and eligibility
-  - creates loan record and disburses funds
+  - validates credit tier, active-loan limits, and policy eligibility
+  - creates loan record and disburses funds into `bank_accounts`
 
 `get_credit_report`
 - caller: `BankCubit.loadCreditReport()`
 - params: none from Flutter
 - current behavior:
   - auth-bound wrapper resolves player from `auth.uid()`
-  - returns current credit score, loan summary, and payment history
+  - returns the current score surface plus tier-specific borrowing limits and rates
+
+`repay_loan`
+- caller: `BankCubit.repayLoan()`
+- params:
+  - `p_loan_id`
+  - `p_amount` optional
+- current behavior:
+  - auth-bound wrapper resolves player from `auth.uid()`
+  - debits the player's operating bank account
+  - reduces `loans.remaining_balance`
+  - writes a `bank_transactions` repayment row
 
 `refinance_loan`
 - caller: `BankCubit.refinanceLoan()`
@@ -507,12 +469,13 @@ This is the live Flutter-to-Supabase contract surface.
 `finance_aircraft`
 - caller: `BankCubit.financeAircraft()`
 - params:
-  - `p_model_id`
-  - `p_down_payment`
+  - `p_aircraft_model_id`
+  - `p_down_payment_pct`
+  - `p_term_months`
 - current behavior:
   - auth-bound wrapper resolves player from `auth.uid()`
   - validates credit eligibility
-  - creates aircraft financing loan and purchase transaction
+  - creates aircraft financing loan and purchase-side bank activity
 
 ### Leaderboard
 
@@ -525,7 +488,7 @@ This is the live Flutter-to-Supabase contract surface.
   - client-side sort controls were removed
   - overview consumes this feed for competitor-gap and leading-bot signals
   - `monthly_revenue` now means realized revenue over the last 30 in-game days for both players and bots
-  - `status` comes from `users.operational_status` for human players and `ai_competitors.status` for bots
+  - `status` is sourced from the backend leaderboard payload for both human and bot entries
 
 `get_competitor_insights`
 - caller: `LeaderboardCubit.getInsights()`
@@ -555,6 +518,15 @@ This is the live Flutter-to-Supabase contract surface.
   - catches up simulation before saving settings
   - validates safety threshold and HQ airport server-side
 
+`delete-account` Edge Function
+- caller: `SettingsGateway.deleteAccount()`
+- runtime path:
+  - validates caller JWT
+  - calls auth-bound `delete_account()` RPC as the user
+  - deletes the auth identity through admin auth APIs
+- current verification status:
+  - proven live by `test/layer4_database/native_audit/delete_account_e2e_audit.sh`
+
 ### Direct table writes
 
 The Flutter client should not directly write simulation-sensitive tables. Player
@@ -564,20 +536,17 @@ must go through RPCs.
 ## Direct table reads
 
 The client also reads some tables directly through Supabase queries:
-- `user_fleet`
+- `fleet_aircraft`
 - `aircraft_models`
-- `user_routes`
-- `financial_ledger`
+- `route_assignments`
+- `bank_transactions`
 - `users`
 - `airports`
 - `game_config`
-- `game_events` (active world events)
-- `financial_snapshots` (daily financial history for trends)
+- `game_events`
 - `loans` (active and historical loan records)
 - `credit_score_history` (credit score tracking)
-- `aircraft_financing` (aircraft-specific financing records)
 - `achievements` (achievement tracking and unlock state)
-- `rank_history` (historical rank snapshots)
 
 These are still part of the effective contract because UI parsing depends on their returned fields.
 
@@ -585,10 +554,9 @@ These are still part of the effective contract because UI parsing depends on the
 
 The Flutter client now subscribes to Postgres Changes on:
 - `users`
-- `user_fleet`
-- `user_routes`
-- `financial_ledger`
-- `ai_competitors`
+- `bank_transactions`
+- `fleet_aircraft`
+- `route_assignments`
 - `achievements`
 - `loans`
 
@@ -605,8 +573,8 @@ Operational rule:
 The app also depends indirectly on backend jobs that are not called as standalone RPCs from Flutter:
 - `season_clock`
   - shared-world clock foundation, with scheduler-driven world ticks
-  - links users and bots into an active season through `season_id`
-  - not yet runtime authority while actor clocks remain active
+  - links users into an active season through `season_id`
+  - remains the shared time authority even while player cursors still exist
 - `skyward_world_tick`
   - Phase 4 pg_cron job
   - calls `ensure_world_current(NULL)` once per minute
