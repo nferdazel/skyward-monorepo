@@ -45,6 +45,7 @@ Architecture docs:
 
 Operations docs:
 - [operations/audit-queries.md](operations/audit-queries.md)
+- [operations/backend-hardening-plan.md](operations/backend-hardening-plan.md)
 - [operations/simulation-guide.md](operations/simulation-guide.md)
 - [operations/owner-tools.md](operations/owner-tools.md)
 

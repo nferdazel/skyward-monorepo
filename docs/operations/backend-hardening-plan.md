@@ -1,0 +1,257 @@
+# Skyward Backend Hardening Plan
+
+Last verified on 2026-06-26.
+
+This document turns the current backend scorecard into an execution backlog.
+It is intentionally phase-based, with concrete scope, checks, and exit
+criteria.
+
+## Goal
+
+Raise backend confidence from "strong but drift-prone" to "strong and
+defensible under regression".
+
+Current emphasis:
+- increase proof quality
+- reduce bot/player drift
+- remove misleading fallback or stale contract claims
+- keep docs and live runtime behavior aligned
+
+## Current Score Snapshot
+
+| Area | Score | Risk |
+|---|---:|---|
+| Simulation core | 8.5/10 | Medium |
+| World tick / scheduler | 8.0/10 | Medium |
+| Bank / ledger | 8.5/10 | Low |
+| Credit / loans | 8.5/10 | Low |
+| Fleet / routes mutation authority | 8.0/10 | Medium |
+| Bot / player parity | 7.5/10 | High |
+| Finance historical surfaces | 7.0/10 | High |
+| Auth / ownership / RLS | 8.0/10 | Medium |
+| Ops / audit surfaces | 8.0/10 | Medium |
+| Tests / proof coverage | 7.0/10 | High |
+| Docs / contract accuracy | 7.5/10 | Medium-High |
+
+## Execution Order
+
+1. Phase 1: Proof Hardening
+2. Phase 2: Bot / Player Parity Cleanup
+3. Phase 3: Historical Read-Surface Honesty
+4. Phase 4: Realtime and Freshness Audit
+5. Phase 5: Repo / Live Proof Closure
+6. Phase 6: Ongoing Docs Discipline
+
+## Phase 1: Proof Hardening
+
+### Goal
+
+Increase confidence in backend behavior under regression, especially around
+simulation, finance, and mutation side effects.
+
+### Scope
+
+- native SQL behavioral audits
+- invariants for world tick and player reconciliation
+- ledger invariants that are easy to silently regress
+- parity-sensitive mutation side effects
+
+### Checklist
+
+- [ ] add world-tick invariants to SQL audit coverage
+- [ ] add player catch-up invariants to SQL audit coverage
+- [ ] assert no-op sync paths do not emit cash or ledger side effects
+- [ ] assert route/fleet mutations produce the expected finance side effects
+- [ ] assert credit/loan lifecycle leaves the expected ledger and balance state
+- [ ] convert placeholder or shallow backend-related tests into real assertions
+
+### Suggested Deliverables
+
+- `test/layer4_database/native_audit/supabase_audit_test.sql`
+- `test/layer4_database/native_audit/finance_credit_regression_test.sql`
+- targeted Flutter contract tests where SQL behavior is mirrored into parsing or
+  cubit assumptions
+
+### Exit Criteria
+
+- core simulation and finance mutations have behavioral audit coverage
+- no-op and edge-case paths are asserted, not assumed
+- known recent regressions are permanently covered by tests
+
+## Phase 2: Bot / Player Parity Cleanup
+
+### Goal
+
+Make shared game rules actually flow through shared mutation paths wherever
+parity is intended.
+
+### Scope
+
+- route lifecycle mutations
+- fleet acquisition / disposal side effects
+- servicing and finance side effects
+- any remaining asymmetry that changes economy outcomes
+
+### Checklist
+
+- [ ] map all player mutation entrypoints against bot mutation entrypoints
+- [ ] classify each asymmetry as intentional or accidental
+- [ ] refactor accidental asymmetries through shared helpers
+- [ ] add regression coverage for each parity fix
+- [ ] document intentional asymmetries explicitly
+
+### Exit Criteria
+
+- shared rules use shared helper layers where appropriate
+- remaining differences are intentional, documented, and justified
+
+## Phase 3: Historical Read-Surface Honesty
+
+### Goal
+
+Stop implying that historical surfaces exist when the live contract is
+fallback-based, partial, or backend-only.
+
+### Scope
+
+- finance historical charting
+- any UI or docs that imply unavailable historical tables or RPCs
+- read surfaces that still rely on temporary fallback semantics
+
+### Checklist
+
+- [ ] audit all frontend history views against live public schema
+- [ ] decide per surface: implement, degrade honestly, or remove claim
+- [ ] remove stale references to phantom tables, RPCs, or dropped features
+- [ ] document any temporary fallback as temporary, not product truth
+
+### Current Known Targets
+
+- finance historical net-worth charting
+- any leftover wording around dropped rank-history surfaces
+
+### Exit Criteria
+
+- no user-facing or maintainer-facing doc claims a historical surface that does
+  not actually exist
+- fallback behavior is explicit in docs and code comments
+
+## Phase 4: Realtime and Freshness Audit
+
+### Goal
+
+Reduce stale-state behavior after successful mutations or background
+reconciliation.
+
+### Scope
+
+- realtime subscriptions
+- post-mutation reload flows
+- silent refresh paths
+- feature-specific freshness gaps outside Bank
+
+### Checklist
+
+- [ ] audit refresh behavior for fleet
+- [ ] audit refresh behavior for routes
+- [ ] audit refresh behavior for finance overview/history
+- [ ] verify mutation success paths trigger enough refetch or realtime updates
+- [ ] add tests where stale-state regressions are likely
+
+### Exit Criteria
+
+- successful mutations are reflected consistently without manual tab hopping
+- realtime is treated as freshness support, not as a fragile substitute for
+  explicit reload logic
+
+## Phase 5: Repo / Live Proof Closure
+
+### Goal
+
+Close the gap between what the repo declares and what the linked live runtime
+proves.
+
+### Scope
+
+- auth bootstrap trigger attachment
+- repo vs live function declarations
+- operational assumptions currently proven only by manual live checks
+
+### Checklist
+
+- [ ] enumerate all live-proven but repo-undeclared behaviors
+- [ ] decide whether to migrate, document, or intentionally keep external
+- [ ] close auth bootstrap declaration gap where feasible
+- [ ] verify docs do not overstate what public migrations alone guarantee
+
+### Exit Criteria
+
+- maintainers can tell which truths come from migrations, which from live
+  environment state, and which are intentionally external
+
+## Phase 6: Ongoing Docs Discipline
+
+### Goal
+
+Prevent drift from reappearing after backend or contract work.
+
+### Scope
+
+- architecture docs
+- operations docs
+- audit query docs
+- handover docs
+
+### Checklist
+
+- [ ] update docs in the same workstream as backend changes
+- [ ] remove stale claims immediately instead of preserving historical wording
+- [ ] keep audit queries aligned to live field and function names
+- [ ] keep clock-domain notes current when adding new timestamp surfaces
+
+### Exit Criteria
+
+- docs are treated as runtime maintenance artifacts, not historical notes
+- contract drift is caught during work, not weeks later
+
+## Recommended Verification Per Phase
+
+### Baseline
+
+```bash
+flutter analyze
+flutter test
+```
+
+### Backend / Runtime
+
+```bash
+SUPABASE_DISABLE_TELEMETRY=1 supabase db query --linked -f test/layer4_database/native_audit/supabase_audit_test.sql
+SUPABASE_DISABLE_TELEMETRY=1 supabase db query --linked -f test/layer4_database/native_audit/finance_credit_regression_test.sql
+test/layer4_database/native_audit/delete_account_e2e_audit.sh
+```
+
+### Targeted Live Checks
+
+- `get_world_tick_guardrail_report()`
+- `get_world_tick_scheduler_health()`
+- audit queries in [audit-queries.md](audit-queries.md)
+
+## Practical Prioritization
+
+If time is limited, do these first:
+
+1. Phase 1
+2. Phase 2
+3. Phase 3
+
+That sequence gives the highest confidence gain per unit effort.
+
+## Definition of Done
+
+This hardening pass is in good shape when:
+
+- backend behavior is proven by tests more often than by assumption
+- bot/player shared rules do not silently diverge
+- fallback or partial read surfaces are clearly labeled
+- repo docs and live runtime stop contradicting each other
