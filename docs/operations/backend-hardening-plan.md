@@ -63,7 +63,7 @@ simulation, finance, and mutation side effects.
 - [ ] assert no-op sync paths do not emit cash or ledger side effects
 - [ ] assert route/fleet mutations produce the expected finance side effects
 - [ ] assert credit/loan lifecycle leaves the expected ledger and balance state
-- [ ] convert placeholder or shallow backend-related tests into real assertions
+- [x] convert placeholder or shallow backend-related tests into real assertions
 
 ### Suggested Deliverables
 
