@@ -22,6 +22,8 @@ DECLARE
   v_finance_loan_id UUID;
   v_finance_weekly NUMERIC;
   v_finance_monthly NUMERIC;
+  v_finance_deposit_rows INT;
+  v_finance_deposit_amount NUMERIC;
   v_owned_assets NUMERIC;
   v_open_debt NUMERIC;
   v_cash NUMERIC;
@@ -33,6 +35,8 @@ DECLARE
   v_lease_cash_after NUMERIC;
   v_idle_lease_rows INT;
   v_idle_lease_amount NUMERIC;
+  v_idle_lease_rows_before_noop INT;
+  v_idle_lease_rows_after_noop INT;
 BEGIN
   -- Clean residual audit user if any.
   DELETE FROM users WHERE username = 'finance_regression';
@@ -95,6 +99,24 @@ BEGIN
   ASSERT v_finance_loan_id IS NOT NULL, 'Aircraft financing loan was not created.';
   ASSERT COALESCE(v_finance_weekly, 0) > 0, 'Aircraft financing weekly_payment must be > 0.';
   ASSERT COALESCE(v_finance_monthly, 0) > COALESCE(v_finance_weekly, 0), 'monthly_payment should remain larger than weekly_payment.';
+
+  SELECT COUNT(*), COALESCE(SUM(ABS(amount)), 0)
+    INTO v_finance_deposit_rows, v_finance_deposit_amount
+    FROM bank_transactions
+   WHERE user_id = v_user_id
+     AND ifrs_subcategory = 'aircraft_purchase_deposit';
+
+  ASSERT v_finance_deposit_rows = 1,
+    'finance_aircraft should write exactly one aircraft_purchase_deposit ledger row';
+  ASSERT v_finance_deposit_amount > 0,
+    'finance_aircraft down-payment ledger amount must be positive';
+  ASSERT NOT EXISTS (
+    SELECT 1
+      FROM bank_transactions
+     WHERE user_id = v_user_id
+       AND ifrs_subcategory = 'aircraft_purchase_deposit'
+       AND amount = 0
+  ), 'finance_aircraft should not write zero-amount aircraft_purchase_deposit rows';
 
   -- ------------------------------------------------------------------------
   -- 2. Net worth must equal cash + owned assets - open debt.
@@ -166,6 +188,33 @@ BEGIN
   ASSERT v_idle_lease_rows > 0, 'Idle lease carrying cost row was not written.';
   ASSERT v_idle_lease_amount > 0, 'Idle lease carrying cost amount must be positive.';
   ASSERT v_lease_cash_after < v_lease_cash_before, 'Idle lease carrying cost should reduce cash.';
+  ASSERT NOT EXISTS (
+    SELECT 1
+      FROM bank_transactions
+     WHERE user_id = v_user_id
+       AND ifrs_subcategory = 'aircraft_lease_idle'
+       AND amount = 0
+  ), 'Idle lease carrying cost should not write zero-amount ledger rows.';
+
+  SELECT COUNT(*)
+    INTO v_idle_lease_rows_before_noop
+    FROM bank_transactions
+   WHERE user_id = v_user_id
+     AND ifrs_subcategory = 'aircraft_lease_idle';
+
+  PERFORM process_player_simulation_to_time(
+    v_user_id,
+    (SELECT game_current_time FROM users WHERE id = v_user_id)
+  );
+
+  SELECT COUNT(*)
+    INTO v_idle_lease_rows_after_noop
+    FROM bank_transactions
+   WHERE user_id = v_user_id
+     AND ifrs_subcategory = 'aircraft_lease_idle';
+
+  ASSERT v_idle_lease_rows_after_noop = v_idle_lease_rows_before_noop,
+    'No-op player simulation should not append extra aircraft_lease_idle rows.';
 
   RAISE NOTICE 'FINANCE / CREDIT REGRESSION AUDIT PASSED';
 END $$;
