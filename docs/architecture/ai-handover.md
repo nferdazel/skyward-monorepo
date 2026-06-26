@@ -124,6 +124,8 @@ Recent work tightened:
   net-worth point until a real historical finance-snapshot surface exists
 - bank/credit native SQL audit now proves `take_loan`, `repay_loan`,
   `refinance_loan`, and `get_credit_report`
+- actor-parity hardening now also shares bankruptcy side effects and repair
+  side effects across player and bot mutation paths
 - delete-account now has a live-proven end-to-end audit script
 
 Leaderboard sorting was intentionally removed.
@@ -161,21 +163,24 @@ audits when you need real operational state.
 4. Avoid reintroducing blocking loaders where silent refresh is enough.
 5. Keep lazy workspace initialization and reload throttling aligned with docs.
 6. Keep reset, simulation, and repair behavior aligned across Flutter and SQL.
-7. Keep Phase 9 isolated: deterministic daily simulation changes economy
+7. Do not treat bot cooldowns, distress gating, or autonomous timing as parity
+   bugs by default; those are intentional policy differences unless the shared
+   mutation side effects drift again.
+8. Keep Phase 9 isolated: deterministic daily simulation changes economy
    semantics and should not be bundled with UI or docs work.
-8. Keep validating the compaction audit RPCs before any live maintenance runs.
-9. Next backend policy step is Phase 16 foundation: player activity tracking,
+9. Keep validating the compaction audit RPCs before any live maintenance runs.
+10. Next backend policy step is Phase 16 foundation: player activity tracking,
    simulation status, and inactive-player audit/reporting.
-10. Finance now separates current balance-sheet state from rolling 30-day ledger
+11. Finance now separates current balance-sheet state from rolling 30-day ledger
     analytics. The backend contract for both human players and bots is
     `get_finance_snapshot()`.
-11. Security hardening is now an active backend track. Do not add new client
+12. Security hardening is now an active backend track. Do not add new client
     RPCs that trust caller-supplied `p_user_id`; future work will bind gameplay
     access to `auth.uid()` and RLS.
-12. The event system (`game_events`) generates time-bounded effects during world
+13. The event system (`game_events`) generates time-bounded effects during world
     ticks. Future event types or UI surfacing should go through the existing
     `generate_game_events` / `deactivate_expired_events` contract.
-13. Aviation depth features (turnaround, crew costs, seasonal demand,
+14. Aviation depth features (turnaround, crew costs, seasonal demand,
     A/C-check milestones, cargo revenue, non-linear degradation) are live in
     the simulation engine. Any simulation formula changes must be reflected in
     both the player and bot processing functions.

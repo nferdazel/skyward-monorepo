@@ -119,10 +119,19 @@ parity is intended.
 - native SQL audit coverage now also asserts player repair writes one
   maintenance ledger row, restores `condition = 100`, and reactivates the
   airframe
-- this closes one concrete accidental asymmetry, but Phase 2 still needs the
-  wider mutation-entrypoint map and explicit documentation for intentional
-  bot-only behavior such as distress gating, cooldowns, and autonomous action
-  timing
+- this closes the currently proven accidental asymmetries in bankruptcy and
+  repair side effects; the remaining Phase 2 task is documenting intentional
+  bot-only behavior so future work does not "fix" designed differences
+
+### Intentional Asymmetries
+
+- bot distress gating and cooldown timers remain bot-only decision policy
+  metadata, not shared player mutation rules
+- bot autonomous action timing remains world-tick driven; player actions remain
+  explicit RPC-triggered mutations from the client
+- bot route growth, pricing posture, and fleet doctrine remain archetype-driven
+  strategy differences, as long as the underlying mutation side effects still
+  flow through shared authoritative helpers where parity is intended
 
 ### Exit Criteria
 
