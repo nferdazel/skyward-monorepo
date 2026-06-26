@@ -83,6 +83,7 @@ Current repo migration set:
 - `22_actor_bankruptcy_parity.sql`
 - `23_actor_repair_helper_parity.sql`
 - `24_finance_snapshot_active_routes.sql`
+- `25_attach_bank_balance_net_worth_trigger.sql`
 
 High-level grouping:
 - `00`-`07`
@@ -91,8 +92,8 @@ High-level grouping:
   Finance stabilization, bank-centric cash, net-worth reconciliation, lease carrying cost
 - `12`-`18`
   Actor parity, servicing, and bot decision-path hardening
-- `19`-`24`
-  Ledger integrity, zero-amount guardrails, player sync safety, bankruptcy parity, shared repair mechanics, and finance snapshot contract truthfulness
+- `19`-`25`
+  Ledger integrity, zero-amount guardrails, player sync safety, bankruptcy parity, shared repair mechanics, finance snapshot contract truthfulness, and missing trigger attachment cleanup
 
 ## Standard Verification
 

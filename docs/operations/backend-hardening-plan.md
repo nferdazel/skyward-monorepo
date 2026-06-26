@@ -91,6 +91,12 @@ simulation, finance, and mutation side effects.
   bank history, onboarding state, and default operating cash restoration
 - live contract drift around `get_finance_snapshot.active_route_count` has now
   been removed by making the function count only active route rows
+- direct trigger proof now covers `create_default_bank_account`,
+  `fleet_reconcile_net_worth`, `trg_bank_balance_reconcile_net_worth`,
+  `trg_loan_reconcile_net_worth`, and `trg_user_hq_change`
+- the linked runtime exposed a real repo gap during this pass:
+  `trg_bank_balance_reconcile_net_worth()` existed as a function, but the
+  trigger attachment on `bank_accounts` was missing until migration `25`
 
 ## Phase 2: Bot / Player Parity Cleanup
 

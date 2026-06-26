@@ -25,6 +25,12 @@ DECLARE
   v_ledger_count INT;
   v_purchase_txn_amount NUMERIC;
   v_reconciled_nw NUMERIC;
+  v_bank_trigger_before_nw NUMERIC;
+  v_bank_trigger_after_nw NUMERIC;
+  v_loan_trigger_before_nw NUMERIC;
+  v_loan_trigger_after_nw NUMERIC;
+  v_fleet_trigger_before_nw NUMERIC;
+  v_fleet_trigger_after_nw NUMERIC;
   v_loan_ok BOOLEAN;
   v_loan_msg TEXT;
   v_loan_cash NUMERIC;
@@ -226,6 +232,29 @@ BEGIN
   ASSERT v_starting_balance = COALESCE(get_config_numeric('starting_cash'), 15000000.00), 'Starting cash balance should match game_config starting_cash';
 
   -- ==========================================================================
+  -- 2A. TEST: direct trigger proof for create_default_bank_account and
+  --     trg_bank_balance_reconcile_net_worth
+  -- ==========================================================================
+
+  SELECT net_worth
+    INTO v_bank_trigger_before_nw
+    FROM users
+   WHERE id = v_user_id;
+
+  UPDATE bank_accounts
+     SET balance = balance + 12345.67
+   WHERE user_id = v_user_id
+     AND account_type = 'operating';
+
+  SELECT net_worth
+    INTO v_bank_trigger_after_nw
+    FROM users
+   WHERE id = v_user_id;
+
+  ASSERT ROUND(COALESCE(v_bank_trigger_after_nw, 0) - COALESCE(v_bank_trigger_before_nw, 0), 2) = 12345.67,
+    'trg_bank_balance_reconcile_net_worth should update users.net_worth when bank_accounts.balance changes';
+
+  -- ==========================================================================
   -- 3. TEST: take_loan RPC & BANK-CENTRIC DISBURSEMENT
   -- ==========================================================================
 
@@ -277,6 +306,27 @@ BEGIN
    LIMIT 1;
 
   ASSERT v_unsecured_loan_id IS NOT NULL, 'Expected active unsecured loan id after take_loan';
+
+  -- ==========================================================================
+  -- 3B. TEST: direct trigger proof for trg_loan_reconcile_net_worth
+  -- ==========================================================================
+
+  SELECT net_worth
+    INTO v_loan_trigger_before_nw
+    FROM users
+   WHERE id = v_user_id;
+
+  UPDATE loans
+     SET remaining_balance = remaining_balance - 1000.00
+   WHERE id = v_unsecured_loan_id;
+
+  SELECT net_worth
+    INTO v_loan_trigger_after_nw
+    FROM users
+   WHERE id = v_user_id;
+
+  ASSERT ROUND(COALESCE(v_loan_trigger_after_nw, 0) - COALESCE(v_loan_trigger_before_nw, 0), 2) = 1000.00,
+    'trg_loan_reconcile_net_worth should update users.net_worth when loan balance changes';
 
   SELECT a.id
     INTO v_auth_user_id
@@ -435,7 +485,28 @@ BEGIN
     'Aircraft purchase transaction amount should match selected model purchase price';
 
   -- ==========================================================================
-  -- 4A. TEST: repair_aircraft RPC & shared repair ledger semantics
+  -- 4A. TEST: direct trigger proof for fleet_reconcile_net_worth
+  -- ==========================================================================
+
+  SELECT net_worth
+    INTO v_fleet_trigger_before_nw
+    FROM users
+   WHERE id = v_user_id;
+
+  UPDATE fleet_aircraft
+     SET condition = 50.00
+   WHERE id = v_fleet_id;
+
+  SELECT net_worth
+    INTO v_fleet_trigger_after_nw
+    FROM users
+   WHERE id = v_user_id;
+
+  ASSERT v_fleet_trigger_after_nw < v_fleet_trigger_before_nw,
+    'fleet_reconcile_net_worth should reduce users.net_worth when owned aircraft condition drops';
+
+  -- ==========================================================================
+  -- 4B. TEST: repair_aircraft RPC & shared repair ledger semantics
   -- ==========================================================================
 
   UPDATE fleet_aircraft

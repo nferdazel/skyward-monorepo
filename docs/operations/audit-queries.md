@@ -327,7 +327,12 @@ SUPABASE_DISABLE_TELEMETRY=1 supabase db query --linked -f test/layer4_database/
 ```
 
 What this currently proves:
-- trigger behavior including `trg_user_hq_change`
+- trigger behavior including:
+  - `create_default_bank_account`
+  - `fleet_reconcile_net_worth`
+  - `trg_bank_balance_reconcile_net_worth`
+  - `trg_loan_reconcile_net_worth`
+  - `trg_user_hq_change`
 - route CRUD RPCs
 - `take_loan`
 - auth-bound `get_credit_report`
