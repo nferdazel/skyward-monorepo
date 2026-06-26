@@ -49,6 +49,7 @@ DECLARE
   v_refi_msg TEXT;
   v_refi_new_rate NUMERIC;
   v_refi_savings NUMERIC;
+  v_refi_zero_tx_count INT;
   
   v_route_id UUID;
   v_route_distance NUMERIC;
@@ -264,6 +265,14 @@ BEGIN
      WHERE id = v_unsecured_loan_id
        AND interest_rate = v_refi_new_rate
   ), 'refinance_loan should persist the new interest rate on the loan row';
+  SELECT COUNT(*)
+    INTO v_refi_zero_tx_count
+    FROM bank_transactions
+   WHERE user_id = v_user_id
+     AND ifrs_subcategory = 'loan_refinance'
+     AND amount = 0;
+  ASSERT v_refi_zero_tx_count = 0,
+    'refinance_loan should not create zero-amount bank ledger rows';
 
   -- ==========================================================================
   -- 4. TEST: purchase_aircraft RPC & BUY MATH

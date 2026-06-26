@@ -201,7 +201,8 @@ void main() {
           ..creditReportToReturn = _creditReportMap
           ..creditHistoryToReturn = [_creditHistoryRow]
           ..aircraftFinancingToReturn = [_financingLoanMap]
-          ..bankAccountsToReturn = [_bankAccount];
+          ..bankAccountsToReturn = [_bankAccount]
+          ..bankTransactionsToReturn = [_bankTransaction];
         return BankCubit(gateway: gateway);
       },
       act: (cubit) => cubit.loadBankData('user-1'),
@@ -223,6 +224,7 @@ void main() {
               17500000.0,
             )
             .having((s) => s.activeLoanCount, 'active loan count', 1)
+            .having((s) => s.transactions.length, 'transactions length', 1)
             .having(
               (s) => s.totalWeeklyPayment,
               'total weekly payment',
@@ -251,7 +253,7 @@ void main() {
     );
 
     blocTest<BankCubit, BankState>(
-      'takeLoan emits success state and reloads loans plus credit report',
+      'takeLoan emits success state and refreshes visible bank balances and transactions',
       build: () {
         final gateway = MockBankGateway()
           ..takeLoanResponse = [
@@ -262,7 +264,9 @@ void main() {
             },
           ]
           ..loansToReturn = [_loanMap]
-          ..creditReportToReturn = _creditReportMap;
+          ..creditReportToReturn = _creditReportMap
+          ..bankAccountsToReturn = [_bankAccount]
+          ..bankTransactionsToReturn = [_bankTransaction];
         return BankCubit(gateway: gateway);
       },
       act: (cubit) => cubit.takeLoan(250000.0, 52),
@@ -272,7 +276,9 @@ void main() {
             .having((s) => s.message, 'message', 'Loan approved.')
             .having((s) => s.newCash, 'newCash', 18250000.0)
             .having((s) => s.loans.length, 'loans length', 1)
-            .having((s) => s.creditReport?.creditTier, 'credit tier', 'Gold'),
+            .having((s) => s.creditReport?.creditTier, 'credit tier', 'Gold')
+            .having((s) => s.accounts.length, 'accounts length', 1)
+            .having((s) => s.transactions.length, 'transactions length', 1),
       ],
     );
 
@@ -389,7 +395,7 @@ void main() {
         const BankLoading(),
         isA<BankLoaded>()
             .having((s) => s.loans.length, 'initial loans length', 1)
-            .having((s) => s.transactions, 'initial transactions', isEmpty),
+            .having((s) => s.transactions.length, 'initial transactions length', 1),
         isA<BankLoaded>()
             .having((s) => s.transactions.length, 'transactions length', 1)
             .having(
