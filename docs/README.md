@@ -31,7 +31,8 @@ Live runtime characteristics:
 - realtime reflection on `users`, `fleet_aircraft`, `route_assignments`,
   `bank_transactions`, `achievements`, and `loans`
 - bank / credit / financing system with shared player-facing and bot-facing policy
-- rollback-style native SQL audits for fleet, routes, finance, and core bank RPCs
+- rollback-style native SQL audits for fleet, routes, finance, settings, core
+  bank RPCs, and direct trigger proof
 - live-proven `delete-account` Edge Function path with end-to-end deletion audit
 
 ## Documentation Layout

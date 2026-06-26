@@ -174,13 +174,16 @@ audits when you need real operational state.
 11. Finance now separates current balance-sheet state from rolling 30-day ledger
     analytics. The backend contract for both human players and bots is
     `get_finance_snapshot()`.
-12. Security hardening is now an active backend track. Do not add new client
+12. `get_finance_snapshot.active_route_count` now reflects only active route
+    rows; if a future change broadens it to total route history, treat that as
+    a contract change and update docs/tests in the same pass.
+13. Security hardening is now an active backend track. Do not add new client
     RPCs that trust caller-supplied `p_user_id`; future work will bind gameplay
     access to `auth.uid()` and RLS.
-13. The event system (`game_events`) generates time-bounded effects during world
+14. The event system (`game_events`) generates time-bounded effects during world
     ticks. Future event types or UI surfacing should go through the existing
     `generate_game_events` / `deactivate_expired_events` contract.
-14. Aviation depth features (turnaround, crew costs, seasonal demand,
+15. Aviation depth features (turnaround, crew costs, seasonal demand,
     A/C-check milestones, cargo revenue, non-linear degradation) are live in
     the simulation engine. Any simulation formula changes must be reflected in
     both the player and bot processing functions.

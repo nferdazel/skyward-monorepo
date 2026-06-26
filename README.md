@@ -23,6 +23,8 @@ Last verified against code, docs, and linked live audit state on `2026-06-26`.
   - `bank_transactions` is canonical money trail
 - auth-bound gameplay RPC wrappers using `auth.uid()`
 - live-proven account bootstrap and delete-account flows
+- native SQL audit now proves core fleet, route, finance, settings, and
+  trigger paths against the linked database
 - human and bot actors sharing the same authoritative simulation rules where intended
 
 ## Core features
