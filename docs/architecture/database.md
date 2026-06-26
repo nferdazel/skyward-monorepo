@@ -81,6 +81,8 @@ Important fields:
 Operational rule:
 - purchases, loan disbursements, repayments, maintenance, lease carrying costs,
   and route/simulation financial effects are expected to leave an auditable row here
+- `game_date` is in-game time, not wall-clock time; comparing it directly to
+  real-world timestamps such as `loans.taken_at` is misleading
 
 ### `fleet_aircraft`
 
@@ -128,6 +130,11 @@ Important fields:
 - `monthly_payment`
 - `status`
 - `collateral_aircraft_id`
+
+Operational note:
+- `taken_at` is a real-world origination timestamp
+- related bank-ledger rows such as `loan_disbursement` are stamped with
+  `bank_transactions.game_date`, which follows the shared game calendar
 
 ### `credit_scores`
 
@@ -201,6 +208,11 @@ Important fields:
 ### `achievements`
 
 Player achievement tracking.
+
+Operational note:
+- `unlocked_at` is a real-world write timestamp
+- `game_date` captures the in-game moment the achievement was awarded when the
+  backend provides it
 
 ### `bank_transaction_daily_summary`
 

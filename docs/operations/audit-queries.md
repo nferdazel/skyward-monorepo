@@ -38,6 +38,10 @@ order by account_type;
 
 ## 3. Recent money trail
 
+`bank_transactions.game_date` is in-game time. Do not compare it directly to
+wall-clock fields such as `loans.taken_at` or `achievements.unlocked_at`
+without calling out the clock-domain difference.
+
 ```sql
 select
   game_date,
@@ -120,6 +124,10 @@ where r.user_id = '<your_user_id>'
 
 ## 7. Loan book
 
+`loans.taken_at` is a real-world origination timestamp. The matching
+`loan_disbursement` ledger row lives in `bank_transactions.game_date`, which
+uses the shared game calendar instead.
+
 ```sql
 select
   id,
@@ -135,6 +143,25 @@ select
 from loans
 where user_id = '<your_user_id>'
 order by taken_at desc;
+```
+
+Cross-check one loan against its cash movement without mixing clocks blindly:
+
+```sql
+select
+  l.id as loan_id,
+  l.principal,
+  l.taken_at as loan_taken_at_real_time,
+  bt.amount as ledger_amount,
+  bt.game_date as ledger_game_time,
+  bt.description
+from loans l
+left join bank_transactions bt
+  on bt.user_id = l.user_id
+ and bt.ifrs_subcategory = 'loan_disbursement'
+ and bt.amount = l.principal
+where l.user_id = '<your_user_id>'
+order by l.taken_at desc, bt.game_date desc nulls last;
 ```
 
 ## 8. Current credit state
@@ -154,6 +181,23 @@ select
 from credit_score_history
 where user_id = '<your_user_id>'
 order by game_date desc nulls last, calculated_at desc nulls last
+limit 20;
+```
+
+## 9b. Achievement history clock audit
+
+`achievements.game_date` is the in-game award time when present.
+`achievements.unlocked_at` is the real-world write time.
+
+```sql
+select
+  achievement_type,
+  achievement_name,
+  game_date as achievement_game_time,
+  unlocked_at as achievement_written_at_real_time
+from achievements
+where user_id = '<your_user_id>'
+order by game_date desc nulls last, unlocked_at desc
 limit 20;
 ```
 

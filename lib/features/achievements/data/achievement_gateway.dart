@@ -22,6 +22,8 @@ class SupabaseAchievementGateway implements AchievementGateway {
   @override
   Future<List<dynamic>> loadAchievements(String userId) async {
     try {
+      // Prefer in-game chronology when present, then fall back to the wall-clock
+      // insert time so achievement history does not drift across clock domains.
       return await SupabaseManager.client
           .from('achievements')
           .select(
@@ -29,6 +31,7 @@ class SupabaseAchievementGateway implements AchievementGateway {
             'unlocked_at, game_date',
           )
           .eq('user_id', userId)
+          .order('game_date', ascending: false, nullsFirst: false)
           .order('unlocked_at', ascending: false);
     } on PostgrestException catch (e) {
       SupabaseManager.logRpcFailure(

@@ -31,4 +31,9 @@ class AppFormatters {
     }
     return value.toStringAsFixed(0);
   }
+
+  /// Short real-world date-time label for UI metadata.
+  static String shortDateTime(DateTime value) {
+    return DateFormat('d MMM yyyy, HH:mm').format(value.toLocal());
+  }
 }

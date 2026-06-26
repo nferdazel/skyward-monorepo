@@ -337,8 +337,15 @@ class BankPanel extends StatelessWidget {
         if (transactions.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.md),
           Text(
-            'RECENT TRANSACTIONS',
+            'RECENT TRANSACTIONS · IN-GAME TIME',
             style: AppTypography.microLabel.copyWith(
+              color: AppTheme.textMuted,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Loan records use real-time origination stamps; ledger rows use the game calendar.',
+            style: AppTypography.captionLight.copyWith(
               color: AppTheme.textMuted,
             ),
           ),
@@ -607,6 +614,15 @@ class _LoanCard extends StatelessWidget {
                 ),
               ],
             ),
+            if (loan.takenAt != null) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                'Opened ${AppFormatters.shortDateTime(loan.takenAt!)} · real time',
+                style: AppTypography.captionLight.copyWith(
+                  color: AppTheme.textMuted,
+                ),
+              ),
+            ],
             const SizedBox(height: AppSpacing.sm),
             SizedBox(
               width: double.infinity,

@@ -194,6 +194,19 @@ This is the live Flutter-to-Supabase contract surface.
   - leaves season bootstrap and actor-start-time enforcement to existing
     `users` insert triggers
 
+### Table-read surfaces
+
+`achievements`
+- caller: `AchievementCubit.loadAchievements()` through `SupabaseAchievementGateway`
+- selected fields:
+  - `id`, `user_id`, `achievement_type`, `achievement_name`, `description`
+  - `unlocked_at`
+  - `game_date`
+- current behavior:
+  - sorts first by `game_date desc nulls last` to preserve in-game chronology
+  - breaks ties with `unlocked_at desc` as a real-time fallback
+  - still exposes both timestamps because they belong to different clock domains
+
 ### Simulation helpers
 
 `haversine_distance`
@@ -438,6 +451,9 @@ This is the live Flutter-to-Supabase contract surface.
   - auth-bound wrapper resolves player from `auth.uid()`
   - validates credit tier, active-loan limits, and policy eligibility
   - creates loan record and disburses funds into `bank_accounts`
+  - stores the loan row's `taken_at` in real time, while the matching
+    `loan_disbursement` ledger row is stamped with the player's in-game
+    `users.game_current_time`
 
 `get_credit_report`
 - caller: `BankCubit.loadCreditReport()`
