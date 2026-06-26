@@ -206,6 +206,9 @@ limit 20;
 
 ## 10. World-clock lag check for one player
 
+`u.game_current_time` and `s.current_game_time` are in-game clocks.
+This query does not measure wall-clock scheduler latency.
+
 ```sql
 select
   u.id,
@@ -235,6 +238,9 @@ from get_world_tick_guardrail_report();
 ```
 
 ## 13. Scheduler health report
+
+`current_game_time` is the in-game season clock.
+`season_last_tick_at` and `latest_log_started_at` are real-world scheduler timestamps.
 
 ```sql
 select *
@@ -267,6 +273,8 @@ limit 20;
 ```
 
 ## 15. Active world events
+
+`start_game_time` and `end_game_time` are in-game activation windows.
 
 ```sql
 select

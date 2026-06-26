@@ -30,6 +30,36 @@ Linked live schema currently exposes these public tables:
 
 ## Core authority model
 
+## Clock Domain Map
+
+Use this when deciding whether a timestamp should be shown to players, treated
+as backend audit metadata, or compared against another field.
+
+Frontend-facing game chronology:
+- `users.game_current_time`
+- `season_clock.current_game_time`
+- `bank_transactions.game_date`
+- `credit_score_history.game_date`
+- `world_tick_log.game_time_before`
+- `world_tick_log.game_time_after`
+- `game_events.start_game_time`
+- `game_events.end_game_time`
+- `achievements.game_date` when present
+
+Real-time backend or ops metadata:
+- `season_clock.last_tick_at`
+- `world_tick_log.started_at`
+- `world_tick_log.finished_at`
+- `credit_score_history.computed_at`
+- `loans.taken_at`
+- `achievements.unlocked_at`
+- generic row metadata such as `created_at` / `updated_at`
+
+Current product rule:
+- player-facing chronology should default to in-game timestamps
+- real-time timestamps are acceptable in the product only as clearly labeled
+  metadata, not as the main gameplay timeline
+
 ### `users`
 
 Primary human-player actor record.
@@ -172,6 +202,10 @@ Important fields:
 - `tick_interval_seconds`
 - `status`
 
+Operational note:
+- `current_game_time` is the shared in-game world clock
+- `last_tick_at` is the real-world timestamp of the latest successful backend tick
+
 ### `world_tick_log`
 
 Operational audit trail for world-tick attempts.
@@ -214,6 +248,10 @@ Important fields:
 - `start_game_time`
 - `end_game_time`
 - `is_active`
+
+Operational note:
+- `start_game_time` and `end_game_time` are in-game activation bounds, not
+  wall-clock schedule timestamps
 
 ### `achievements`
 

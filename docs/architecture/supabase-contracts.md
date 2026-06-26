@@ -127,6 +127,8 @@ This is the live Flutter-to-Supabase contract surface.
   - reports player/bot lag or ahead counts against `season_clock`
   - reports backwards successful world-tick logs
   - reports recent successful world-tick activity
+  - compares actors on the in-game clock (`users.game_current_time` against
+    `season_clock.current_game_time`), not against wall-clock time
 
 `get_database_size_report`
 - caller: backend audit / operations checks

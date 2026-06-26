@@ -62,7 +62,7 @@ If a reset user is already in a bad ledger state:
 
 ## Event system
 
-Active events modify simulation economics in real time:
+Active events modify simulation economics on the in-game clock:
 - `fuel_price` events change the global fuel cost multiplier
 - `demand_index` events change passenger demand at specific airports
 - `airport_tax` events change landing fees globally
