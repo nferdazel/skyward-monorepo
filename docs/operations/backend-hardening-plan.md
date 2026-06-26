@@ -30,7 +30,7 @@ Current emphasis:
 | Finance historical surfaces | 7.0/10 | High |
 | Auth / ownership / RLS | 8.0/10 | Medium |
 | Ops / audit surfaces | 8.0/10 | Medium |
-| Tests / proof coverage | 7.0/10 | High |
+| Tests / proof coverage | 8.0/10 | Medium |
 | Docs / contract accuracy | 7.5/10 | Medium-High |
 
 ## Execution Order
@@ -63,6 +63,7 @@ simulation, finance, and mutation side effects.
 - [x] assert no-op sync paths do not emit cash or ledger side effects
 - [x] assert route/fleet mutations produce the expected finance side effects
 - [x] assert credit/loan lifecycle leaves the expected ledger and balance state
+- [x] execute app-facing read and settings RPCs in native SQL audit coverage
 - [x] convert placeholder or shallow backend-related tests into real assertions
 
 ### Suggested Deliverables
@@ -75,8 +76,22 @@ simulation, finance, and mutation side effects.
 ### Exit Criteria
 
 - core simulation and finance mutations have behavioral audit coverage
+- app-facing read and settings RPCs are exercised against the real database
 - no-op and edge-case paths are asserted, not assumed
 - known recent regressions are permanently covered by tests
+
+### Current Progress
+
+- native SQL audit now executes app-facing read surfaces:
+  `get_finance_snapshot`, `get_global_leaderboard`,
+  `get_competitor_insights`, and `get_owner_route_optimizer`
+- native SQL audit now executes auth-bound settings wrappers:
+  `save_airline_settings` and `reset_user_airline`
+- reset coverage now proves deletion/reset semantics for fleet, routes, loans,
+  bank history, onboarding state, and default operating cash restoration
+- live audit also exposed one contract nuance worth keeping documented:
+  `get_finance_snapshot.active_route_count` currently reflects the total
+  `route_assignments` row count for the actor, not only rows with active status
 
 ## Phase 2: Bot / Player Parity Cleanup
 

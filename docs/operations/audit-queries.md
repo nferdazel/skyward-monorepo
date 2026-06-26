@@ -333,6 +333,14 @@ What this currently proves:
 - auth-bound `get_credit_report`
 - auth-bound `repay_loan`
 - auth-bound `refinance_loan`
+- auth-bound `get_finance_snapshot`
+- `get_global_leaderboard`
+- `get_competitor_insights`
+- `get_owner_route_optimizer`
+- auth-bound `save_airline_settings`
+- auth-bound `reset_user_airline`
+- reset semantics for fleet, routes, loans, bank history, onboarding, and
+  default operating balance restoration
 
 ## 20. Finance / credit regression audit
 
