@@ -81,6 +81,7 @@ Current repo migration set:
 - `20_credit_and_zero_amount_guardrails.sql`
 - `21_player_sim_zero_interval_guard.sql`
 - `22_actor_bankruptcy_parity.sql`
+- `23_actor_repair_helper_parity.sql`
 
 High-level grouping:
 - `00`-`07`
@@ -89,8 +90,8 @@ High-level grouping:
   Finance stabilization, bank-centric cash, net-worth reconciliation, lease carrying cost
 - `12`-`18`
   Actor parity, servicing, and bot decision-path hardening
-- `19`-`22`
-  Ledger integrity, zero-amount guardrails, player sync safety, and bankruptcy parity
+- `19`-`23`
+  Ledger integrity, zero-amount guardrails, player sync safety, bankruptcy parity, and shared repair mechanics
 
 ## Standard Verification
 

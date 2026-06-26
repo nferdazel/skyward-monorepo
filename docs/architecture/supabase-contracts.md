@@ -341,6 +341,8 @@ This is the live Flutter-to-Supabase contract surface.
 - current behavior:
   - Flutter now calls an auth-bound wrapper that resolves the player row from
     `auth.uid()`
+  - authoritative repair mechanics now flow through the same internal helper
+    that bot paid-recovery uses
   - restores the airframe to 100%
   - repair pricing now matches the client display model
   - leased and owned aircraft use different cost bases
@@ -616,7 +618,8 @@ The app also depends indirectly on backend jobs that are not called as standalon
   - idle-aircraft route deployment
   - distance-stage and demand-aware route selection by archetype
   - contribution-based distress route cutbacks
-  - paid bot repair recovery for grounded airframes
+  - paid bot repair recovery for grounded airframes now shares the same
+    authoritative repair helper used by player repairs
   - reserve-aware expansion gates tied to active lease burden
   - premium cabin seat distributions per archetype
   - competitive response pricing on shared O-D routes

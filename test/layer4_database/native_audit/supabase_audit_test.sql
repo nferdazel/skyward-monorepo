@@ -55,6 +55,14 @@ DECLARE
   v_route_distance NUMERIC;
   v_route_ok BOOLEAN;
   v_route_msg VARCHAR;
+  v_repair_ok BOOLEAN;
+  v_repair_msg VARCHAR;
+  v_repair_before_cash NUMERIC;
+  v_repair_after_cash NUMERIC;
+  v_repair_condition NUMERIC;
+  v_repair_status VARCHAR;
+  v_repair_tx_before INT;
+  v_repair_tx_after INT;
   v_aircraft_status VARCHAR;
   v_old_tail_number VARCHAR;
   v_new_tail_number VARCHAR;
@@ -374,7 +382,54 @@ BEGIN
     'Aircraft purchase transaction amount should match selected model purchase price';
 
   -- ==========================================================================
-  -- 4A. TEST: no-op simulation sync should not emit zero-amount ledger rows
+  -- 4A. TEST: repair_aircraft RPC & shared repair ledger semantics
+  -- ==========================================================================
+
+  UPDATE fleet_aircraft
+     SET condition = 82.50,
+         status = 'grounded'
+   WHERE id = v_fleet_id;
+
+  SELECT balance
+    INTO v_repair_before_cash
+    FROM bank_accounts
+   WHERE user_id = v_user_id
+     AND account_type = 'operating';
+
+  SELECT COUNT(*)
+    INTO v_repair_tx_before
+    FROM bank_transactions
+   WHERE user_id = v_user_id
+     AND ifrs_subcategory = 'maintenance';
+
+  SELECT success, message, new_cash
+    INTO v_repair_ok, v_repair_msg, v_repair_after_cash
+    FROM repair_aircraft(v_user_id, v_fleet_id);
+
+  ASSERT v_repair_ok = TRUE, 'repair_aircraft failed: ' || COALESCE(v_repair_msg, 'no message');
+
+  SELECT condition, status
+    INTO v_repair_condition, v_repair_status
+    FROM fleet_aircraft
+   WHERE id = v_fleet_id;
+
+  SELECT COUNT(*)
+    INTO v_repair_tx_after
+    FROM bank_transactions
+   WHERE user_id = v_user_id
+     AND ifrs_subcategory = 'maintenance';
+
+  ASSERT v_repair_condition = 100.00,
+    'repair_aircraft should restore the airframe condition to 100%';
+  ASSERT v_repair_status = 'active',
+    'repair_aircraft should reactivate the repaired airframe';
+  ASSERT v_repair_after_cash < v_repair_before_cash,
+    'repair_aircraft should reduce operating cash';
+  ASSERT v_repair_tx_after = v_repair_tx_before + 1,
+    'repair_aircraft should append exactly one maintenance ledger row';
+
+  -- ==========================================================================
+  -- 4B. TEST: no-op simulation sync should not emit zero-amount ledger rows
   -- ==========================================================================
 
   SELECT COUNT(*)

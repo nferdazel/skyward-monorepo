@@ -107,11 +107,22 @@ parity is intended.
   only flipped `users.operational_status` and cancelled routes
 - `apply_actor_bankruptcy_state(user_id)` is now the shared helper target for
   both paths, reducing another economy-affecting rule fork
+- `process_actor_day_boundary()` now also routes 30-day negative-cash
+  bankruptcy through that same helper, so bankruptcy side effects do not vary
+  by entrypoint
+- daily loan servicing already runs through shared `process_actor_day_boundary()`;
+  the remaining meaningful servicing drift was repair recovery, not collections
+- player `repair_aircraft()` and bot paid repair recovery now share one
+  internal repair helper for pricing, ledger writes, and fleet-state updates
 - native SQL audit coverage now asserts that player bankruptcy also grounds
   fleet, defaults active loans, and cancels active routes
+- native SQL audit coverage now also asserts player repair writes one
+  maintenance ledger row, restores `condition = 100`, and reactivates the
+  airframe
 - this closes one concrete accidental asymmetry, but Phase 2 still needs the
   wider mutation-entrypoint map and explicit documentation for intentional
-  bot-only behavior
+  bot-only behavior such as distress gating, cooldowns, and autonomous action
+  timing
 
 ### Exit Criteria
 
