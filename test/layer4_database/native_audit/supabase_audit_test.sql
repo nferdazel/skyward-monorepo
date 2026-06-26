@@ -97,6 +97,41 @@ DECLARE
   v_health_latest_ticks_processed INT;
   v_health_scheduler_job_exists BOOLEAN;
   v_health_scheduler_job_active BOOLEAN;
+  v_finance_actor_id UUID;
+  v_finance_company_name VARCHAR;
+  v_finance_cash NUMERIC;
+  v_finance_net_worth NUMERIC;
+  v_finance_fleet_count INT;
+  v_finance_active_route_count INT;
+  v_finance_rolling_revenue NUMERIC;
+  v_finance_rolling_expense NUMERIC;
+  v_finance_rolling_net NUMERIC;
+  v_finance_ledger_window_days INT;
+  v_leaderboard_company_name VARCHAR;
+  v_leaderboard_cash NUMERIC;
+  v_leaderboard_net_worth NUMERIC;
+  v_leaderboard_status VARCHAR;
+  v_insight_company_name VARCHAR;
+  v_insight_ceo_name VARCHAR;
+  v_insight_cash NUMERIC;
+  v_insight_net_worth NUMERIC;
+  v_insight_status VARCHAR;
+  v_insight_fleet_breakdown JSONB;
+  v_insight_network_routes JSONB;
+  v_optimizer_aircraft_id UUID;
+  v_optimizer_route_origin VARCHAR;
+  v_optimizer_route_destination VARCHAR;
+  v_optimizer_weekly_contribution NUMERIC;
+  v_settings_ok BOOLEAN;
+  v_settings_msg VARCHAR;
+  v_reset_ok BOOLEAN;
+  v_reset_msg TEXT;
+  v_reset_balance NUMERIC;
+  v_reset_company_name VARCHAR;
+  v_reset_hq_airport_iata VARCHAR;
+  v_reset_threshold NUMERIC;
+  v_reset_operational_status VARCHAR;
+  v_reset_onboarding_completed BOOLEAN;
   v_active_season_id UUID;
   v_active_season_time TIMESTAMPTZ;
   v_zero_tx_before INT;
@@ -813,6 +848,189 @@ BEGIN
     'get_world_tick_scheduler_health should report the scheduler job as existing in linked runtime';
   ASSERT COALESCE(v_health_scheduler_job_active, FALSE) = TRUE,
     'get_world_tick_scheduler_health should report the scheduler job as active in linked runtime';
+
+  -- ==========================================================================
+  -- 8D. TEST: read-surface and settings RPC coverage
+  -- ==========================================================================
+
+  SELECT actor_id,
+         company_name,
+         cash,
+         net_worth,
+         fleet_count,
+         active_route_count,
+         rolling_revenue_30d,
+         rolling_expense_30d,
+         rolling_net_30d,
+         ledger_window_days
+    INTO v_finance_actor_id,
+         v_finance_company_name,
+         v_finance_cash,
+         v_finance_net_worth,
+         v_finance_fleet_count,
+         v_finance_active_route_count,
+         v_finance_rolling_revenue,
+         v_finance_rolling_expense,
+         v_finance_rolling_net,
+         v_finance_ledger_window_days
+    FROM get_finance_snapshot()
+   LIMIT 1;
+
+  ASSERT v_finance_actor_id = v_user_id,
+    'get_finance_snapshot should resolve the authenticated audit user';
+  ASSERT v_finance_company_name IS NOT NULL,
+    'get_finance_snapshot should expose the company name';
+  ASSERT ROUND(COALESCE(v_finance_cash, 0), 2) = ROUND(COALESCE(get_user_balance(v_user_id), 0), 2),
+    'get_finance_snapshot cash should match the canonical bank balance';
+  ASSERT ROUND(COALESCE(v_finance_net_worth, 0), 2) = ROUND(COALESCE(calculate_user_net_worth(v_user_id), 0), 2),
+    'get_finance_snapshot net_worth should match the canonical net-worth helper';
+  ASSERT COALESCE(v_finance_fleet_count, 0) >= 1,
+    'get_finance_snapshot should expose a non-zero fleet count for the audit user';
+  ASSERT COALESCE(v_finance_active_route_count, 0) = (
+    SELECT COUNT(*)
+      FROM route_assignments
+     WHERE user_id = v_user_id
+  ),
+    'get_finance_snapshot active_route_count should match the current route_assignments row count';
+  ASSERT ROUND(COALESCE(v_finance_rolling_net, 0), 2) = ROUND(COALESCE(v_finance_rolling_revenue, 0) - COALESCE(v_finance_rolling_expense, 0), 2),
+    'get_finance_snapshot rolling_net_30d should equal rolling revenue minus rolling expense';
+  ASSERT COALESCE(v_finance_ledger_window_days, 0) = 30,
+    'get_finance_snapshot should expose the 30-day ledger window';
+
+  SELECT company_name,
+         cash,
+         net_worth,
+         status
+    INTO v_leaderboard_company_name,
+         v_leaderboard_cash,
+         v_leaderboard_net_worth,
+         v_leaderboard_status
+    FROM get_global_leaderboard()
+   WHERE id = v_user_id
+   LIMIT 1;
+
+  ASSERT v_leaderboard_company_name IS NOT NULL,
+    'get_global_leaderboard should include the audit user row';
+  ASSERT ROUND(COALESCE(v_leaderboard_cash, 0), 2) = ROUND(COALESCE(get_user_balance(v_user_id), 0), 2),
+    'get_global_leaderboard cash should match the canonical bank balance';
+  ASSERT ROUND(COALESCE(v_leaderboard_net_worth, 0), 2) = ROUND(COALESCE(calculate_user_net_worth(v_user_id), 0), 2),
+    'get_global_leaderboard net_worth should match the canonical helper';
+  ASSERT v_leaderboard_status = 'Bankrupt',
+    'get_global_leaderboard should reflect the latest operational_status';
+
+  SELECT company_name,
+         ceo_name,
+         cash,
+         net_worth,
+         status,
+         fleet_breakdown,
+         network_routes
+    INTO v_insight_company_name,
+         v_insight_ceo_name,
+         v_insight_cash,
+         v_insight_net_worth,
+         v_insight_status,
+         v_insight_fleet_breakdown,
+         v_insight_network_routes
+    FROM get_competitor_insights(v_user_id, FALSE)
+   LIMIT 1;
+
+  ASSERT v_insight_company_name = v_leaderboard_company_name,
+    'get_competitor_insights should expose the same company name as the leaderboard row';
+  ASSERT v_insight_ceo_name IS NOT NULL,
+    'get_competitor_insights should expose CEO name';
+  ASSERT ROUND(COALESCE(v_insight_cash, 0), 2) = ROUND(COALESCE(get_user_balance(v_user_id), 0), 2),
+    'get_competitor_insights cash should match the canonical bank balance';
+  ASSERT ROUND(COALESCE(v_insight_net_worth, 0), 2) = ROUND(COALESCE(v_leaderboard_net_worth, 0), 2),
+    'get_competitor_insights net_worth should match leaderboard net worth';
+  ASSERT v_insight_status = 'Bankrupt',
+    'get_competitor_insights should expose the latest operational status';
+  ASSERT jsonb_typeof(COALESCE(v_insight_fleet_breakdown, '{}'::jsonb)) = 'object',
+    'get_competitor_insights fleet_breakdown should be a JSON object';
+  ASSERT jsonb_typeof(COALESCE(v_insight_network_routes, '[]'::jsonb)) = 'array',
+    'get_competitor_insights network_routes should be a JSON array';
+
+  SELECT aircraft_id,
+         route_origin_iata,
+         route_destination_iata,
+         weekly_contribution
+    INTO v_optimizer_aircraft_id,
+         v_optimizer_route_origin,
+         v_optimizer_route_destination,
+         v_optimizer_weekly_contribution
+    FROM get_owner_route_optimizer(v_user_id, 'CGK', 'SIN', 5, FALSE, TRUE)
+   LIMIT 1;
+
+  ASSERT v_optimizer_aircraft_id IS NOT NULL,
+    'get_owner_route_optimizer should return at least one route candidate for the audit fleet';
+  ASSERT v_optimizer_route_origin = 'CGK',
+    'get_owner_route_optimizer should honor the requested origin airport';
+  ASSERT v_optimizer_route_destination = 'SIN',
+    'get_owner_route_optimizer should honor the requested destination airport';
+  ASSERT COALESCE(v_optimizer_weekly_contribution, 0) <> 0,
+    'get_owner_route_optimizer should return a non-zero weekly contribution estimate';
+
+  SELECT success, message
+    INTO v_settings_ok, v_settings_msg
+    FROM save_airline_settings('Audit Chief Holdings', 35.00, 'CGK');
+
+  ASSERT v_settings_ok = TRUE,
+    'save_airline_settings wrapper failed: ' || COALESCE(v_settings_msg, 'no message');
+  ASSERT EXISTS (
+    SELECT 1
+      FROM users
+     WHERE id = v_user_id
+       AND company_name = 'Audit Chief Holdings'
+       AND auto_grounding_threshold = 35.00
+       AND hq_airport_iata = 'CGK'
+  ), 'save_airline_settings should persist company name, threshold, and HQ changes';
+
+  SELECT success, message
+    INTO v_reset_ok, v_reset_msg
+    FROM reset_user_airline();
+
+  ASSERT v_reset_ok = TRUE,
+    'reset_user_airline wrapper failed: ' || COALESCE(v_reset_msg, 'no message');
+
+  SELECT balance
+    INTO v_reset_balance
+    FROM bank_accounts
+   WHERE user_id = v_user_id
+     AND account_type = 'operating';
+
+  SELECT company_name,
+         hq_airport_iata,
+         auto_grounding_threshold,
+         operational_status,
+         onboarding_completed
+    INTO v_reset_company_name,
+         v_reset_hq_airport_iata,
+         v_reset_threshold,
+         v_reset_operational_status,
+         v_reset_onboarding_completed
+    FROM users
+   WHERE id = v_user_id;
+
+  ASSERT ROUND(COALESCE(v_reset_balance, 0), 2) = 15000000.00,
+    'reset_user_airline should restore the starting operating cash balance';
+  ASSERT NOT EXISTS (SELECT 1 FROM fleet_aircraft WHERE user_id = v_user_id),
+    'reset_user_airline should delete the user fleet';
+  ASSERT NOT EXISTS (SELECT 1 FROM route_assignments WHERE user_id = v_user_id),
+    'reset_user_airline should delete route assignments';
+  ASSERT NOT EXISTS (SELECT 1 FROM loans WHERE user_id = v_user_id),
+    'reset_user_airline should delete all loan rows';
+  ASSERT NOT EXISTS (SELECT 1 FROM bank_transactions WHERE user_id = v_user_id),
+    'reset_user_airline should delete bank transaction history';
+  ASSERT v_reset_company_name = 'Audit Chief Holdings',
+    'reset_user_airline should preserve the latest company name';
+  ASSERT v_reset_hq_airport_iata = 'SIN',
+    'reset_user_airline should restore the default HQ airport';
+  ASSERT v_reset_threshold = 40.00,
+    'reset_user_airline should restore the default grounding threshold';
+  ASSERT v_reset_operational_status = 'Active',
+    'reset_user_airline should restore the active operational status';
+  ASSERT COALESCE(v_reset_onboarding_completed, TRUE) = FALSE,
+    'reset_user_airline should reset onboarding completion state';
 
   -- ==========================================================================
   -- 9. TEST: RECONCILE NET WORTH TRIGGERS
