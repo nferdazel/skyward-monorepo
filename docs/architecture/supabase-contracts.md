@@ -156,7 +156,7 @@ This is the live Flutter-to-Supabase contract surface.
   - Flutter now calls an auth-bound wrapper for the current human player
   - returns current balance-sheet values (`cash`, `net_worth`)
   - returns owned-aircraft asset value and leased monthly exposure
-  - returns fleet count and deployed-route footprint
+  - returns fleet count and active-route footprint
   - returns rolling 30-day revenue, expense, and net values
   - supports both human players and AI competitors through one shared contract
 

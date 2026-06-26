@@ -339,6 +339,9 @@ What this currently proves:
 - `get_owner_route_optimizer`
 - auth-bound `save_airline_settings`
 - auth-bound `reset_user_airline`
+- auth-bound `configure_aircraft_seats`
+- auth-bound `sell_aircraft`
+- auth-bound `terminate_aircraft_lease`
 - reset semantics for fleet, routes, loans, bank history, onboarding, and
   default operating balance restoration
 

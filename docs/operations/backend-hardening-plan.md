@@ -89,9 +89,8 @@ simulation, finance, and mutation side effects.
   `save_airline_settings` and `reset_user_airline`
 - reset coverage now proves deletion/reset semantics for fleet, routes, loans,
   bank history, onboarding state, and default operating cash restoration
-- live audit also exposed one contract nuance worth keeping documented:
-  `get_finance_snapshot.active_route_count` currently reflects the total
-  `route_assignments` row count for the actor, not only rows with active status
+- live contract drift around `get_finance_snapshot.active_route_count` has now
+  been removed by making the function count only active route rows
 
 ## Phase 2: Bot / Player Parity Cleanup
 

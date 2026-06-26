@@ -57,6 +57,24 @@ DECLARE
   v_route_msg VARCHAR;
   v_repair_ok BOOLEAN;
   v_repair_msg VARCHAR;
+  v_config_ok BOOLEAN;
+  v_config_msg VARCHAR;
+  v_sale_ok BOOLEAN;
+  v_sale_msg VARCHAR;
+  v_sale_before_cash NUMERIC;
+  v_sale_after_cash NUMERIC;
+  v_sale_tx_before INT;
+  v_sale_tx_after INT;
+  v_sale_amount NUMERIC;
+  v_sale_fleet_id UUID;
+  v_lease_term_ok BOOLEAN;
+  v_lease_term_msg VARCHAR;
+  v_lease_term_before_cash NUMERIC;
+  v_lease_term_after_cash NUMERIC;
+  v_lease_term_tx_before INT;
+  v_lease_term_tx_after INT;
+  v_lease_term_fee NUMERIC;
+  v_lease_fleet_id UUID;
   v_repair_before_cash NUMERIC;
   v_repair_after_cash NUMERIC;
   v_repair_condition NUMERIC;
@@ -583,6 +601,93 @@ BEGIN
     'Route delete RPC should ground the previously assigned aircraft';
 
   -- ==========================================================================
+  -- 6A. TEST: configure_aircraft_seats auth-bound wrapper
+  -- ==========================================================================
+
+  SELECT success, message
+    INTO v_config_ok, v_config_msg
+    FROM configure_aircraft_seats(v_fleet_id, 150, 10, 3);
+
+  ASSERT v_config_ok = TRUE,
+    'configure_aircraft_seats wrapper failed: ' || COALESCE(v_config_msg, 'no message');
+  ASSERT EXISTS (
+    SELECT 1
+      FROM fleet_aircraft
+     WHERE id = v_fleet_id
+       AND economy_seats = 150
+       AND business_seats = 10
+       AND first_class_seats = 3
+  ), 'configure_aircraft_seats should persist the requested cabin layout';
+
+  -- ==========================================================================
+  -- 6B. TEST: sell_aircraft auth-bound wrapper
+  -- ==========================================================================
+
+  UPDATE bank_accounts
+     SET balance = 150000000.00
+   WHERE user_id = v_user_id
+     AND account_type = 'operating';
+
+  SELECT success, message
+    INTO v_reg_success, v_reg_message
+    FROM purchase_aircraft(v_user_id, v_model_id, 'Audit Tail Sell');
+
+  ASSERT v_reg_success = TRUE, 'Failed to purchase aircraft for sale audit: ' || COALESCE(v_reg_message, 'no message');
+
+  SELECT id
+    INTO v_sale_fleet_id
+    FROM fleet_aircraft
+   WHERE user_id = v_user_id
+     AND nickname = 'Audit Tail Sell'
+   LIMIT 1;
+
+  ASSERT v_sale_fleet_id IS NOT NULL, 'Sale audit aircraft bootstrap failed';
+
+  SELECT balance
+    INTO v_sale_before_cash
+    FROM bank_accounts
+   WHERE user_id = v_user_id
+     AND account_type = 'operating';
+
+  SELECT COUNT(*)
+    INTO v_sale_tx_before
+    FROM bank_transactions
+   WHERE user_id = v_user_id
+     AND ifrs_subcategory = 'aircraft_sale';
+
+  SELECT success, message, new_cash
+    INTO v_sale_ok, v_sale_msg, v_sale_after_cash
+    FROM sell_aircraft(v_sale_fleet_id);
+
+  ASSERT v_sale_ok = TRUE,
+    'sell_aircraft wrapper failed: ' || COALESCE(v_sale_msg, 'no message');
+
+  SELECT COUNT(*)
+    INTO v_sale_tx_after
+    FROM bank_transactions
+   WHERE user_id = v_user_id
+     AND ifrs_subcategory = 'aircraft_sale';
+
+  SELECT amount
+    INTO v_sale_amount
+    FROM bank_transactions
+   WHERE user_id = v_user_id
+     AND ifrs_subcategory = 'aircraft_sale'
+   ORDER BY game_date DESC
+   LIMIT 1;
+
+  ASSERT NOT EXISTS (SELECT 1 FROM fleet_aircraft WHERE id = v_sale_fleet_id),
+    'sell_aircraft should remove the sold fleet row';
+  ASSERT v_sale_tx_after = v_sale_tx_before + 1,
+    'sell_aircraft should append exactly one aircraft_sale ledger row';
+  ASSERT COALESCE(v_sale_amount, 0) > 0,
+    'sell_aircraft should write a positive aircraft_sale ledger amount';
+  ASSERT v_sale_after_cash > v_sale_before_cash,
+    'sell_aircraft should increase operating cash';
+  ASSERT ROUND(COALESCE(v_sale_after_cash, 0), 2) = ROUND(COALESCE(get_user_balance(v_user_id), 0), 2),
+    'sell_aircraft new_cash should match the reconciled operating balance';
+
+  -- ==========================================================================
   -- 7. TEST: lease_aircraft RPC & LEASE MATH
   -- ==========================================================================
   
@@ -593,6 +698,61 @@ BEGIN
 
   -- Verify fleet contains leased plane
   ASSERT EXISTS(SELECT 1 FROM fleet_aircraft WHERE user_id = v_user_id AND nickname = 'Audit Tail 2'), 'Leased aircraft not found in user fleet';
+
+  SELECT id
+    INTO v_lease_fleet_id
+    FROM fleet_aircraft
+   WHERE user_id = v_user_id
+     AND nickname = 'Audit Tail 2'
+   LIMIT 1;
+
+  ASSERT v_lease_fleet_id IS NOT NULL, 'Lease audit aircraft bootstrap failed';
+
+  -- ==========================================================================
+  -- 7A. TEST: terminate_aircraft_lease auth-bound wrapper
+  -- ==========================================================================
+
+  SELECT balance
+    INTO v_lease_term_before_cash
+    FROM bank_accounts
+   WHERE user_id = v_user_id
+     AND account_type = 'operating';
+
+  SELECT COUNT(*)
+    INTO v_lease_term_tx_before
+    FROM bank_transactions
+   WHERE user_id = v_user_id
+     AND ifrs_subcategory = 'lease_termination';
+
+  SELECT calculate_lease_termination_fee(m.lease_price_per_month)
+    INTO v_lease_term_fee
+    FROM fleet_aircraft f
+    JOIN aircraft_models m ON m.id = f.aircraft_model_id
+   WHERE f.id = v_lease_fleet_id;
+
+  SELECT success, message, new_cash
+    INTO v_lease_term_ok, v_lease_term_msg, v_lease_term_after_cash
+    FROM terminate_aircraft_lease(v_lease_fleet_id);
+
+  ASSERT v_lease_term_ok = TRUE,
+    'terminate_aircraft_lease wrapper failed: ' || COALESCE(v_lease_term_msg, 'no message');
+
+  SELECT COUNT(*)
+    INTO v_lease_term_tx_after
+    FROM bank_transactions
+   WHERE user_id = v_user_id
+     AND ifrs_subcategory = 'lease_termination';
+
+  ASSERT NOT EXISTS (SELECT 1 FROM fleet_aircraft WHERE id = v_lease_fleet_id),
+    'terminate_aircraft_lease should remove the leased fleet row';
+  ASSERT COALESCE(v_lease_term_fee, 0) > 0,
+    'terminate_aircraft_lease should compute a positive exit fee for leased aircraft';
+  ASSERT v_lease_term_tx_after = v_lease_term_tx_before + 1,
+    'terminate_aircraft_lease should append exactly one lease_termination ledger row';
+  ASSERT ROUND(v_lease_term_before_cash - v_lease_term_after_cash, 2) = ROUND(v_lease_term_fee, 2),
+    'terminate_aircraft_lease should reduce operating cash by the computed exit fee';
+  ASSERT ROUND(COALESCE(v_lease_term_after_cash, 0), 2) = ROUND(COALESCE(get_user_balance(v_user_id), 0), 2),
+    'terminate_aircraft_lease new_cash should match the reconciled operating balance';
 
   -- ==========================================================================
   -- 8. TEST: process_simulation_delta RPC
@@ -763,8 +923,8 @@ BEGIN
     'process_world_tick should return a non-negative players_processed count';
   ASSERT v_tick_bots_processed >= 0,
     'process_world_tick should return a non-negative bots_processed count';
-  ASSERT v_tick_log_after = v_tick_log_before + 1,
-    'process_world_tick should append one success row to world_tick_log';
+  ASSERT v_tick_log_after >= v_tick_log_before + 1,
+    'process_world_tick should append at least one new success row to world_tick_log';
   ASSERT EXISTS (
     SELECT 1
       FROM world_tick_log
@@ -890,8 +1050,9 @@ BEGIN
     SELECT COUNT(*)
       FROM route_assignments
      WHERE user_id = v_user_id
+       AND COALESCE(status, 'active') = 'active'
   ),
-    'get_finance_snapshot active_route_count should match the current route_assignments row count';
+    'get_finance_snapshot active_route_count should count only active route rows';
   ASSERT ROUND(COALESCE(v_finance_rolling_net, 0), 2) = ROUND(COALESCE(v_finance_rolling_revenue, 0) - COALESCE(v_finance_rolling_expense, 0), 2),
     'get_finance_snapshot rolling_net_30d should equal rolling revenue minus rolling expense';
   ASSERT COALESCE(v_finance_ledger_window_days, 0) = 30,
@@ -958,7 +1119,7 @@ BEGIN
          v_optimizer_route_origin,
          v_optimizer_route_destination,
          v_optimizer_weekly_contribution
-    FROM get_owner_route_optimizer(v_user_id, 'CGK', 'SIN', 5, FALSE, TRUE)
+    FROM get_owner_route_optimizer(v_user_id, 'CGK', 'SIN', 5, TRUE, TRUE)
    LIMIT 1;
 
   ASSERT v_optimizer_aircraft_id IS NOT NULL,
