@@ -29,10 +29,10 @@ Last verified against code, docs, and linked live audit state on `2026-06-26`.
 
 - fleet acquisition, repair, seat configuration, and disposal
 - route planning, pricing, assignment, and schedule management
-- current finance snapshots plus rolling operating analytics
+- current finance snapshot plus rolling operating analytics
 - bank transaction history as the live financial activity surface
 - bank/loan system with credit scoring and aircraft financing
-- achievements system with rank history tracking
+- achievements system with backend-driven unlock tracking
 - AI competitor leaderboard with Intel panel
 - backend world-tick simulation and actor reconciliation
 - notification panel with typed alerts (info, success, warning, error, event)

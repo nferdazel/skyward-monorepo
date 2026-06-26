@@ -46,7 +46,7 @@ gateway. There are nine gateways in total:
 | `LeaderboardGateway` | `get_global_leaderboard`, `get_competitor_insights` |
 | `SettingsGateway` | `reset_user_airline`, `save_airline_settings`, `delete-account` |
 | `BankGateway` | `take_loan`, `get_credit_report`, `repay_loan`, `refinance_loan`, `finance_aircraft` |
-| `AchievementGateway` | achievement tracking and rank history reads |
+| `AchievementGateway` | achievement tracking reads |
 
 Each gateway defines an abstract interface and a `Supabase*Gateway`
 implementation. This makes Cubits testable with mock gateways.
@@ -120,7 +120,8 @@ Recent work tightened:
 - notification panel widget for in-app game event alerts
 - onboarding overlay for first-time player guidance
 - help tooltip widget for contextual inline explanations
-- financial snapshots power historical trend charts in the Finance tab
+- Finance historical charting currently falls back to a single current
+  net-worth point until a real historical finance-snapshot surface exists
 - bank/credit native SQL audit now proves `take_loan`, `repay_loan`,
   `refinance_loan`, and `get_credit_report`
 - delete-account now has a live-proven end-to-end audit script

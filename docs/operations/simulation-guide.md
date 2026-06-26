@@ -103,5 +103,4 @@ Loan payments are processed at game-day boundaries during `process_player_simula
 Achievements are evaluated at game-day boundaries during simulation processing:
 - progress values are updated based on current player state (fleet size, route count, net worth, etc.)
 - achievements unlock when progress meets the threshold
-- rank history snapshots are recorded at each game-day boundary
 - unlocked achievements may gate future progression milestones

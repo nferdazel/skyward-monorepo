@@ -85,7 +85,8 @@ This is the live Flutter-to-Supabase contract surface.
   - computes cargo revenue (10% of ticket revenue, distance-scaled)
   - uses non-linear degradation (accelerating wear below 60% condition)
   - computes catch-up subsidy for players < 30% of leader net worth
-  - records daily `financial_snapshots` at game-day boundaries
+  - no live public `financial_snapshots` read surface is currently exposed to
+    Flutter; finance history falls back to a single current net-worth point
 
 `process_all_bots_simulation_to_time`
 - caller: `process_world_tick`
