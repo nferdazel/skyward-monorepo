@@ -62,6 +62,8 @@ DECLARE
   v_updated_frequency INT;
   v_sim_success BOOLEAN;
   v_sim_message VARCHAR;
+  v_zero_tx_before INT;
+  v_zero_tx_after INT;
 -- ==========================================================================
 -- 1. SETUP SEED DATA
 -- ==========================================================================
@@ -153,6 +155,14 @@ BEGIN
      AND loan_type = 'unsecured';
 
   ASSERT v_active_loan_count = 1, 'Expected one active unsecured loan after take_loan';
+  ASSERT EXISTS (
+    SELECT 1
+      FROM bank_transactions
+     WHERE user_id = v_user_id
+       AND ifrs_subcategory = 'loan_disbursement'
+       AND transaction_type = 'credit'
+       AND ROUND(amount, 2) = 250000.00
+  ), 'take_loan should write a loan_disbursement credit row';
 
   SELECT id
     INTO v_unsecured_loan_id
@@ -315,6 +325,30 @@ BEGIN
 
   ASSERT ROUND(COALESCE(v_purchase_txn_amount, 0), 2) = ROUND(COALESCE(v_model_purchase_price, 0), 2),
     'Aircraft purchase transaction amount should match selected model purchase price';
+
+  -- ==========================================================================
+  -- 4A. TEST: no-op simulation sync should not emit zero-amount ledger rows
+  -- ==========================================================================
+
+  SELECT COUNT(*)
+    INTO v_zero_tx_before
+    FROM bank_transactions
+   WHERE user_id = v_user_id
+     AND amount = 0;
+
+  PERFORM *
+    FROM process_player_simulation_to_time(v_user_id, (
+      SELECT game_current_time FROM users WHERE id = v_user_id
+    ));
+
+  SELECT COUNT(*)
+    INTO v_zero_tx_after
+    FROM bank_transactions
+   WHERE user_id = v_user_id
+     AND amount = 0;
+
+  ASSERT v_zero_tx_after = v_zero_tx_before,
+    'process_player_simulation_to_time should not write zero-amount ledger rows for no-op intervals';
 
   -- ==========================================================================
   -- 5. TEST: HQ change trigger syncs tail-number prefixes
