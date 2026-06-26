@@ -62,12 +62,37 @@ DECLARE
   v_updated_frequency INT;
   v_sim_success BOOLEAN;
   v_sim_message VARCHAR;
+  v_delta_elapsed_days NUMERIC;
+  v_delta_flights_run INT;
+  v_delta_noop_elapsed_days NUMERIC;
+  v_delta_noop_flights_run INT;
+  v_season_id UUID;
+  v_season_before TIMESTAMPTZ;
+  v_season_after TIMESTAMPTZ;
+  v_user_after TIMESTAMPTZ;
+  v_tick_processed INT;
+  v_tick_players_processed INT;
+  v_tick_bots_processed INT;
+  v_tick_game_time_after TIMESTAMPTZ;
+  v_tick_log_before INT;
+  v_tick_log_after INT;
+  v_active_season_id UUID;
+  v_active_season_time TIMESTAMPTZ;
   v_zero_tx_before INT;
   v_zero_tx_after INT;
 -- ==========================================================================
 -- 1. SETUP SEED DATA
 -- ==========================================================================
 BEGIN
+  SELECT id, current_game_time
+    INTO v_active_season_id, v_active_season_time
+    FROM season_clock
+   WHERE status = 'active'
+   ORDER BY created_at ASC
+   LIMIT 1;
+
+  ASSERT v_active_season_id IS NOT NULL, 'Expected one active season for database audit bootstrap.';
+
   -- Create or retrieve a test aircraft model
   SELECT id, purchase_price
     INTO v_model_id, v_model_purchase_price
@@ -186,6 +211,11 @@ BEGIN
 
   ASSERT v_auth_user_id IS NOT NULL,
     'Expected at least one unmapped auth.users row for auth-bound wrapper audit';
+
+  UPDATE users
+     SET season_id = v_active_season_id,
+         game_current_time = v_active_season_time
+   WHERE id = v_user_id;
 
   UPDATE users
      SET auth_user_id = v_auth_user_id
@@ -472,17 +502,116 @@ BEGIN
   -- Run simulation delta
   UPDATE users SET game_current_time = '2020-01-02 00:00:00+00' WHERE id = v_user_id;
 
+  SELECT season_id, game_current_time
+    INTO v_season_id, v_season_before
+    FROM users
+   WHERE id = v_user_id;
+
+  ASSERT v_season_id IS NOT NULL, 'Audit user should have an active season_id before simulation sync';
+  ASSERT v_season_before IS NOT NULL, 'Audit user should have a game_current_time before simulation sync';
+
   -- Trigger sync engine
   -- This executes the Pl/pgSQL delta engine logic covering ticket sales, fuel cost, airport tax and maintenance math
   BEGIN
     SELECT TRUE, 'Success' INTO v_sim_success, v_sim_message;
-    PERFORM process_simulation_delta(v_user_id);
+    SELECT elapsed_game_days, flights_run
+      INTO v_delta_elapsed_days, v_delta_flights_run
+      FROM process_simulation_delta(v_user_id)
+     LIMIT 1;
   EXCEPTION WHEN OTHERS THEN
     v_sim_success := FALSE;
     v_sim_message := SQLERRM;
   END;
 
   ASSERT v_sim_success = TRUE, 'process_simulation_delta threw an exception: ' || v_sim_message;
+
+  SELECT current_game_time
+    INTO v_season_after
+    FROM season_clock
+   WHERE id = v_season_id;
+
+  SELECT game_current_time
+    INTO v_user_after
+    FROM users
+   WHERE id = v_user_id;
+
+  ASSERT v_season_after IS NOT NULL, 'Active season clock should exist after simulation sync';
+  ASSERT v_user_after = v_season_after,
+    'process_simulation_delta should catch the player up to season_clock.current_game_time';
+  ASSERT COALESCE(v_delta_elapsed_days, 0) > 0,
+    'process_simulation_delta should report positive elapsed_game_days when the player lags behind';
+  ASSERT COALESCE(v_delta_flights_run, 0) >= 0,
+    'process_simulation_delta should return a non-negative flights_run count';
+
+  SELECT elapsed_game_days, flights_run
+    INTO v_delta_noop_elapsed_days, v_delta_noop_flights_run
+    FROM process_simulation_delta(v_user_id)
+   LIMIT 1;
+
+  SELECT game_current_time
+    INTO v_user_after
+    FROM users
+   WHERE id = v_user_id;
+
+  ASSERT v_user_after = v_season_after,
+    'A no-op process_simulation_delta call should not move the player beyond season time';
+  ASSERT COALESCE(v_delta_noop_elapsed_days, 0) = 0,
+    'A no-op process_simulation_delta call should report zero elapsed_game_days';
+  ASSERT COALESCE(v_delta_noop_flights_run, 0) = 0,
+    'A no-op process_simulation_delta call should report zero flights_run';
+
+  -- ==========================================================================
+  -- 8A. TEST: process_world_tick backend scheduler invariant
+  -- ==========================================================================
+
+  SELECT current_game_time
+    INTO v_season_before
+    FROM season_clock
+   WHERE id = v_season_id;
+
+  SELECT COUNT(*)
+    INTO v_tick_log_before
+    FROM world_tick_log
+   WHERE season_id = v_season_id
+     AND status = 'success';
+
+  SELECT ticks_processed, game_time_after, players_processed, bots_processed
+    INTO v_tick_processed, v_tick_game_time_after, v_tick_players_processed, v_tick_bots_processed
+    FROM process_world_tick(v_season_id, 1)
+   LIMIT 1;
+
+  SELECT current_game_time
+    INTO v_season_after
+    FROM season_clock
+   WHERE id = v_season_id;
+
+  SELECT COUNT(*)
+    INTO v_tick_log_after
+    FROM world_tick_log
+   WHERE season_id = v_season_id
+     AND status = 'success';
+
+  ASSERT COALESCE(v_tick_processed, 0) = 1,
+    'process_world_tick should report one processed tick';
+  ASSERT v_tick_game_time_after IS NOT NULL,
+    'process_world_tick should return a non-null game_time_after';
+  ASSERT v_tick_game_time_after > v_season_before,
+    'process_world_tick should advance the in-game season clock';
+  ASSERT v_season_after = v_tick_game_time_after,
+    'season_clock.current_game_time should match process_world_tick.game_time_after';
+  ASSERT v_tick_players_processed >= 0,
+    'process_world_tick should return a non-negative players_processed count';
+  ASSERT v_tick_bots_processed >= 0,
+    'process_world_tick should return a non-negative bots_processed count';
+  ASSERT v_tick_log_after = v_tick_log_before + 1,
+    'process_world_tick should append one success row to world_tick_log';
+  ASSERT EXISTS (
+    SELECT 1
+      FROM world_tick_log
+     WHERE season_id = v_season_id
+       AND status = 'success'
+       AND game_time_after = v_tick_game_time_after
+  ), 'process_world_tick should write a success world_tick_log row for the advanced game_time_after';
 
   -- ==========================================================================
   -- 9. TEST: RECONCILE NET WORTH TRIGGERS
