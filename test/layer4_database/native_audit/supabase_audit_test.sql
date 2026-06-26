@@ -76,6 +76,19 @@ DECLARE
   v_tick_game_time_after TIMESTAMPTZ;
   v_tick_log_before INT;
   v_tick_log_after INT;
+  v_guardrail_active_status TEXT;
+  v_guardrail_lag_status TEXT;
+  v_guardrail_ahead_status TEXT;
+  v_guardrail_backwards_status TEXT;
+  v_guardrail_recent_status TEXT;
+  v_health_season_status VARCHAR;
+  v_health_current_game_time TIMESTAMPTZ;
+  v_health_season_last_tick_at TIMESTAMPTZ;
+  v_health_latest_log_started_at TIMESTAMPTZ;
+  v_health_latest_log_status VARCHAR;
+  v_health_latest_ticks_processed INT;
+  v_health_scheduler_job_exists BOOLEAN;
+  v_health_scheduler_job_active BOOLEAN;
   v_active_season_id UUID;
   v_active_season_time TIMESTAMPTZ;
   v_zero_tx_before INT;
@@ -612,6 +625,82 @@ BEGIN
        AND status = 'success'
        AND game_time_after = v_tick_game_time_after
   ), 'process_world_tick should write a success world_tick_log row for the advanced game_time_after';
+
+  -- ==========================================================================
+  -- 8B. TEST: world-tick observability RPCs
+  -- ==========================================================================
+
+  SELECT check_status
+    INTO v_guardrail_active_status
+    FROM get_world_tick_guardrail_report()
+   WHERE check_name = 'active_season_exists';
+
+  SELECT check_status
+    INTO v_guardrail_lag_status
+    FROM get_world_tick_guardrail_report()
+   WHERE check_name = 'actors_not_lagging';
+
+  SELECT check_status
+    INTO v_guardrail_ahead_status
+    FROM get_world_tick_guardrail_report()
+   WHERE check_name = 'actors_not_ahead';
+
+  SELECT check_status
+    INTO v_guardrail_backwards_status
+    FROM get_world_tick_guardrail_report()
+   WHERE check_name = 'no_backwards_world_ticks';
+
+  SELECT check_status
+    INTO v_guardrail_recent_status
+    FROM get_world_tick_guardrail_report()
+   WHERE check_name = 'recent_successful_world_tick';
+
+  ASSERT v_guardrail_active_status = 'pass',
+    'get_world_tick_guardrail_report should report an active season';
+  ASSERT v_guardrail_lag_status IN ('pass', 'fail'),
+    'get_world_tick_guardrail_report should emit actors_not_lagging status';
+  ASSERT v_guardrail_ahead_status IN ('pass', 'fail'),
+    'get_world_tick_guardrail_report should emit actors_not_ahead status';
+  ASSERT v_guardrail_backwards_status IN ('pass', 'fail'),
+    'get_world_tick_guardrail_report should emit no_backwards_world_ticks status';
+  ASSERT v_guardrail_recent_status IN ('pass', 'warn'),
+    'get_world_tick_guardrail_report should emit a recent_successful_world_tick status';
+
+  SELECT season_status,
+         current_game_time,
+         season_last_tick_at,
+         latest_log_started_at,
+         latest_log_status,
+         latest_ticks_processed,
+         scheduler_job_exists,
+         scheduler_job_active
+    INTO v_health_season_status,
+         v_health_current_game_time,
+         v_health_season_last_tick_at,
+         v_health_latest_log_started_at,
+         v_health_latest_log_status,
+         v_health_latest_ticks_processed,
+         v_health_scheduler_job_exists,
+         v_health_scheduler_job_active
+    FROM get_world_tick_scheduler_health()
+   LIMIT 1;
+
+  ASSERT v_health_season_status = 'active',
+    'get_world_tick_scheduler_health should report the active season';
+  ASSERT v_health_current_game_time = v_season_after,
+    'get_world_tick_scheduler_health current_game_time should match season_clock.current_game_time';
+  ASSERT v_health_season_last_tick_at IS NOT NULL,
+    'get_world_tick_scheduler_health should expose season_last_tick_at';
+  ASSERT v_health_latest_log_started_at IS NOT NULL,
+    'get_world_tick_scheduler_health should expose the latest world_tick_log timestamp';
+  ASSERT v_health_latest_log_status = 'success',
+    'get_world_tick_scheduler_health should report the latest successful tick status after process_world_tick';
+  ASSERT COALESCE(v_health_latest_ticks_processed, 0) = 1,
+    'get_world_tick_scheduler_health should report the latest tick count';
+  ASSERT COALESCE(v_health_scheduler_job_exists, FALSE) = TRUE,
+    'get_world_tick_scheduler_health should report the scheduler job as existing in linked runtime';
+  ASSERT COALESCE(v_health_scheduler_job_active, FALSE) = TRUE,
+    'get_world_tick_scheduler_health should report the scheduler job as active in linked runtime';
 
   -- ==========================================================================
   -- 9. TEST: RECONCILE NET WORTH TRIGGERS
