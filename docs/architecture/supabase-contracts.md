@@ -208,6 +208,17 @@ This is the live Flutter-to-Supabase contract surface.
   - breaks ties with `unlocked_at desc` as a real-time fallback
   - still exposes both timestamps because they belong to different clock domains
 
+`credit_score_history`
+- caller: `BankCubit.loadCreditHistory()` through `SupabaseBankGateway`
+- selected fields:
+  - `score`, factor-score columns
+  - `game_date`
+- current behavior:
+  - sorts by `game_date desc`
+  - treats `game_date` as the in-game chronology used by the client
+  - leaves real-time `computed_at` as backend audit metadata rather than a
+    client ordering field
+
 ### Simulation helpers
 
 `haversine_distance`

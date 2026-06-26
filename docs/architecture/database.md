@@ -154,7 +154,12 @@ Important fields:
 - `user_id`
 - `score`
 - factor scores
-- `game_date` / historical timestamp fields used by the client history view
+- `game_date`
+- `computed_at`
+
+Operational note:
+- `game_date` is the in-game scoring date used by the client history view
+- `computed_at` is the real-world timestamp when the backend wrote the snapshot
 
 ### `season_clock`
 

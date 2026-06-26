@@ -175,12 +175,15 @@ where user_id = '<your_user_id>';
 
 ## 9. Credit score history
 
+`credit_score_history.game_date` is the in-game scoring date.
+`credit_score_history.computed_at` is the real-world write timestamp.
+
 ```sql
 select
   *
 from credit_score_history
 where user_id = '<your_user_id>'
-order by game_date desc nulls last, calculated_at desc nulls last
+order by game_date desc nulls last, computed_at desc nulls last
 limit 20;
 ```
 
