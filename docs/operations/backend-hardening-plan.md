@@ -100,6 +100,19 @@ parity is intended.
 - [ ] add regression coverage for each parity fix
 - [ ] document intentional asymmetries explicitly
 
+### Current Progress
+
+- player and bot bankruptcy paths were proven divergent in live repo code:
+  bot bankruptcy grounded fleet and defaulted loans, while player bankruptcy
+  only flipped `users.operational_status` and cancelled routes
+- `apply_actor_bankruptcy_state(user_id)` is now the shared helper target for
+  both paths, reducing another economy-affecting rule fork
+- native SQL audit coverage now asserts that player bankruptcy also grounds
+  fleet, defaults active loans, and cancels active routes
+- this closes one concrete accidental asymmetry, but Phase 2 still needs the
+  wider mutation-entrypoint map and explicit documentation for intentional
+  bot-only behavior
+
 ### Exit Criteria
 
 - shared rules use shared helper layers where appropriate

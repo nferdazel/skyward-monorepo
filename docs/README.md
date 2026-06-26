@@ -76,16 +76,21 @@ Current repo migration set:
 - `15_acquisition_progression_rebalance.sql`
 - `16_bot_humanization_inertia.sql`
 - `17_bot_decision_tick_alignment.sql`
+- `18_actor_parity_mutation_helpers.sql`
+- `19_finance_ledger_integrity.sql`
+- `20_credit_and_zero_amount_guardrails.sql`
+- `21_player_sim_zero_interval_guard.sql`
+- `22_actor_bankruptcy_parity.sql`
 
 High-level grouping:
 - `00`-`07`
   Baseline schema plus early correctness fixes
 - `08`-`11`
   Finance stabilization, bank-centric cash, net-worth reconciliation, lease carrying cost
-- `12`-`15`
-  Actor parity, credit-policy unification, acquisition progression rebalance
-- `16`-`17`
-  Bot humanization inertia and decision-tick alignment
+- `12`-`18`
+  Actor parity, servicing, and bot decision-path hardening
+- `19`-`22`
+  Ledger integrity, zero-amount guardrails, player sync safety, and bankruptcy parity
 
 ## Standard Verification
 

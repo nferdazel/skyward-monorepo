@@ -93,6 +93,10 @@ DECLARE
   v_active_season_time TIMESTAMPTZ;
   v_zero_tx_before INT;
   v_zero_tx_after INT;
+  v_bankruptcy_threshold NUMERIC;
+  v_route_status VARCHAR;
+  v_loan_status VARCHAR;
+  v_remaining_balance NUMERIC;
 -- ==========================================================================
 -- 1. SETUP SEED DATA
 -- ==========================================================================
@@ -574,7 +578,60 @@ BEGIN
     'A no-op process_simulation_delta call should report zero flights_run';
 
   -- ==========================================================================
-  -- 8A. TEST: process_world_tick backend scheduler invariant
+  -- 8A. TEST: player bankruptcy applies full actor side effects
+  -- ==========================================================================
+
+  SELECT COALESCE(get_config_numeric('bankruptcy_cash_threshold'), -5000000.00)
+    INTO v_bankruptcy_threshold;
+
+  ASSERT v_unsecured_loan_id IS NOT NULL, 'Expected active loan id before bankruptcy parity audit';
+  ASSERT v_route_id IS NOT NULL, 'Expected active route id before bankruptcy parity audit';
+  ASSERT v_fleet_id IS NOT NULL, 'Expected active fleet id before bankruptcy parity audit';
+
+  UPDATE bank_accounts
+     SET balance = v_bankruptcy_threshold - 1
+   WHERE user_id = v_user_id
+     AND account_type = 'operating';
+
+  PERFORM *
+    FROM process_player_simulation_to_time(
+      v_user_id,
+      (SELECT game_current_time + INTERVAL '1 hour' FROM users WHERE id = v_user_id)
+    );
+
+  SELECT operational_status
+    INTO v_route_msg
+    FROM users
+   WHERE id = v_user_id;
+
+  SELECT status
+    INTO v_aircraft_status
+    FROM fleet_aircraft
+   WHERE id = v_fleet_id;
+
+  SELECT status
+    INTO v_route_status
+    FROM route_assignments
+   WHERE id = v_route_id;
+
+  SELECT status, remaining_balance
+    INTO v_loan_status, v_remaining_balance
+    FROM loans
+   WHERE id = v_unsecured_loan_id;
+
+  ASSERT v_route_msg = 'Bankrupt',
+    'Player bankruptcy should mark the user operational_status as Bankrupt';
+  ASSERT v_aircraft_status = 'grounded',
+    'Player bankruptcy should ground fleet aircraft just like the bot path';
+  ASSERT v_route_status = 'cancelled',
+    'Player bankruptcy should cancel active routes just like the bot path';
+  ASSERT v_loan_status = 'defaulted',
+    'Player bankruptcy should default active loans just like the bot path';
+  ASSERT ROUND(COALESCE(v_remaining_balance, -1), 2) = 0,
+    'Player bankruptcy should zero remaining_balance for defaulted loans';
+
+  -- ==========================================================================
+  -- 8B. TEST: process_world_tick backend scheduler invariant
   -- ==========================================================================
 
   SELECT current_game_time
@@ -627,7 +684,7 @@ BEGIN
   ), 'process_world_tick should write a success world_tick_log row for the advanced game_time_after';
 
   -- ==========================================================================
-  -- 8B. TEST: world-tick observability RPCs
+  -- 8C. TEST: world-tick observability RPCs
   -- ==========================================================================
 
   SELECT check_status
