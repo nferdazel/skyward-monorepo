@@ -22,8 +22,13 @@ DECLARE
   v_finance_loan_id UUID;
   v_finance_weekly NUMERIC;
   v_finance_monthly NUMERIC;
+  v_finance_balance_before NUMERIC;
+  v_finance_balance_after NUMERIC;
   v_finance_deposit_rows INT;
   v_finance_deposit_amount NUMERIC;
+  v_financing_payment_rows INT;
+  v_financing_payment_amount NUMERIC;
+  v_financing_late_fee_rows INT;
   v_owned_assets NUMERIC;
   v_open_debt NUMERIC;
   v_cash NUMERIC;
@@ -118,6 +123,11 @@ BEGIN
        AND amount = 0
   ), 'finance_aircraft should not write zero-amount aircraft_purchase_deposit rows';
 
+  SELECT remaining_balance
+    INTO v_finance_balance_before
+    FROM loans
+   WHERE id = v_finance_loan_id;
+
   -- ------------------------------------------------------------------------
   -- 2. Net worth must equal cash + owned assets - open debt.
   -- ------------------------------------------------------------------------
@@ -179,6 +189,11 @@ BEGIN
    WHERE user_id = v_user_id
      AND account_type = 'operating';
 
+  SELECT remaining_balance
+    INTO v_finance_balance_after
+    FROM loans
+   WHERE id = v_finance_loan_id;
+
   SELECT COUNT(*), COALESCE(SUM(ABS(amount)), 0)
     INTO v_idle_lease_rows, v_idle_lease_amount
     FROM bank_transactions
@@ -188,6 +203,34 @@ BEGIN
   ASSERT v_idle_lease_rows > 0, 'Idle lease carrying cost row was not written.';
   ASSERT v_idle_lease_amount > 0, 'Idle lease carrying cost amount must be positive.';
   ASSERT v_lease_cash_after < v_lease_cash_before, 'Idle lease carrying cost should reduce cash.';
+  ASSERT v_finance_balance_after < v_finance_balance_before,
+    'Simulation should reduce aircraft financing remaining_balance when cash is sufficient.';
+
+  SELECT COUNT(*), COALESCE(SUM(ABS(amount)), 0)
+    INTO v_financing_payment_rows, v_financing_payment_amount
+    FROM bank_transactions
+   WHERE user_id = v_user_id
+     AND ifrs_subcategory = 'financing_payment';
+
+  SELECT COUNT(*)
+    INTO v_financing_late_fee_rows
+    FROM bank_transactions
+   WHERE user_id = v_user_id
+     AND ifrs_subcategory = 'financing_late_fee';
+
+  ASSERT v_financing_payment_rows > 0,
+    'Simulation should write at least one financing_payment ledger row.';
+  ASSERT v_financing_payment_amount > 0,
+    'financing_payment ledger amount must be positive.';
+  ASSERT v_financing_late_fee_rows = 0,
+    'Aircraft financing should not accrue late fees when the audit user has sufficient cash.';
+  ASSERT NOT EXISTS (
+    SELECT 1
+      FROM bank_transactions
+     WHERE user_id = v_user_id
+       AND ifrs_subcategory = 'financing_payment'
+       AND amount = 0
+  ), 'Simulation should not write zero-amount financing_payment rows.';
   ASSERT NOT EXISTS (
     SELECT 1
       FROM bank_transactions

@@ -62,7 +62,7 @@ simulation, finance, and mutation side effects.
 - [x] add player catch-up invariants to SQL audit coverage
 - [x] assert no-op sync paths do not emit cash or ledger side effects
 - [x] assert route/fleet mutations produce the expected finance side effects
-- [ ] assert credit/loan lifecycle leaves the expected ledger and balance state
+- [x] assert credit/loan lifecycle leaves the expected ledger and balance state
 - [x] convert placeholder or shallow backend-related tests into real assertions
 
 ### Suggested Deliverables
