@@ -183,6 +183,11 @@ Important fields:
 - `status`
 - `message`
 
+Operational note:
+- `started_at` and `finished_at` are real-world scheduler timestamps
+- `game_time_before` and `game_time_after` are the in-game clock interval that
+  the tick advanced
+
 ### `bot_profiles`
 
 Backend-only bot behavior state.

@@ -113,7 +113,8 @@ This is the live Flutter-to-Supabase contract surface.
 - params: none
 - current behavior:
   - reports active season clock state
-  - reports latest `world_tick_log` row
+  - reports latest `world_tick_log` row using real-time `started_at`
+    alongside season real-time `last_tick_at`
   - reports whether the `skyward_world_tick` pg_cron job exists and is active
   - runs as a narrow security-definer audit surface so client roles do not need
     direct `cron.job` access

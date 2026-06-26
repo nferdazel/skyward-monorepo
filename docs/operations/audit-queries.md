@@ -240,6 +240,9 @@ from get_world_tick_scheduler_health();
 
 ## 14. Recent world-tick attempts
 
+`started_at` / `finished_at` are wall-clock scheduler times.
+`game_time_before` / `game_time_after` are in-game time boundaries.
+
 ```sql
 select
   season_id,
@@ -247,6 +250,9 @@ select
   finished_at,
   game_time_before,
   game_time_after,
+  extract(epoch from (finished_at - started_at)) as runtime_seconds,
+  extract(epoch from (game_time_after - game_time_before)) / 3600
+    as game_hours_advanced,
   ticks_processed,
   players_processed,
   bots_processed,
