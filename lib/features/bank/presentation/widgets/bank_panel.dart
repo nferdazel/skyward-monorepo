@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -20,6 +21,10 @@ import '../../../../presentation/widgets/app_info_strip.dart';
 import '../../../../presentation/widgets/app_labeled_value.dart';
 import '../../../../presentation/widgets/app_section_header.dart';
 import '../../../../presentation/widgets/app_snackbar.dart';
+import '../../../auth/presentation/cubit/auth_cubit.dart';
+import '../../../auth/presentation/cubit/auth_state.dart';
+import '../../../finance/presentation/cubit/finance_cubit.dart';
+import '../../../simulation/presentation/cubit/simulation_cubit.dart';
 import '../../domain/bank_account_model.dart';
 import '../../domain/bank_transaction_model.dart';
 import '../../domain/credit_report_model.dart';
@@ -40,9 +45,11 @@ class BankPanel extends StatelessWidget {
         }
         if (state is BankLoanSuccess) {
           AppSnackBar.showSuccess(context, state.message);
+          unawaited(_refreshAuthoritativeFinanceState(context));
         }
         if (state is BankRefinanceSuccess) {
           AppSnackBar.showSuccess(context, state.message);
+          unawaited(_refreshAuthoritativeFinanceState(context));
         }
       },
       builder: (context, state) {
@@ -58,6 +65,22 @@ class BankPanel extends StatelessWidget {
         );
       },
     );
+  }
+
+  Future<void> _refreshAuthoritativeFinanceState(BuildContext context) async {
+    final authState = context.read<AuthCubit>().state;
+    if (authState is! AuthAuthenticated) return;
+
+    final userId = authState.user.id;
+    final simCubit = context.read<SimulationCubit>();
+    final bankCubit = context.read<BankCubit>();
+    final financeCubit = context.read<FinanceCubit>();
+
+    await simCubit.syncWithDatabase();
+    await Future.wait([
+      bankCubit.loadBankData(userId, silent: true),
+      financeCubit.loadLedger(userId, silent: true),
+    ]);
   }
 
   // ── Body ────────────────────────────────────────────────────────────────
