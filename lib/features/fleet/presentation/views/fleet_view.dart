@@ -1419,7 +1419,6 @@ class _FleetViewState extends State<FleetView>
     final creditReport = switch (bankState) {
       BankLoaded(:final creditReport) => creditReport,
       BankLoanSuccess(:final creditReport) => creditReport,
-      BankSavingsSuccess(:final creditReport) => creditReport,
       BankRefinanceSuccess(:final creditReport) => creditReport,
       BankError(:final creditReport) => creditReport,
       _ => null,

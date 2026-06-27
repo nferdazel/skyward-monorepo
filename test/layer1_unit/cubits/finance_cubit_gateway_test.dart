@@ -15,7 +15,6 @@ class MockFinanceGateway implements FinanceGateway {
   List<dynamic> transactionsToReturn = [];
   Map<String, dynamic> snapshotToReturn = {};
   List<dynamic> financialSnapshotsToReturn = [];
-  double balanceToReturn = 0.0;
   bool shouldThrowOnTransactions = false;
   bool shouldThrowOnSnapshot = false;
   bool shouldThrowOnFinancialSnapshots = false;
@@ -44,10 +43,6 @@ class MockFinanceGateway implements FinanceGateway {
     return financialSnapshotsToReturn;
   }
 
-  @override
-  Future<double> getUserBalance(String userId) async {
-    return balanceToReturn;
-  }
 }
 
 class TestSimulationCubit extends SimulationCubit {

@@ -16,7 +16,6 @@ abstract class FinanceGateway {
   Future<List<dynamic>> loadTransactions(String userId);
   Future<Map<String, dynamic>> getFinanceSnapshot();
   Future<List<dynamic>> getFinancialSnapshots(String userId);
-  Future<double> getUserBalance(String userId);
 }
 
 class SupabaseFinanceGateway implements FinanceGateway {
@@ -97,26 +96,4 @@ class SupabaseFinanceGateway implements FinanceGateway {
     }
   }
 
-  @override
-  Future<double> getUserBalance(String userId) async {
-    try {
-      final response = await SupabaseManager.client.rpc(
-        'get_user_balance',
-        params: {'p_user_id': userId},
-      );
-      if (response is num) return response.toDouble();
-      if (response is Map && response.containsKey('balance')) {
-        return (response['balance'] as num).toDouble();
-      }
-      return 0.0;
-    } on PostgrestException catch (e) {
-      SupabaseManager.logRpcFailure('get_user_balance', {
-        'p_user_id': userId,
-      }, e.message);
-      throw FinanceGatewayException(e.message, 'getUserBalance');
-    } catch (e, stack) {
-      SupabaseManager.logError('getUserBalance', e, stack);
-      throw FinanceGatewayException(e.toString(), 'getUserBalance');
-    }
-  }
 }

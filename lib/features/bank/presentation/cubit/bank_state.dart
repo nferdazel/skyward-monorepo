@@ -131,18 +131,4 @@ class BankRefinanceSuccess extends BankState {
   });
 }
 
-class BankSavingsSuccess extends BankState {
-  final String message;
-  final List<Loan> loans;
-  final CreditReport? creditReport;
-  final List<BankAccount> accounts;
-  final List<BankTransaction> transactions;
 
-  const BankSavingsSuccess({
-    required this.message,
-    this.loans = const [],
-    this.creditReport,
-    this.accounts = const [],
-    this.transactions = const [],
-  });
-}

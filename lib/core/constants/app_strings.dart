@@ -732,9 +732,6 @@ class AppStrings {
   static const String aircraftFinancingLoadFailed = 'Failed to load aircraft financing.';
   static const String loanRefinanceFailed = 'Failed to refinance loan.';
 
-  // Achievement error messages
-  static const String achievementsLoadFailed = 'Failed to load achievements.';
-
   // Assign dialog
   static const String assignAircraftTitle = 'ASSIGN AIRCRAFT';
   static const String unassignCurrentAircraft = 'Unassign current aircraft';

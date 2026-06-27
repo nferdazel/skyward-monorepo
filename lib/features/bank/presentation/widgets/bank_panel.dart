@@ -96,8 +96,6 @@ class BankPanel extends StatelessWidget {
         hasData ? _buildContent(context, loans, creditReport: creditReport, accounts: accounts, transactions: transactions) : _buildEmptyState(context),
       BankLoanSuccess(:final loans, :final creditReport, :final accounts, :final transactions) =>
         _buildContent(context, loans, creditReport: creditReport, accounts: accounts, transactions: transactions),
-      BankSavingsSuccess(:final loans, :final creditReport, :final accounts, :final transactions) =>
-        _buildContent(context, loans, creditReport: creditReport, accounts: accounts, transactions: transactions),
       BankRefinanceSuccess(:final loans, :final creditReport, :final accounts, :final transactions) =>
         _buildContent(context, loans, creditReport: creditReport, accounts: accounts, transactions: transactions),
       _ => _buildLoading(),
@@ -847,7 +845,6 @@ class _TakeLoanDialogState extends State<_TakeLoanDialog> {
     final creditReport = switch (bankState) {
       BankLoaded(:final creditReport) => creditReport,
       BankLoanSuccess(:final creditReport) => creditReport,
-      BankSavingsSuccess(:final creditReport) => creditReport,
       BankRefinanceSuccess(:final creditReport) => creditReport,
       BankError(:final creditReport) => creditReport,
       _ => null,

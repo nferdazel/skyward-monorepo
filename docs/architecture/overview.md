@@ -33,12 +33,10 @@ Current runtime cubits:
 - `FinanceCubit`
 - `LeaderboardCubit`
 - `LazyTabCubit`
-- `BlueprintPlannerFormCubit`
 - `SettingsCubit`
 - `BankCubit`
 
 Repo-present but not mounted in the active dashboard runtime:
-- `AchievementCubit`
 
 Allowed widget-local state remains limited to lifecycle concerns such as
 controllers, focus nodes, and dialog-local composition.
