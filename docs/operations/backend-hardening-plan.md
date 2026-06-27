@@ -83,7 +83,7 @@ simulation, finance, and mutation side effects.
 ### Current Progress
 
 - native SQL audit now executes app-facing read surfaces:
-  `get_finance_snapshot`, `get_global_leaderboard`,
+  `get_user_balance`, `get_finance_snapshot`, `get_global_leaderboard`,
   `get_competitor_insights`, and `get_owner_route_optimizer`
 - native SQL audit now executes auth-bound settings wrappers:
   `save_airline_settings` and `reset_user_airline`

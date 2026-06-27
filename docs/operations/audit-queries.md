@@ -335,6 +335,7 @@ What this currently proves:
   - `trg_user_hq_change`
 - route CRUD RPCs
 - `take_loan`
+- `get_user_balance`
 - auth-bound `get_credit_report`
 - auth-bound `repay_loan`
 - auth-bound `refinance_loan`

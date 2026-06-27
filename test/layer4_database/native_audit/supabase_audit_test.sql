@@ -27,6 +27,7 @@ DECLARE
   v_reconciled_nw NUMERIC;
   v_bank_trigger_before_nw NUMERIC;
   v_bank_trigger_after_nw NUMERIC;
+  v_bank_trigger_live_balance NUMERIC;
   v_loan_trigger_before_nw NUMERIC;
   v_loan_trigger_after_nw NUMERIC;
   v_fleet_trigger_before_nw NUMERIC;
@@ -251,8 +252,13 @@ BEGIN
     FROM users
    WHERE id = v_user_id;
 
+  SELECT get_user_balance(v_user_id)
+    INTO v_bank_trigger_live_balance;
+
   ASSERT ROUND(COALESCE(v_bank_trigger_after_nw, 0) - COALESCE(v_bank_trigger_before_nw, 0), 2) = 12345.67,
     'trg_bank_balance_reconcile_net_worth should update users.net_worth when bank_accounts.balance changes';
+  ASSERT ROUND(COALESCE(v_bank_trigger_live_balance, 0), 2) = ROUND(COALESCE(v_starting_balance, 0) + 12345.67, 2),
+    'get_user_balance should return the canonical operating account balance';
 
   -- ==========================================================================
   -- 3. TEST: take_loan RPC & BANK-CENTRIC DISBURSEMENT
