@@ -486,7 +486,8 @@ This is the live Flutter-to-Supabase contract surface.
   - auth-bound wrapper resolves player from `auth.uid()`
   - debits the player's operating bank account
   - reduces `loans.remaining_balance`
-  - writes a `bank_transactions` repayment row
+  - writes a `bank_transactions` repayment row stamped with
+    `users.game_current_time`
   - Flutter now follows successful repayment with the same authoritative
     simulation/bank/finance refresh sequence used for loan origination
 
@@ -498,6 +499,7 @@ This is the live Flutter-to-Supabase contract surface.
   - auth-bound wrapper resolves player from `auth.uid()`
   - validates eligibility for refinancing
   - updates loan terms
+  - does not create zero-amount bank ledger rows
   - Flutter now follows successful refinance with an authoritative
     simulation/bank/finance refresh sequence
 

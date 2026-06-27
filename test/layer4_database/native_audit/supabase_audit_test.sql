@@ -428,6 +428,7 @@ BEGIN
       FROM bank_transactions
      WHERE user_id = v_user_id
        AND ifrs_subcategory = 'loan_repayment'
+       AND game_date = v_active_season_time
   ), 'repay_loan should write a bank transaction row';
 
   UPDATE loans

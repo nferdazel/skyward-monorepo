@@ -3230,11 +3230,15 @@ AS $function$
 DECLARE
 v_user_id UUID; v_loan RECORD; v_new_rate NUMERIC; v_old_total NUMERIC; v_new_total NUMERIC;
 v_savings NUMERIC; v_tier VARCHAR; v_weekly_payment NUMERIC; v_monthly_payment NUMERIC;
-v_cash NUMERIC;
+v_cash NUMERIC; v_game_time TIMESTAMPTZ;
 BEGIN
 v_user_id := require_current_user_id();
 SELECT * INTO v_loan FROM loans WHERE id = p_loan_id AND user_id = v_user_id AND status = 'active';
 IF NOT FOUND THEN RETURN QUERY SELECT false, 'Loan not found or not active.'::TEXT, 0::NUMERIC, 0::NUMERIC; RETURN; END IF;
+SELECT game_current_time INTO v_game_time
+FROM users
+WHERE id = v_user_id
+FOR UPDATE;
 SELECT tier INTO v_tier FROM credit_scores WHERE user_id = v_user_id;
 v_new_rate := CASE COALESCE(v_tier, 'Standard')
 WHEN 'Platinum' THEN 0.03 WHEN 'Gold' THEN 0.04
@@ -3257,12 +3261,6 @@ END IF;
 UPDATE loans SET interest_rate = v_new_rate, remaining_balance = v_new_total,
 weekly_payment = v_weekly_payment, monthly_payment = v_monthly_payment
 WHERE id = p_loan_id;
-INSERT INTO bank_transactions (account_id, user_id, transaction_type, amount, balance_after,
-description, game_date, ifrs_category, ifrs_subcategory)
-SELECT ba.id, v_user_id, 'refinance', 0, ba.balance,
-'Loan refinanced — new rate ' || ROUND(v_new_rate * 100, 1)::TEXT || '%',
-NOW(), 'financing', 'loan_refinance'
-FROM bank_accounts ba WHERE ba.user_id = v_user_id AND ba.account_type = 'operating' LIMIT 1;
 RETURN QUERY SELECT true, 'Loan refinanced successfully.'::TEXT, v_new_rate, v_savings;
 END;
 $function$;
@@ -3326,7 +3324,7 @@ SET search_path TO 'public', 'pg_catalog'
 AS $function$
 DECLARE
 v_user_id UUID; v_loan RECORD; v_payment NUMERIC; v_cash NUMERIC;
-v_is_paid_off BOOLEAN := false;
+v_is_paid_off BOOLEAN := false; v_game_time TIMESTAMPTZ;
 BEGIN
 v_user_id := require_current_user_id();
 SELECT * INTO v_loan FROM loans WHERE id = p_loan_id AND user_id = v_user_id AND status = 'active';
@@ -3335,12 +3333,16 @@ IF p_amount IS NULL THEN v_payment := v_loan.remaining_balance;
 ELSE v_payment := LEAST(p_amount, v_loan.remaining_balance); END IF;
 IF v_payment <= 0 THEN RETURN QUERY SELECT false, 'Payment amount must be positive.'::TEXT, 0::NUMERIC, false; RETURN; END IF;
 v_cash := get_user_balance(v_user_id);
+SELECT game_current_time INTO v_game_time
+FROM users
+WHERE id = v_user_id
+FOR UPDATE;
 IF v_cash < v_payment THEN
 RETURN QUERY SELECT false, 'Insufficient cash. Need $' || v_payment::TEXT || ', have $' || v_cash::TEXT || '.'::TEXT, v_cash, false; RETURN;
 END IF;
 PERFORM debit_bank_account(v_user_id, v_payment, 'financing', 'loan_repayment',
 CASE WHEN v_loan.remaining_balance - v_payment <= 0 THEN 'Loan fully repaid' ELSE 'Loan partial repayment' END,
-NOW());
+v_game_time);
 UPDATE loans
 SET remaining_balance = remaining_balance - v_payment,
 status = CASE WHEN remaining_balance - v_payment <= 0 THEN 'paid_off'::VARCHAR ELSE status END

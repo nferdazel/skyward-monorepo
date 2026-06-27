@@ -365,6 +365,8 @@ What this currently proves:
 - auth-bound `get_credit_report`
 - auth-bound `repay_loan`
 - auth-bound `refinance_loan`
+- loan repayment ledger rows using shared in-game clock stamps
+- refinance staying out of `bank_transactions` when no cash moves
 - auth-bound `get_finance_snapshot`
 - `get_global_leaderboard`
 - `get_competitor_insights`
