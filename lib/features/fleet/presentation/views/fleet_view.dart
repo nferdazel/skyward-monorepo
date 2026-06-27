@@ -27,6 +27,7 @@ import '../../../../presentation/widgets/segmented_progress_bar.dart';
 import '../../../../presentation/widgets/app_tab_item.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
+import '../../../finance/presentation/cubit/finance_cubit.dart';
 import '../../../routes/presentation/cubit/routes_cubit.dart';
 import '../../../routes/presentation/cubit/routes_state.dart';
 import '../../../simulation/presentation/cubit/simulation_cubit.dart';
@@ -1553,11 +1554,17 @@ class _FleetViewState extends State<FleetView>
                         onPressed: !isEligible
                             ? null
                             : () async {
-                                await context.read<BankCubit>().financeAircraft(
+                                final success = await context.read<BankCubit>().financeAircraft(
                                   model.id,
                                   downPaymentPct,
                                   termMonths,
                                 );
+                                if (success && context.mounted) {
+                                  await _refreshAuthoritativeFinanceState(
+                                    context,
+                                    userId,
+                                  );
+                                }
                                 if (context.mounted) Navigator.pop(ctx);
                               },
                         type: AppButtonType.primary,
@@ -1789,7 +1796,21 @@ class _FleetViewState extends State<FleetView>
   ) async {
     final simCubit = context.read<SimulationCubit>();
     simCubit.applyImmediateCashBalance(newCash);
-    await context.read<BankCubit>().loadBankData(userId, silent: true);
+    await _refreshAuthoritativeFinanceState(context, userId);
+  }
+
+  Future<void> _refreshAuthoritativeFinanceState(
+    BuildContext context,
+    String userId,
+  ) async {
+    final simCubit = context.read<SimulationCubit>();
+    final bankCubit = context.read<BankCubit>();
+    final financeCubit = context.read<FinanceCubit>();
+    await simCubit.syncWithDatabase();
+    await Future.wait([
+      bankCubit.loadBankData(userId, silent: true),
+      financeCubit.loadLedger(userId, silent: true),
+    ]);
   }
 
   // WIDGET HELPERS

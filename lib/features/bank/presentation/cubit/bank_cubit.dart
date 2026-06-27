@@ -239,7 +239,7 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
   }
 
   /// Finance an aircraft purchase.
-  Future<void> financeAircraft(
+  Future<bool> financeAircraft(
     String aircraftModelId,
     double downPaymentPct,
     int termMonths,
@@ -271,8 +271,9 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
           await _reloadCachedTransactions();
 
           _emitLoaded();
+          return true;
         } else {
-          if (isClosed) return;
+          if (isClosed) return false;
           emit(
             BankError(
               message: message,
@@ -283,11 +284,13 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
               transactions: _cachedTransactions,
             ),
           );
+          return false;
         }
       }
+      return false;
     } catch (e, stack) {
       AppError.log('financeAircraft', e, stack);
-      if (isClosed) return;
+      if (isClosed) return false;
       emit(
         BankError(
           message: AppError.extractMessage(
@@ -301,6 +304,7 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
           transactions: _cachedTransactions,
         ),
       );
+      return false;
     }
   }
 
