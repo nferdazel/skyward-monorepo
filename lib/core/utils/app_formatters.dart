@@ -22,6 +22,11 @@ class AppFormatters {
   /// Compact number format (1.2M, 3.4K)
   static final NumberFormat compact = NumberFormat.compact();
 
+  /// Compact currency format ($1.2M, $3.4K, $500)
+  static final NumberFormat compactCurrency = NumberFormat.compactCurrency(
+    symbol: '\$',
+  );
+
   /// Compact number format: 1.2M, 3.4K, 500
   static String compactNumber(double value) {
     if (value >= 1000000) {

@@ -174,6 +174,11 @@ class _AuthenticatedDashboardShellState
     _bankCubit
       ..loadBankData(user.id)
       ..setupReactivity(_simulationCubit, user.id);
+
+    // Eagerly load finance data so Overview tab KPI cards have data on first render.
+    _financeCubit
+      ..loadLedger(user.id)
+      ..setupReactivity(_simulationCubit, user.id);
   }
 
   void _ensureTabReady(int index, User user, SimulationState simulationState) {
@@ -185,9 +190,7 @@ class _AuthenticatedDashboardShellState
 
     switch (index) {
       case 3:
-        _financeCubit
-          ..loadLedger(user.id)
-          ..setupReactivity(_simulationCubit, user.id);
+        // Finance is eager-loaded in bootstrap; no-op here.
         break;
       case 4:
         final financeDataState = _financeCubit.state;
