@@ -16,7 +16,6 @@ abstract class FinanceGateway {
   Future<List<dynamic>> loadTransactions(String userId);
   Future<Map<String, dynamic>> getFinanceSnapshot();
   Future<List<dynamic>> getFinancialSnapshots(String userId);
-  Future<List<Map<String, dynamic>>> loadDailySummaries(String userId);
   Future<double> getUserBalance(String userId);
 }
 
@@ -46,25 +45,6 @@ class SupabaseFinanceGateway implements FinanceGateway {
     } catch (e, stack) {
       SupabaseManager.logError('loadTransactions', e, stack);
       throw FinanceGatewayException(e.toString(), 'loadTransactions');
-    }
-  }
-
-  @override
-  Future<List<Map<String, dynamic>>> loadDailySummaries(String userId) async {
-    try {
-      return await SupabaseManager.client
-          .from('bank_transaction_daily_summary')
-          .select('*')
-          .eq('user_id', userId)
-          .order('game_date', ascending: false);
-    } on PostgrestException catch (e) {
-      SupabaseManager.logRpcFailure('loadDailySummaries', {
-        'user_id': userId,
-      }, e.message);
-      throw FinanceGatewayException(e.message, 'loadDailySummaries');
-    } catch (e, stack) {
-      SupabaseManager.logError('loadDailySummaries', e, stack);
-      throw FinanceGatewayException(e.toString(), 'loadDailySummaries');
     }
   }
 

@@ -23,7 +23,6 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
   FinanceSnapshot _cachedSnapshot = const FinanceSnapshot.empty();
   List<BankTransaction> _cachedTransactions = [];
   List<FinanceDailySnapshot> _cachedFinancialSnapshots = [];
-  List<Map<String, dynamic>> _cachedDailySummaries = [];
   Timer? _realtimeRefreshDebounce;
   Future<void>? _activeTransactionLoad;
   Future<void>? _activeSnapshotRefresh;
@@ -43,9 +42,6 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
     'aircraft_purchase_deposit',
   };
 
-  /// Pre-aggregated daily summaries for IFRS reporting over extended periods.
-  List<Map<String, dynamic>> get dailySummaries => _cachedDailySummaries;
-
   FinanceCubit({FinanceGateway? gateway})
     : _gateway = gateway ?? const SupabaseFinanceGateway(),
       super(const FinanceInitial());
@@ -54,12 +50,10 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
     List<BankTransaction> transactions, {
     FinanceSnapshot? snapshot,
     List<FinanceDailySnapshot>? financialSnapshots,
-    List<Map<String, dynamic>>? dailySummaries,
   }) {
     final effectiveSnapshot = snapshot ?? _cachedSnapshot;
     final effectiveFinancialSnapshots =
         financialSnapshots ?? _cachedFinancialSnapshots;
-    final effectiveDailySummaries = dailySummaries ?? _cachedDailySummaries;
     final dailyBuckets = <DateTime, ({double revenue, double expense})>{};
     double totalTicketSales = 0.0;
     double totalOperations = 0.0;
@@ -173,7 +167,6 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
         expenseConcentration: expenseConcentration,
         leaseExpenseShare: leaseExpenseShare,
         repairExpenseShare: repairExpenseShare,
-        dailySummaries: effectiveDailySummaries,
       ),
     );
   }
@@ -265,13 +258,11 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
         _gateway.loadTransactions(userId),
         _gateway.getFinanceSnapshot(),
         _gateway.getFinancialSnapshots(userId),
-        _gateway.loadDailySummaries(userId),
       ]);
 
       final txnResponse = results[0] as List<dynamic>;
       final snapshotMap = results[1] as Map<String, dynamic>;
       final snapshotsResponse = results[2] as List<dynamic>;
-      final dailySummariesResponse = results[3] as List<Map<String, dynamic>>;
 
       final transactions = txnResponse
           .map((m) => BankTransaction.fromMap(Map<String, dynamic>.from(m)))
@@ -289,7 +280,6 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
             ),
           )
           .toList();
-      _cachedDailySummaries = dailySummariesResponse;
       PerfDebug.end(
         'finance.transactions_load',
         stopwatch,

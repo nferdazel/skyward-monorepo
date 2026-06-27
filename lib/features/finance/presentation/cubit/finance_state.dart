@@ -42,7 +42,6 @@ class FinanceMetrics {
   final double expenseConcentration;
   final double leaseExpenseShare;
   final double repairExpenseShare;
-  final List<Map<String, dynamic>> dailySummaries;
 
   const FinanceMetrics({
     required this.snapshot,
@@ -63,30 +62,28 @@ class FinanceMetrics {
     required this.expenseConcentration,
     required this.leaseExpenseShare,
     required this.repairExpenseShare,
-    this.dailySummaries = const [],
   });
 
   /// Default/empty constructor for use in [FinanceError] fallbacks.
   const FinanceMetrics.empty()
-      : snapshot = const FinanceSnapshot.empty(),
-        transactions = const [],
-        dailySnapshots = const [],
-        financialSnapshots = const [],
-        totalTicketSales = 0.0,
-        totalOperations = 0.0,
-        totalLease = 0.0,
-        totalRepair = 0.0,
-        totalPurchase = 0.0,
-        totalRevenue = 0.0,
-        totalExpense = 0.0,
-        netProfit = 0.0,
-        averageDailyNet = 0.0,
-        latestDailyNet = 0.0,
-        worstDailyNet = 0.0,
-        expenseConcentration = 0.0,
-        leaseExpenseShare = 0.0,
-        repairExpenseShare = 0.0,
-        dailySummaries = const [];
+    : snapshot = const FinanceSnapshot.empty(),
+      transactions = const [],
+      dailySnapshots = const [],
+      financialSnapshots = const [],
+      totalTicketSales = 0.0,
+      totalOperations = 0.0,
+      totalLease = 0.0,
+      totalRepair = 0.0,
+      totalPurchase = 0.0,
+      totalRevenue = 0.0,
+      totalExpense = 0.0,
+      netProfit = 0.0,
+      averageDailyNet = 0.0,
+      latestDailyNet = 0.0,
+      worstDailyNet = 0.0,
+      expenseConcentration = 0.0,
+      leaseExpenseShare = 0.0,
+      repairExpenseShare = 0.0;
 }
 
 abstract class FinanceDataState extends FinanceState {
@@ -98,7 +95,8 @@ abstract class FinanceDataState extends FinanceState {
   FinanceSnapshot get snapshot => metrics.snapshot;
   List<BankTransaction> get transactions => metrics.transactions;
   List<FinanceDailySnapshot> get dailySnapshots => metrics.dailySnapshots;
-  List<FinanceDailySnapshot> get financialSnapshots => metrics.financialSnapshots;
+  List<FinanceDailySnapshot> get financialSnapshots =>
+      metrics.financialSnapshots;
   double get totalTicketSales => metrics.totalTicketSales;
   double get totalOperations => metrics.totalOperations;
   double get totalLease => metrics.totalLease;
@@ -113,7 +111,6 @@ abstract class FinanceDataState extends FinanceState {
   double get expenseConcentration => metrics.expenseConcentration;
   double get leaseExpenseShare => metrics.leaseExpenseShare;
   double get repairExpenseShare => metrics.repairExpenseShare;
-  List<Map<String, dynamic>> get dailySummaries => metrics.dailySummaries;
 }
 
 class FinanceInitial extends FinanceState {

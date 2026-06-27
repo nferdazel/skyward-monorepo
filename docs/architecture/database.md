@@ -268,7 +268,7 @@ Compacted analytical rollups for bank transaction history.
 
 Current status:
 - backend-written
-- weakly consumed by the app
+- not read by the current Flutter runtime
 - should be treated as an audit/ops-support table unless product wiring expands
 
 ### `bank_transactions_archive`
@@ -276,7 +276,7 @@ Current status:
 Archive / compaction support table.
 
 Current status:
-- backend-only keep
+- backend-only keep for `compact_bank_transactions(...)`
 - not part of normal app runtime reads
 
 ## Static reference tables
