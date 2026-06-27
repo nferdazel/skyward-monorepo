@@ -40,6 +40,7 @@ class OverviewSnapshot {
   final bool revenueCoverageHealthy;
   final String runwayLabel;
   final Color runwayColor;
+  final double? runwayDays;
   final String leaderGapLabel;
   final Color leaderGapColor;
   final String avgFlightsPerRouteLabel;
@@ -74,6 +75,7 @@ class OverviewSnapshot {
     required this.revenueCoverageHealthy,
     required this.runwayLabel,
     required this.runwayColor,
+    required this.runwayDays,
     required this.leaderGapLabel,
     required this.leaderGapColor,
     required this.avgFlightsPerRouteLabel,
@@ -195,8 +197,13 @@ class OverviewSnapshot {
         ? 0.0
         : totalFlights / routes.length;
     final totalExpense = finance?.totalExpense ?? 0.0;
-    final runwayDays = totalExpense > 0
-        ? simState.cashBalance / (totalExpense / 30.0)
+    final rollingExpense = finance?.snapshot.rollingExpense30d ?? 0.0;
+    final ledgerWindowDays = finance?.snapshot.ledgerWindowDays ?? 30;
+    final dailyBurnRate = ledgerWindowDays > 0
+        ? rollingExpense / ledgerWindowDays
+        : 0.0;
+    final runwayDays = (rollingExpense > 0 && dailyBurnRate > 0)
+        ? simState.cashBalance / dailyBurnRate
         : null;
     final runwayLabel = runwayDays == null
         ? AppStrings.runwayUnknown
@@ -325,6 +332,7 @@ class OverviewSnapshot {
           finance == null || finance.totalRevenue >= totalExpense,
       runwayLabel: runwayLabel,
       runwayColor: runwayColor,
+      runwayDays: runwayDays,
       leaderGapLabel: leaderGapLabel,
       leaderGapColor: leaderGapColor,
       avgFlightsPerRouteLabel: routes.isEmpty

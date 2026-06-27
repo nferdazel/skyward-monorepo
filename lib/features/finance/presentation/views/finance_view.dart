@@ -257,6 +257,8 @@ class _FinanceViewState extends State<FinanceView>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          _buildIFRSSummaryCards(state),
+          const SizedBox(height: AppSpacing.sectionGap),
           const AppSectionHeader(title: AppStrings.currentPositionTitle),
           const SizedBox(height: AppSpacing.blockGap),
           _buildCurrentPositionGrid(
@@ -301,6 +303,177 @@ class _FinanceViewState extends State<FinanceView>
             state,
             AppFormatters.currencyDetailed,
             _dateTimeFormat,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildIFRSSummaryCards(FinanceDataState state) {
+    final snapshot = state.snapshot;
+    final hasRevenue = snapshot.rollingRevenue30d > 0;
+    final hasNetWorth = snapshot.netWorth > 0;
+
+    final revenue = snapshot.rollingRevenue30d;
+    final net = snapshot.rollingNet30d;
+    final margin = revenue > 0 ? (net / revenue * 100) : 0.0;
+    final clampedMargin = margin.clamp(0.0, 100.0);
+    final marginColor = margin > 20
+        ? AppTheme.success
+        : margin > 5
+            ? AppTheme.warning
+            : AppTheme.error;
+
+    return Row(
+      children: [
+        // Profitability card
+        Expanded(
+          child: Semantics(
+            label: 'Profitability: ${AppFormatters.compactCurrency.format(net)} net / 30d',
+            child: AppCard(
+              customBorder: Border(
+                top: BorderSide(
+                  color: hasRevenue
+                      ? (net >= 0 ? AppTheme.success : AppTheme.error)
+                      : AppTheme.border,
+                  width: 1.5,
+                ),
+                left: BorderSide(color: AppTheme.border, width: 0.5),
+                right: BorderSide(color: AppTheme.border, width: 0.5),
+                bottom: BorderSide(color: AppTheme.border, width: 0.5),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.trending_up, color: AppTheme.textMuted, size: 14),
+                      const SizedBox(width: AppSpacing.sm),
+                      Text(
+                        'PROFITABILITY',
+                        style: AppTypography.microLabel.copyWith(
+                          color: AppTheme.textMuted,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      const HelpTooltip(
+                        message: 'Rolling 30-day net income and profit margin',
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  if (hasRevenue) ...[
+                    Text(
+                      '${AppFormatters.compactCurrency.format(net)} net / 30d',
+                      style: AppTypography.dataEmphasis.copyWith(
+                        color: net >= 0 ? AppTheme.success : AppTheme.error,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    // Margin bar
+                    Container(
+                      height: AppSpacing.xs,
+                      decoration: BoxDecoration(
+                        color: AppTheme.textMuted.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(AppSpacing.radiusTight),
+                      ),
+                      child: FractionallySizedBox(
+                        alignment: Alignment.centerLeft,
+                        widthFactor: clampedMargin / 100,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: marginColor,
+                            borderRadius: BorderRadius.circular(AppSpacing.radiusTight),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      '${margin.toStringAsFixed(0)}% margin',
+                      style: AppTypography.captionRegular.copyWith(
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                  ] else ...[
+                    Text(
+                      '\u2014',
+                      style: AppTypography.dataEmphasis.copyWith(
+                        color: AppTheme.textMuted,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.xl),
+        // Net Worth card
+        Expanded(
+          child: Semantics(
+            label: 'Net Worth: ${AppFormatters.compactCurrency.format(snapshot.netWorth)}',
+            child: AppCard(
+              customBorder: Border(
+                top: BorderSide(
+                  color: hasNetWorth ? AppTheme.primary : AppTheme.border,
+                  width: 1.5,
+                ),
+                left: BorderSide(color: AppTheme.border, width: 0.5),
+                right: BorderSide(color: AppTheme.border, width: 0.5),
+                bottom: BorderSide(color: AppTheme.border, width: 0.5),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.account_balance, color: AppTheme.textMuted, size: 14),
+                      const SizedBox(width: AppSpacing.sm),
+                      Text(
+                        'NET WORTH',
+                        style: AppTypography.microLabel.copyWith(
+                          color: AppTheme.textMuted,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      const HelpTooltip(
+                        message: 'Total company value: cash plus owned aircraft assets',
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  if (hasNetWorth) ...[
+                    Text(
+                      AppFormatters.compactCurrency.format(snapshot.netWorth),
+                      style: AppTypography.dataEmphasis.copyWith(
+                        color: AppTheme.success,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      'Cash: ${AppFormatters.compactCurrency.format(snapshot.cash)} \u00b7 Fleet: ${AppFormatters.compactCurrency.format(snapshot.ownedAircraftAssetValue)}',
+                      style: AppTypography.captionRegular.copyWith(
+                        color: AppTheme.textSecondary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ] else ...[
+                    Text(
+                      '\u2014',
+                      style: AppTypography.dataEmphasis.copyWith(
+                        color: AppTheme.textMuted,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
           ),
         ),
       ],

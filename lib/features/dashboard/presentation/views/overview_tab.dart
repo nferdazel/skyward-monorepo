@@ -5,7 +5,6 @@ import 'package:intl/intl.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/condition_colors.dart';
-import '../../../../core/utils/app_formatters.dart';
 import '../../../../presentation/theme/app_spacing.dart';
 import '../../../../presentation/theme/app_typography.dart';
 import '../../../../presentation/widgets/app_card.dart';
@@ -16,9 +15,7 @@ import '../../../../presentation/widgets/segmented_progress_bar.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
 import '../../../finance/presentation/cubit/finance_cubit.dart';
-import '../../../finance/presentation/cubit/finance_state.dart';
 import '../../../fleet/presentation/cubit/fleet_cubit.dart';
-import '../../../navigation/presentation/cubit/navigation_cubit.dart';
 import '../../../leaderboard/presentation/cubit/leaderboard_cubit.dart';
 import '../../../routes/presentation/cubit/routes_cubit.dart';
 import '../../../simulation/presentation/cubit/simulation_cubit.dart';
@@ -89,44 +86,36 @@ class OverviewTab extends StatelessWidget {
     );
   }
 
-  // ── KPI Cards Row (6 Expanded columns) ──
+  // ── KPI Cards Row (4 operational Expanded columns) ──
 
   Widget _buildKPICardsRow(BuildContext context, OverviewSnapshot overview) {
     return Row(
       children: [
-        // Card 1: Fleet Ready → Fleet tab
+        // Card 1: Fleet Ready
         Expanded(
-          child: InkWell(
-            onTap: () => context.read<NavigationCubit>().selectTab(1),
-            borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
-            child: _buildKPICard(
-              title: AppStrings.fleetReadyLabel,
-              icon: Icons.check_circle_outline,
-              value: '${overview.readyFleetCount}/${overview.totalFleetCount}',
-              filledSegments: overview.totalFleetCount > 0
-                  ? 10
-                  : 0,
-              activeColor: AppTheme.success,
-              helpMessage: AppStrings.helpKpiFleetReady,
-              sparkData: null, // 7-day trend pipeline pending
-            ),
+          child: _buildKPICard(
+            title: AppStrings.fleetReadyLabel,
+            icon: Icons.check_circle_outline,
+            value: '${overview.readyFleetCount}/${overview.totalFleetCount}',
+            filledSegments: overview.totalFleetCount > 0
+                ? 10
+                : 0,
+            activeColor: AppTheme.success,
+            helpMessage: AppStrings.helpKpiFleetReady,
+            sparkData: null, // 7-day trend pipeline pending
           ),
         ),
         const SizedBox(width: AppSpacing.md),
-        // Card 2: Network Health → Routes tab
+        // Card 2: Network Health
         Expanded(
-          child: InkWell(
-            onTap: () => context.read<NavigationCubit>().selectTab(2),
-            borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
-            child: _buildKPICard(
-              title: 'NETWORK HEALTH',
-              icon: Icons.hub_outlined,
-              value: '${overview.activeRoutes} ${AppStrings.routesSuffix.trim()}',
-              filledSegments: overview.activeRoutes.clamp(0, 10),
-              activeColor: AppTheme.primary,
-              helpMessage: AppStrings.helpKpiNetworkHealth,
-              sparkData: null, // 7-day trend pipeline pending
-            ),
+          child: _buildKPICard(
+            title: 'NETWORK HEALTH',
+            icon: Icons.hub_outlined,
+            value: '${overview.activeRoutes} ${AppStrings.routesSuffix.trim()}',
+            filledSegments: overview.activeRoutes.clamp(0, 10),
+            activeColor: AppTheme.primary,
+            helpMessage: AppStrings.helpKpiNetworkHealth,
+            sparkData: null, // 7-day trend pipeline pending
           ),
         ),
         const SizedBox(width: AppSpacing.md),
@@ -143,23 +132,9 @@ class OverviewTab extends StatelessWidget {
           ),
         ),
         const SizedBox(width: AppSpacing.md),
-        // Card 4: Cash Runway → Finance tab
+        // Card 4: Cash Runway
         Expanded(
-          child: InkWell(
-            onTap: () => context.read<NavigationCubit>().selectTab(3),
-            borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
-            child: _buildRunwayCard(overview),
-          ),
-        ),
-        const SizedBox(width: AppSpacing.md),
-        // Card 5: Profitability (IFRS-inspired)
-        Expanded(
-          child: _buildProfitabilityCard(context),
-        ),
-        const SizedBox(width: AppSpacing.md),
-        // Card 6: Net Worth Composition (IFRS-inspired)
-        Expanded(
-          child: _buildNetWorthCard(context),
+          child: _buildRunwayCard(overview),
         ),
       ],
     );
@@ -257,178 +232,43 @@ class OverviewTab extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
-          // Sparkline placeholder (7-day trend pipeline pending)
-          // if (sparkData != null && sparkData.length >= 3) ...[
-          //   const SizedBox(height: AppSpacing.xs),
-          //   AppSparkline(data: sparkData, width: 60, height: 20, color: snapshot.runwayColor),
-          // ],
+          const SizedBox(height: AppSpacing.sm),
+          // Runway health indicator bar
+          _buildRunwayHealthBar(snapshot),
         ],
       ),
     );
   }
 
-  // ── IFRS-Inspired KPI Cards ──
+  Widget _buildRunwayHealthBar(OverviewSnapshot snapshot) {
+    // Extract numeric days from the runway label (format: "123.4d")
+    final rawDays = snapshot.runwayDays;
+    if (rawDays == null) {
+      return const SizedBox.shrink();
+    }
 
-  Widget _buildProfitabilityCard(BuildContext context) {
-    final financeState = context.read<FinanceCubit>().state;
-    final isLoaded = financeState is FinanceDataState &&
-        financeState.snapshot.rollingRevenue30d > 0;
+    final fraction = (rawDays / 365.0).clamp(0.0, 1.0);
+    final barColor = rawDays > 90
+        ? AppTheme.success
+        : rawDays > 30
+            ? AppTheme.warning
+            : AppTheme.error;
 
-    return AppCard(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Title row
-          Row(
-            children: [
-              Icon(Icons.trending_up, color: AppTheme.textMuted, size: 14),
-              const SizedBox(width: AppSpacing.sm),
-              Text(
-                'PROFITABILITY',
-                style: AppTypography.microLabel.copyWith(
-                  color: AppTheme.textMuted,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              const HelpTooltip(
-                message: 'Rolling 30-day net income and profit margin',
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          if (isLoaded) ...[
-            // Net income value
-            Text(
-              '${AppFormatters.compactCurrency.format(financeState.snapshot.rollingNet30d)} net / 30d',
-              style: AppTypography.dataEmphasis.copyWith(
-                color: financeState.snapshot.rollingNet30d >= 0
-                    ? AppTheme.success
-                    : AppTheme.error,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            // Margin bar
-            Builder(
-              builder: (context) {
-                final revenue = financeState.snapshot.rollingRevenue30d;
-                final net = financeState.snapshot.rollingNet30d;
-                final margin = revenue > 0 ? (net / revenue * 100) : 0.0;
-                final clampedMargin = margin.clamp(0.0, 100.0);
-                final barColor = margin > 20
-                    ? AppTheme.success
-                    : margin > 5
-                        ? AppTheme.warning
-                        : AppTheme.error;
-                return Container(
-                  height: AppSpacing.xs,
-                  decoration: BoxDecoration(
-                    color: AppTheme.textMuted.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(AppSpacing.radiusTight),
-                  ),
-                  child: FractionallySizedBox(
-                    alignment: Alignment.centerLeft,
-                    widthFactor: clampedMargin / 100,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: barColor,
-                        borderRadius:
-                            BorderRadius.circular(AppSpacing.radiusTight),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            // Margin percentage
-            Builder(
-              builder: (context) {
-                final revenue = financeState.snapshot.rollingRevenue30d;
-                final net = financeState.snapshot.rollingNet30d;
-                final margin = revenue > 0 ? (net / revenue * 100) : 0.0;
-                return Text(
-                  '${margin.toStringAsFixed(0)}% margin',
-                  style: AppTypography.captionRegular.copyWith(
-                    color: AppTheme.textSecondary,
-                  ),
-                );
-              },
-            ),
-          ] else ...[
-            Text(
-              '\u2014',
-              style: AppTypography.dataEmphasis.copyWith(
-                color: AppTheme.textMuted,
-              ),
-            ),
-          ],
-        ],
+    return Container(
+      height: AppSpacing.xs,
+      decoration: BoxDecoration(
+        color: AppTheme.textMuted.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusTight),
       ),
-    );
-  }
-
-  Widget _buildNetWorthCard(BuildContext context) {
-    final financeState = context.read<FinanceCubit>().state;
-    final isLoaded = financeState is FinanceDataState &&
-        financeState.snapshot.netWorth > 0;
-
-    return AppCard(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Title row
-          Row(
-            children: [
-              Icon(Icons.account_balance, color: AppTheme.textMuted, size: 14),
-              const SizedBox(width: AppSpacing.sm),
-              Text(
-                'NET WORTH',
-                style: AppTypography.microLabel.copyWith(
-                  color: AppTheme.textMuted,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              const HelpTooltip(
-                message:
-                    'Total company value: cash plus owned aircraft assets',
-              ),
-            ],
+      child: FractionallySizedBox(
+        alignment: Alignment.centerLeft,
+        widthFactor: fraction,
+        child: Container(
+          decoration: BoxDecoration(
+            color: barColor,
+            borderRadius: BorderRadius.circular(AppSpacing.radiusTight),
           ),
-          const SizedBox(height: AppSpacing.sm),
-          if (isLoaded) ...[
-            // Total net worth
-            Text(
-              AppFormatters.compactCurrency
-                  .format(financeState.snapshot.netWorth),
-              style: AppTypography.dataEmphasis.copyWith(
-                color: AppTheme.success,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            // Composition: Cash + Fleet
-            Text(
-              'Cash: ${AppFormatters.compactCurrency.format(financeState.snapshot.cash)} \u00b7 Fleet: ${AppFormatters.compactCurrency.format(financeState.snapshot.ownedAircraftAssetValue)}',
-              style: AppTypography.captionRegular.copyWith(
-                color: AppTheme.textSecondary,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ] else ...[
-            Text(
-              '\u2014',
-              style: AppTypography.dataEmphasis.copyWith(
-                color: AppTheme.textMuted,
-              ),
-            ),
-          ],
-        ],
+        ),
       ),
     );
   }
