@@ -36,6 +36,8 @@ Current runtime cubits:
 - `BlueprintPlannerFormCubit`
 - `SettingsCubit`
 - `BankCubit`
+
+Repo-present but not mounted in the active dashboard runtime:
 - `AchievementCubit`
 
 Allowed widget-local state remains limited to lifecycle concerns such as
@@ -78,7 +80,8 @@ Current live subscriptions:
 - `RoutesCubit` listens to `route_assignments`
 - `FinanceCubit` listens to `bank_transactions`
 - `BankCubit` listens to `loans`, `bank_accounts`, and `bank_transactions`
-- `AchievementCubit` listens to `achievements`
+- `AchievementCubit` listens to `achievements` when mounted, but the current
+  dashboard runtime does not instantiate it
 
 `LeaderboardCubit` refreshes through RPC reads rather than owning a direct
 Postgres Changes subscription.
@@ -87,8 +90,8 @@ Operational rule:
 - mutation success paths that materially affect cash, ledger chronology, or
   profile-owned simulation inputs should not rely on Postgres Changes alone
 - current Flutter runtime explicitly resyncs after aircraft acquisition /
-  disposal / repair flows, bank loan / refinance / financing flows, settings
-  save, and airline reset
+  disposal / repair flows, route mutation flows, bank loan / refinance /
+  financing flows, settings save, and airline reset
 - this keeps `SimulationCubit`, `BankCubit`, `FinanceCubit`, and profile-owned
   consumers aligned even when realtime delivery is delayed or staggered
 

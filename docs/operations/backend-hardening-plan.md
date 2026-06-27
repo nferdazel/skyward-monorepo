@@ -187,7 +187,7 @@ fallback-based, partial, or backend-only.
 
 - the stale Flutter read path for `bank_transaction_daily_summary` has now
   been removed
-- dormant bank compaction surface has now been removed by migration `27`:
+- dormant bank compaction surface was removed by migration `27`:
   - cron job `skyward_compact_bank_transactions`
   - function `compact_bank_transactions(boolean)`
   - config key `bank_txn_raw_retention_days`

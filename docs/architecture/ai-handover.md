@@ -30,9 +30,9 @@ Other feature cubits subscribe through `SimulationReactiveMixin`.
 `FinanceCubit` and `LeaderboardCubit` are initialized lazily when their
 workspaces are first opened.
 Realtime subscriptions are a freshness layer only. The current runtime also
-forces explicit resync/reload passes after finance-heavy mutations so visible
-clock, cash, ledger, and profile state do not wait on tab changes or staggered
-Postgres Changes delivery.
+forces explicit resync/reload passes after cross-cubit mutations so visible
+clock, cash, ledger, fleet, route, and profile state do not wait on tab
+changes or staggered Postgres Changes delivery.
 `AchievementCubit` still exists in the repo, but it is not currently mounted
 by the dashboard runtime graph.
 
