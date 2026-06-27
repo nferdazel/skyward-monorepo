@@ -3816,7 +3816,7 @@ v_exit_fee := calculate_lease_termination_fee(v_fleet.lease_price_per_month);
 IF v_exit_fee > 0 THEN
 PERFORM debit_bank_account(p_user_id, v_exit_fee, 'opex', 'lease_termination',
 'Terminated leased aircraft ' || COALESCE(v_fleet.model_name, 'Unknown') || ' [' || COALESCE(v_fleet.tail_number, 'NO-TAIL') || ']',
-date_trunc('day', v_user.game_current_time));
+v_user.game_current_time);
 END IF;
 DELETE FROM fleet_aircraft WHERE id = p_fleet_id AND user_id = p_user_id;
 new_cash := get_user_balance(p_user_id);

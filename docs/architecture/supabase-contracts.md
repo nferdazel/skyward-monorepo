@@ -371,7 +371,8 @@ This is the live Flutter-to-Supabase contract surface.
   - requires a leased aircraft
   - blocks disposal while the aircraft is still assigned
   - charges a lease exit fee
-  - writes a `bank_transactions` lease-exit row
+  - writes a `bank_transactions` lease-exit row stamped with the exact shared
+    `users.game_current_time`
   - removes the fleet row
   - Flutter follows success with an authoritative simulation sync plus silent
     fleet/routes/bank/finance reloads

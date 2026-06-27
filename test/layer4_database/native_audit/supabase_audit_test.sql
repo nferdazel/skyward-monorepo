@@ -842,6 +842,13 @@ BEGIN
     'terminate_aircraft_lease should compute a positive exit fee for leased aircraft';
   ASSERT v_lease_term_tx_after = v_lease_term_tx_before + 1,
     'terminate_aircraft_lease should append exactly one lease_termination ledger row';
+  ASSERT EXISTS (
+    SELECT 1
+      FROM bank_transactions
+     WHERE user_id = v_user_id
+       AND ifrs_subcategory = 'lease_termination'
+       AND game_date = v_active_season_time
+  ), 'terminate_aircraft_lease should stamp the exact shared game clock time';
   ASSERT ROUND(v_lease_term_before_cash - v_lease_term_after_cash, 2) = ROUND(v_lease_term_fee, 2),
     'terminate_aircraft_lease should reduce operating cash by the computed exit fee';
   ASSERT ROUND(COALESCE(v_lease_term_after_cash, 0), 2) = ROUND(COALESCE(get_user_balance(v_user_id), 0), 2),
