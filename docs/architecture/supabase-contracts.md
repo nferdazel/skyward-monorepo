@@ -500,6 +500,8 @@ This is the live Flutter-to-Supabase contract surface.
   - `p_term_months`
 - current behavior:
   - auth-bound wrapper resolves player from `auth.uid()`
+  - catches the player up to current season time before stamping the financing
+    down-payment ledger row
   - validates credit eligibility
   - creates aircraft financing loan and purchase-side bank activity
 

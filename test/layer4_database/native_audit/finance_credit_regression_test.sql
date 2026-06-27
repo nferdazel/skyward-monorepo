@@ -22,6 +22,8 @@ DECLARE
   v_finance_loan_id UUID;
   v_finance_weekly NUMERIC;
   v_finance_monthly NUMERIC;
+  v_finance_deposit_game_date TIMESTAMPTZ;
+  v_finance_user_game_time TIMESTAMPTZ;
   v_finance_balance_before NUMERIC;
   v_finance_balance_after NUMERIC;
   v_finance_deposit_rows INT;
@@ -66,6 +68,10 @@ BEGIN
      SET balance = 300000000.00
    WHERE user_id = v_user_id
      AND account_type = 'operating';
+
+  UPDATE users
+     SET game_current_time = '2020-01-01 00:00:00+00'
+   WHERE id = v_user_id;
 
   SELECT id
     INTO v_finance_model_id
@@ -122,6 +128,22 @@ BEGIN
        AND ifrs_subcategory = 'aircraft_purchase_deposit'
        AND amount = 0
   ), 'finance_aircraft should not write zero-amount aircraft_purchase_deposit rows';
+
+  SELECT MAX(game_date)
+    INTO v_finance_deposit_game_date
+    FROM bank_transactions
+   WHERE user_id = v_user_id
+     AND ifrs_subcategory = 'aircraft_purchase_deposit';
+
+  SELECT game_current_time
+    INTO v_finance_user_game_time
+    FROM users
+   WHERE id = v_user_id;
+
+  ASSERT v_finance_deposit_game_date > '2020-01-01 00:00:00+00'::timestamptz,
+    'finance_aircraft should not stamp the down-payment ledger row with the stale bootstrap game time';
+  ASSERT v_finance_user_game_time = v_finance_deposit_game_date,
+    'finance_aircraft should catch the player up before writing the down-payment ledger row';
 
   SELECT remaining_balance
     INTO v_finance_balance_before

@@ -88,6 +88,7 @@ Current repo migration set:
 - `26_drop_dead_legacy_helpers.sql`
 - `27_drop_bank_transaction_compaction.sql`
 - `28_add_bank_transaction_retention.sql`
+- `29_sync_finance_aircraft_game_time.sql`
 
 High-level grouping:
 - `00`-`07`
@@ -96,10 +97,11 @@ High-level grouping:
   Finance stabilization, bank-centric cash, net-worth reconciliation, lease carrying cost
 - `12`-`18`
   Actor parity, servicing, and bot decision-path hardening
-- `19`-`28`
+- `19`-`29`
   Ledger integrity, zero-amount guardrails, player sync safety, bankruptcy parity, shared repair mechanics, finance snapshot contract truthfulness, missing trigger attachment cleanup, and dead helper removal
   plus removal of the dormant bank compaction surface and reintroduction of a
-  simpler game-date-based ledger retention policy
+  simpler game-date-based ledger retention policy, plus finance-aircraft
+  game-time sync
 
 ## Standard Verification
 
