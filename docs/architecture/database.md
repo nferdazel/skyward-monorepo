@@ -1,6 +1,6 @@
 # Skyward Database Design
 
-Last verified against code, migrations, and linked live schema on 2026-06-26.
+Last verified against code, migrations, and linked live schema on 2026-06-27.
 
 This file records the current public schema shape and the operational meaning
 of the tables that actually exist in the linked runtime.
@@ -13,20 +13,18 @@ Linked live schema currently exposes these public tables:
 2. `aircraft_models`
 3. `airports`
 4. `bank_accounts`
-5. `bank_transaction_daily_summary`
-6. `bank_transactions`
-7. `bank_transactions_archive`
-8. `bot_profiles`
-9. `credit_score_history`
-10. `credit_scores`
-11. `fleet_aircraft`
-12. `game_config`
-13. `game_events`
-14. `loans`
-15. `route_assignments`
-16. `season_clock`
-17. `users`
-18. `world_tick_log`
+5. `bank_transactions`
+6. `bot_profiles`
+7. `credit_score_history`
+8. `credit_scores`
+9. `fleet_aircraft`
+10. `game_config`
+11. `game_events`
+12. `loans`
+13. `route_assignments`
+14. `season_clock`
+15. `users`
+16. `world_tick_log`
 
 ## Core authority model
 
@@ -262,23 +260,6 @@ Operational note:
 - `game_date` captures the in-game moment the achievement was awarded when the
   backend provides it
 
-### `bank_transaction_daily_summary`
-
-Compacted analytical rollups for bank transaction history.
-
-Current status:
-- backend-written
-- not read by the current Flutter runtime
-- should be treated as an audit/ops-support table unless product wiring expands
-
-### `bank_transactions_archive`
-
-Archive / compaction support table.
-
-Current status:
-- backend-only keep for `compact_bank_transactions(...)`
-- not part of normal app runtime reads
-
 ## Static reference tables
 
 ### `aircraft_models`
@@ -319,8 +300,7 @@ Additional auth-side truth:
 Repo-defined scheduler jobs:
 
 1. `skyward_world_tick` → `ensure_world_current()`
-2. `skyward_compact_bank_transactions` → `compact_bank_transactions(false)`
-3. `skyward_compact_world_tick_log` → `compact_world_tick_log(false)`
+2. `skyward_compact_world_tick_log` → `compact_world_tick_log(false)`
 
 ## Important schema truths
 
@@ -328,6 +308,8 @@ Repo-defined scheduler jobs:
 - Do not document `users.cash` as canonical cash.
 - `bank_accounts` and `bank_transactions` are now the core finance surface.
 - Finance history in the current Flutter runtime is bank-transaction-driven.
+- `bank_transaction_daily_summary` and `bank_transactions_archive` were removed
+  from the live schema by migration `27`.
 
 ## Verification note
 

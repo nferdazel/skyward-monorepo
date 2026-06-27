@@ -187,18 +187,15 @@ fallback-based, partial, or backend-only.
 
 - the stale Flutter read path for `bank_transaction_daily_summary` has now
   been removed
-- `bank_transaction_daily_summary` and `bank_transactions_archive` are now
-  documented as compaction / ops-support tables, not normal app runtime reads
-- baseline still defines a real compaction contract:
-  `skyward_compact_bank_transactions` runs
-  `compact_bank_transactions(false)` on a daily schedule
-- linked live config still keeps that contract active with
-  `game_config.key = 'bank_txn_raw_retention_days'` set to `180` with
-  `unit = 'game_days'`
-- direct linked row-count or dry-run proof for the compaction tables can still
-  be blocked intermittently by Supabase pooler `ECIRCUITBREAKER` /
-  temp-role-auth failures, so docs should distinguish:
-  repo-verified contract vs opportunistic live proof
+- dormant bank compaction surface has now been removed by migration `27`:
+  - cron job `skyward_compact_bank_transactions`
+  - function `compact_bank_transactions(boolean)`
+  - config key `bank_txn_raw_retention_days`
+  - tables `bank_transaction_daily_summary` and `bank_transactions_archive`
+- linked live proof confirms both compaction tables are absent after the
+  migration; some additional verification queries still hit intermittent
+  Supabase pooler `ECIRCUITBREAKER` / temp-role-auth failures, but the removal
+  migration itself executed successfully against the linked DB
 
 ### Exit Criteria
 

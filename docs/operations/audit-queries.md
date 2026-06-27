@@ -204,51 +204,7 @@ order by game_date desc nulls last, unlocked_at desc
 limit 20;
 ```
 
-## 10. Bank compaction config and dormant-surface check
-
-Use this when reviewing whether the bank compaction contract is still active in
-the linked runtime.
-
-```sql
-select
-  key,
-  value,
-  unit
-from game_config
-where key = 'bank_txn_raw_retention_days';
-```
-
-```sql
-select
-  'bank_transactions' as table_name,
-  count(*)::bigint as rows
-from bank_transactions
-union all
-select
-  'bank_transaction_daily_summary',
-  count(*)::bigint
-from bank_transaction_daily_summary
-union all
-select
-  'bank_transactions_archive',
-  count(*)::bigint
-from bank_transactions_archive;
-```
-
-```sql
-select *
-from compact_bank_transactions(true);
-```
-
-Operational note:
-- `bank_transaction_daily_summary` and `bank_transactions_archive` are current
-  ops/compaction surfaces, not normal Flutter runtime reads
-- linked execution of the row-count and dry-run queries above may fail
-  intermittently due to Supabase pooler temp-role auth or `ECIRCUITBREAKER`
-  behavior; treat the baseline cron/function contract as repo truth even when
-  opportunistic live proof is temporarily blocked
-
-## 11. World-clock lag check for one player
+## 10. World-clock lag check for one player
 
 `u.game_current_time` and `s.current_game_time` are in-game clocks.
 This query does not measure wall-clock scheduler latency.
