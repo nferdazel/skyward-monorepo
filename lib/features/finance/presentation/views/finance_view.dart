@@ -26,10 +26,12 @@ import '../../../../presentation/widgets/help_tooltip.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
 import '../../../bank/domain/bank_transaction_model.dart';
+import '../../../bank/presentation/cubit/bank_cubit.dart';
 import '../../../bank/presentation/widgets/bank_panel.dart';
 import '../../domain/finance_snapshot.dart';
 import '../cubit/finance_cubit.dart';
 import '../cubit/finance_state.dart';
+import '../widgets/ifrs_report_panel.dart';
 
 /// Finance-scoped lazy tab cubit to avoid namespace collision with
 /// the dashboard's [LazyTabCubit] when both are in the widget tree.
@@ -280,6 +282,8 @@ class _FinanceViewState extends State<FinanceView>
           const AppSectionHeader(title: AppStrings.ledgerCategoryAnalytics),
           const SizedBox(height: AppSpacing.blockGap),
           _buildCategoryAnalyticsGrid(state, AppFormatters.currencyDetailed),
+          const SizedBox(height: AppSpacing.sectionGap),
+          _buildViewFullReportButton(context, state),
         ],
       ),
     );
@@ -759,6 +763,27 @@ class _FinanceViewState extends State<FinanceView>
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildViewFullReportButton(
+    BuildContext context,
+    FinanceDataState state,
+  ) {
+    return Center(
+      child: AppButton(
+        text: 'VIEW FULL REPORT',
+        icon: Icons.assessment_outlined,
+        type: AppButtonType.secondary,
+        onPressed: () {
+          final bankState = context.read<BankCubit>().state;
+          showIfrsReportPanel(
+            context,
+            financeState: state,
+            bankState: bankState,
+          );
+        },
       ),
     );
   }

@@ -1,0 +1,290 @@
+import '../../bank/presentation/cubit/bank_state.dart';
+import '../presentation/cubit/finance_state.dart';
+
+/// Stateless utility that takes [FinanceState] + [BankState] and produces
+/// structured IFRS-style financial report data for the drill-down panel.
+class IfrsReportBuilder {
+  const IfrsReportBuilder._();
+
+  static IncomeStatement buildIncomeStatement(FinanceDataState finance) {
+    final transactions = finance.transactions;
+
+    // Revenue breakdown from transactions.
+    double ticketSales = 0;
+    double cargoRevenue = 0;
+    for (final txn in transactions) {
+      if (txn.transactionType != 'credit') continue;
+      final sub = txn.ifrsSubcategory ?? '';
+      final amt = txn.amount.abs();
+      if (sub == 'route_revenue') {
+        ticketSales += amt;
+      } else if (sub == 'cargo_revenue') {
+        cargoRevenue += amt;
+      }
+    }
+
+    // Operating costs breakdown from transactions.
+    double fuel = 0;
+    double crew = 0;
+    double maintenance = 0;
+    double airportFees = 0;
+    for (final txn in transactions) {
+      if (txn.transactionType != 'debit') continue;
+      final sub = txn.ifrsSubcategory ?? '';
+      final cat = txn.ifrsCategory ?? '';
+      final amt = txn.amount.abs();
+      if (sub == 'fuel_cost' || (cat == 'cogs' && sub.isEmpty)) {
+        fuel += amt;
+      } else if (sub == 'crew_cost') {
+        crew += amt;
+      } else if (sub == 'maintenance_cost') {
+        maintenance += amt;
+      } else if (sub == 'airport_fees') {
+        airportFees += amt;
+      }
+    }
+
+    // Other expenses.
+    double fleetLeasing = 0;
+    double fleetAcquisition = 0;
+    double hangarRepairs = 0;
+    for (final txn in transactions) {
+      if (txn.transactionType != 'debit') continue;
+      final sub = txn.ifrsSubcategory ?? '';
+      final amt = txn.amount.abs();
+      if (sub == 'aircraft_lease' ||
+          sub == 'aircraft_lease_init' ||
+          sub == 'aircraft_lease_exit') {
+        fleetLeasing += amt;
+      } else if (sub == 'aircraft_purchase' ||
+          sub == 'aircraft_purchase_deposit') {
+        fleetAcquisition += amt;
+      } else if (sub == 'aircraft_repair') {
+        hangarRepairs += amt;
+      }
+    }
+
+    final totalRevenue = ticketSales + cargoRevenue;
+    final totalOperatingCosts = fuel + crew + maintenance + airportFees;
+    final grossProfit = totalRevenue - totalOperatingCosts;
+    final totalOtherExpenses = fleetLeasing + fleetAcquisition + hangarRepairs;
+    final netIncome = grossProfit - totalOtherExpenses;
+
+    return IncomeStatement(
+      ticketSales: ticketSales,
+      cargoRevenue: cargoRevenue,
+      totalRevenue: totalRevenue,
+      fuel: fuel,
+      crew: crew,
+      maintenance: maintenance,
+      airportFees: airportFees,
+      totalOperatingCosts: totalOperatingCosts,
+      grossProfit: grossProfit,
+      fleetLeasing: fleetLeasing,
+      fleetAcquisition: fleetAcquisition,
+      hangarRepairs: hangarRepairs,
+      totalOtherExpenses: totalOtherExpenses,
+      netIncome: netIncome,
+    );
+  }
+
+  static BalanceSheet buildBalanceSheet(
+    FinanceDataState finance,
+    BankState bank,
+  ) {
+    // Assets
+    final cash = finance.snapshot.cash;
+    final fleetNetBookValue = finance.snapshot.ownedAircraftAssetValue;
+    final totalAssets = cash + fleetNetBookValue;
+
+    // Liabilities — active loan balances from bank state.
+    double outstandingLoans = 0;
+    if (bank is BankLoaded) {
+      outstandingLoans = bank.totalOutstanding;
+    } else if (bank is BankError) {
+      // Use cached data even on error state.
+      outstandingLoans = bank.loans
+          .where((l) => l.isActive)
+          .fold(0.0, (sum, l) => sum + l.remainingBalance);
+    }
+    final totalLiabilities = outstandingLoans;
+
+    // Equity
+    final netWorth = finance.snapshot.netWorth;
+    final totalEquity = netWorth;
+
+    return BalanceSheet(
+      cash: cash,
+      fleetNetBookValue: fleetNetBookValue,
+      totalAssets: totalAssets,
+      outstandingLoans: outstandingLoans,
+      totalLiabilities: totalLiabilities,
+      netWorth: netWorth,
+      totalEquity: totalEquity,
+    );
+  }
+
+  static CashFlows buildCashFlows(FinanceDataState finance) {
+    final transactions = finance.transactions;
+
+    // Operating
+    double revenueInflows = 0;
+    double operatingOutflows = 0;
+    for (final txn in transactions) {
+      final cat = txn.ifrsCategory ?? '';
+      final sub = txn.ifrsSubcategory ?? '';
+      final amt = txn.amount.abs();
+      // Revenue inflows
+      if (txn.transactionType == 'credit' &&
+          (cat == 'revenue' || sub == 'route_revenue' || sub == 'cargo_revenue')) {
+        revenueInflows += amt;
+      }
+      // Operating outflows (cogs + opex)
+      if (txn.transactionType == 'debit' &&
+          (cat == 'cogs' || cat == 'opex' ||
+              sub == 'fuel_cost' ||
+              sub == 'crew_cost' ||
+              sub == 'maintenance_cost' ||
+              sub == 'airport_fees')) {
+        operatingOutflows += amt;
+      }
+    }
+    final operatingCashFlow = revenueInflows - operatingOutflows;
+
+    // Investing — all capital expenditure (purchases + leases + repairs)
+    double capitalExpenditure = 0;
+    double aircraftSales = 0;
+    for (final txn in transactions) {
+      final sub = txn.ifrsSubcategory ?? '';
+      final amt = txn.amount.abs();
+      if (txn.transactionType == 'debit') {
+        if (sub == 'aircraft_purchase' ||
+            sub == 'aircraft_purchase_deposit' ||
+            sub == 'aircraft_lease' ||
+            sub == 'aircraft_lease_init' ||
+            sub == 'aircraft_lease_exit' ||
+            sub == 'aircraft_repair') {
+          capitalExpenditure += amt;
+        }
+      }
+    }
+    final investingCashFlow = -capitalExpenditure;
+
+    // Financing — loan proceeds/repayments from transaction subcategories.
+    double loanProceeds = 0;
+    double loanRepayments = 0;
+    for (final txn in transactions) {
+      final sub = txn.ifrsSubcategory ?? '';
+      final amt = txn.amount.abs();
+      if (sub == 'loan_disbursement' && txn.transactionType == 'credit') {
+        loanProceeds += amt;
+      } else if ((sub == 'loan_payment' || sub == 'financing_payment') &&
+          txn.transactionType == 'debit') {
+        loanRepayments += amt;
+      }
+    }
+    final financingCashFlow = loanProceeds - loanRepayments;
+
+    final netCashChange =
+        operatingCashFlow + investingCashFlow + financingCashFlow;
+
+    return CashFlows(
+      revenueInflows: revenueInflows,
+      operatingOutflows: operatingOutflows,
+      operatingCashFlow: operatingCashFlow,
+      aircraftPurchases: capitalExpenditure,
+      aircraftSales: aircraftSales,
+      investingCashFlow: investingCashFlow,
+      loanProceeds: loanProceeds,
+      loanRepayments: loanRepayments,
+      financingCashFlow: financingCashFlow,
+      netCashChange: netCashChange,
+    );
+  }
+}
+
+// ── Report Data Models ──
+
+class IncomeStatement {
+  final double ticketSales;
+  final double cargoRevenue;
+  final double totalRevenue;
+  final double fuel;
+  final double crew;
+  final double maintenance;
+  final double airportFees;
+  final double totalOperatingCosts;
+  final double grossProfit;
+  final double fleetLeasing;
+  final double fleetAcquisition;
+  final double hangarRepairs;
+  final double totalOtherExpenses;
+  final double netIncome;
+
+  const IncomeStatement({
+    required this.ticketSales,
+    required this.cargoRevenue,
+    required this.totalRevenue,
+    required this.fuel,
+    required this.crew,
+    required this.maintenance,
+    required this.airportFees,
+    required this.totalOperatingCosts,
+    required this.grossProfit,
+    required this.fleetLeasing,
+    required this.fleetAcquisition,
+    required this.hangarRepairs,
+    required this.totalOtherExpenses,
+    required this.netIncome,
+  });
+}
+
+class BalanceSheet {
+  final double cash;
+  final double fleetNetBookValue;
+  final double totalAssets;
+  final double outstandingLoans;
+  final double totalLiabilities;
+  final double netWorth;
+  final double totalEquity;
+
+  const BalanceSheet({
+    required this.cash,
+    required this.fleetNetBookValue,
+    required this.totalAssets,
+    required this.outstandingLoans,
+    required this.totalLiabilities,
+    required this.netWorth,
+    required this.totalEquity,
+  });
+
+  /// Whether Assets ≈ Liabilities + Equity (within rounding tolerance).
+  bool get isBalanced =>
+      (totalAssets - (totalLiabilities + totalEquity)).abs() < 1.0;
+}
+
+class CashFlows {
+  final double revenueInflows;
+  final double operatingOutflows;
+  final double operatingCashFlow;
+  final double aircraftPurchases;
+  final double aircraftSales;
+  final double investingCashFlow;
+  final double loanProceeds;
+  final double loanRepayments;
+  final double financingCashFlow;
+  final double netCashChange;
+
+  const CashFlows({
+    required this.revenueInflows,
+    required this.operatingOutflows,
+    required this.operatingCashFlow,
+    required this.aircraftPurchases,
+    required this.aircraftSales,
+    required this.investingCashFlow,
+    required this.loanProceeds,
+    required this.loanRepayments,
+    required this.financingCashFlow,
+    required this.netCashChange,
+  });
+}
