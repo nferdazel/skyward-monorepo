@@ -259,11 +259,16 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
         final message = result['message'] as String? ?? '';
 
         if (success) {
-          // Reload financing data
-          final financingData = await _gateway.getAircraftFinancing();
-          _cachedFinancing = financingData
+          final results = await Future.wait([
+            _gateway.getAircraftFinancing(),
+            _gateway.getBankAccounts(),
+          ]);
+
+          _cachedFinancing = results[0]
               .map((m) => Loan.fromMap(m as Map<String, dynamic>))
               .toList();
+          _cachedAccounts = results[1] as List<BankAccount>;
+          await _reloadCachedTransactions();
 
           _emitLoaded();
         } else {

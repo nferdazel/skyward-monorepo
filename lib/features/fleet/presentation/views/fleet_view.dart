@@ -302,9 +302,7 @@ class _FleetViewState extends State<FleetView>
             defaultVerticalAlignment: TableCellVerticalAlignment.middle,
             children: [
               TableRow(
-                decoration: BoxDecoration(
-                  color: AppTheme.surfaceRaised,
-                ),
+                decoration: BoxDecoration(color: AppTheme.surfaceRaised),
                 children: [
                   _tableHeaderCell(AppStrings.tailHeader),
                   _tableHeaderCell(AppStrings.aircraftHeader),
@@ -349,9 +347,7 @@ class _FleetViewState extends State<FleetView>
     double autoGroundingThreshold,
     Set<String> assignedFleetIds,
   ) {
-    final isGrounded = aircraft.isMaintenanceGrounded(
-      autoGroundingThreshold,
-    );
+    final isGrounded = aircraft.isMaintenanceGrounded(autoGroundingThreshold);
     final isAssigned = assignedFleetIds.contains(aircraft.id);
     return Table(
       columnWidths: _fleetColumnWidths,
@@ -712,9 +708,7 @@ class _FleetViewState extends State<FleetView>
             ),
             Text(
               '$value Seats',
-              style: AppTypography.badgeText.copyWith(
-                color: AppTheme.primary,
-              ),
+              style: AppTypography.badgeText.copyWith(color: AppTheme.primary),
             ),
           ],
         ),
@@ -786,7 +780,9 @@ class _FleetViewState extends State<FleetView>
           return Center(
             child: Text(
               AppStrings.noCatalogModelsAvailable,
-              style: AppTypography.bodyMedium.copyWith(color: AppTheme.textMuted),
+              style: AppTypography.bodyMedium.copyWith(
+                color: AppTheme.textMuted,
+              ),
             ),
           );
         }
@@ -998,9 +994,7 @@ class _FleetViewState extends State<FleetView>
             defaultVerticalAlignment: TableCellVerticalAlignment.middle,
             children: [
               TableRow(
-                decoration: BoxDecoration(
-                  color: AppTheme.surfaceRaised,
-                ),
+                decoration: BoxDecoration(color: AppTheme.surfaceRaised),
                 children: [
                   _tableHeaderCell(AppStrings.aircraftHeader),
                   _tableHeaderCell(AppStrings.classHeader),
@@ -1185,11 +1179,7 @@ class _FleetViewState extends State<FleetView>
                     iconSize: 16,
                     onPressed: isActionLoading
                         ? null
-                        : () => _showFinanceDialog(
-                            context,
-                            model,
-                            userId,
-                          ),
+                        : () => _showFinanceDialog(context, model, userId),
                   ),
                 ],
               ),
@@ -1376,7 +1366,11 @@ class _FleetViewState extends State<FleetView>
                                   business: business,
                                   firstClass: firstClass,
                                   onBalanceChanged: (newCash) =>
-                                      _applyCashBalance(context, newCash),
+                                      _applyCashBalance(
+                                        context,
+                                        userId,
+                                        newCash,
+                                      ),
                                 );
                               } else {
                                 await fleetCubit.purchaseAircraft(
@@ -1387,7 +1381,11 @@ class _FleetViewState extends State<FleetView>
                                   business: business,
                                   firstClass: firstClass,
                                   onBalanceChanged: (newCash) =>
-                                      _applyCashBalance(context, newCash),
+                                      _applyCashBalance(
+                                        context,
+                                        userId,
+                                        newCash,
+                                      ),
                                 );
                               }
                             },
@@ -1461,8 +1459,7 @@ class _FleetViewState extends State<FleetView>
                   min: 0.10,
                   max: 0.50,
                   divisions: 8,
-                  onChanged: (v) =>
-                      setDialogState(() => downPaymentPct = v),
+                  onChanged: (v) => setDialogState(() => downPaymentPct = v),
                 ),
                 Text(
                   '\$${_formatNumber(downPayment)}',
@@ -1476,15 +1473,17 @@ class _FleetViewState extends State<FleetView>
                   label: 'FINANCING TERM',
                   value: termMonths,
                   items: [12, 24, 36, 48, 60]
-                      .map((m) => DropdownMenuItem(
-                            value: m,
-                            child: Text(
-                              '${m ~/ 12} months (${(m ~/ 12)} yr)',
-                              style: AppTypography.badgeText.copyWith(
-                                color: AppTheme.textPrimary,
-                              ),
+                      .map(
+                        (m) => DropdownMenuItem(
+                          value: m,
+                          child: Text(
+                            '${m ~/ 12} months (${(m ~/ 12)} yr)',
+                            style: AppTypography.badgeText.copyWith(
+                              color: AppTheme.textPrimary,
                             ),
-                          ))
+                          ),
+                        ),
+                      )
                       .toList(),
                   onChanged: (v) {
                     if (v != null) setDialogState(() => termMonths = v);
@@ -1498,8 +1497,10 @@ class _FleetViewState extends State<FleetView>
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      _summaryRow('Aircraft Price',
-                          '\$${_formatNumber(model.purchasePrice)}'),
+                      _summaryRow(
+                        'Aircraft Price',
+                        '\$${_formatNumber(model.purchasePrice)}',
+                      ),
                       _summaryRow(
                         'Financing Cap',
                         '\$${_formatNumber(maxFinancingAmount)}',
@@ -1508,17 +1509,26 @@ class _FleetViewState extends State<FleetView>
                         'Secured Rate',
                         '${(securedRate * 100).toStringAsFixed(1)}% APR',
                       ),
-                      _summaryRow('Down Payment',
-                          '\$${_formatNumber(downPayment)}'),
-                      _summaryRow('Monthly Servicing',
-                          '\$${_formatNumber(monthlyPayment)}'),
-                      _summaryRow('Weekly Servicing',
-                          '\$${_formatNumber(weeklyPayment)}'),
                       _summaryRow(
-                          'Total Cost', '\$${_formatNumber(totalCost)}'),
+                        'Down Payment',
+                        '\$${_formatNumber(downPayment)}',
+                      ),
                       _summaryRow(
-                          'vs Buy Outright',
-                          '+\$${_formatNumber(totalCost - model.purchasePrice)}'),
+                        'Monthly Servicing',
+                        '\$${_formatNumber(monthlyPayment)}',
+                      ),
+                      _summaryRow(
+                        'Weekly Servicing',
+                        '\$${_formatNumber(weeklyPayment)}',
+                      ),
+                      _summaryRow(
+                        'Total Cost',
+                        '\$${_formatNumber(totalCost)}',
+                      ),
+                      _summaryRow(
+                        'vs Buy Outright',
+                        '+\$${_formatNumber(totalCost - model.purchasePrice)}',
+                      ),
                     ],
                   ),
                 ),
@@ -1544,10 +1554,10 @@ class _FleetViewState extends State<FleetView>
                             ? null
                             : () async {
                                 await context.read<BankCubit>().financeAircraft(
-                                      model.id,
-                                      downPaymentPct,
-                                      termMonths,
-                                    );
+                                  model.id,
+                                  downPaymentPct,
+                                  termMonths,
+                                );
                                 if (context.mounted) Navigator.pop(ctx);
                               },
                         type: AppButtonType.primary,
@@ -1572,8 +1582,9 @@ class _FleetViewState extends State<FleetView>
         children: [
           Text(
             label,
-            style: AppTypography.captionRegular
-                .copyWith(color: AppTheme.textSecondary),
+            style: AppTypography.captionRegular.copyWith(
+              color: AppTheme.textSecondary,
+            ),
           ),
           Text(value, style: AppTypography.monoValue),
         ],
@@ -1620,7 +1631,7 @@ class _FleetViewState extends State<FleetView>
                       userId: userId,
                       fleetId: aircraft.id,
                       onBalanceChanged: (newCash) =>
-                          _applyCashBalance(context, newCash),
+                          _applyCashBalance(context, userId, newCash),
                     );
                   },
                   type: AppButtonType.primary,
@@ -1749,14 +1760,14 @@ class _FleetViewState extends State<FleetView>
                         userId: userId,
                         fleetId: aircraft.id,
                         onBalanceChanged: (newCash) =>
-                            _applyCashBalance(context, newCash),
+                            _applyCashBalance(context, userId, newCash),
                       );
                     } else {
                       await fleetCubit.sellAircraft(
                         userId: userId,
                         fleetId: aircraft.id,
                         onBalanceChanged: (newCash) =>
-                            _applyCashBalance(context, newCash),
+                            _applyCashBalance(context, userId, newCash),
                       );
                     }
                   },
@@ -1771,9 +1782,14 @@ class _FleetViewState extends State<FleetView>
     );
   }
 
-  void _applyCashBalance(BuildContext context, double newCash) {
+  Future<void> _applyCashBalance(
+    BuildContext context,
+    String userId,
+    double newCash,
+  ) async {
     final simCubit = context.read<SimulationCubit>();
     simCubit.applyImmediateCashBalance(newCash);
+    await context.read<BankCubit>().loadBankData(userId, silent: true);
   }
 
   // WIDGET HELPERS
@@ -1795,9 +1811,7 @@ class _FleetViewState extends State<FleetView>
       children: [
         Text(
           '${condition.toStringAsFixed(0)}%',
-          style: AppTypography.buttonText.copyWith(
-            color: barColor,
-          ),
+          style: AppTypography.buttonText.copyWith(color: barColor),
         ),
         const SizedBox(height: AppSpacing.xs),
         SegmentedProgressBar(

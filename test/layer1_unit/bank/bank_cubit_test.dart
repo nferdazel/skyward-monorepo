@@ -349,13 +349,15 @@ void main() {
     );
 
     blocTest<BankCubit, BankState>(
-      'financeAircraft emits BankLoaded with refreshed financing list',
+      'financeAircraft emits BankLoaded with refreshed financing, balances, and transactions',
       build: () {
         final gateway = MockBankGateway()
           ..financeAircraftResponse = [
             {'success': true, 'message': 'Aircraft financed.'},
           ]
-          ..aircraftFinancingToReturn = [_financingLoanMap];
+          ..aircraftFinancingToReturn = [_financingLoanMap]
+          ..bankAccountsToReturn = [_bankAccount]
+          ..bankTransactionsToReturn = [_bankTransaction];
         return BankCubit(gateway: gateway);
       },
       act: (cubit) => cubit.financeAircraft('model-1', 0.20, 36),
@@ -371,6 +373,13 @@ void main() {
               (s) => s.activeFinancing.first.loanType,
               'active financing type',
               'aircraft_financing',
+            )
+            .having((s) => s.accounts.length, 'accounts length', 1)
+            .having((s) => s.transactions.length, 'transactions length', 1)
+            .having(
+              (s) => s.transactions.first.ifrsSubcategory,
+              'transaction subtype',
+              'loan_repayment',
             ),
       ],
     );
@@ -395,7 +404,11 @@ void main() {
         const BankLoading(),
         isA<BankLoaded>()
             .having((s) => s.loans.length, 'initial loans length', 1)
-            .having((s) => s.transactions.length, 'initial transactions length', 1),
+            .having(
+              (s) => s.transactions.length,
+              'initial transactions length',
+              1,
+            ),
         isA<BankLoaded>()
             .having((s) => s.transactions.length, 'transactions length', 1)
             .having(
