@@ -19,6 +19,7 @@ import 'package:skyward/features/settings/presentation/cubit/settings_cubit.dart
 import 'package:skyward/features/settings/presentation/views/settings_view.dart';
 import 'package:skyward/features/simulation/presentation/cubit/simulation_cubit.dart';
 import 'package:skyward/features/simulation/presentation/cubit/simulation_state.dart';
+import 'package:skyward/features/bank/domain/loan_model.dart';
 
 class TestSimulationCubit extends SimulationCubit {
   int syncCalls = 0;
@@ -256,6 +257,64 @@ void main() {
       expect(financeCubit.loadLedgerCalls, 1);
       expect(financeCubit.lastUserId, _testUser().id);
       expect(financeCubit.lastSilent, isTrue);
+    },
+  );
+
+  testWidgets(
+    'BankPanel does not show real-time loan timestamps in the player timeline',
+    (tester) async {
+      final authCubit = AuthCubit();
+      final simulationCubit = TestSimulationCubit()..seedState();
+      final bankCubit = TestBankCubit();
+      final financeCubit = TestFinanceCubit();
+
+      addTearDown(() async {
+        await authCubit.close();
+        await simulationCubit.close();
+        await bankCubit.close();
+        await financeCubit.close();
+      });
+
+      authCubit.emit(
+        AuthAuthenticated(user: _testUser(), token: 'token'),
+      );
+      bankCubit.emit(
+        BankLoaded(
+          loans: [
+            Loan(
+              id: 'loan-1',
+              principal: 1000000.0,
+              interestRate: 0.08,
+              remainingBalance: 900000.0,
+              weeklyPayment: 25000.0,
+              status: 'active',
+              takenAt: DateTime.parse('2026-06-27T10:00:00Z'),
+            ),
+          ],
+          accounts: const [],
+          transactions: const [],
+        ),
+      );
+
+      await tester.pumpWidget(
+        MultiBlocProvider(
+          providers: [
+            BlocProvider<AuthCubit>.value(value: authCubit),
+            BlocProvider<SimulationCubit>.value(value: simulationCubit),
+            BlocProvider<BankCubit>.value(value: bankCubit),
+            BlocProvider<FinanceCubit>.value(value: financeCubit),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.darkTheme,
+            home: const Scaffold(body: BankPanel()),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('real time'), findsNothing);
+      expect(find.textContaining('Opened '), findsNothing);
     },
   );
 

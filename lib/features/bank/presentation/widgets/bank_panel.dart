@@ -637,15 +637,6 @@ class _LoanCard extends StatelessWidget {
                 ),
               ],
             ),
-            if (loan.takenAt != null) ...[
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                'Opened ${AppFormatters.shortDateTime(loan.takenAt!)} · real time',
-                style: AppTypography.captionLight.copyWith(
-                  color: AppTheme.textMuted,
-                ),
-              ),
-            ],
             const SizedBox(height: AppSpacing.sm),
             SizedBox(
               width: double.infinity,
