@@ -277,6 +277,17 @@ clock and backend audit metadata.
   dashboard runtime graph, so achievement chronology is presently a dormant
   surface, not an active freshness bug
 
+### Remaining Detection-Only Gaps
+
+- native SQL audits still do not explicitly assert exact game-clock timestamps
+  for:
+  - `purchase_aircraft`
+  - `lease_aircraft`
+  - `repair_aircraft`
+  - `sell_aircraft`
+- operator docs previously referenced `bank_transactions.created_at` even
+  though the table has no such column; that stale query wording is now fixed
+
 ## Phase 5: Repo / Live Proof Closure
 
 ### Goal

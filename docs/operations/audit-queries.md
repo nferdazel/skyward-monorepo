@@ -53,7 +53,7 @@ select
   description
 from bank_transactions
 where user_id = '<your_user_id>'
-order by game_date desc, created_at desc
+order by game_date desc
 limit 30;
 ```
 
@@ -61,6 +61,8 @@ Chronology note from the current audit pass:
 - `loan_disbursement`, `loan_repayment`, `aircraft_purchase_deposit`, and
   `lease_termination` rows are now expected to preserve exact shared game time
 - if one of those rows appears rounded to `00:00`, treat it as a regression
+- `bank_transactions` itself has no `created_at`, so do not use old queries
+  that try to break ties with a non-existent wall-clock column
 
 ## 4. Fleet condition and status
 
