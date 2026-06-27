@@ -277,13 +277,6 @@ This is the live Flutter-to-Supabase contract surface.
   - returns a demand multiplier (1.0–1.20) based on hub-and-spoke effect
   - 2% bonus per additional active route sharing the same origin, capped at 20%
 
-`get_hub_bonus_percentage`
-- caller: Flutter UI for hub bonus display
-- params:
-  - `p_origin_iata`, `p_user_id`
-- current behavior:
-  - returns the hub bonus as a percentage (0–20) for UI display labels
-
 ### Event system
 
 `generate_game_events`

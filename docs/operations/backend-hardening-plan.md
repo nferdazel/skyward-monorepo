@@ -242,6 +242,15 @@ proves.
 - maintainers can tell which truths come from migrations, which from live
   environment state, and which are intentionally external
 
+## Cleanup Notes
+
+Recent cleanup landed:
+
+- migration `26_drop_dead_legacy_helpers.sql` removes dead legacy helpers that
+  were no longer referenced by the app surface or the latest bot engine:
+  `bot_take_loan`, `bot_finance_aircraft`, `process_bot_loan_payments`,
+  `get_fleet_commonality_discount`, and `get_hub_bonus_percentage`
+
 ## Phase 6: Ongoing Docs Discipline
 
 ### Goal
