@@ -165,6 +165,13 @@ DECLARE
   v_route_status VARCHAR;
   v_loan_status VARCHAR;
   v_remaining_balance NUMERIC;
+  v_prune_account_id UUID;
+  v_prune_balance NUMERIC;
+  v_prune_dry_delete_count BIGINT;
+  v_prune_old_rows_before INT;
+  v_prune_old_rows_after INT;
+  v_prune_fresh_rows_after INT;
+  v_prune_null_rows_after INT;
 -- ==========================================================================
 -- 1. SETUP SEED DATA
 -- ==========================================================================
@@ -1271,7 +1278,113 @@ BEGIN
     'reset_user_airline should reset onboarding completion state';
 
   -- ==========================================================================
-  -- 9. TEST: RECONCILE NET WORTH TRIGGERS
+  -- 9. TEST: bank transaction retention dry-run and prune behavior
+  -- ==========================================================================
+
+  SELECT id, balance
+    INTO v_prune_account_id, v_prune_balance
+    FROM bank_accounts
+   WHERE user_id = v_user_id
+     AND account_type = 'operating'
+   LIMIT 1;
+
+  ASSERT v_prune_account_id IS NOT NULL,
+    'Expected operating bank account before prune_bank_transactions audit';
+
+  INSERT INTO bank_transactions (
+    account_id,
+    user_id,
+    transaction_type,
+    amount,
+    balance_after,
+    description,
+    game_date,
+    ifrs_category,
+    ifrs_subcategory
+  )
+  VALUES
+  (
+    v_prune_account_id,
+    v_user_id,
+    'credit',
+    111.00,
+    v_prune_balance,
+    'Prune audit old row',
+    v_season_after - INTERVAL '181 days',
+    'audit',
+    'prune_old'
+  ),
+  (
+    v_prune_account_id,
+    v_user_id,
+    'credit',
+    222.00,
+    v_prune_balance,
+    'Prune audit retained row',
+    v_season_after - INTERVAL '179 days',
+    'audit',
+    'prune_keep'
+  ),
+  (
+    v_prune_account_id,
+    v_user_id,
+    'credit',
+    333.00,
+    v_prune_balance,
+    'Prune audit null-date row',
+    NULL,
+    'audit',
+    'prune_null'
+  );
+
+  SELECT COUNT(*)
+    INTO v_prune_old_rows_before
+    FROM bank_transactions
+   WHERE user_id = v_user_id
+     AND ifrs_subcategory = 'prune_old';
+
+  ASSERT v_prune_old_rows_before = 1,
+    'Expected one old prune audit row before prune_bank_transactions execution';
+
+  SELECT row_count
+    INTO v_prune_dry_delete_count
+    FROM prune_bank_transactions(TRUE)
+   WHERE action = 'delete'
+   LIMIT 1;
+
+  ASSERT COALESCE(v_prune_dry_delete_count, 0) >= 1,
+    'prune_bank_transactions(true) should report at least one row pending delete';
+
+  PERFORM *
+    FROM prune_bank_transactions(FALSE);
+
+  SELECT COUNT(*)
+    INTO v_prune_old_rows_after
+    FROM bank_transactions
+   WHERE user_id = v_user_id
+     AND ifrs_subcategory = 'prune_old';
+
+  SELECT COUNT(*)
+    INTO v_prune_fresh_rows_after
+    FROM bank_transactions
+   WHERE user_id = v_user_id
+     AND ifrs_subcategory = 'prune_keep';
+
+  SELECT COUNT(*)
+    INTO v_prune_null_rows_after
+    FROM bank_transactions
+   WHERE user_id = v_user_id
+     AND ifrs_subcategory = 'prune_null';
+
+  ASSERT v_prune_old_rows_after = 0,
+    'prune_bank_transactions(false) should delete rows older than the retention cutoff';
+  ASSERT v_prune_fresh_rows_after = 1,
+    'prune_bank_transactions(false) should retain rows inside the retention horizon';
+  ASSERT v_prune_null_rows_after = 1,
+    'prune_bank_transactions(false) should retain rows with null game_date';
+
+  -- ==========================================================================
+  -- 10. TEST: RECONCILE NET WORTH TRIGGERS
   -- ==========================================================================
   
   -- Assert net worth recalculation triggers successfully if calculate_user_net_worth is installed
@@ -1285,7 +1398,7 @@ BEGIN
   END IF;
 
   -- ==========================================================================
-  -- 10. SUCCESS CONFIRMATION
+  -- 11. SUCCESS CONFIRMATION
   -- ==========================================================================
   RAISE NOTICE 'ALL SKYWARD RELATIONAL RPC AND DATABASE TRIGGERS AUDITED SUCCESSFULLY!';
 END $$;
