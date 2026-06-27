@@ -1,6 +1,6 @@
 # Skyward Docs
 
-Last verified on 2026-06-26.
+Last verified on 2026-06-27.
 
 This folder is the current maintenance record for Skyward's live runtime.
 It is intentionally organized by operational question, not by historical phase.
@@ -30,6 +30,9 @@ Live runtime characteristics:
 - route/fleet/bank/settings writes go through RPCs
 - realtime reflection on `users`, `fleet_aircraft`, `route_assignments`,
   `bank_transactions`, `achievements`, and `loans`
+- realtime is a freshness aid, not the sole consistency mechanism; the Flutter
+  runtime now also performs explicit post-mutation resyncs for finance-heavy
+  flows
 - bank / credit / financing system with shared player-facing and bot-facing policy
 - rollback-style native SQL audits for fleet, routes, finance, settings, core
   bank RPCs, and direct trigger proof

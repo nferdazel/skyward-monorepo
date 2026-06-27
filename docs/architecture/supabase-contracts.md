@@ -1,6 +1,6 @@
 # Skyward Supabase Contract Map
 
-Last verified against code on 2026-06-26.
+Last verified against code on 2026-06-27.
 
 This is the live Flutter-to-Supabase contract surface.
 
@@ -10,6 +10,8 @@ This is the live Flutter-to-Supabase contract surface.
 - Flutter does not calculate authoritative simulation or economy outcomes.
 - `DevModeManager.isDevMode` bypasses these contracts with local mock data.
 - Realtime subscriptions are a reflection layer for UI freshness, not a replacement for SQL/RPC authority.
+- high-impact mutation paths may still run explicit follow-up resync/reload
+  passes in Flutter when visible state spans multiple cubits or clock domains
 
 ## RPC surface
 
@@ -464,6 +466,8 @@ This is the live Flutter-to-Supabase contract surface.
   - stores the loan row's `taken_at` in real time, while the matching
     `loan_disbursement` ledger row is stamped with the player's in-game
     `users.game_current_time`
+  - Flutter now follows successful bank-loan mutations with an authoritative
+    simulation sync plus silent bank/finance reloads
 
 `get_credit_report`
 - caller: `BankCubit.loadCreditReport()`
@@ -482,6 +486,8 @@ This is the live Flutter-to-Supabase contract surface.
   - debits the player's operating bank account
   - reduces `loans.remaining_balance`
   - writes a `bank_transactions` repayment row
+  - Flutter now follows successful repayment with the same authoritative
+    simulation/bank/finance refresh sequence used for loan origination
 
 `refinance_loan`
 - caller: `BankCubit.refinanceLoan()`
@@ -491,6 +497,8 @@ This is the live Flutter-to-Supabase contract surface.
   - auth-bound wrapper resolves player from `auth.uid()`
   - validates eligibility for refinancing
   - updates loan terms
+  - Flutter now follows successful refinance with an authoritative
+    simulation/bank/finance refresh sequence
 
 `finance_aircraft`
 - caller: `BankCubit.financeAircraft()`
@@ -504,6 +512,8 @@ This is the live Flutter-to-Supabase contract surface.
     down-payment ledger row
   - validates credit eligibility
   - creates aircraft financing loan and purchase-side bank activity
+  - Flutter now treats success as a trigger for explicit
+    simulation/bank/finance reloads rather than waiting on realtime alone
 
 ### Leaderboard
 
@@ -533,6 +543,10 @@ This is the live Flutter-to-Supabase contract surface.
 `reset_user_airline`
 - caller: `SettingsCubit.resetAirline()`
 - params: none from Flutter after Security Phase 4
+- current behavior:
+  - Flutter restarts `SimulationCubit` and reloads fleet, routes, bank, and
+    finance cubits after a successful reset so wiped airline state is reflected
+    consistently across tabs
 
 `save_airline_settings`
 - caller: `SettingsCubit.saveSettings()`
@@ -545,6 +559,9 @@ This is the live Flutter-to-Supabase contract surface.
     `auth.uid()`
   - catches up simulation before saving settings
   - validates safety threshold and HQ airport server-side
+  - Flutter updates `AuthCubit` immediately on success, then resyncs
+    `SimulationCubit` and reloads fleet/routes so company, HQ, and grounding
+    threshold consumers do not linger on stale profile state
 
 `delete-account` Edge Function
 - caller: `SettingsGateway.deleteAccount()`
@@ -593,6 +610,8 @@ Operational rule:
 - periodic/app-resume `process_simulation_delta` calls remain compatibility
   reconciliation for the current player
 - Realtime is used to reflect committed row changes into Cubit state sooner between syncs
+- explicit post-mutation reloads are expected in flows where realtime ordering
+  or debounce gaps could otherwise leave visible state split across cubits
 - production Flutter does not locally advance game time; mock/dev mode may still
   use a local display ticker
 

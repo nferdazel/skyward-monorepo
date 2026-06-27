@@ -224,10 +224,10 @@ reconciliation.
 
 ### Checklist
 
-- [ ] audit refresh behavior for fleet
-- [ ] audit refresh behavior for routes
-- [ ] audit refresh behavior for finance overview/history
-- [ ] verify mutation success paths trigger enough refetch or realtime updates
+- [x] audit refresh behavior for fleet
+- [x] audit refresh behavior for routes
+- [x] audit refresh behavior for finance overview/history
+- [x] verify mutation success paths trigger enough refetch or realtime updates
 - [ ] add tests where stale-state regressions are likely
 
 ### Exit Criteria
@@ -235,6 +235,17 @@ reconciliation.
 - successful mutations are reflected consistently without manual tab hopping
 - realtime is treated as freshness support, not as a fragile substitute for
   explicit reload logic
+
+### Current Result
+
+- fleet-side aircraft actions now force authoritative follow-up refresh for
+  simulation, bank, and finance state
+- bank loan / refinance / financing success paths now trigger the same
+  authoritative refresh sequence
+- settings save now refreshes profile-owned consumers (`AuthCubit`,
+  `SimulationCubit`, fleet, routes) rather than relying on delayed reflection
+- airline reset now reloads bank and finance state in addition to simulation,
+  fleet, and routes
 
 ## Phase 5: Repo / Live Proof Closure
 

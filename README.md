@@ -10,7 +10,7 @@ Skyward is a Flutter airline-tycoon simulation with a Supabase/Postgres backend.
 The app handles UI, local session flow, and command dispatch. The backend owns
 authoritative simulation, economy, world time, and operational validation.
 
-Last verified against code, docs, and linked live audit state on `2026-06-26`.
+Last verified against code, docs, and linked live audit state on `2026-06-27`.
 
 ## Current shape
 
@@ -52,6 +52,11 @@ Last verified against code, docs, and linked live audit state on `2026-06-26`.
 - `FleetCubit`, `RoutesCubit`, `FinanceCubit`, and `LeaderboardCubit` react
   through `SimulationReactiveMixin`, but finance and leaderboard are lazy-init
   surfaces
+- realtime subscriptions are treated as a reflection layer, not a substitute
+  for explicit post-mutation reloads
+- aircraft actions, bank actions, settings save, and airline reset now force
+  targeted resync/reload flows so HUD clock, cash, ledger history, and derived
+  finance metrics stay aligned without tab hopping
 - each feature uses a **gateway pattern** for data access: an abstract
   `*Gateway` interface with a `Supabase*Gateway` implementation that wraps all
   Supabase calls, handles errors, and throws typed `*GatewayException`s

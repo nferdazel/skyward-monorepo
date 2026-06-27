@@ -1,6 +1,6 @@
 # Skyward AI Handover
 
-Last verified against code on 2026-06-26.
+Last verified against code on 2026-06-27.
 
 ## Current shape
 
@@ -30,6 +30,10 @@ Skyward is a Flutter airline-tycoon sim with:
 Other feature cubits subscribe through `SimulationReactiveMixin`.
 `FinanceCubit` and `LeaderboardCubit` are initialized lazily when their
 workspaces are first opened.
+Realtime subscriptions are a freshness layer only. The current runtime also
+forces explicit resync/reload passes after finance-heavy mutations so visible
+clock, cash, ledger, and profile state do not wait on tab changes or staggered
+Postgres Changes delivery.
 
 ## Gateway pattern
 
@@ -127,6 +131,9 @@ Recent work tightened:
 - actor-parity hardening now also shares bankruptcy side effects and repair
   side effects across player and bot mutation paths
 - delete-account now has a live-proven end-to-end audit script
+- aircraft, bank, settings-save, and airline-reset flows now force
+  authoritative follow-up reloads for the affected cubits instead of relying
+  purely on realtime propagation
 
 Leaderboard sorting was intentionally removed.
 Rankings now always default to net worth order.
@@ -162,13 +169,15 @@ audits when you need real operational state.
 3. Preserve Cubit-only app state boundaries.
 4. Avoid reintroducing blocking loaders where silent refresh is enough.
 5. Keep lazy workspace initialization and reload throttling aligned with docs.
-6. Keep reset, simulation, and repair behavior aligned across Flutter and SQL.
+6. Keep reset, simulation, repair, and finance-refresh behavior aligned across
+   Flutter and SQL.
 7. Do not treat bot cooldowns, distress gating, or autonomous timing as parity
    bugs by default; those are intentional policy differences unless the shared
    mutation side effects drift again.
 8. Keep Phase 9 isolated: deterministic daily simulation changes economy
    semantics and should not be bundled with UI or docs work.
-9. Keep validating the compaction audit RPCs before any live maintenance runs.
+9. Keep validating the ledger-retention audit RPCs before any live maintenance
+   runs.
 10. Next backend policy step is Phase 16 foundation: player activity tracking,
    simulation status, and inactive-player audit/reporting.
 11. Finance now separates current balance-sheet state from rolling 30-day ledger

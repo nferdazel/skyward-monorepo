@@ -1,6 +1,6 @@
 # Skyward Architecture Baseline
 
-Last verified against code on 2026-06-26.
+Last verified against code on 2026-06-27.
 
 ## Application model
 
@@ -77,11 +77,20 @@ Current live subscriptions:
 - `FleetCubit` listens to `fleet_aircraft`
 - `RoutesCubit` listens to `route_assignments`
 - `FinanceCubit` listens to `bank_transactions`
+- `BankCubit` listens to `loans`, `bank_accounts`, and `bank_transactions`
 - `AchievementCubit` listens to `achievements`
-- `BankCubit` listens to `loans`
 
 `LeaderboardCubit` refreshes through RPC reads rather than owning a direct
 Postgres Changes subscription.
+
+Operational rule:
+- mutation success paths that materially affect cash, ledger chronology, or
+  profile-owned simulation inputs should not rely on Postgres Changes alone
+- current Flutter runtime explicitly resyncs after aircraft acquisition /
+  disposal / repair flows, bank loan / refinance / financing flows, settings
+  save, and airline reset
+- this keeps `SimulationCubit`, `BankCubit`, `FinanceCubit`, and profile-owned
+  consumers aligned even when realtime delivery is delayed or staggered
 
 ## Canonical financial model
 
