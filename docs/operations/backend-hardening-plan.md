@@ -196,6 +196,11 @@ fallback-based, partial, or backend-only.
   migration; some additional verification queries still hit intermittent
   Supabase pooler `ECIRCUITBREAKER` / temp-role-auth failures, but the removal
   migration itself executed successfully against the linked DB
+- retention now returns in a simpler form through migration `28`:
+  - cron job `skyward_prune_bank_transactions`
+  - function `prune_bank_transactions(boolean)`
+  - config key `bank_txn_raw_retention_game_days`
+  - delete-only pruning against `bank_transactions.game_date`
 
 ### Exit Criteria
 

@@ -300,7 +300,8 @@ Additional auth-side truth:
 Repo-defined scheduler jobs:
 
 1. `skyward_world_tick` → `ensure_world_current()`
-2. `skyward_compact_world_tick_log` → `compact_world_tick_log(false)`
+2. `skyward_prune_bank_transactions` → `prune_bank_transactions(false)`
+3. `skyward_compact_world_tick_log` → `compact_world_tick_log(false)`
 
 ## Important schema truths
 
@@ -310,6 +311,8 @@ Repo-defined scheduler jobs:
 - Finance history in the current Flutter runtime is bank-transaction-driven.
 - `bank_transaction_daily_summary` and `bank_transactions_archive` were removed
   from the live schema by migration `27`.
+- raw `bank_transactions` retention is now a delete-only ops surface driven by
+  `prune_bank_transactions(false)` and `bank_txn_raw_retention_game_days`.
 
 ## Verification note
 

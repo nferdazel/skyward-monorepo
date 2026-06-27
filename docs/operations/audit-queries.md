@@ -204,7 +204,30 @@ order by game_date desc nulls last, unlocked_at desc
 limit 20;
 ```
 
-## 10. World-clock lag check for one player
+## 10. Bank transaction retention dry-run
+
+Use this to inspect the current prune horizon without deleting rows.
+
+```sql
+select
+  key,
+  value,
+  unit
+from game_config
+where key = 'bank_txn_raw_retention_game_days';
+```
+
+```sql
+select *
+from prune_bank_transactions(true);
+```
+
+Operational note:
+- this retention surface deletes old `bank_transactions` rows directly
+- the cutoff is based on `season_clock.current_game_time`, not wall-clock time
+- rows with `game_date is null` are preserved by the prune function
+
+## 11. World-clock lag check for one player
 
 `u.game_current_time` and `s.current_game_time` are in-game clocks.
 This query does not measure wall-clock scheduler latency.
@@ -221,7 +244,7 @@ join season_clock s on s.id = u.season_id
 where u.id = '<your_user_id>';
 ```
 
-## 11. Force player reconciliation
+## 12. Force player reconciliation
 
 Use this only when intentionally auditing simulation catch-up:
 
@@ -230,14 +253,14 @@ select *
 from process_simulation_delta('<your_user_id>');
 ```
 
-## 12. World-tick guardrail report
+## 13. World-tick guardrail report
 
 ```sql
 select *
 from get_world_tick_guardrail_report();
 ```
 
-## 13. Scheduler health report
+## 14. Scheduler health report
 
 `current_game_time` is the in-game season clock.
 `season_last_tick_at` and `latest_log_started_at` are real-world scheduler timestamps.
@@ -250,7 +273,7 @@ select *
 from get_world_tick_scheduler_health();
 ```
 
-## 14. Recent world-tick attempts
+## 15. Recent world-tick attempts
 
 `started_at` / `finished_at` are wall-clock scheduler times.
 `game_time_before` / `game_time_after` are in-game time boundaries.
@@ -275,7 +298,7 @@ order by started_at desc
 limit 20;
 ```
 
-## 15. Active world events
+## 16. Active world events
 
 `start_game_time` and `end_game_time` are in-game activation windows.
 
@@ -294,14 +317,14 @@ where is_active = true
 order by start_game_time desc;
 ```
 
-## 16. Database size report
+## 17. Database size report
 
 ```sql
 select *
 from get_database_size_report();
 ```
 
-## 17. Table size report
+## 18. Table size report
 
 ```sql
 select *
@@ -309,7 +332,7 @@ from get_table_size_report()
 limit 20;
 ```
 
-## 18. Owner optimizer
+## 19. Owner optimizer
 
 ```sql
 select *
@@ -323,7 +346,7 @@ from get_owner_route_optimizer(
 );
 ```
 
-## 19. Native SQL audit pass
+## 20. Native SQL audit pass
 
 ```bash
 SUPABASE_DISABLE_TELEMETRY=1 supabase db query --linked -f test/layer4_database/native_audit/supabase_audit_test.sql
@@ -354,7 +377,7 @@ What this currently proves:
 - reset semantics for fleet, routes, loans, bank history, onboarding, and
   default operating balance restoration
 
-## 20. Finance / credit regression audit
+## 21. Finance / credit regression audit
 
 ```bash
 SUPABASE_DISABLE_TELEMETRY=1 supabase db query --linked -f test/layer4_database/native_audit/finance_credit_regression_test.sql
@@ -365,7 +388,7 @@ What this currently proves:
 - aircraft financing servicing values
 - idle lease carrying-cost behavior
 
-## 21. delete-account end-to-end audit
+## 22. delete-account end-to-end audit
 
 ```bash
 test/layer4_database/native_audit/delete_account_e2e_audit.sh
