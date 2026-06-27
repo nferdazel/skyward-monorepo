@@ -18,6 +18,8 @@ import '../../../../presentation/widgets/searchable_airport_dropdown.dart';
 import '../../../auth/domain/user_model.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
+import '../../../bank/presentation/cubit/bank_cubit.dart';
+import '../../../finance/presentation/cubit/finance_cubit.dart';
 import '../../../fleet/presentation/cubit/fleet_cubit.dart';
 import '../../../routes/domain/route_models.dart';
 import '../../../routes/presentation/cubit/routes_cubit.dart';
@@ -683,6 +685,8 @@ class _SettingsViewState extends State<SettingsView> {
                     final simulationCubit = context.read<SimulationCubit>();
                     final fleetCubit = context.read<FleetCubit>();
                     final routesCubit = context.read<RoutesCubit>();
+                    final bankCubit = context.read<BankCubit>();
+                    final financeCubit = context.read<FinanceCubit>();
                     final authCubit = context.read<AuthCubit>();
 
                     final success = await settingsCubit.resetAirline(
@@ -739,8 +743,12 @@ class _SettingsViewState extends State<SettingsView> {
                           initialCash: freshCash,
                         );
 
-                        await fleetCubit.loadFleetAndCatalog(userId);
-                        await routesCubit.loadRoutesAndData(userId);
+                        await Future.wait([
+                          fleetCubit.loadFleetAndCatalog(userId),
+                          routesCubit.loadRoutesAndData(userId),
+                          bankCubit.loadBankData(userId, silent: true),
+                          financeCubit.loadLedger(userId, silent: true),
+                        ]);
                       },
                     );
 
