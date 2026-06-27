@@ -211,8 +211,9 @@ limit 20;
 
 Operational status:
 - the backend chronology contract is intact
-- the current Flutter dashboard runtime does not mount `AchievementCubit`, so
-  this is mainly a backend/live-data audit surface today
+- the `features/achievements/` module was removed from Flutter on 2026-06-27;
+  the `achievements` table has no active Flutter consumer, so this is mainly
+  a backend/live-data audit surface today
 
 ## 10. Bank transaction retention dry-run
 

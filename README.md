@@ -1,6 +1,6 @@
 # Skyward
 
-![Tests](https://img.shields.io/badge/tests-255%20passed-brightgreen)
+![Tests](https://img.shields.io/badge/tests-246%20passed-brightgreen)
 ![Flutter](https://img.shields.io/badge/Flutter-3.44-blue)
 ![Dart](https://img.shields.io/badge/Dart-3.12-blue)
 ![Supabase](https://img.shields.io/badge/Supabase-Postgres-3ecf8e)
@@ -35,7 +35,8 @@ Last verified against code, docs, and linked live audit state on `2026-06-27`.
 - current finance snapshot plus rolling operating analytics
 - bank transaction history as the live financial activity surface
 - bank/loan system with credit scoring and aircraft financing
-- achievements system with backend-driven unlock tracking
+- financial command center with credit rating sub-scores and debt summary
+- IFRS-inspired profitability and net worth composition KPI cards on dashboard
 - AI competitor leaderboard with Intel panel
 - backend world-tick simulation and actor reconciliation
 - notification panel with typed alerts (info, success, warning, error, event)
@@ -51,8 +52,8 @@ Last verified against code, docs, and linked live audit state on `2026-06-27`.
 - `SimulationCubit` is the central reconciliation source
 - `LazyTabCubit` owns workspace lazy-load state for dashboard, fleet, and routes
 - `FleetCubit`, `RoutesCubit`, `FinanceCubit`, and `LeaderboardCubit` react
-  through `SimulationReactiveMixin`, but finance and leaderboard are lazy-init
-  surfaces
+  through `SimulationReactiveMixin`, but leaderboard is a lazy-init surface
+- `FinanceCubit` is eagerly loaded so Overview KPI cards have data on first render
 - realtime subscriptions are treated as a reflection layer, not a substitute
   for explicit post-mutation reloads
 - aircraft actions, route actions, bank actions, settings save, and airline

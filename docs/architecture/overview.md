@@ -10,7 +10,7 @@ The Flutter app is responsible for:
 - Supabase Auth session flow and username-only login UX
 - dashboard shell and navigation
 - Cubit-owned state orchestration
-- rendering fleet, routes, finance, leaderboard, bank, achievements, and settings
+- rendering fleet, routes, finance, leaderboard, bank, and settings
 
 The backend is responsible for:
 - authoritative economy, credit, and simulation outcomes
@@ -37,6 +37,7 @@ Current runtime cubits:
 - `BankCubit`
 
 Repo-present but not mounted in the active dashboard runtime:
+(none — `features/achievements/` was removed on 2026-06-27)
 
 Allowed widget-local state remains limited to lifecycle concerns such as
 controllers, focus nodes, and dialog-local composition.
@@ -52,7 +53,6 @@ Every Supabase-facing feature uses a dedicated gateway abstraction:
 - `LeaderboardGateway`
 - `SettingsGateway`
 - `BankGateway`
-- `AchievementGateway`
 
 Each gateway defines an abstract interface, a concrete `Supabase*Gateway`, and
 a typed exception boundary.
@@ -73,13 +73,11 @@ Flutter does not locally advance authoritative game time.
 Realtime is a reflection layer, not a source of truth.
 
 Current live subscriptions:
-- `SimulationCubit` listens to `users`, `bank_transactions`, `fleet_aircraft`, and `route_assignments`
+- `SimulationCubit` listens to `users` and `bank_transactions`
 - `FleetCubit` listens to `fleet_aircraft`
 - `RoutesCubit` listens to `route_assignments`
 - `FinanceCubit` listens to `bank_transactions`
 - `BankCubit` listens to `loans`, `bank_accounts`, and `bank_transactions`
-- `AchievementCubit` listens to `achievements` when mounted, but the current
-  dashboard runtime does not instantiate it
 
 `LeaderboardCubit` refreshes through RPC reads rather than owning a direct
 Postgres Changes subscription.

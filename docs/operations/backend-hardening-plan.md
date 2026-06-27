@@ -1,6 +1,6 @@
 # Skyward Backend Hardening Plan
 
-Last verified on 2026-06-26.
+Last verified on 2026-06-27.
 
 This document turns the current backend scorecard into an execution backlog.
 It is intentionally phase-based, with concrete scope, checks, and exit
@@ -273,15 +273,17 @@ clock and backend audit metadata.
 - lease termination no longer truncates game time to midnight
 - docs now explicitly distinguish active player-facing chronology from
   wall-clock audit metadata
-- repo inspection found that `AchievementCubit` is currently not mounted in the
-  dashboard runtime graph, so achievement chronology is presently a dormant
-  surface, not an active freshness bug
+- the `features/achievements/` module (including `AchievementCubit` and
+  `AchievementGateway`) was removed from Flutter on 2026-06-27 (orphaned,
+  never instantiated by the dashboard runtime); achievement chronology is
+  therefore a dormant surface until a new achievement consumer is wired
 
 ### Remaining Detection-Only Gaps
 
-- `AchievementCubit` is still not mounted in the active dashboard runtime graph
-- chronology for achievements is therefore a dormant surface today, not a
-  fully exercised player-facing one
+- `features/achievements/` was removed from Flutter; the `achievements` table
+  remains in the database with no active Flutter consumer
+- chronology for achievements is a dormant surface today, not a fully
+  exercised player-facing one
 
 ## Phase 5: Repo / Live Proof Closure
 

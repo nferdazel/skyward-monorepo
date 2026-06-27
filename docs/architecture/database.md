@@ -64,8 +64,8 @@ Current chronology audit status:
 - aircraft financing origination and down-payment rows now use exact shared
   game time
 - lease termination ledger rows now use exact `users.game_current_time`
-- `achievements.game_date` remains the intended player-facing chronology field
-  when achievements are surfaced again in Flutter
+- `achievements.game_date` remains the intended player-facing chronology field;
+  currently dormant as the Flutter module was removed 2026-06-27
 - native SQL audits now also prove exact game-clock timestamps for purchase /
   lease / repair / sale ledger rows
 
@@ -270,6 +270,8 @@ Operational note:
 - `unlocked_at` is a real-world write timestamp
 - `game_date` captures the in-game moment the achievement was awarded when the
   backend provides it
+- the `features/achievements/` Flutter module was removed on 2026-06-27; this
+  table has no active Flutter consumer currently
 
 ## Static reference tables
 

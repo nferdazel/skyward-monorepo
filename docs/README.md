@@ -29,7 +29,7 @@ Live runtime characteristics:
 - deterministic daily simulation boundaries for player and bot processing
 - route/fleet/bank/settings writes go through RPCs
 - realtime reflection on `users`, `fleet_aircraft`, `route_assignments`,
-  `bank_transactions`, `achievements`, and `loans`
+  `bank_transactions`, and `loans`
 - realtime is a freshness aid, not the sole consistency mechanism; the Flutter
   runtime now also performs explicit post-mutation resyncs for fleet, routes,
   bank, finance, and settings flows
@@ -95,6 +95,7 @@ Current repo migration set:
 - `30_add_loan_originated_game_date.sql`
 - `31_use_game_clock_for_loan_mutations.sql`
 - `32_keep_lease_termination_on_exact_game_time.sql`
+- `33_backend_stability_fixes.sql`
 
 High-level grouping:
 - `00`-`07`
@@ -110,6 +111,10 @@ High-level grouping:
   game-time sync, plus in-game loan origination chronology, plus repayment /
   lease-termination chronology fixes to keep player-facing ledger rows on the
   exact shared game clock
+- `33`
+  Backend stability: critical `refinance_loan()` regression fix, per-bot error
+  handling in `execute_bot_decisions()`, migration of hardcoded magic numbers
+  to `game_config`
 
 ## Standard Verification
 

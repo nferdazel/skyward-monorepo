@@ -26,19 +26,21 @@ Skyward is a Flutter airline-tycoon sim with:
 
 `SimulationCubit` is the central backend-reconciliation source.
 Other feature cubits subscribe through `SimulationReactiveMixin`.
-`FinanceCubit` and `LeaderboardCubit` are initialized lazily when their
-workspaces are first opened.
+`FinanceCubit` is eagerly loaded so Dashboard Overview KPI cards have data
+on first render. `LeaderboardCubit` is initialized lazily when its workspace
+is first opened.
 Realtime subscriptions are a freshness layer only. The current runtime also
 forces explicit resync/reload passes after cross-cubit mutations so visible
 clock, cash, ledger, fleet, route, and profile state do not wait on tab
 changes or staggered Postgres Changes delivery.
-`AchievementCubit` still exists in the repo, but it is not currently mounted
-by the dashboard runtime graph.
+The `features/achievements/` module (including `AchievementCubit` and
+`AchievementGateway`) was removed from Flutter on 2026-06-27. The
+`achievements` table remains in the database but has no active Flutter consumer.
 
 ## Gateway pattern
 
 Every Cubit that communicates with Supabase does so through a dedicated
-gateway. There are nine gateways in total:
+gateway. There are eight gateways in total:
 
 | Gateway | Supabase surface |
 |---------|-----------------|
@@ -50,7 +52,6 @@ gateway. There are nine gateways in total:
 | `LeaderboardGateway` | `get_global_leaderboard`, `get_competitor_insights` |
 | `SettingsGateway` | `reset_user_airline`, `save_airline_settings`, `delete-account` |
 | `BankGateway` | `take_loan`, `get_credit_report`, `repay_loan`, `refinance_loan`, `finance_aircraft` |
-| `AchievementGateway` | achievement tracking reads |
 
 Each gateway defines an abstract interface and a `Supabase*Gateway`
 implementation. This makes Cubits testable with mock gateways.
@@ -135,12 +136,24 @@ Recent work tightened:
   side effects across player and bot mutation paths
 - delete-account now has a live-proven end-to-end audit script
 - aircraft, bank, settings-save, and airline-reset flows now force
+  authoritative follow-up reloads for the affected cubits instead of relying
+  purely on realtime propagation
 - route and fleet mutation flows now also force
   authoritative follow-up reloads for the affected cubits instead of relying
   purely on realtime propagation
 - chronology hardening now also proves that repayment, lease termination, loan
   origination, and aircraft financing ledger rows stay on the shared game
   clock instead of drifting to wall-clock or truncated midnight timestamps
+- Bank tab redesigned as "Financial Command Center" with credit rating
+  sub-score bars, consolidated debt summary strip, loan type badges, and
+  `AppTableShell` transactions
+- IFRS-inspired Profitability KPI card and Net Worth Composition card on
+  Dashboard Overview; `FinanceCubit` now eagerly loaded for first-render data
+- realtime subscription optimization: SimulationCubit reduced from 4 to 2
+  channels; catalog data cached; table-aware BankCubit refresh
+- dead code cleanup: `features/achievements/`, `BankSavingsSuccess`,
+  `FinanceGateway.getUserBalance()`, `BlueprintPlannerForm`,
+  `RouteNetworkMap`, empty `lib/core/services/` removed
 
 Leaderboard sorting was intentionally removed.
 Rankings now always default to net worth order.

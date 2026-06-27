@@ -27,9 +27,8 @@ This is the live Flutter-to-Supabase contract surface.
   - aircraft financing uses exact shared game time
   - lease termination uses exact shared game time
 - current known gap from repo inspection:
-  - `AchievementCubit` exists but is not mounted in the active dashboard
-    runtime graph, so achievement chronology/freshness is currently a dormant
-    surface rather than an active player-facing inconsistency
+  - `features/achievements/` module was removed from Flutter on 2026-06-27;
+    the `achievements` table remains in DB but has no active Flutter consumer
 
 ## RPC surface
 
@@ -218,15 +217,13 @@ This is the live Flutter-to-Supabase contract surface.
 ### Table-read surfaces
 
 `achievements`
-- caller: `AchievementCubit.loadAchievements()` through `SupabaseAchievementGateway`
-- selected fields:
-  - `id`, `user_id`, `achievement_type`, `achievement_name`, `description`
-  - `unlocked_at`
-  - `game_date`
-- current behavior:
-  - sorts first by `game_date desc nulls last` to preserve in-game chronology
-  - breaks ties with `unlocked_at desc` as a real-time fallback
-  - still exposes both timestamps because they belong to different clock domains
+- caller: **removed from Flutter** — `features/achievements/` was deleted
+  2026-06-27; the `achievements` table remains in the database but has no
+  active Flutter consumer
+- historical behavior (for reference):
+  - sorted first by `game_date desc nulls last` to preserve in-game chronology
+  - broke ties with `unlocked_at desc` as a real-time fallback
+  - exposed both timestamps because they belong to different clock domains
 
 `credit_score_history`
 - caller: `BankCubit.loadCreditHistory()` through `SupabaseBankGateway`
@@ -627,7 +624,6 @@ The client also reads some tables directly through Supabase queries:
 - `game_events`
 - `loans` (active and historical loan records)
 - `credit_score_history` (credit score tracking)
-- `achievements` (achievement tracking and unlock state)
 
 These are still part of the effective contract because UI parsing depends on their returned fields.
 
@@ -638,8 +634,8 @@ The Flutter client now subscribes to Postgres Changes on:
 - `bank_transactions`
 - `fleet_aircraft`
 - `route_assignments`
-- `achievements`
 - `loans`
+- `bank_accounts`
 
 Operational rule:
 - the pg_cron world tick is the authoritative catch-up trigger
