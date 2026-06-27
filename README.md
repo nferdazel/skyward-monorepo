@@ -16,7 +16,8 @@ Last verified against code, docs, and linked live audit state on `2026-06-27`.
 
 - Flutter frontend with feature-first modules
 - Cubit-only app state
-- Supabase-backed auth, simulation, finance, routes, fleet, leaderboard, bank, and achievement surfaces
+- Supabase-backed auth, simulation, finance, routes, fleet, leaderboard, bank,
+  and achievement data surfaces
 - backend-owned world clock through `season_clock`
 - bank-centric cash model:
   - `bank_accounts` is canonical cash
@@ -54,9 +55,9 @@ Last verified against code, docs, and linked live audit state on `2026-06-27`.
   surfaces
 - realtime subscriptions are treated as a reflection layer, not a substitute
   for explicit post-mutation reloads
-- aircraft actions, bank actions, settings save, and airline reset now force
-  targeted resync/reload flows so HUD clock, cash, ledger history, and derived
-  finance metrics stay aligned without tab hopping
+- aircraft actions, route actions, bank actions, settings save, and airline
+  reset now force targeted resync/reload flows so HUD clock, cash, ledger
+  history, and derived finance metrics stay aligned without tab hopping
 - each feature uses a **gateway pattern** for data access: an abstract
   `*Gateway` interface with a `Supabase*Gateway` implementation that wraps all
   Supabase calls, handles errors, and throws typed `*GatewayException`s

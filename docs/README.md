@@ -31,8 +31,8 @@ Live runtime characteristics:
 - realtime reflection on `users`, `fleet_aircraft`, `route_assignments`,
   `bank_transactions`, `achievements`, and `loans`
 - realtime is a freshness aid, not the sole consistency mechanism; the Flutter
-  runtime now also performs explicit post-mutation resyncs for finance-heavy
-  flows
+  runtime now also performs explicit post-mutation resyncs for fleet, routes,
+  bank, finance, and settings flows
 - bank / credit / financing system with shared player-facing and bot-facing policy
 - rollback-style native SQL audits for fleet, routes, finance, settings, core
   bank RPCs, and direct trigger proof
@@ -93,6 +93,8 @@ Current repo migration set:
 - `28_add_bank_transaction_retention.sql`
 - `29_sync_finance_aircraft_game_time.sql`
 - `30_add_loan_originated_game_date.sql`
+- `31_use_game_clock_for_loan_mutations.sql`
+- `32_keep_lease_termination_on_exact_game_time.sql`
 
 High-level grouping:
 - `00`-`07`
@@ -101,11 +103,13 @@ High-level grouping:
   Finance stabilization, bank-centric cash, net-worth reconciliation, lease carrying cost
 - `12`-`18`
   Actor parity, servicing, and bot decision-path hardening
-- `19`-`30`
+- `19`-`32`
   Ledger integrity, zero-amount guardrails, player sync safety, bankruptcy parity, shared repair mechanics, finance snapshot contract truthfulness, missing trigger attachment cleanup, and dead helper removal
   plus removal of the dormant bank compaction surface and reintroduction of a
   simpler game-date-based ledger retention policy, plus finance-aircraft
-  game-time sync, plus in-game loan origination chronology
+  game-time sync, plus in-game loan origination chronology, plus repayment /
+  lease-termination chronology fixes to keep player-facing ledger rows on the
+  exact shared game clock
 
 ## Standard Verification
 

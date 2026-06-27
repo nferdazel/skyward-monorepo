@@ -13,6 +13,24 @@ This is the live Flutter-to-Supabase contract surface.
 - high-impact mutation paths may still run explicit follow-up resync/reload
   passes in Flutter when visible state spans multiple cubits or clock domains
 
+## Chronology audit status
+
+- player-facing finance chronology is expected to come from in-game timestamps
+  such as `users.game_current_time`, `bank_transactions.game_date`,
+  `loans.originated_game_date`, and `achievements.game_date`
+- wall-clock fields such as `loans.taken_at`, `achievements.unlocked_at`,
+  `created_at`, and `updated_at` remain backend metadata unless explicitly
+  labeled otherwise
+- linked live audits now prove:
+  - loan origination uses `originated_game_date`
+  - repayment ledger rows use exact shared game time
+  - aircraft financing uses exact shared game time
+  - lease termination uses exact shared game time
+- current known gap from repo inspection:
+  - `AchievementCubit` exists but is not mounted in the active dashboard
+    runtime graph, so achievement chronology/freshness is currently a dormant
+    surface rather than an active player-facing inconsistency
+
 ## RPC surface
 
 ### Auth

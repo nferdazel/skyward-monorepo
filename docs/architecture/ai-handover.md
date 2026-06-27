@@ -24,7 +24,6 @@ Skyward is a Flutter airline-tycoon sim with:
 - `BlueprintPlannerFormCubit`
 - `SettingsCubit` is provided in `main.dart` at app level
 - `BankCubit`
-- `AchievementCubit`
 
 `SimulationCubit` is the central backend-reconciliation source.
 Other feature cubits subscribe through `SimulationReactiveMixin`.
@@ -34,6 +33,8 @@ Realtime subscriptions are a freshness layer only. The current runtime also
 forces explicit resync/reload passes after finance-heavy mutations so visible
 clock, cash, ledger, and profile state do not wait on tab changes or staggered
 Postgres Changes delivery.
+`AchievementCubit` still exists in the repo, but it is not currently mounted
+by the dashboard runtime graph.
 
 ## Gateway pattern
 
@@ -132,8 +133,12 @@ Recent work tightened:
   side effects across player and bot mutation paths
 - delete-account now has a live-proven end-to-end audit script
 - aircraft, bank, settings-save, and airline-reset flows now force
+- route and fleet mutation flows now also force
   authoritative follow-up reloads for the affected cubits instead of relying
   purely on realtime propagation
+- chronology hardening now also proves that repayment, lease termination, loan
+  origination, and aircraft financing ledger rows stay on the shared game
+  clock instead of drifting to wall-clock or truncated midnight timestamps
 
 Leaderboard sorting was intentionally removed.
 Rankings now always default to net worth order.

@@ -239,13 +239,43 @@ reconciliation.
 ### Current Result
 
 - fleet-side aircraft actions now force authoritative follow-up refresh for
-  simulation, bank, and finance state
+  simulation, fleet, routes, bank, and finance state
 - bank loan / refinance / financing success paths now trigger the same
   authoritative refresh sequence
+- route mutation success paths now trigger authoritative simulation plus
+  routes/fleet/bank/finance reloads
 - settings save now refreshes profile-owned consumers (`AuthCubit`,
   `SimulationCubit`, fleet, routes) rather than relying on delayed reflection
 - airline reset now reloads bank and finance state in addition to simulation,
   fleet, and routes
+
+## Phase 4B: Chronology Sweep
+
+### Goal
+
+Detect and eliminate player-facing timestamp drift between the shared game
+clock and backend audit metadata.
+
+### Scope
+
+- gameplay ledger writes
+- loan chronology
+- lease/disposal chronology
+- achievement chronology surfaces
+- docs that describe clock-domain behavior
+
+### Current Result
+
+- loan origination now has `loans.originated_game_date`
+- repayment ledger rows now use exact `users.game_current_time`
+- aircraft financing now keeps both origination and down-payment chronology on
+  exact game time
+- lease termination no longer truncates game time to midnight
+- docs now explicitly distinguish active player-facing chronology from
+  wall-clock audit metadata
+- repo inspection found that `AchievementCubit` is currently not mounted in the
+  dashboard runtime graph, so achievement chronology is presently a dormant
+  surface, not an active freshness bug
 
 ## Phase 5: Repo / Live Proof Closure
 

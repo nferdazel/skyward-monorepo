@@ -1,6 +1,6 @@
 # Skyward Live Backend Audit Queries
 
-Last verified on 2026-06-26.
+Last verified on 2026-06-27.
 
 Use these against the linked Supabase project when you want to inspect runtime
 behavior without changing application code.
@@ -56,6 +56,11 @@ where user_id = '<your_user_id>'
 order by game_date desc, created_at desc
 limit 30;
 ```
+
+Chronology note from the current audit pass:
+- `loan_disbursement`, `loan_repayment`, `aircraft_purchase_deposit`, and
+  `lease_termination` rows are now expected to preserve exact shared game time
+- if one of those rows appears rounded to `00:00`, treat it as a regression
 
 ## 4. Fleet condition and status
 
@@ -139,10 +144,11 @@ select
   monthly_payment,
   status,
   collateral_aircraft_id,
+  originated_game_date,
   taken_at
 from loans
 where user_id = '<your_user_id>'
-order by taken_at desc;
+order by originated_game_date desc nulls last, taken_at desc;
 ```
 
 Cross-check one loan against its cash movement without mixing clocks blindly:
@@ -203,6 +209,11 @@ where user_id = '<your_user_id>'
 order by game_date desc nulls last, unlocked_at desc
 limit 20;
 ```
+
+Operational status:
+- the backend chronology contract is intact
+- the current Flutter dashboard runtime does not mount `AchievementCubit`, so
+  this is mainly a backend/live-data audit surface today
 
 ## 10. Bank transaction retention dry-run
 

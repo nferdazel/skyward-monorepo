@@ -58,6 +58,15 @@ Current product rule:
 - real-time timestamps are acceptable in the product only as clearly labeled
   metadata, not as the main gameplay timeline
 
+Current chronology audit status:
+- loan origination now uses `loans.originated_game_date`
+- loan repayment ledger rows now use exact `users.game_current_time`
+- aircraft financing origination and down-payment rows now use exact shared
+  game time
+- lease termination ledger rows now use exact `users.game_current_time`
+- `achievements.game_date` remains the intended player-facing chronology field
+  when achievements are surfaced again in Flutter
+
 ### `users`
 
 Primary human-player actor record.
@@ -165,6 +174,7 @@ Operational note:
 - `originated_game_date` is the player-facing in-game origination timestamp
 - related bank-ledger rows such as `loan_disbursement` are stamped with
   `bank_transactions.game_date`, which follows the shared game calendar
+- repayment-side ledger rows are also stamped with the exact shared game clock
 
 ### `credit_scores`
 
