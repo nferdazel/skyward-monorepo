@@ -37,6 +37,7 @@ class _SettingsViewState extends State<SettingsView> {
   late TextEditingController _companyController;
   late FocusNode _companyFocusNode;
   late TextEditingController _deleteConfirmController;
+  late String _lastAuthCompanyName;
 
   @override
   void initState() {
@@ -48,6 +49,7 @@ class _SettingsViewState extends State<SettingsView> {
     if (authState is AuthAuthenticated) {
       initialCompany = authState.user.companyName;
     }
+    _lastAuthCompanyName = initialCompany;
     _companyController = TextEditingController(text: initialCompany);
 
     // Load airports registry on init instead of during build
@@ -83,9 +85,10 @@ class _SettingsViewState extends State<SettingsView> {
     final user = authState.user;
 
     // Sync controller only if not focused, to handle reset or remote changes safely
-    if (!_companyFocusNode.hasFocus &&
-        _companyController.text != user.companyName) {
+    if (user.companyName != _lastAuthCompanyName &&
+        !_companyFocusNode.hasFocus) {
       _companyController.text = user.companyName;
+      _lastAuthCompanyName = user.companyName;
     }
 
     return BlocConsumer<SettingsCubit, SettingsState>(
@@ -286,6 +289,7 @@ class _SettingsViewState extends State<SettingsView> {
         hqAirportIata: hqAirportIata,
       ),
     );
+    _lastAuthCompanyName = companyName;
 
     await simulationCubit.syncWithDatabase();
     await Future.wait([
