@@ -19,6 +19,7 @@ class LeaderboardCubit extends Cubit<LeaderboardState>
     seconds: 20,
   );
   static const Duration _rankingsRefreshInterval = Duration(seconds: 45);
+  static const Duration _rankingsRefreshIntervalActive = Duration(seconds: 20);
 
   final LeaderboardGateway _gateway;
 
@@ -27,6 +28,7 @@ class LeaderboardCubit extends Cubit<LeaderboardState>
   DateTime? _lastInsightsRefreshAt;
   String? _lastInsightsRefreshId;
   DateTime? _lastRankingsRefreshAt;
+  bool _lastRefreshHadActivity = false;
   Future<void>? _activeRankingsLoad;
 
   LeaderboardCubit({LeaderboardGateway? gateway})
@@ -40,6 +42,7 @@ class LeaderboardCubit extends Cubit<LeaderboardState>
     String ceoName,
   ) {
     subscribeToSimulationWithState(simCubit, (simState) {
+      _lastRefreshHadActivity = simState.lastFlightsRun > 0;
       if (!_shouldRefreshRankings()) return;
       unawaited(
         loadRankings(
@@ -240,8 +243,10 @@ class LeaderboardCubit extends Cubit<LeaderboardState>
 
   bool _shouldRefreshRankings() {
     if (_lastRankingsRefreshAt == null) return true;
-    return DateTime.now().difference(_lastRankingsRefreshAt!) >=
-        _rankingsRefreshInterval;
+    final interval = _lastRefreshHadActivity
+        ? _rankingsRefreshIntervalActive
+        : _rankingsRefreshInterval;
+    return DateTime.now().difference(_lastRankingsRefreshAt!) >= interval;
   }
 
   Future<void> selectCompetitor(LeaderboardEntry competitor) async {

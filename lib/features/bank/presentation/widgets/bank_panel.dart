@@ -305,15 +305,15 @@ class _BankPanelState extends State<BankPanel> {
           const SizedBox(height: AppSpacing.lg),
 
           // Sub-scores
-          _buildSubScoreRow('Fleet Health', report.fleetHealth, 200),
+          _buildSubScoreRow('Fleet Health', report.fleetHealth, 100),
           const SizedBox(height: AppSpacing.sm),
-          _buildSubScoreRow('Revenue Stable', report.revenueStability, 200),
+          _buildSubScoreRow('Revenue Stable', report.revenueStability, 100),
           const SizedBox(height: AppSpacing.sm),
-          _buildSubScoreRow('Debt Ratio', report.debtRatio, 200),
+          _buildSubScoreRow('Debt Ratio', report.debtRatio, 100),
           const SizedBox(height: AppSpacing.sm),
-          _buildSubScoreRow('Cash Reserve', report.cashReserve, 200),
+          _buildSubScoreRow('Cash Reserve', report.cashReserve, 100),
           const SizedBox(height: AppSpacing.sm),
-          _buildSubScoreRow('Profit History', report.profitHistory, 200),
+          _buildSubScoreRow('Profit History', report.profitHistory, 100),
 
           // Suggestion
           if (report.suggestions.isNotEmpty) ...[
@@ -332,11 +332,11 @@ class _BankPanelState extends State<BankPanel> {
 
   Widget _buildSubScoreRow(String label, int score, int maxScore) {
     final progress = (score / maxScore).clamp(0.0, 1.0);
-    final barColor = progress > 0.7
+    final barColor = score >= 80
         ? AppTheme.success
-        : progress > 0.4
-            ? AppTheme.primary
-            : AppTheme.warning;
+        : score >= 40
+            ? AppTheme.warning
+            : AppTheme.error;
 
     return Row(
       children: [
