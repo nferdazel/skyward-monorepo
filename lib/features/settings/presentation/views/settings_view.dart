@@ -252,14 +252,46 @@ class _SettingsViewState extends State<SettingsView> {
                 companyName: _companyController.text,
                 autoGroundingThreshold: state.groundingThreshold,
                 hqAirportIata: state.selectedHq ?? user.hqAirportIata,
-                onSyncBalance: () =>
-                    context.read<SimulationCubit>().syncWithDatabase(),
+                onSyncBalance: () => _refreshAuthoritativeProfileState(
+                  context,
+                  user,
+                  companyName: _companyController.text,
+                  autoGroundingThreshold: state.groundingThreshold,
+                  hqAirportIata: state.selectedHq ?? user.hqAirportIata,
+                ),
               );
             },
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _refreshAuthoritativeProfileState(
+    BuildContext context,
+    User user, {
+    required String companyName,
+    required double autoGroundingThreshold,
+    required String hqAirportIata,
+  }) async {
+    final authCubit = context.read<AuthCubit>();
+    final simulationCubit = context.read<SimulationCubit>();
+    final fleetCubit = context.read<FleetCubit>();
+    final routesCubit = context.read<RoutesCubit>();
+
+    authCubit.updateActiveUser(
+      user.copyWith(
+        companyName: companyName,
+        autoGroundingThreshold: autoGroundingThreshold,
+        hqAirportIata: hqAirportIata,
+      ),
+    );
+
+    await simulationCubit.syncWithDatabase();
+    await Future.wait([
+      fleetCubit.loadFleetAndCatalog(user.id, silent: true),
+      routesCubit.loadRoutesAndData(user.id, silent: true),
+    ]);
   }
 
   Widget _buildGameSettingsSection(
