@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -124,6 +126,9 @@ class _FleetViewState extends State<FleetView>
                     ? '${state.message} Your first airframe is operational!'
                     : state.message;
                 AppSnackBar.showSuccess(context, message);
+                unawaited(
+                  _refreshAuthoritativeSimulationState(context, userId),
+                );
               } else if (state is FleetError) {
                 AppSnackBar.showError(context, state.message);
               }
@@ -1560,7 +1565,7 @@ class _FleetViewState extends State<FleetView>
                                   termMonths,
                                 );
                                 if (success && context.mounted) {
-                                  await _refreshAuthoritativeFinanceState(
+                                  await _refreshAuthoritativeSimulationState(
                                     context,
                                     userId,
                                   );
@@ -1796,18 +1801,22 @@ class _FleetViewState extends State<FleetView>
   ) async {
     final simCubit = context.read<SimulationCubit>();
     simCubit.applyImmediateCashBalance(newCash);
-    await _refreshAuthoritativeFinanceState(context, userId);
   }
 
-  Future<void> _refreshAuthoritativeFinanceState(
+  Future<void> _refreshAuthoritativeSimulationState(
     BuildContext context,
     String userId,
   ) async {
     final simCubit = context.read<SimulationCubit>();
+    final fleetCubit = context.read<FleetCubit>();
+    final routesCubit = context.read<RoutesCubit>();
     final bankCubit = context.read<BankCubit>();
     final financeCubit = context.read<FinanceCubit>();
+
     await simCubit.syncWithDatabase();
     await Future.wait([
+      fleetCubit.loadFleetAndCatalog(userId, silent: true),
+      routesCubit.loadRoutesAndData(userId, silent: true),
       bankCubit.loadBankData(userId, silent: true),
       financeCubit.loadLedger(userId, silent: true),
     ]);

@@ -13,6 +13,7 @@ import 'package:skyward/features/bank/presentation/widgets/bank_panel.dart';
 import 'package:skyward/features/finance/presentation/cubit/finance_cubit.dart';
 import 'package:skyward/features/fleet/presentation/cubit/fleet_cubit.dart';
 import 'package:skyward/features/fleet/presentation/cubit/fleet_state.dart';
+import 'package:skyward/features/fleet/presentation/views/fleet_view.dart';
 import 'package:skyward/features/routes/presentation/cubit/routes_cubit.dart';
 import 'package:skyward/features/routes/presentation/cubit/routes_state.dart';
 import 'package:skyward/features/routes/presentation/views/routes_view.dart';
@@ -107,6 +108,16 @@ class TestFleetCubit extends FleetCubit {
   int loadFleetCalls = 0;
   String? lastUserId;
   bool? lastSilent;
+
+  void emitActionSuccess() {
+    emit(
+      const FleetActionSuccess(
+        message: 'Aircraft updated.',
+        fleet: [],
+        catalog: [],
+      ),
+    );
+  }
 
   void seedLoaded() {
     emit(const FleetLoaded(fleet: [], catalog: []));
@@ -222,6 +233,66 @@ void main() {
   tearDown(() {
     SupabaseManager.resetCredentialsToEnv();
   });
+
+  testWidgets(
+    'FleetView refreshes simulation, fleet, routes, bank, and finance after fleet success',
+    (tester) async {
+      final authCubit = AuthCubit();
+      final simulationCubit = TestSimulationCubit()..seedState();
+      final fleetCubit = TestFleetCubit()..seedLoaded();
+      final routesCubit = TestRoutesCubit()..seedLoaded();
+      final bankCubit = TestBankCubit();
+      final financeCubit = TestFinanceCubit();
+
+      addTearDown(() async {
+        await authCubit.close();
+        await simulationCubit.close();
+        await fleetCubit.close();
+        await routesCubit.close();
+        await bankCubit.close();
+        await financeCubit.close();
+      });
+
+      authCubit.emit(
+        AuthAuthenticated(user: _testUser(), token: 'token'),
+      );
+
+      await tester.pumpWidget(
+        MultiBlocProvider(
+          providers: [
+            BlocProvider<AuthCubit>.value(value: authCubit),
+            BlocProvider<SimulationCubit>.value(value: simulationCubit),
+            BlocProvider<FleetCubit>.value(value: fleetCubit),
+            BlocProvider<RoutesCubit>.value(value: routesCubit),
+            BlocProvider<BankCubit>.value(value: bankCubit),
+            BlocProvider<FinanceCubit>.value(value: financeCubit),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.darkTheme,
+            home: const Scaffold(body: FleetView()),
+          ),
+        ),
+      );
+
+      fleetCubit.emitActionSuccess();
+      await tester.pump();
+      await tester.pump();
+
+      expect(simulationCubit.syncCalls, 1);
+      expect(fleetCubit.loadFleetCalls, 1);
+      expect(fleetCubit.lastUserId, _testUser().id);
+      expect(fleetCubit.lastSilent, isTrue);
+      expect(routesCubit.loadRoutesCalls, 1);
+      expect(routesCubit.lastUserId, _testUser().id);
+      expect(routesCubit.lastSilent, isTrue);
+      expect(bankCubit.loadBankDataCalls, 1);
+      expect(bankCubit.lastUserId, _testUser().id);
+      expect(bankCubit.lastSilent, isTrue);
+      expect(financeCubit.loadLedgerCalls, 1);
+      expect(financeCubit.lastUserId, _testUser().id);
+      expect(financeCubit.lastSilent, isTrue);
+    },
+  );
 
   testWidgets(
     'BankPanel refreshes simulation, bank, and finance after loan success',

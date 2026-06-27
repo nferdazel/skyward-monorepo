@@ -341,6 +341,8 @@ This is the live Flutter-to-Supabase contract surface.
   - restores the airframe to 100%
   - repair pricing now matches the client display model
   - leased and owned aircraft use different cost bases
+  - Flutter follows success with an authoritative simulation sync plus silent
+    fleet/routes/bank/finance reloads
 
 `sell_aircraft`
 - caller: `FleetCubit.sellAircraft()`
@@ -355,6 +357,8 @@ This is the live Flutter-to-Supabase contract surface.
   - credits condition-adjusted residual value
   - writes a `bank_transactions` sale row
   - removes the fleet row
+  - Flutter follows success with an authoritative simulation sync plus silent
+    fleet/routes/bank/finance reloads
 
 `terminate_aircraft_lease`
 - caller: `FleetCubit.terminateLease()`
@@ -369,6 +373,8 @@ This is the live Flutter-to-Supabase contract surface.
   - charges a lease exit fee
   - writes a `bank_transactions` lease-exit row
   - removes the fleet row
+  - Flutter follows success with an authoritative simulation sync plus silent
+    fleet/routes/bank/finance reloads
 
 `configure_aircraft_seats`
 - caller: `FleetCubit.configureSeats()`
@@ -382,6 +388,8 @@ This is the live Flutter-to-Supabase contract surface.
     `auth.uid()`
   - catches up simulation before seat changes
   - validates seat-slot capacity server-side
+  - Flutter follows success with an authoritative simulation sync plus silent
+    fleet/routes/bank/finance reloads
 
 ### Routes
 
