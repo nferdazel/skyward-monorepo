@@ -15,6 +15,7 @@ import 'package:skyward/features/fleet/presentation/cubit/fleet_cubit.dart';
 import 'package:skyward/features/fleet/presentation/cubit/fleet_state.dart';
 import 'package:skyward/features/routes/presentation/cubit/routes_cubit.dart';
 import 'package:skyward/features/routes/presentation/cubit/routes_state.dart';
+import 'package:skyward/features/routes/presentation/views/routes_view.dart';
 import 'package:skyward/features/settings/presentation/cubit/settings_cubit.dart';
 import 'package:skyward/features/settings/presentation/views/settings_view.dart';
 import 'package:skyward/features/simulation/presentation/cubit/simulation_cubit.dart';
@@ -123,6 +124,17 @@ class TestRoutesCubit extends RoutesCubit {
   int loadRoutesCalls = 0;
   String? lastUserId;
   bool? lastSilent;
+
+  void emitActionSuccess() {
+    emit(
+      const RoutesActionSuccess(
+        message: 'Route established successfully!',
+        routes: [],
+        airports: [],
+        availableAircraft: [],
+      ),
+    );
+  }
 
   void seedLoaded() {
     emit(const RoutesLoaded(routes: [], airports: [], availableAircraft: []));
@@ -317,6 +329,66 @@ void main() {
       expect(find.textContaining('Opened '), findsOneWidget);
       expect(find.textContaining('real time'), findsNothing);
       expect(find.textContaining('8 Mar 2027, 10:00'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'RoutesView refreshes simulation, routes, fleet, bank, and finance after route success',
+    (tester) async {
+      final authCubit = AuthCubit();
+      final simulationCubit = TestSimulationCubit()..seedState();
+      final routesCubit = TestRoutesCubit()..seedLoaded();
+      final fleetCubit = TestFleetCubit()..seedLoaded();
+      final bankCubit = TestBankCubit();
+      final financeCubit = TestFinanceCubit();
+
+      addTearDown(() async {
+        await authCubit.close();
+        await simulationCubit.close();
+        await routesCubit.close();
+        await fleetCubit.close();
+        await bankCubit.close();
+        await financeCubit.close();
+      });
+
+      authCubit.emit(
+        AuthAuthenticated(user: _testUser(), token: 'token'),
+      );
+
+      await tester.pumpWidget(
+        MultiBlocProvider(
+          providers: [
+            BlocProvider<AuthCubit>.value(value: authCubit),
+            BlocProvider<SimulationCubit>.value(value: simulationCubit),
+            BlocProvider<RoutesCubit>.value(value: routesCubit),
+            BlocProvider<FleetCubit>.value(value: fleetCubit),
+            BlocProvider<BankCubit>.value(value: bankCubit),
+            BlocProvider<FinanceCubit>.value(value: financeCubit),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.darkTheme,
+            home: const Scaffold(body: RoutesView()),
+          ),
+        ),
+      );
+
+      routesCubit.emitActionSuccess();
+      await tester.pump();
+      await tester.pump();
+
+      expect(simulationCubit.syncCalls, 1);
+      expect(routesCubit.loadRoutesCalls, 1);
+      expect(routesCubit.lastUserId, _testUser().id);
+      expect(routesCubit.lastSilent, isTrue);
+      expect(fleetCubit.loadFleetCalls, 1);
+      expect(fleetCubit.lastUserId, _testUser().id);
+      expect(fleetCubit.lastSilent, isTrue);
+      expect(bankCubit.loadBankDataCalls, 1);
+      expect(bankCubit.lastUserId, _testUser().id);
+      expect(bankCubit.lastSilent, isTrue);
+      expect(financeCubit.loadLedgerCalls, 1);
+      expect(financeCubit.lastUserId, _testUser().id);
+      expect(financeCubit.lastSilent, isTrue);
     },
   );
 

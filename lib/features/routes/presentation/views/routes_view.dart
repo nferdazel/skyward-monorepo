@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -25,9 +26,12 @@ import '../../../../presentation/widgets/help_tooltip.dart';
 import '../../../../presentation/widgets/searchable_airport_dropdown.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
+import '../../../bank/presentation/cubit/bank_cubit.dart';
+import '../../../finance/presentation/cubit/finance_cubit.dart';
 import '../../../fleet/domain/fleet_models.dart';
 import '../../../fleet/presentation/cubit/fleet_cubit.dart';
 import '../../../fleet/presentation/cubit/fleet_state.dart';
+import '../../../simulation/presentation/cubit/simulation_cubit.dart';
 import '../../domain/route_models.dart';
 import '../cubit/routes_cubit.dart';
 import '../cubit/routes_state.dart';
@@ -73,6 +77,7 @@ class _RoutesViewState extends State<RoutesView> {
               ? '${state.message} Your first route is live!'
               : state.message;
           AppSnackBar.showSuccess(context, message);
+          unawaited(_refreshAuthoritativeSimulationState(context, userId));
         } else if (state is RoutesError) {
           AppSnackBar.showError(context, state.message);
         }
@@ -180,6 +185,25 @@ class _RoutesViewState extends State<RoutesView> {
         );
       },
     );
+  }
+
+  Future<void> _refreshAuthoritativeSimulationState(
+    BuildContext context,
+    String userId,
+  ) async {
+    final simulationCubit = context.read<SimulationCubit>();
+    final routesCubit = context.read<RoutesCubit>();
+    final fleetCubit = context.read<FleetCubit>();
+    final bankCubit = context.read<BankCubit>();
+    final financeCubit = context.read<FinanceCubit>();
+
+    await simulationCubit.syncWithDatabase();
+    await Future.wait([
+      routesCubit.loadRoutesAndData(userId, silent: true),
+      fleetCubit.loadFleetAndCatalog(userId, silent: true),
+      bankCubit.loadBankData(userId, silent: true),
+      financeCubit.loadLedger(userId, silent: true),
+    ]);
   }
 
   // ══════════════════════════════════════════════

@@ -398,6 +398,8 @@ This is the live Flutter-to-Supabase contract surface.
     `auth.uid()`
   - catches up simulation before creating the route
   - stores blueprint economics before any aircraft is assigned
+  - Flutter follows success with an authoritative simulation sync plus silent
+    routes/fleet/bank/finance reloads instead of trusting realtime ordering
 
 `assign_aircraft_to_route`
 - caller: `RoutesCubit.assignAircraft()`
@@ -410,6 +412,8 @@ This is the live Flutter-to-Supabase contract surface.
   - catches up simulation before changing assignment
   - validates ownership, safety threshold, route range fit, weekly schedule fit,
     and single-route assignment server-side
+  - Flutter follows success with the same authoritative simulation and
+    cross-cubit reload sequence used by other route mutations
 
 `update_route_frequency_and_price`
 - caller: `RoutesCubit.updateRouteFrequencyAndPrice()`
@@ -422,6 +426,8 @@ This is the live Flutter-to-Supabase contract surface.
     `auth.uid()`
   - catches up simulation before changing fare or schedule
   - enforces assigned-aircraft weekly schedule limits server-side
+  - Flutter follows success with the same authoritative simulation and
+    cross-cubit reload sequence used by other route mutations
 
 ### Owner-only tools
 
@@ -449,6 +455,8 @@ This is the live Flutter-to-Supabase contract surface.
     `auth.uid()`
   - catches up simulation before closing the route
   - grounds the assigned aircraft before deleting the route
+  - Flutter follows success with an authoritative simulation sync plus silent
+    routes/fleet/bank/finance reloads
 
 ### Bank
 
