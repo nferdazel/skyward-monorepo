@@ -115,6 +115,11 @@ select *
 from get_world_tick_scheduler_health();
 ```
 
+Use `get_world_tick_scheduler_health()` as the primary live proof that the
+`skyward_world_tick` scheduler job exists and is active. Direct linked queries
+to `cron.job` / `cron.job_run_details` may still be useful for ops, but they
+can be blocked intermittently by pooler auth/circuit-breaker behavior.
+
 ```sql
 select *
 from get_database_size_report();

@@ -241,6 +241,9 @@ from get_world_tick_guardrail_report();
 
 `current_game_time` is the in-game season clock.
 `season_last_tick_at` and `latest_log_started_at` are real-world scheduler timestamps.
+This is the preferred repo-safe live proof for the world-tick cron job because
+it runs through a security-definer audit surface instead of requiring direct
+`cron.*` access from the caller role.
 
 ```sql
 select *
