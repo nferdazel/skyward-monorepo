@@ -7,9 +7,6 @@ Last verified against code on 2026-06-26.
 
 This document covers the private operator surfaces added for the game owner.
 
-If migration `53` was applied before `54`, apply migration `61` too. It makes
-the optimizer self-contained, deduplicated, and new-route focused by default.
-
 ## Access model
 
 `get_owner_route_optimizer(...)` is intentionally not granted to normal app

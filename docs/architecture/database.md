@@ -138,9 +138,6 @@ Important fields:
 - `economy_seats`
 - `business_seats`
 - `first_class_seats`
-- `total_flights`
-- `last_a_check_at`
-- `last_c_check_at`
 
 ### `route_assignments`
 

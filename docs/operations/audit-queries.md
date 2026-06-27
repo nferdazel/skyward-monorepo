@@ -74,9 +74,6 @@ select
   f.acquisition_type,
   f.condition,
   f.status,
-  f.total_flights,
-  f.last_a_check_at,
-  f.last_c_check_at,
   m.manufacturer,
   m.model_name,
   m.speed_kmh,
@@ -85,7 +82,7 @@ select
 from fleet_aircraft f
 join aircraft_models m on m.id = f.aircraft_model_id
 where f.user_id = '<your_user_id>'
-order by f.acquired_at desc;
+order by f.acquired_game_date desc;
 ```
 
 ## 5. Route network with assigned aircraft

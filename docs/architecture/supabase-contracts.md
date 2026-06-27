@@ -101,9 +101,7 @@ This is the live Flutter-to-Supabase contract surface.
   - applies seasonal demand modifiers (peak/normal/off-season)
   - applies fare-class demand elasticity (business/first 30% fewer pax)
   - includes crew cost model ($350/flight-hour)
-  - tracks A-check (500 flights) and C-check (3000 flights) milestones
-  - computes cargo revenue (10% of ticket revenue, distance-scaled)
-  - uses non-linear degradation (accelerating wear below 60% condition)
+  - computes cargo revenue (5% of ticket revenue)
   - computes catch-up subsidy for players < 30% of leader net worth
   - no live public `financial_snapshots` read surface is currently exposed to
     Flutter; finance history falls back to a single current net-worth point
@@ -118,8 +116,7 @@ This is the live Flutter-to-Supabase contract surface.
     through deterministic game-day boundaries
   - applies active game event multipliers (fuel price, demand)
   - applies seasonal demand modifiers, fare-class elasticity, crew costs
-  - tracks A-check and C-check maintenance milestones
-  - computes cargo revenue and non-linear degradation
+  - computes cargo revenue (5% of ticket revenue)
 
 `ensure_world_current`
 - caller: command RPCs and snapshot reads

@@ -21,7 +21,6 @@ Skyward is a Flutter airline-tycoon sim with:
 - `FinanceCubit`
 - `LeaderboardCubit`
 - `LazyTabCubit`
-- `BlueprintPlannerFormCubit`
 - `SettingsCubit` is provided in `main.dart` at app level
 - `BankCubit`
 
@@ -93,6 +92,9 @@ Security migration note:
   to the legacy custom-session RPCs.
 - Security Phase 6 removes the legacy custom-session database functions and the
   `sessions` table entirely.
+
+> **Note:** Phase 5 and Phase 6 changes are not declared by repo-local migrations.
+> RLS state and sessions-table removal should be verified against the linked live database.
 
 ## Current time authority
 
@@ -198,6 +200,5 @@ audits when you need real operational state.
     ticks. Future event types or UI surfacing should go through the existing
     `generate_game_events` / `deactivate_expired_events` contract.
 15. Aviation depth features (turnaround, crew costs, seasonal demand,
-    A/C-check milestones, cargo revenue, non-linear degradation) are live in
-    the simulation engine. Any simulation formula changes must be reflected in
-    both the player and bot processing functions.
+    cargo revenue) are live in the simulation engine. Any simulation formula
+    changes must be reflected in both the player and bot processing functions.
