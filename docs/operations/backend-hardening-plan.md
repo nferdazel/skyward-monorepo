@@ -183,6 +183,23 @@ fallback-based, partial, or backend-only.
 - finance historical net-worth charting
 - any leftover wording around dropped rank-history surfaces
 
+### Current Progress
+
+- the stale Flutter read path for `bank_transaction_daily_summary` has now
+  been removed
+- `bank_transaction_daily_summary` and `bank_transactions_archive` are now
+  documented as compaction / ops-support tables, not normal app runtime reads
+- baseline still defines a real compaction contract:
+  `skyward_compact_bank_transactions` runs
+  `compact_bank_transactions(false)` on a daily schedule
+- linked live config still keeps that contract active with
+  `game_config.key = 'bank_txn_raw_retention_days'` set to `180` with
+  `unit = 'game_days'`
+- direct linked row-count or dry-run proof for the compaction tables can still
+  be blocked intermittently by Supabase pooler `ECIRCUITBREAKER` /
+  temp-role-auth failures, so docs should distinguish:
+  repo-verified contract vs opportunistic live proof
+
 ### Exit Criteria
 
 - no user-facing or maintainer-facing doc claims a historical surface that does
