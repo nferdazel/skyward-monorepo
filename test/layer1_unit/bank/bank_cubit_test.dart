@@ -106,6 +106,7 @@ final _loanMap = <String, dynamic>{
   'status': 'active',
   'loan_type': 'unsecured',
   'missed_payments': 0,
+  'originated_game_date': '2027-03-08T10:00:00Z',
   'taken_at': '2026-06-01T00:00:00Z',
 };
 
@@ -118,6 +119,7 @@ final _repaidLoanMap = <String, dynamic>{
   'status': 'active',
   'loan_type': 'unsecured',
   'missed_payments': 0,
+  'originated_game_date': '2027-03-08T10:00:00Z',
   'taken_at': '2026-06-01T00:00:00Z',
 };
 
@@ -159,6 +161,7 @@ final _financingLoanMap = <String, dynamic>{
   'status': 'active',
   'loan_type': 'aircraft_financing',
   'missed_payments': 0,
+  'originated_game_date': '2027-03-08T12:00:00Z',
   'taken_at': '2026-06-10T00:00:00Z',
 };
 

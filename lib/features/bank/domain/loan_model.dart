@@ -9,6 +9,7 @@ class Loan {
   final String loanType;
   final String? collateralAircraftId;
   final int missedPayments;
+  final DateTime? originatedGameDate;
   final DateTime? takenAt;
 
   const Loan({
@@ -21,6 +22,7 @@ class Loan {
     this.loanType = 'unsecured',
     this.collateralAircraftId,
     this.missedPayments = 0,
+    this.originatedGameDate,
     this.takenAt,
   });
 
@@ -98,6 +100,9 @@ class Loan {
       loanType: map['loan_type'] as String? ?? 'unsecured',
       collateralAircraftId: map['collateral_aircraft_id'] as String?,
       missedPayments: (map['missed_payments'] as num?)?.toInt() ?? 0,
+      originatedGameDate: map['originated_game_date'] != null
+          ? DateTime.tryParse(map['originated_game_date'] as String)
+          : null,
       takenAt: map['taken_at'] != null
           ? DateTime.tryParse(map['taken_at'] as String)
           : null,

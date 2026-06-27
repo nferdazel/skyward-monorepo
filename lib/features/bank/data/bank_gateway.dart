@@ -47,10 +47,11 @@ class SupabaseBankGateway implements BankGateway {
           .select(
             'id, principal, interest_rate, remaining_balance, weekly_payment, '
             'status, loan_type, collateral_aircraft_id, '
-            'missed_payments, '
+            'missed_payments, originated_game_date, '
             'taken_at',
           )
           .eq('user_id', userId)
+          .order('originated_game_date', ascending: false, nullsFirst: false)
           .order('taken_at', ascending: false);
     } on PostgrestException catch (e) {
       SupabaseManager.logRpcFailure(
@@ -145,10 +146,11 @@ class SupabaseBankGateway implements BankGateway {
           .select(
             'id, principal, interest_rate, remaining_balance, weekly_payment, '
             'status, loan_type, collateral_aircraft_id, '
-            'missed_payments, '
+            'missed_payments, originated_game_date, '
             'taken_at',
           )
           .eq('loan_type', 'aircraft_financing')
+          .order('originated_game_date', ascending: false, nullsFirst: false)
           .order('taken_at', ascending: false);
     } on PostgrestException catch (e) {
       SupabaseManager.logRpcFailure('getAircraftFinancing', {}, e.message);

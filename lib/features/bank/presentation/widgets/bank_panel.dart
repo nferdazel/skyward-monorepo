@@ -637,6 +637,15 @@ class _LoanCard extends StatelessWidget {
                 ),
               ],
             ),
+            if (loan.originatedGameDate != null) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                'Opened ${AppFormatters.shortGameDateTime(loan.originatedGameDate!)}',
+                style: AppTypography.captionLight.copyWith(
+                  color: AppTheme.textMuted,
+                ),
+              ),
+            ],
             const SizedBox(height: AppSpacing.sm),
             SizedBox(
               width: double.infinity,

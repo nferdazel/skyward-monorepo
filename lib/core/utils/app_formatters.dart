@@ -36,4 +36,9 @@ class AppFormatters {
   static String shortDateTime(DateTime value) {
     return DateFormat('d MMM yyyy, HH:mm').format(value.toLocal());
   }
+
+  /// Short in-game date-time label for gameplay chronology.
+  static String shortGameDateTime(DateTime value) {
+    return DateFormat('d MMM yyyy, HH:mm').format(value);
+  }
 }

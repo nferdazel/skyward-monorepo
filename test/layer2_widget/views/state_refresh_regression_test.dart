@@ -261,7 +261,7 @@ void main() {
   );
 
   testWidgets(
-    'BankPanel does not show real-time loan timestamps in the player timeline',
+    'BankPanel shows in-game loan timestamps and hides real-time metadata',
     (tester) async {
       final authCubit = AuthCubit();
       final simulationCubit = TestSimulationCubit()..seedState();
@@ -288,6 +288,7 @@ void main() {
               remainingBalance: 900000.0,
               weeklyPayment: 25000.0,
               status: 'active',
+              originatedGameDate: DateTime.parse('2027-03-08T10:00:00Z'),
               takenAt: DateTime.parse('2026-06-27T10:00:00Z'),
             ),
           ],
@@ -313,8 +314,9 @@ void main() {
 
       await tester.pumpAndSettle();
 
+      expect(find.textContaining('Opened '), findsOneWidget);
       expect(find.textContaining('real time'), findsNothing);
-      expect(find.textContaining('Opened '), findsNothing);
+      expect(find.textContaining('8 Mar 2027, 10:00'), findsOneWidget);
     },
   );
 

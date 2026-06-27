@@ -158,9 +158,11 @@ Important fields:
 - `monthly_payment`
 - `status`
 - `collateral_aircraft_id`
+- `originated_game_date`
 
 Operational note:
 - `taken_at` is a real-world origination timestamp
+- `originated_game_date` is the player-facing in-game origination timestamp
 - related bank-ledger rows such as `loan_disbursement` are stamped with
   `bank_transactions.game_date`, which follows the shared game calendar
 

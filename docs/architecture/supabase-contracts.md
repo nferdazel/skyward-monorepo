@@ -463,9 +463,10 @@ This is the live Flutter-to-Supabase contract surface.
   - auth-bound wrapper resolves player from `auth.uid()`
   - validates credit tier, active-loan limits, and policy eligibility
   - creates loan record and disburses funds into `bank_accounts`
-  - stores the loan row's `taken_at` in real time, while the matching
-    `loan_disbursement` ledger row is stamped with the player's in-game
-    `users.game_current_time`
+  - stores `taken_at` as real-time audit metadata and
+    `originated_game_date` as the in-game origination timestamp
+  - stamps the matching `loan_disbursement` ledger row with the player's
+    in-game `users.game_current_time`
   - Flutter now follows successful bank-loan mutations with an authoritative
     simulation sync plus silent bank/finance reloads
 
@@ -511,7 +512,8 @@ This is the live Flutter-to-Supabase contract surface.
   - catches the player up to current season time before stamping the financing
     down-payment ledger row
   - validates credit eligibility
-  - creates aircraft financing loan and purchase-side bank activity
+  - creates aircraft financing loan, stamps `originated_game_date`, and writes
+    purchase-side bank activity
   - Flutter now treats success as a trigger for explicit
     simulation/bank/finance reloads rather than waiting on realtime alone
 

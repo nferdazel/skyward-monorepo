@@ -24,6 +24,7 @@ DECLARE
   v_finance_monthly NUMERIC;
   v_finance_deposit_game_date TIMESTAMPTZ;
   v_finance_user_game_time TIMESTAMPTZ;
+  v_finance_originated_game_date TIMESTAMPTZ;
   v_finance_balance_before NUMERIC;
   v_finance_balance_after NUMERIC;
   v_finance_deposit_rows INT;
@@ -99,8 +100,8 @@ BEGIN
 
   ASSERT v_finance_ok = TRUE, 'finance_aircraft failed: ' || COALESCE(v_finance_msg, 'no message');
 
-  SELECT id, weekly_payment, monthly_payment
-    INTO v_finance_loan_id, v_finance_weekly, v_finance_monthly
+  SELECT id, weekly_payment, monthly_payment, originated_game_date
+    INTO v_finance_loan_id, v_finance_weekly, v_finance_monthly, v_finance_originated_game_date
     FROM loans
    WHERE user_id = v_user_id
      AND loan_type = 'aircraft_financing'
@@ -110,6 +111,8 @@ BEGIN
   ASSERT v_finance_loan_id IS NOT NULL, 'Aircraft financing loan was not created.';
   ASSERT COALESCE(v_finance_weekly, 0) > 0, 'Aircraft financing weekly_payment must be > 0.';
   ASSERT COALESCE(v_finance_monthly, 0) > COALESCE(v_finance_weekly, 0), 'monthly_payment should remain larger than weekly_payment.';
+  ASSERT v_finance_originated_game_date IS NOT NULL,
+    'finance_aircraft should stamp loans.originated_game_date';
 
   SELECT COUNT(*), COALESCE(SUM(ABS(amount)), 0)
     INTO v_finance_deposit_rows, v_finance_deposit_amount
@@ -144,6 +147,8 @@ BEGIN
     'finance_aircraft should not stamp the down-payment ledger row with the stale bootstrap game time';
   ASSERT v_finance_user_game_time = v_finance_deposit_game_date,
     'finance_aircraft should catch the player up before writing the down-payment ledger row';
+  ASSERT v_finance_originated_game_date = v_finance_deposit_game_date,
+    'finance_aircraft loan origination game time should match the down-payment ledger row';
 
   SELECT remaining_balance
     INTO v_finance_balance_before

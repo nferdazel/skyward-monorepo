@@ -308,6 +308,14 @@ BEGIN
        AND transaction_type = 'credit'
        AND ROUND(amount, 2) = 250000.00
   ), 'take_loan should write a loan_disbursement credit row';
+  ASSERT EXISTS (
+    SELECT 1
+      FROM loans
+     WHERE user_id = v_user_id
+       AND status = 'active'
+       AND loan_type = 'unsecured'
+       AND originated_game_date IS NOT NULL
+  ), 'take_loan should stamp loans.originated_game_date';
 
   SELECT id
     INTO v_unsecured_loan_id
