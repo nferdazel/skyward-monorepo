@@ -21,6 +21,8 @@ import '../../../../presentation/widgets/app_info_strip.dart';
 import '../../../../presentation/widgets/app_labeled_value.dart';
 import '../../../../presentation/widgets/app_section_header.dart';
 import '../../../../presentation/widgets/app_snackbar.dart';
+import '../../../../presentation/widgets/app_table_cells.dart';
+import '../../../../presentation/widgets/app_table_shell.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
 import '../../../finance/presentation/cubit/finance_cubit.dart';
@@ -32,9 +34,17 @@ import '../../domain/loan_model.dart';
 import '../cubit/bank_cubit.dart';
 import '../cubit/bank_state.dart';
 
-/// Summary panel showing active bank loans and a "Take Loan" action.
-class BankPanel extends StatelessWidget {
+/// Financial Command Center — redesigned Bank tab matching the
+/// design language of Finance Overview and Fleet tabs.
+class BankPanel extends StatefulWidget {
   const BankPanel({super.key});
+
+  @override
+  State<BankPanel> createState() => _BankPanelState();
+}
+
+class _BankPanelState extends State<BankPanel> {
+  bool _historyExpanded = false;
 
   @override
   Widget build(BuildContext context) {
@@ -57,13 +67,33 @@ class BankPanel extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const AppSectionHeader(title: 'BANK'),
+              AppSectionHeader(
+                title: 'BANK',
+                trailing: _buildTakeLoanCta(context, state),
+              ),
               const SizedBox(height: AppSpacing.blockGap),
               _buildBody(context, state),
             ],
           ),
         );
       },
+    );
+  }
+
+  Widget _buildTakeLoanCta(BuildContext context, BankState state) {
+    final canTake = switch (state) {
+      BankLoaded(:final loans) => loans.where((l) => l.isActive).length < 3,
+      BankLoanSuccess(:final loans) => loans.where((l) => l.isActive).length < 3,
+      BankRefinanceSuccess(:final loans) => loans.where((l) => l.isActive).length < 3,
+      BankError(:final loans) => loans.where((l) => l.isActive).length < 3,
+      _ => false,
+    };
+    return AppButton(
+      text: AppStrings.takeLoan,
+      icon: Icons.add,
+      onPressed: canTake ? () => _showLoanDialog(context) : null,
+      type: AppButtonType.primary,
+      height: 32,
     );
   }
 
@@ -89,7 +119,7 @@ class BankPanel extends StatelessWidget {
     return switch (state) {
       BankInitial() || BankLoading() => _buildLoading(),
       BankLoaded(:final loans, :final creditReport, :final accounts, :final transactions) =>
-        loans.isEmpty
+        loans.isEmpty && creditReport == null
             ? _buildEmptyState(context, creditReport: creditReport, accounts: accounts, transactions: transactions)
             : _buildContent(context, loans, creditReport: creditReport, accounts: accounts, transactions: transactions),
       BankError(:final hasData, :final loans, :final creditReport, :final accounts, :final transactions) =>
@@ -101,8 +131,6 @@ class BankPanel extends StatelessWidget {
       _ => _buildLoading(),
     };
   }
-
-
 
   Widget _buildLoading() {
     return const Padding(
@@ -126,25 +154,12 @@ class BankPanel extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ── Account Summary ──
-        if (accounts.isNotEmpty) ...[
-          _buildAccountSummary(context, accounts),
-          const SizedBox(height: AppSpacing.lg),
+        // Top grid: Credit + Account
+        if (creditReport != null || accounts.isNotEmpty) ...[
+          _buildTopGrid(context, creditReport: creditReport, accounts: accounts),
+          const SizedBox(height: AppSpacing.sectionGap),
         ],
 
-        // ── Savings Section ──
-        _buildSavingsSection(context, accounts: accounts, transactions: transactions),
-        const SizedBox(height: AppSpacing.lg),
-
-        if (creditReport != null) ...[
-          Divider(color: AppTheme.border, height: 1),
-          const SizedBox(height: AppSpacing.lg),
-          _buildCreditScoreCard(creditReport),
-          const SizedBox(height: AppSpacing.lg),
-        ],
-
-        Divider(color: AppTheme.border, height: 1),
-        const SizedBox(height: AppSpacing.lg),
         AppEmptyState(
           icon: Icons.account_balance_outlined,
           title: AppStrings.noActiveLoans,
@@ -153,15 +168,6 @@ class BankPanel extends StatelessWidget {
             AppStrings.borrowCapital,
             _loanTermsDescription(creditReport),
           ].join('\n'),
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        Center(
-          child: AppButton(
-            text: AppStrings.takeLoan,
-            onPressed: () => _showLoanDialog(context),
-            type: AppButtonType.primary,
-            height: 40,
-          ),
         ),
       ],
     );
@@ -182,87 +188,289 @@ class BankPanel extends StatelessWidget {
       (sum, l) => sum + l.weeklyPayment,
     );
 
+    // Calculate remaining capacity
+    double remainingCapacity = 0;
+    if (creditReport != null) {
+      remainingCapacity = (creditReport.maxUnsecuredLoan - totalOutstanding)
+          .clamp(0.0, creditReport.maxUnsecuredLoan);
+    }
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ── Account Summary ──
-        if (accounts.isNotEmpty) ...[
-          _buildAccountSummary(context, accounts),
-          const SizedBox(height: AppSpacing.lg),
+        // ── Top Grid: Credit Rating + Operating Account ──
+        if (creditReport != null || accounts.isNotEmpty) ...[
+          _buildTopGrid(context, creditReport: creditReport, accounts: accounts),
+          const SizedBox(height: AppSpacing.sectionGap),
         ],
 
-        // ── Savings Section ──
-        _buildSavingsSection(context, accounts: accounts, transactions: transactions),
-        const SizedBox(height: AppSpacing.lg),
-
-        // ── Credit score card ──
-        if (creditReport != null) ...[
-          Divider(color: AppTheme.border, height: 1),
-          const SizedBox(height: AppSpacing.lg),
-          _buildCreditScoreCard(creditReport),
-          const SizedBox(height: AppSpacing.lg),
-        ],
-
-        // ── Loans section ──
+        // ── Active Debt Summary Strip ──
         if (activeLoans.isNotEmpty) ...[
-          Divider(color: AppTheme.border, height: 1),
-          const SizedBox(height: AppSpacing.lg),
-          _buildSummaryStrip(totalOutstanding, totalWeekly),
+          AppSectionHeader(title: 'ACTIVE DEBT'),
+          const SizedBox(height: AppSpacing.blockGap),
+          _buildDebtSummaryStrip(totalOutstanding, totalWeekly, remainingCapacity),
           const SizedBox(height: AppSpacing.md),
+          // Loan cards
           for (int i = 0; i < activeLoans.length; i++) ...[
             _LoanCard(loan: activeLoans[i]),
             if (i < activeLoans.length - 1)
               const SizedBox(height: AppSpacing.sm),
           ],
-          if (creditReport != null) ...[
-            const SizedBox(height: AppSpacing.md),
-            _buildFinancialSummaryStrip(activeLoans, creditReport),
-          ],
+          const SizedBox(height: AppSpacing.sectionGap),
         ],
 
-        // ── Historical loans ──
+        // ── Recent Transactions ──
+        if (transactions.isNotEmpty) ...[
+          AppSectionHeader(title: 'RECENT TRANSACTIONS'),
+          const SizedBox(height: AppSpacing.blockGap),
+          _buildTransactionsTable(context, transactions),
+          const SizedBox(height: AppSpacing.sectionGap),
+        ],
+
+        // ── Loan History (collapsible) ──
         if (historicalLoans.isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.lg),
-          Divider(color: AppTheme.border, height: 1),
+          _buildCollapsibleHistory(historicalLoans),
+        ],
+      ],
+    );
+  }
+
+  // ── Top Grid: Credit Rating + Operating Account ─────────────────────────
+
+  Widget _buildTopGrid(BuildContext context, {CreditReport? creditReport, List<BankAccount> accounts = const []}) {
+    final operating = accounts.where((a) => a.isChecking).firstOrNull ??
+        accounts.firstOrNull;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Left: Credit Rating
+        if (creditReport != null)
+          Expanded(
+            child: _buildCreditRatingCard(creditReport),
+          ),
+        if (creditReport != null && operating != null)
+          const SizedBox(width: AppSpacing.sm),
+        // Right: Operating Account
+        if (operating != null)
+          Expanded(
+            child: _buildOperatingAccountCard(context, operating, creditReport: creditReport),
+          ),
+      ],
+    );
+  }
+
+  // ── Credit Rating Card ──────────────────────────────────────────────────
+
+  Widget _buildCreditRatingCard(CreditReport report) {
+    final tierColor = _tierColor(report.creditTier);
+
+    return AppCard(
+      customBorder: Border(
+        top: BorderSide(color: tierColor, width: 1.5),
+        left: BorderSide(color: AppTheme.border, width: 0.5),
+        right: BorderSide(color: AppTheme.border, width: 0.5),
+        bottom: BorderSide(color: AppTheme.border, width: 0.5),
+      ),
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Header row
+          Row(
+            children: [
+              Text(
+                'CREDIT RATING',
+                style: AppTypography.microLabel.copyWith(
+                  color: AppTheme.textMuted,
+                ),
+              ),
+              const Spacer(),
+              AppBadge(
+                label: report.creditTier,
+                color: tierColor,
+                fontSize: 11,
+              ),
+            ],
+          ),
           const SizedBox(height: AppSpacing.md),
+
+          // Score display
           Text(
-            'HISTORY',
-            style: AppTypography.microLabel.copyWith(
-              color: AppTheme.textMuted,
+            report.currentScore.toString(),
+            style: AppTypography.largeKpi.copyWith(color: tierColor),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+
+          // Sub-scores
+          _buildSubScoreRow('Fleet Health', report.fleetHealth, 200),
+          const SizedBox(height: AppSpacing.sm),
+          _buildSubScoreRow('Revenue Stable', report.revenueStability, 200),
+          const SizedBox(height: AppSpacing.sm),
+          _buildSubScoreRow('Debt Ratio', report.debtRatio, 200),
+          const SizedBox(height: AppSpacing.sm),
+          _buildSubScoreRow('Cash Reserve', report.cashReserve, 200),
+          const SizedBox(height: AppSpacing.sm),
+          _buildSubScoreRow('Profit History', report.profitHistory, 200),
+
+          // Suggestion
+          if (report.suggestions.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              report.suggestions.first,
+              style: AppTypography.captionLight.copyWith(color: AppTheme.textMuted),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSubScoreRow(String label, int score, int maxScore) {
+    final progress = (score / maxScore).clamp(0.0, 1.0);
+    final barColor = progress > 0.7
+        ? AppTheme.success
+        : progress > 0.4
+            ? AppTheme.primary
+            : AppTheme.warning;
+
+    return Row(
+      children: [
+        SizedBox(
+          width: 100,
+          child: Text(
+            label,
+            style: AppTypography.nanoLabel.copyWith(color: AppTheme.textSecondary),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(AppSpacing.radiusTight),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 4,
+              backgroundColor: AppTheme.border,
+              valueColor: AlwaysStoppedAnimation<Color>(barColor),
             ),
           ),
-          const SizedBox(height: AppSpacing.sm),
-          for (int i = 0; i < historicalLoans.length; i++) ...[
-            _HistoricalLoanRow(loan: historicalLoans[i]),
-            if (i < historicalLoans.length - 1)
-              const SizedBox(height: AppSpacing.xs),
-          ],
-        ],
-
-        // ── Take loan button ──
-        const SizedBox(height: AppSpacing.lg),
-        Divider(color: AppTheme.border, height: 1),
-        const SizedBox(height: AppSpacing.lg),
-        AppButton(
-          text: AppStrings.takeLoan,
-          onPressed: activeLoans.length < 3
-              ? () => _showLoanDialog(context)
-              : null,
-          type: AppButtonType.primary,
-          height: 40,
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        SizedBox(
+          width: 32,
+          child: Text(
+            score.toString(),
+            style: AppTypography.monoValue.copyWith(
+              color: AppTheme.textSecondary,
+              fontSize: 11,
+            ),
+            textAlign: TextAlign.right,
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildSummaryStrip(double totalOutstanding, double totalWeekly) {
+  // ── Operating Account Card ──────────────────────────────────────────────
+
+  Widget _buildOperatingAccountCard(BuildContext context, BankAccount account, {CreditReport? creditReport}) {
+    return AppCard(
+      customBorder: Border(
+        top: BorderSide(color: AppTheme.success, width: 1.5),
+        left: BorderSide(color: AppTheme.border, width: 0.5),
+        right: BorderSide(color: AppTheme.border, width: 0.5),
+        bottom: BorderSide(color: AppTheme.border, width: 0.5),
+      ),
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'OPERATING ACCOUNT',
+            style: AppTypography.microLabel.copyWith(
+              color: AppTheme.textMuted,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+
+          // Balance
+          Text(
+            AppFormatters.currency.format(account.balance),
+            style: AppTypography.largeKpi.copyWith(color: AppTheme.success),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+
+          // Credit Limits
+          if (creditReport != null) ...[
+            Text(
+              'CREDIT LIMITS',
+              style: AppTypography.microLabel.copyWith(
+                color: AppTheme.textMuted,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            _buildLimitRow('Unsecured', creditReport.maxUnsecuredLoan),
+            const SizedBox(height: AppSpacing.xs),
+            _buildLimitRow('Secured', creditReport.maxSecuredLoan),
+            const SizedBox(height: AppSpacing.xs),
+            _buildLimitRow('Financing', creditReport.maxFinancingAmount),
+            const SizedBox(height: AppSpacing.md),
+            // Interest rate
+            Row(
+              children: [
+                Text(
+                  'RATE',
+                  style: AppTypography.nanoLabel.copyWith(color: AppTheme.textMuted),
+                ),
+                const Spacer(),
+                Text(
+                  '${(creditReport.unsecuredInterestRate * 100).toStringAsFixed(1)}% APR',
+                  style: AppTypography.badgeText.copyWith(
+                    color: AppTheme.warning,
+                    letterSpacing: AppTypography.spacingNone,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLimitRow(String label, double amount) {
+    return Row(
+      children: [
+        Text(
+          label,
+          style: AppTypography.captionRegular.copyWith(color: AppTheme.textSecondary),
+        ),
+        const Spacer(),
+        Text(
+          AppFormatters.compactNumber(amount),
+          style: AppTypography.monoValue.copyWith(
+            color: AppTheme.textPrimary,
+            fontSize: 12,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Debt Summary Strip ──────────────────────────────────────────────────
+
+  Widget _buildDebtSummaryStrip(double totalOutstanding, double totalWeekly, double remainingCapacity) {
     return AppInfoStrip(
       child: Row(
         children: [
           Expanded(
             child: AppLabeledValue(
-              label: AppStrings.outstanding,
+              label: 'TOTAL OUTSTANDING',
               value: AppFormatters.currency.format(totalOutstanding),
               valueColor: AppTheme.warning,
               emphasize: true,
@@ -273,230 +481,258 @@ class BankPanel extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.only(left: AppSpacing.md),
               child: AppLabeledValue(
-                label: AppStrings.weeklyPayment,
+                label: 'WEEKLY BURDEN',
                 value: '${AppFormatters.currency.format(totalWeekly)}/wk',
                 valueColor: AppTheme.error,
               ),
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  // ── Account Summary ─────────────────────────────────────────────────────
-
-  Widget _buildAccountSummary(BuildContext context, List<BankAccount> accounts) {
-    // Show the operating (checking) account as the primary account
-    final operating = accounts.where((a) => a.isChecking).firstOrNull ??
-        accounts.firstOrNull;
-
-    return AppCard(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            'ACCOUNTS',
-            style: AppTypography.microLabel.copyWith(
-              color: AppTheme.textMuted,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          if (operating != null)
-            _AccountTile(
-              icon: Icons.account_balance_outlined,
-              label: 'Operating',
-              balance: operating.balance,
-              color: AppTheme.primary,
-            ),
-        ],
-      ),
-    );
-  }
-
-  // ── Operating Account Section ────────────────────────────────────────────
-
-  Widget _buildSavingsSection(BuildContext context, {List<BankAccount> accounts = const [], List<BankTransaction> transactions = const []}) {
-    final operating = accounts.where((a) => a.isChecking).firstOrNull ??
-        accounts.firstOrNull;
-
-    // If no account exists, show nothing.
-    if (operating == null) return const SizedBox.shrink();
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        AppCard(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  Text(
-                    'OPERATING ACCOUNT',
-                    style: AppTypography.microLabel.copyWith(
-                      color: AppTheme.textMuted,
-                    ),
-                  ),
-                  const Spacer(),
-                  AppBadge(
-                    label: AppFormatters.currency.format(operating.balance),
-                    color: AppTheme.success,
-                    fontSize: 11,
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-
-        if (transactions.isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            'RECENT TRANSACTIONS · IN-GAME TIME',
-            style: AppTypography.microLabel.copyWith(
-              color: AppTheme.textMuted,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            'Loan records use real-time origination stamps; ledger rows use the game calendar.',
-            style: AppTypography.captionLight.copyWith(
-              color: AppTheme.textMuted,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          for (int i = 0; i < transactions.length && i < 5; i++) ...[
-            _TransactionRow(transaction: transactions[i]),
-            if (i < transactions.length - 1 && i < 4)
-              const SizedBox(height: AppSpacing.xs),
-          ],
-        ],
-      ],
-    );
-  }
-
-  Widget _buildFinancialSummaryStrip(List<Loan> activeLoans, CreditReport creditReport) {
-    final totalOutstanding = activeLoans.fold<double>(
-      0,
-      (sum, l) => sum + l.remainingBalance,
-    );
-    final remainingCapacity = (creditReport.maxUnsecuredLoan - totalOutstanding)
-        .clamp(0.0, creditReport.maxUnsecuredLoan);
-    final nextPayment = activeLoans.first.weeklyPayment;
-
-    return AppInfoStrip(
-      child: Row(
-        children: [
-          Expanded(
-            child: AppLabeledValue(
-              label: 'INTEREST RATE',
-              value: '${(creditReport.unsecuredInterestRate * 100).toStringAsFixed(1)}% APR',
-            ),
-          ),
           Container(width: 1, height: 28, color: AppTheme.border),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.only(left: AppSpacing.sm),
+              padding: const EdgeInsets.only(left: AppSpacing.md),
               child: AppLabeledValue(
-                label: 'LOAN LIMIT',
-                value: AppFormatters.compactNumber(creditReport.maxUnsecuredLoan),
-              ),
-            ),
-          ),
-          Container(width: 1, height: 28, color: AppTheme.border),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(left: AppSpacing.sm),
-              child: AppLabeledValue(
-                label: 'REMAINING',
+                label: 'REMAINING CAP',
                 value: AppFormatters.compactNumber(remainingCapacity),
                 valueColor: remainingCapacity > 0 ? AppTheme.success : AppTheme.error,
               ),
             ),
           ),
-          Container(width: 1, height: 28, color: AppTheme.border),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(left: AppSpacing.sm),
-              child: AppLabeledValue(
-                label: 'NEXT PAYMENT',
-                value: '${AppFormatters.currency.format(nextPayment)}/wk',
-                valueColor: AppTheme.warning,
-              ),
-            ),
-          ),
         ],
       ),
     );
   }
 
-  // ── Credit Score Card ─────────────────────────────────────────────────────
+  // ── Transactions Table ──────────────────────────────────────────────────
 
-  Widget _buildCreditScoreCard(CreditReport report) {
-    return AppCard(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      child: Row(
+  Widget _buildTransactionsTable(BuildContext context, List<BankTransaction> transactions) {
+    final displayTxns = transactions.take(8).toList();
+
+    return AppTableShell(
+      label: 'Recent bank transactions',
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Score display
-          Column(
-            mainAxisSize: MainAxisSize.min,
+          // Header
+          Table(
+            columnWidths: const {
+              0: FlexColumnWidth(2),
+              1: FlexColumnWidth(5),
+              2: FlexColumnWidth(2),
+              3: FlexColumnWidth(2),
+            },
+            defaultVerticalAlignment: TableCellVerticalAlignment.middle,
             children: [
-              Text(
-                report.currentScore.toString(),
-                style: AppTypography.largeKpi.copyWith(
-                  color: _tierColor(report.creditTier),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
-                decoration: BoxDecoration(
-                  color: _tierColor(report.creditTier).withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(AppSpacing.radiusTight),
-                ),
-                child: Text(
-                  report.creditTier.toUpperCase(),
-                  style: AppTypography.nanoLabel.copyWith(
-                    color: _tierColor(report.creditTier),
+              TableRow(
+                decoration: BoxDecoration(color: AppTheme.surfaceRaised),
+                children: [
+                  AppTableHeaderCell(
+                    label: 'CATEGORY',
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
                   ),
-                ),
+                  AppTableHeaderCell(
+                    label: 'DESCRIPTION',
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                  ),
+                  AppTableHeaderCell(
+                    label: 'DATE',
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                  ),
+                  AppTableHeaderCell(
+                    label: 'AMOUNT',
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                  ),
+                ],
               ),
             ],
           ),
-          const SizedBox(width: AppSpacing.xl),
-          // Details
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          // Body rows
+          for (int i = 0; i < displayTxns.length; i++)
+            Table(
+              columnWidths: const {
+                0: FlexColumnWidth(2),
+                1: FlexColumnWidth(5),
+                2: FlexColumnWidth(2),
+                3: FlexColumnWidth(2),
+              },
+              defaultVerticalAlignment: TableCellVerticalAlignment.middle,
               children: [
-                Text('CREDIT RATING', style: AppTypography.sectionHeaderMedium),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  'Unsecured: \$${_formatNumber(report.maxUnsecuredLoan)}  ·  ${(report.unsecuredInterestRate * 100).toStringAsFixed(1)}% APR  ·  Secured: ${(report.securedInterestRate * 100).toStringAsFixed(1)}% APR',
-                  style: AppTypography.captionRegular,
-                ),
-                if (report.suggestions.isNotEmpty) ...[
-                  const SizedBox(height: AppSpacing.sm),
-                  Text(
-                    report.suggestions.first,
-                    style: AppTypography.captionLight.copyWith(color: AppTheme.textMuted),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+                _buildTransactionRow(displayTxns[i]),
               ],
             ),
-          ),
         ],
       ),
     );
   }
+
+  TableRow _buildTransactionRow(BankTransaction txn) {
+    final isCredit = txn.transactionType == 'credit';
+    final sign = isCredit ? '+' : '-';
+    final valueColor = isCredit ? AppTheme.success : AppTheme.error;
+    final gameDate = txn.gameDate;
+
+    return TableRow(
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: AppTheme.border, width: 0.5)),
+      ),
+      children: [
+        // Category badge
+        AppTableBodyCell(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+          child: _buildTxnCategoryBadge(txn),
+        ),
+        // Description
+        AppTableBodyCell(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+          child: Text(
+            txn.description ?? _typeLabel(txn.transactionType),
+            style: AppTypography.captionRegular.copyWith(color: AppTheme.textSecondary),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        // Date
+        AppTableBodyCell(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+          child: Text(
+            gameDate != null ? AppFormatters.shortGameDateTime(gameDate) : '—',
+            style: AppTypography.captionLight.copyWith(color: AppTheme.textMuted),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        // Amount
+        AppTableBodyCell(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              '$sign${AppFormatters.currency.format(txn.amount.abs())}',
+              style: AppTypography.badgeText.copyWith(
+                color: valueColor,
+                letterSpacing: AppTypography.spacingNone,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTxnCategoryBadge(BankTransaction txn) {
+    final sub = txn.ifrsSubcategory ?? txn.ifrsCategory ?? '';
+    switch (sub) {
+      case 'route_revenue':
+      case 'cargo_revenue':
+      case 'revenue':
+        return AppBadge.success(label: 'REVENUE');
+      case 'fuel_cost':
+      case 'crew_cost':
+      case 'maintenance_cost':
+      case 'airport_fees':
+      case 'cogs':
+      case 'opex':
+        return AppBadge.warning(label: 'OPS');
+      case 'aircraft_lease':
+      case 'aircraft_lease_init':
+      case 'aircraft_lease_exit':
+        return AppBadge.error(label: 'LEASE');
+      case 'aircraft_repair':
+        return AppBadge.error(label: 'REPAIR');
+      case 'aircraft_purchase':
+      case 'aircraft_purchase_deposit':
+        return AppBadge.primary(label: 'ACQUIRE');
+      case 'loan_payment':
+      case 'loan_disbursement':
+      case 'loan_refinance':
+      case 'financing_payment':
+      case 'financing':
+        return AppBadge.secondary(label: 'FINANCE');
+      default:
+        return AppBadge.secondary(
+          label: txn.transactionType == 'credit' ? 'CREDIT' : 'DEBIT',
+        );
+    }
+  }
+
+  String _typeLabel(String type) {
+    switch (type) {
+      case 'credit':
+        return 'Credit';
+      case 'debit':
+        return 'Debit';
+      default:
+        return type;
+    }
+  }
+
+  // ── Collapsible Loan History ────────────────────────────────────────────
+
+  Widget _buildCollapsibleHistory(List<Loan> historicalLoans) {
+    final totalBorrowed = historicalLoans.fold<double>(0, (sum, l) => sum + l.principal);
+    final defaults = historicalLoans.where((l) => l.isDefaulted || l.isRepossessed).length;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Collapsible header
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => setState(() => _historyExpanded = !_historyExpanded),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+              child: Row(
+                children: [
+                  Icon(
+                    _historyExpanded ? Icons.expand_less : Icons.expand_more,
+                    size: 16,
+                    color: AppTheme.textMuted,
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Text(
+                    'HISTORY',
+                    style: AppTypography.microLabel.copyWith(
+                      color: AppTheme.textMuted,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Text(
+                    '${historicalLoans.length} loans · Total borrowed: ${AppFormatters.compactNumber(totalBorrowed)}${defaults > 0 ? ' · $defaults defaulted' : ''}',
+                    style: AppTypography.captionLight.copyWith(
+                      color: AppTheme.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+
+        // Animated expand/collapse
+        AnimatedCrossFade(
+          firstChild: const SizedBox.shrink(),
+          secondChild: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: AppSpacing.sm),
+              for (int i = 0; i < historicalLoans.length; i++) ...[
+                _HistoricalLoanRow(loan: historicalLoans[i]),
+                if (i < historicalLoans.length - 1)
+                  const SizedBox(height: AppSpacing.xs),
+              ],
+            ],
+          ),
+          crossFadeState: _historyExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+          duration: const Duration(milliseconds: 200),
+        ),
+      ],
+    );
+  }
+
+  // ── Helpers ─────────────────────────────────────────────────────────────
 
   static Color _tierColor(String tier) {
     switch (tier) {
@@ -525,8 +761,6 @@ class BankPanel extends StatelessWidget {
         return '';
     }
   }
-
-  static String _formatNumber(double value) => AppFormatters.compactNumber(value);
 
   static String _loanTermsDescription(CreditReport? report) {
     final minLoan = report?.minLoanAmount ?? 100000;
@@ -572,12 +806,18 @@ class _LoanCard extends StatelessWidget {
     return Semantics(
       label: 'Loan ${AppFormatters.currency.format(loan.principal)}',
       child: AppCard(
-        padding: const EdgeInsets.all(AppSpacing.sm),
+        customBorder: Border(
+          left: BorderSide(color: progressColor, width: 3),
+          top: BorderSide(color: AppTheme.border, width: 0.5),
+          right: BorderSide(color: AppTheme.border, width: 0.5),
+          bottom: BorderSide(color: AppTheme.border, width: 0.5),
+        ),
+        padding: const EdgeInsets.all(AppSpacing.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Top row: principal + status
+            // Top row: principal + type badge + APR
             Row(
               children: [
                 Text(
@@ -586,7 +826,12 @@ class _LoanCard extends StatelessWidget {
                     color: AppTheme.textPrimary,
                   ),
                 ),
-
+                const SizedBox(width: AppSpacing.sm),
+                AppBadge(
+                  label: loan.loanTypeLabel,
+                  color: loan.isSecured ? AppTheme.info : AppTheme.textSecondary,
+                  fontSize: 10,
+                ),
                 const Spacer(),
                 AppBadge(
                   label: '${(loan.interestRate * 100).toStringAsFixed(0)}% APR',
@@ -612,20 +857,16 @@ class _LoanCard extends StatelessWidget {
             // Bottom row: remaining + weekly + percent
             Row(
               children: [
-                Text(
-                  '${AppFormatters.currency.format(loan.remainingBalance)} left',
-                  style: AppTypography.captionRegular.copyWith(
-                    color: AppTheme.textSecondary,
+                Expanded(
+                  child: Text(
+                    '${AppFormatters.currency.format(loan.remainingBalance)} left  ·  ${AppFormatters.currency.format(loan.weeklyPayment)}/wk',
+                    style: AppTypography.captionRegular.copyWith(
+                      color: AppTheme.textSecondary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const Spacer(),
-                Text(
-                  '${AppFormatters.currency.format(loan.weeklyPayment)}/wk',
-                  style: AppTypography.captionRegular.copyWith(
-                    color: AppTheme.textSecondary,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
                 Text(
                   '${(progress * 100).toStringAsFixed(0)}%',
                   style: AppTypography.badgeText.copyWith(
@@ -633,8 +874,17 @@ class _LoanCard extends StatelessWidget {
                     fontSize: 11,
                   ),
                 ),
+                const SizedBox(width: AppSpacing.sm),
+                AppButton(
+                  text: AppStrings.payOff,
+                  onPressed: () =>
+                      context.read<BankCubit>().repayLoan(loan.id),
+                  type: AppButtonType.secondary,
+                  height: 28,
+                ),
               ],
             ),
+            // Game date row
             if (loan.originatedGameDate != null) ...[
               const SizedBox(height: AppSpacing.xs),
               Text(
@@ -644,17 +894,6 @@ class _LoanCard extends StatelessWidget {
                 ),
               ),
             ],
-            const SizedBox(height: AppSpacing.sm),
-            SizedBox(
-              width: double.infinity,
-              child: AppButton(
-                text: AppStrings.payOff,
-                onPressed: () =>
-                    context.read<BankCubit>().repayLoan(loan.id),
-                type: AppButtonType.secondary,
-                width: double.infinity,
-              ),
-            ),
           ],
         ),
       ),
@@ -696,114 +935,6 @@ class _HistoricalLoanRow extends StatelessWidget {
         ),
       ],
     );
-  }
-}
-
-// ============================================================================
-// Account tile (checking / savings)
-// ============================================================================
-
-class _AccountTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final double balance;
-  final Color color;
-
-  const _AccountTile({
-    required this.icon,
-    required this.label,
-    required this.balance,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(AppSpacing.radiusTight),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 16, color: color),
-              const SizedBox(width: AppSpacing.xs),
-              Text(
-                label.toUpperCase(),
-                style: AppTypography.nanoLabel.copyWith(color: color),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            AppFormatters.currency.format(balance),
-            style: AppTypography.hudValue.copyWith(
-              color: AppTheme.textPrimary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ============================================================================
-// Transaction row
-// ============================================================================
-
-class _TransactionRow extends StatelessWidget {
-  final BankTransaction transaction;
-
-  const _TransactionRow({required this.transaction});
-
-  @override
-  Widget build(BuildContext context) {
-    final isCredit = transaction.transactionType == 'credit';
-    final color = isCredit ? AppTheme.success : AppTheme.error;
-    final icon = isCredit ? Icons.arrow_downward : Icons.arrow_upward;
-
-    return Row(
-      children: [
-        Icon(icon, size: 14, color: color),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                transaction.description ?? _typeLabel(transaction.transactionType),
-                style: AppTypography.captionRegular.copyWith(
-                  color: AppTheme.textSecondary,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
-        ),
-        Text(
-          '${isCredit ? '+' : '-'}${AppFormatters.currency.format(transaction.amount)}',
-          style: AppTypography.badgeText.copyWith(color: color, fontSize: 11),
-        ),
-      ],
-    );
-  }
-
-  String _typeLabel(String type) {
-    switch (type) {
-      case 'credit':
-        return 'Credit';
-      case 'debit':
-        return 'Debit';
-      default:
-        return type;
-    }
   }
 }
 
