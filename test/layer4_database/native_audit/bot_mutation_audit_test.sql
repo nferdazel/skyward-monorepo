@@ -178,23 +178,25 @@ BEGIN
    WHERE user_id = v_bot1_id
      AND account_type = 'operating';
 
-  -- Call the shared fleet helper — lease acquisition with a charge
-  SELECT success, message, new_cash, fleet_id, tail_number
-    INTO v_a1_success, v_a1_message, v_a1_cash, v_a1_fleet_id, v_a1_tail
-    FROM create_actor_fleet_aircraft(
+  -- Call the fleet lease helper
+  SELECT success, message, new_cash
+    INTO v_a1_success, v_a1_message, v_a1_cash
+    FROM lease_aircraft(
       v_bot1_id,
       v_model_id,
       'Audit Bot A1 Plane',
-      'lease',
-      FLOOR(v_model_capacity * 0.70)::INT,
-      FLOOR(v_model_capacity * 0.20)::INT,
-      FLOOR(v_model_capacity * 0.10)::INT,
-      600000.00,
-      'investing',
-      'aircraft_lease_deposit',
       NULL,
-      v_season_time
+      0,
+      0
     );
+
+  -- Fetch fleet_id and tail_number from the newly created row
+  SELECT id, tail_number
+    INTO v_a1_fleet_id, v_a1_tail
+    FROM fleet_aircraft
+   WHERE user_id = v_bot1_id
+   ORDER BY acquired_game_date DESC
+   LIMIT 1;
 
   ASSERT v_a1_success = TRUE,
     'A1: create_actor_fleet_aircraft should succeed for a bot with sufficient cash: ' || COALESCE(v_a1_message, 'no message');
@@ -236,7 +238,7 @@ BEGIN
   ) VALUES (
     'bot_audit_a2', 'Audit Bot A2 Airlines', 'Bot A2 CEO', 'AI',
     'SIN', v_season_time, 'Active',
-    20000000.00, 0, 0,
+    200000000.00, 0, 0,
     40.00, v_season_id
   ) RETURNING id INTO v_bot2_id;
 
@@ -244,27 +246,29 @@ BEGIN
   VALUES (v_bot2_id, 'Balanced');
 
   UPDATE bank_accounts
-     SET balance = 20000000.00
+     SET balance = 200000000.00
    WHERE user_id = v_bot2_id
      AND account_type = 'operating';
 
-  -- Create an aircraft for this bot
-  SELECT success, fleet_id
-    INTO v_a1_success, v_bot2_aircraft
-    FROM create_actor_fleet_aircraft(
+  -- Create an aircraft for this bot via purchase
+  SELECT success, new_cash
+    INTO v_a1_success, v_a1_cash
+    FROM purchase_aircraft(
       v_bot2_id,
       v_model_id,
       'Audit Bot A2 Plane',
-      'purchase',
-      FLOOR(v_model_capacity * 0.70)::INT,
-      FLOOR(v_model_capacity * 0.20)::INT,
-      FLOOR(v_model_capacity * 0.10)::INT,
-      v_model_purchase,
-      'investing',
-      'aircraft_purchase',
       NULL,
-      v_season_time
+      0,
+      0
     );
+
+  -- Fetch the fleet_id from the newly created row
+  SELECT id
+    INTO v_bot2_aircraft
+    FROM fleet_aircraft
+   WHERE user_id = v_bot2_id
+   ORDER BY acquired_game_date DESC
+   LIMIT 1;
 
   ASSERT v_a1_success = TRUE,
     'A2: setup — fleet aircraft creation should succeed for bot A2';
@@ -281,17 +285,28 @@ BEGIN
     'A2: setup — SIN-KUL distance should be positive';
 
   -- Call the shared route helper
-  SELECT success, message, route_id
-    INTO v_a2_success, v_a2_message, v_a2_route_id
-    FROM create_actor_route_assignment(
+  SELECT success, message
+    INTO v_a2_success, v_a2_message
+    FROM create_route(
       v_bot2_id,
       'SIN',
       'KUL',
-      v_a2_distance,
+      v_a2_distance::NUMERIC,
       150.00,
-      7,
-      v_bot2_aircraft
+      7
     );
+
+  -- Fetch the route_id from the newly created row
+  SELECT id
+    INTO v_a2_route_id
+    FROM route_assignments
+   WHERE user_id = v_bot2_id
+     AND origin_iata = 'SIN'
+     AND destination_iata = 'KUL'
+   LIMIT 1;
+
+  -- Assign the aircraft to the route
+  PERFORM assign_aircraft_to_route(v_bot2_id, v_a2_route_id, v_bot2_aircraft);
 
   ASSERT v_a2_success = TRUE,
     'A2: create_actor_route_assignment should succeed for a bot with a valid aircraft: ' || COALESCE(v_a2_message, 'no message');
