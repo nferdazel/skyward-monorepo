@@ -9,35 +9,34 @@ ALTER TABLE public.loans
 ADD COLUMN IF NOT EXISTS originated_game_date timestamptz;
 
 -- Best-effort backfill for existing loans from canonical bank ledger rows.
+-- `bank_transactions` has no wall-clock `created_at`, so legacy rows can only be
+-- matched heuristically from canonical money movement plus game-time ordering.
 UPDATE public.loans l
-SET originated_game_date = bt.game_date
-FROM LATERAL (
+SET originated_game_date = (
     SELECT t.game_date
     FROM public.bank_transactions t
     WHERE t.user_id = l.user_id
       AND t.ifrs_subcategory = 'loan_disbursement'
       AND t.transaction_type = 'credit'
+      AND t.amount = l.principal
       AND t.game_date IS NOT NULL
-    ORDER BY ABS(EXTRACT(EPOCH FROM (COALESCE(t.created_at, l.taken_at) - l.taken_at))) ASC,
-             t.game_date DESC
+    ORDER BY t.game_date DESC
     LIMIT 1
-) bt
+)
 WHERE l.originated_game_date IS NULL
   AND l.loan_type IN ('unsecured', 'secured', 'credit_line');
 
 UPDATE public.loans l
-SET originated_game_date = bt.game_date
-FROM LATERAL (
+SET originated_game_date = (
     SELECT t.game_date
     FROM public.bank_transactions t
     WHERE t.user_id = l.user_id
       AND t.ifrs_subcategory = 'aircraft_purchase_deposit'
       AND t.transaction_type = 'debit'
       AND t.game_date IS NOT NULL
-    ORDER BY ABS(EXTRACT(EPOCH FROM (COALESCE(t.created_at, l.taken_at) - l.taken_at))) ASC,
-             t.game_date DESC
+    ORDER BY t.game_date DESC
     LIMIT 1
-) bt
+)
 WHERE l.originated_game_date IS NULL
   AND l.loan_type = 'aircraft_financing';
 
