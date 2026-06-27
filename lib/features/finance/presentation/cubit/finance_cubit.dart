@@ -211,7 +211,7 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
   void setupReactivity(SimulationCubit simCubit, String userId) {
     subscribeToSimulation(
       simCubit,
-      () => refreshSnapshot(userId, silent: true),
+      () => loadLedger(userId, silent: true),
       delay: const Duration(milliseconds: 600),
     );
     _setupRealtime(userId);

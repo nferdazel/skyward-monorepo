@@ -4,6 +4,8 @@ import 'package:skyward/core/database/supabase_client.dart';
 import 'package:skyward/features/finance/data/finance_gateway.dart';
 import 'package:skyward/features/finance/presentation/cubit/finance_cubit.dart';
 import 'package:skyward/features/finance/presentation/cubit/finance_state.dart';
+import 'package:skyward/features/simulation/presentation/cubit/simulation_cubit.dart';
+import 'package:skyward/features/simulation/presentation/cubit/simulation_state.dart';
 
 // =============================================================================
 // Mock Gateway
@@ -17,15 +19,19 @@ class MockFinanceGateway implements FinanceGateway {
   bool shouldThrowOnTransactions = false;
   bool shouldThrowOnSnapshot = false;
   bool shouldThrowOnFinancialSnapshots = false;
+  int loadTransactionsCallCount = 0;
+  int getFinanceSnapshotCallCount = 0;
 
   @override
   Future<List<dynamic>> loadTransactions(String userId) async {
+    loadTransactionsCallCount++;
     if (shouldThrowOnTransactions) throw Exception('Test transactions error');
     return transactionsToReturn;
   }
 
   @override
   Future<Map<String, dynamic>> getFinanceSnapshot() async {
+    getFinanceSnapshotCallCount++;
     if (shouldThrowOnSnapshot) throw Exception('Test snapshot error');
     return snapshotToReturn;
   }
@@ -41,6 +47,23 @@ class MockFinanceGateway implements FinanceGateway {
   @override
   Future<double> getUserBalance(String userId) async {
     return balanceToReturn;
+  }
+}
+
+class TestSimulationCubit extends SimulationCubit {
+  void emitTestState(SimulationState state) => emit(state);
+}
+
+class TestFinanceCubit extends FinanceCubit {
+  TestFinanceCubit({required super.gateway});
+
+  @override
+  void setupReactivity(SimulationCubit simCubit, String userId) {
+    subscribeToSimulation(
+      simCubit,
+      () => loadLedger(userId, silent: true),
+      delay: const Duration(milliseconds: 600),
+    );
   }
 }
 
@@ -395,6 +418,43 @@ void main() {
 
         await cubit.close();
       });
+    });
+
+    group('simulation reactivity', () {
+      test(
+        'setupReactivity reloads ledger after simulation sync completes',
+        () async {
+          final gateway = MockFinanceGateway()
+            ..transactionsToReturn = [_mockTxnCredit]
+            ..snapshotToReturn = _mockSnapshotMap;
+          final financeCubit = TestFinanceCubit(gateway: gateway);
+          final simulationCubit = TestSimulationCubit();
+
+          financeCubit.setupReactivity(simulationCubit, 'user-1');
+
+          simulationCubit.emitTestState(
+            SimulationState.initial(
+              DateTime.parse('2026-06-22T12:00:00.000Z'),
+              10000000.0,
+            ).copyWith(isSyncing: true),
+          );
+          simulationCubit.emitTestState(
+            SimulationState.initial(
+              DateTime.parse('2026-06-22T12:00:00.000Z'),
+              10000000.0,
+            ),
+          );
+
+          await Future<void>.delayed(const Duration(milliseconds: 700));
+
+          expect(gateway.loadTransactionsCallCount, 1);
+          expect(gateway.getFinanceSnapshotCallCount, 1);
+          expect(financeCubit.state, isA<FinanceLoaded>());
+
+          await financeCubit.close();
+          await simulationCubit.close();
+        },
+      );
     });
   });
 }
