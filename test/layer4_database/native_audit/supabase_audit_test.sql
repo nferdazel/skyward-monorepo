@@ -505,6 +505,13 @@ BEGIN
 
   ASSERT ROUND(COALESCE(v_purchase_txn_amount, 0), 2) = ROUND(COALESCE(v_model_purchase_price, 0), 2),
     'Aircraft purchase transaction amount should match selected model purchase price';
+  ASSERT EXISTS (
+    SELECT 1
+      FROM bank_transactions
+     WHERE user_id = v_user_id
+       AND ifrs_subcategory = 'aircraft_purchase'
+       AND game_date = v_active_season_time
+  ), 'purchase_aircraft should stamp the exact shared game clock time';
 
   -- ==========================================================================
   -- 4A. TEST: direct trigger proof for fleet_reconcile_net_worth
@@ -573,6 +580,13 @@ BEGIN
     'repair_aircraft should reduce operating cash';
   ASSERT v_repair_tx_after = v_repair_tx_before + 1,
     'repair_aircraft should append exactly one maintenance ledger row';
+  ASSERT EXISTS (
+    SELECT 1
+      FROM bank_transactions
+     WHERE user_id = v_user_id
+       AND ifrs_subcategory = 'maintenance'
+       AND game_date = v_active_season_time
+  ), 'repair_aircraft should stamp the exact shared game clock time';
 
   -- ==========================================================================
   -- 4B. TEST: no-op simulation sync should not emit zero-amount ledger rows
@@ -775,6 +789,13 @@ BEGIN
     'sell_aircraft should append exactly one aircraft_sale ledger row';
   ASSERT COALESCE(v_sale_amount, 0) > 0,
     'sell_aircraft should write a positive aircraft_sale ledger amount';
+  ASSERT EXISTS (
+    SELECT 1
+      FROM bank_transactions
+     WHERE user_id = v_user_id
+       AND ifrs_subcategory = 'aircraft_sale'
+       AND game_date = v_active_season_time
+  ), 'sell_aircraft should stamp the exact shared game clock time';
   ASSERT v_sale_after_cash > v_sale_before_cash,
     'sell_aircraft should increase operating cash';
   ASSERT ROUND(COALESCE(v_sale_after_cash, 0), 2) = ROUND(COALESCE(get_user_balance(v_user_id), 0), 2),
@@ -800,6 +821,13 @@ BEGIN
    LIMIT 1;
 
   ASSERT v_lease_fleet_id IS NOT NULL, 'Lease audit aircraft bootstrap failed';
+  ASSERT EXISTS (
+    SELECT 1
+      FROM bank_transactions
+     WHERE user_id = v_user_id
+       AND ifrs_subcategory = 'aircraft_lease_deposit'
+       AND game_date = v_active_season_time
+  ), 'lease_aircraft should stamp the exact shared game clock time';
 
   -- ==========================================================================
   -- 7A. TEST: terminate_aircraft_lease auth-bound wrapper

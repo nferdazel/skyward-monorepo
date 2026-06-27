@@ -66,9 +66,8 @@ Current chronology audit status:
 - lease termination ledger rows now use exact `users.game_current_time`
 - `achievements.game_date` remains the intended player-facing chronology field
   when achievements are surfaced again in Flutter
-- repo inspection still needs explicit native proof for purchase / lease /
-  repair / sale ledger timestamps, even though their SQL implementations
-  currently source game-clock values rather than wall-clock metadata
+- native SQL audits now also prove exact game-clock timestamps for purchase /
+  lease / repair / sale ledger rows
 
 ### `users`
 

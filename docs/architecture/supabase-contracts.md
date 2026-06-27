@@ -30,9 +30,6 @@ This is the live Flutter-to-Supabase contract surface.
   - `AchievementCubit` exists but is not mounted in the active dashboard
     runtime graph, so achievement chronology/freshness is currently a dormant
     surface rather than an active player-facing inconsistency
-  - `purchase_aircraft`, `lease_aircraft`, `repair_aircraft`, and
-    `sell_aircraft` appear to write game-clock ledger rows from code review,
-    but the native SQL audits do not yet assert those exact timestamps
 
 ## RPC surface
 
