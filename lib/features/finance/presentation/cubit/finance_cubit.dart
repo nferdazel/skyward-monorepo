@@ -211,7 +211,7 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
   void setupReactivity(SimulationCubit simCubit, String userId) {
     subscribeToSimulation(
       simCubit,
-      () => loadLedger(userId, silent: true),
+      () => _refreshSnapshotOnly(userId),
       delay: const Duration(milliseconds: 600),
     );
     _setupRealtime(userId);
@@ -356,6 +356,85 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
       if (!silent) {
         AppError.log('refreshFinanceSnapshot', e);
       }
+      if (_consecutiveSnapshotFailures >= _maxSilentFailures && !isClosed) {
+        final snapshot = _snapshotState();
+        emit(
+          FinanceError(
+            message: AppError.extractMessage(
+              e,
+              AppStrings.snapshotRefreshFailed,
+            ),
+            hasData: snapshot.transactions.isNotEmpty,
+            metrics: snapshot.metrics,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Lightweight refresh: reload only snapshot + financial snapshots (no
+  /// transaction ledger). Used by the reactive mixin on sync-complete to
+  /// avoid fetching up to 5000 transactions every 60 seconds.
+  Future<void> _refreshSnapshotOnly(String userId) async {
+    if (_activeSnapshotRefresh != null) {
+      await _activeSnapshotRefresh;
+      return;
+    }
+    _activeSnapshotRefresh = _refreshSnapshotOnlyInternal(userId);
+    try {
+      await _activeSnapshotRefresh;
+    } finally {
+      _activeSnapshotRefresh = null;
+    }
+  }
+
+  Future<void> _refreshSnapshotOnlyInternal(String userId) async {
+    final stopwatch = PerfDebug.start('finance.snapshot_only_refresh');
+    try {
+      if (DevModeManager.isDevMode) return;
+
+      final results = await Future.wait<dynamic>([
+        _gateway.getFinanceSnapshot(),
+        _gateway.getFinancialSnapshots(userId),
+      ]);
+
+      final snapshotMap = results[0] as Map<String, dynamic>;
+      final snapshotsResponse = results[1] as List<dynamic>;
+
+      _cachedSnapshot = FinanceSnapshot.fromMap(snapshotMap);
+      _cachedFinancialSnapshots = snapshotsResponse
+          .map(
+            (s) => FinanceDailySnapshot(
+              gameDate: DateTime.parse(s['game_date'] as String),
+              revenue: 0,
+              expense: 0,
+              net: 0,
+              netWorth: (s['net_worth'] as num?)?.toDouble() ?? 0.0,
+            ),
+          )
+          .toList();
+      _consecutiveSnapshotFailures = 0;
+      PerfDebug.end(
+        'finance.snapshot_only_refresh',
+        stopwatch,
+        fields: {},
+      );
+
+      if (isClosed) return;
+      emit(
+        _buildFinanceState(
+          _cachedTransactions,
+          snapshot: _cachedSnapshot,
+          financialSnapshots: _cachedFinancialSnapshots,
+        ),
+      );
+    } catch (e) {
+      _consecutiveSnapshotFailures++;
+      PerfDebug.end(
+        'finance.snapshot_only_refresh',
+        stopwatch,
+        fields: {'error': true},
+      );
       if (_consecutiveSnapshotFailures >= _maxSilentFailures && !isClosed) {
         final snapshot = _snapshotState();
         emit(

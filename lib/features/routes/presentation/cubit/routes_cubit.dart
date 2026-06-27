@@ -21,6 +21,7 @@ class RoutesCubit extends Cubit<RoutesState> with SimulationReactiveMixin {
   final RoutesGateway _gateway;
   List<UserRoute> _cachedRoutes = [];
   List<Airport> _cachedAirports = [];
+  bool _airportsLoaded = false;
   List<UserFleetAircraft> _cachedAvailableAircraft = [];
   RouteMaintenancePreview? _plannerMaintenancePreview;
   RouteMaintenancePreview? _adjustmentMaintenancePreview;
@@ -278,10 +279,16 @@ class RoutesCubit extends Cubit<RoutesState> with SimulationReactiveMixin {
         return;
       }
 
-      // 1. Fetch all airports
-      final List<dynamic> airportsResponse = await _gateway.loadAirports();
-
-      final airports = airportsResponse.map((a) => Airport.fromMap(a)).toList();
+      // 1. Fetch all airports (cached — rarely changes)
+      List<Airport> airports;
+      if (_airportsLoaded && _cachedAirports.isNotEmpty) {
+        airports = _cachedAirports;
+      } else {
+        final List<dynamic> airportsResponse = await _gateway.loadAirports();
+        airports = airportsResponse.map((a) => Airport.fromMap(a)).toList();
+        _cachedAirports = airports;
+        _airportsLoaded = true;
+      }
 
       // 2. Fetch user's active routes, joining origin & destination airports plus assigned aircraft
       final List<dynamic> routesResponse = await _gateway.loadRoutes(userId);

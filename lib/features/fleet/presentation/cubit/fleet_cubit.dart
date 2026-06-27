@@ -22,6 +22,7 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
   // Local cache to maintain state during action loads
   List<UserFleetAircraft> _cachedFleet = [];
   List<AircraftModel> _cachedCatalog = [];
+  bool _catalogLoaded = false;
   List<String> _selectedManufacturers = [];
   List<String> _selectedCategories = [];
   List<String> _selectedRangeBrackets = [];
@@ -213,12 +214,18 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
         return;
       }
 
-      // 1. Fetch available aircraft catalog models
-      final List<dynamic> catalogResponse = await _gateway.loadCatalog();
-
-      final catalog = catalogResponse
-          .map((m) => AircraftModel.fromMap(m))
-          .toList();
+      // 1. Fetch available aircraft catalog models (cached — rarely changes)
+      List<AircraftModel> catalog;
+      if (_catalogLoaded && _cachedCatalog.isNotEmpty) {
+        catalog = _cachedCatalog;
+      } else {
+        final List<dynamic> catalogResponse = await _gateway.loadCatalog();
+        catalog = catalogResponse
+            .map((m) => AircraftModel.fromMap(m))
+            .toList();
+        _cachedCatalog = catalog;
+        _catalogLoaded = true;
+      }
 
       // 2. Fetch user owned/leased fleet with nested aircraft model details
       final List<dynamic> fleetResponse = await _gateway.loadFleet(userId);

@@ -538,7 +538,7 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
             column: 'user_id',
             value: userId,
           ),
-          callback: (_) => _scheduleRealtimeRefresh(userId),
+          callback: (_) => _scheduleTargetedRefresh(userId, 'loans'),
         )
         .subscribe();
 
@@ -553,7 +553,7 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
             column: 'user_id',
             value: userId,
           ),
-          callback: (_) => _scheduleRealtimeRefresh(userId),
+          callback: (_) => _scheduleTargetedRefresh(userId, 'bank_accounts'),
         )
         .subscribe();
 
@@ -568,7 +568,7 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
             column: 'user_id',
             value: userId,
           ),
-          callback: (_) => _scheduleRealtimeRefresh(userId),
+          callback: (_) => _scheduleTargetedRefresh(userId, 'bank_transactions'),
         )
         .subscribe();
 
@@ -577,11 +577,61 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
     _realtimeSubscriptions.add(transactionsChannel);
   }
 
-  void _scheduleRealtimeRefresh(String userId) {
+  void _scheduleTargetedRefresh(String userId, String tableName) {
     _realtimeRefreshDebounce?.cancel();
     _realtimeRefreshDebounce = Timer(const Duration(milliseconds: 200), () {
-      unawaited(loadBankData(userId, silent: true));
+      unawaited(_refreshForTable(userId, tableName));
     });
+  }
+
+  /// Reload only the datasets relevant to the changed table.
+  Future<void> _refreshForTable(String userId, String tableName) async {
+    if (isClosed) return;
+
+    try {
+      switch (tableName) {
+        case 'loans':
+          // Loans changed → reload loans + credit report + aircraft financing
+          final results = await Future.wait([
+            _gateway.getLoans(userId),
+            _gateway.getCreditReport(),
+            _gateway.getAircraftFinancing(),
+          ]);
+          _cachedLoans = (results[0] as List<dynamic>)
+              .map((m) => Loan.fromMap(m as Map<String, dynamic>))
+              .toList();
+          final creditMap = results[1] as Map<String, dynamic>;
+          _cachedCreditReport = creditMap.isNotEmpty
+              ? CreditReport.fromMap(creditMap)
+              : null;
+          _cachedFinancing = (results[2] as List<dynamic>)
+              .map((m) => Loan.fromMap(m as Map<String, dynamic>))
+              .toList();
+          _emitLoaded();
+          break;
+
+        case 'bank_accounts':
+          // Account balance changed → reload bank accounts only
+          _cachedAccounts = await _gateway.getBankAccounts();
+          _emitLoaded();
+          break;
+
+        case 'bank_transactions':
+          // New transaction → reload bank accounts + transactions
+          _cachedAccounts = await _gateway.getBankAccounts();
+          await _reloadCachedTransactions();
+          _emitLoaded();
+          break;
+
+        default:
+          // Fallback: reload everything
+          await loadBankData(userId, silent: true);
+      }
+    } catch (e, stack) {
+      AppError.log('refreshForTable:$tableName', e, stack);
+      // On error, do a full reload as fallback
+      await loadBankData(userId, silent: true);
+    }
   }
 
   void _loadMockData() {
