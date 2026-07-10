@@ -167,6 +167,19 @@ High-level grouping:
 - `20260710140000`
   Fix get_route_performance: align passenger formula with simulation's inline
   calculation (remove competition/congestion/hub factors that simulation doesn't use)
+- `20260710150000`
+  Fix IFRS subcategories: backfill fuel→fuel_cost, crew→crew_cost,
+  maintenance→maintenance_cost; split cargo revenue into separate subcategory;
+  add negative amount guard; add accrual/refund to transaction_type CHECK
+- `20260710160000`
+  Fix security: REVOKE EXECUTE on 27 SECURITY DEFINER inner overloads; add 6
+  missing indexes on fleet_aircraft, route_assignments, users, world_tick_log,
+  game_events
+- `20260710170000`
+  Rename 7 stale constraint/index names from old table names
+  (user_fleet_* → fleet_aircraft_*, user_routes_* → route_assignments_*)
+- `20260710180000`
+  Remove unnecessary FOR UPDATE locks from repay_loan and terminate_actor_lease
 
 ## Standard Verification
 
