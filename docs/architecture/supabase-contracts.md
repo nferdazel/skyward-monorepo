@@ -1,6 +1,6 @@
 # Skyward Supabase Contract Map
 
-Last verified against code on 2026-07-09.
+Last verified against code on 2026-07-10.
 
 This is the live Flutter-to-Supabase contract surface.
 
@@ -165,12 +165,13 @@ This is the live Flutter-to-Supabase contract surface.
     ticket_price, flights_per_week, assigned_aircraft, effective_capacity,
     expected_passengers, load_factor, revenue_per_flight, cost_per_flight,
     profit_per_flight, weekly_profit
+  - passenger formula aligned with simulation's inline calculation (migration 46):
+    uses `calculate_airport_demand_factor` and `calculate_route_demand_multiplier`
+    without competition/congestion/hub factors
   - cost calculations include fuel (with shock multipliers), crew, and
     maintenance
   - revenue includes cargo (5% of ticket revenue)
   - shared function — works for both players and bots
-  - client-side route economics in `route_models.dart` are planning estimates
-    only; this function is authoritative for simulation
 
 `get_database_size_report`
 - caller: backend audit / operations checks
@@ -326,8 +327,10 @@ This is the live Flutter-to-Supabase contract surface.
   - 5% chance per tick to generate one of four event types
   - `fuel_shock`: global fuel price multiplier (0.7×–1.3×) for 72 hours
   - `demand_surge`: airport-specific demand multiplier (1.2×–1.5×) for 48 hours
-  - `weather`: airport-specific demand penalty (0.5×) for 24 hours
-  - `regulatory`: global airport tax increase (5–20%) for 168 hours
+  - `weather_disruption`: airport-specific capacity penalty (0.5×) for 24 hours
+  - `maintenance_shock`: global maintenance cost multiplier (1.1×–1.3×) for 168 hours
+  - `regulatory` events were removed (migration 42) — they were generated but
+    never consumed by the simulation
 
 `deactivate_expired_events`
 - caller: `process_world_tick` after advancing the season clock
@@ -409,6 +412,7 @@ This is the live Flutter-to-Supabase contract surface.
   - delegates to shared `terminate_actor_lease()` helper (migration 35)
   - requires a leased aircraft
   - blocks disposal while the aircraft is still assigned
+  - checks balance sufficiency before charging exit fee (migration 45)
   - charges a lease exit fee
   - writes a `bank_transactions` lease-exit row stamped with the exact shared
     `users.game_current_time`
@@ -545,6 +549,9 @@ This is the live Flutter-to-Supabase contract surface.
   - reduces `loans.remaining_balance`
   - writes a `bank_transactions` repayment row stamped with
     `users.game_current_time`
+  - when an `aircraft_financing` loan is fully repaid, transitions the
+    associated `fleet_aircraft.acquisition_type` from `'finance'` to `'purchase'`
+    (migration 43)
   - Flutter now follows successful repayment with the same authoritative
     simulation/bank/finance refresh sequence used for loan origination
 

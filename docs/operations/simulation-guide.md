@@ -1,6 +1,6 @@
 # Skyward Simulation Troubleshooting
 
-Last verified on 2026-07-09.
+Last verified on 2026-07-10.
 
 ## Operational checks
 
@@ -30,10 +30,10 @@ If a reset user is already in a bad ledger state:
 ## Event system
 
 Active events modify simulation economics on the in-game clock:
-- `fuel_price` events change the global fuel cost multiplier
-- `demand_index` events change passenger demand at specific airports
-- `airport_tax` events change landing fees globally
-- `weather` events penalise demand at specific airports
+- `fuel_shock` events change the global fuel cost multiplier (0.7×–1.3×)
+- `demand_surge` events change passenger demand at specific airports (1.2×–1.5×)
+- `weather_disruption` events penalise capacity at specific airports (0.5×)
+- `maintenance_shock` events change global maintenance cost (1.1×–1.3×)
 
 Check active events:
 ```sql
@@ -42,6 +42,10 @@ SELECT * FROM game_events WHERE is_active = true ORDER BY start_game_time DESC;
 
 If fuel costs or revenue look unexpectedly high/low, an active event may be
 the cause. Events expire automatically via `deactivate_expired_events()`.
+
+Note: `regulatory` events were removed in migration 42 — they were generated
+but never consumed by the simulation. Old `weather` events in the table used
+the wrong event_type; new events use `weather_disruption`.
 
 ## Aviation depth notes
 

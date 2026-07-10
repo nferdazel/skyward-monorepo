@@ -1,6 +1,6 @@
 # Skyward Docs
 
-Last verified on 2026-07-09.
+Last verified on 2026-07-10.
 
 This folder is the current maintenance record for Skyward's live runtime.
 It is intentionally organized by operational question, not by historical phase.
@@ -153,6 +153,20 @@ High-level grouping:
 - `20260709200000`
   Fix get_competitor_insights() to use canonical calculate_user_net_worth()
   instead of stale users.net_worth column; add live fleet_size and route_count
+- `20260710100000`
+  Fix game_events: weather type mismatch ('weather' → 'weather_disruption'),
+  replace dead regulatory events with maintenance_shock generation
+- `20260710110000`
+  Fix repay_loan: transition fleet_aircraft.acquisition_type from 'finance' to
+  'purchase' when aircraft_financing loan is fully repaid
+- `20260710120000`
+  Fix player/bot wear asymmetry: cap player wear formula at v_time_fraction
+  (LEAST(elapsed_days/7, 1.0)) to match bot behavior
+- `20260710130000`
+  Fix terminate_actor_lease: add balance sufficiency check before exit fee debit
+- `20260710140000`
+  Fix get_route_performance: align passenger formula with simulation's inline
+  calculation (remove competition/congestion/hub factors that simulation doesn't use)
 
 ## Standard Verification
 

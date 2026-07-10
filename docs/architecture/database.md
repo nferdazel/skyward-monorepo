@@ -1,6 +1,6 @@
 # Skyward Database Design
 
-Last verified against code, migrations, and linked live schema on 2026-07-09.
+Last verified against code, migrations, and linked live schema on 2026-07-10.
 
 This file records the current public schema shape and the operational meaning
 of the tables that actually exist in the linked runtime.
@@ -264,9 +264,16 @@ Important fields:
 - `end_game_time`
 - `is_active`
 
+Active event types (after migration 42):
+- `fuel_shock` — global fuel price multiplier (0.7×–1.3×) for 72 hours
+- `demand_surge` — airport-specific demand multiplier (1.2×–1.5×) for 48 hours
+- `weather_disruption` — airport-specific capacity penalty (0.5×) for 24 hours
+- `maintenance_shock` — global maintenance cost multiplier (1.1×–1.3×) for 168 hours
+
 Operational note:
 - `start_game_time` and `end_game_time` are in-game activation bounds, not
   wall-clock schedule timestamps
+- `regulatory` events were removed in migration 42 (generated but never consumed)
 
 ### `achievements`
 

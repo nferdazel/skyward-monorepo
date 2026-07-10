@@ -1,6 +1,6 @@
 # Skyward
 
-![Tests](https://img.shields.io/badge/tests-246%20passed-brightgreen)
+![Tests](https://img.shields.io/badge/tests-245%20passed-brightgreen)
 ![Flutter](https://img.shields.io/badge/Flutter-3.44-blue)
 ![Dart](https://img.shields.io/badge/Dart-3.12-blue)
 ![Supabase](https://img.shields.io/badge/Supabase-Postgres-3ecf8e)
@@ -10,7 +10,7 @@ Skyward is a Flutter airline-tycoon simulation with a Supabase/Postgres backend.
 The app handles UI, local session flow, and command dispatch. The backend owns
 authoritative simulation, economy, world time, and operational validation.
 
-Last verified against code, docs, and linked live audit state on `2026-07-09`.
+Last verified against code, docs, and linked live audit state on `2026-07-10`.
 
 ## Current shape
 
