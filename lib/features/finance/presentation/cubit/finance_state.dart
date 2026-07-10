@@ -10,6 +10,7 @@ class FinanceDailySnapshot {
   final double revenue;
   final double expense;
   final double net;
+  final double cash;
   final double netWorth;
 
   const FinanceDailySnapshot({
@@ -17,6 +18,7 @@ class FinanceDailySnapshot {
     required this.revenue,
     required this.expense,
     required this.net,
+    this.cash = 0.0,
     this.netWorth = 0.0,
   });
 }

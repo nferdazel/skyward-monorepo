@@ -276,6 +276,7 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
               revenue: 0,
               expense: 0,
               net: 0,
+              cash: (s['cash'] as num?)?.toDouble() ?? 0.0,
               netWorth: (s['net_worth'] as num?)?.toDouble() ?? 0.0,
             ),
           )
@@ -409,6 +410,7 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
               revenue: 0,
               expense: 0,
               net: 0,
+              cash: (s['cash'] as num?)?.toDouble() ?? 0.0,
               netWorth: (s['net_worth'] as num?)?.toDouble() ?? 0.0,
             ),
           )
@@ -458,7 +460,7 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
     );
     _realtimeRefreshDebounce?.cancel();
     _realtimeRefreshDebounce = Timer(const Duration(milliseconds: 200), () {
-      unawaited(loadLedger(userId, silent: true));
+      unawaited(_refreshSnapshotOnly(userId));
     });
   }
 

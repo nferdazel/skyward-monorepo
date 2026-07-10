@@ -75,13 +75,14 @@ class SupabaseFinanceGateway implements FinanceGateway {
       // phantom contract and silently swallowing the error.
       final response = await SupabaseManager.client
           .from('users')
-          .select('game_current_time, net_worth')
+          .select('game_current_time, cash, net_worth')
           .eq('id', userId)
           .maybeSingle();
       if (response == null) return const [];
       return [
         {
           'game_date': response['game_current_time'],
+          'cash': response['cash'],
           'net_worth': response['net_worth'],
         },
       ];

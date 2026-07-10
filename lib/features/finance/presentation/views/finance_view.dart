@@ -264,10 +264,10 @@ class _FinanceViewState extends State<FinanceView>
           _buildCurrentPositionGrid(
             state.snapshot,
             AppFormatters.currencyDetailed,
-            state.dailySnapshots,
+            state.financialSnapshots,
           ),
           const SizedBox(height: AppSpacing.blockGap),
-          _buildNetWorthTrend(state.dailySnapshots),
+          _buildNetWorthTrend(state.financialSnapshots),
           const SizedBox(height: AppSpacing.sectionGap),
           const AppSectionHeader(title: AppStrings.rollingOperationsTitle),
           const SizedBox(height: AppSpacing.blockGap),
@@ -512,7 +512,7 @@ class _FinanceViewState extends State<FinanceView>
               Icons.account_balance_wallet_outlined,
               sparkline: dailySnapshots.length >= 3
                   ? AppSparkline(
-                      data: dailySnapshots.take(7).map((d) => d.net).toList(),
+                      data: dailySnapshots.take(7).map((d) => d.cash).toList(),
                       width: 60,
                       height: 24,
                       color: AppTheme.success,
@@ -526,7 +526,7 @@ class _FinanceViewState extends State<FinanceView>
               Icons.account_balance_outlined,
               sparkline: dailySnapshots.length >= 3
                   ? AppSparkline(
-                      data: dailySnapshots.take(7).map((d) => d.net).toList(),
+                      data: dailySnapshots.take(7).map((d) => d.netWorth).toList(),
                       width: 60,
                       height: 24,
                       color: AppTheme.primary,
