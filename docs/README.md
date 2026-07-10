@@ -180,6 +180,13 @@ High-level grouping:
   (user_fleet_* → fleet_aircraft_*, user_routes_* → route_assignments_*)
 - `20260710180000`
   Remove unnecessary FOR UPDATE locks from repay_loan and terminate_actor_lease
+- `20260710190000`
+  Fix player simulation parity: add flight cap at physical max
+  (168/flight_duration) and enforce absolute_minimum_safety_limit grounding
+  threshold, matching bot behavior
+- `20260710210000`
+  Fix stale cash in execute_bot_decisions: refresh v_bot_cash after each
+  sub-function mutation (repair, fleet growth, route creation)
 
 ## Standard Verification
 
