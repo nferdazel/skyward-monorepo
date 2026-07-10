@@ -138,6 +138,14 @@ Deno.serve(async (request) => {
     }, request);
   }
 
+  const contentLength = parseInt(request.headers.get("content-length") || "0", 10);
+  if (contentLength > 4096) {
+    return jsonResponse(413, {
+      success: false,
+      message: "Request body too large.",
+    }, request);
+  }
+
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceRoleKey = resolveServiceRoleKey();
 
@@ -231,7 +239,7 @@ Deno.serve(async (request) => {
   if (!userProfile.auth_user_id) {
     return jsonResponse(400, {
       success: false,
-      message: "This account does not have authentication enabled.",
+      message: "Verification failed. Please check your answers.",
     }, request);
   }
 
