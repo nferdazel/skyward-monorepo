@@ -187,6 +187,17 @@ High-level grouping:
 - `20260710210000`
   Fix stale cash in execute_bot_decisions: refresh v_bot_cash after each
   sub-function mutation (repair, fleet growth, route creation)
+- `20260710220000`
+  Consolidate process_player_simulation_to_time() into single clean function
+  (replaces 9 DO-block patches across 6 migrations)
+- `20260710230000`
+  Consolidate process_all_bots_simulation_to_time() into single clean function
+  (replaces DO-block patches from migrations 34 and 20260710150000)
+- `20260710240000`
+  Fix database constraints: bank_accounts default, loans.principal CHECK,
+  NOT NULL on fleet_aircraft.user_id and bank_transactions.game_date,
+  FK on bot_profiles.secondary_hub_iata, CHECK on route_assignments.status
+  and bot_profiles.distress_stage, index on bot_profiles.archetype
 
 ## Standard Verification
 
