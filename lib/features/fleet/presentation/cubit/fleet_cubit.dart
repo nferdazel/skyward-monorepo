@@ -32,6 +32,7 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
   bool _suppressNextFleetRealtimeReload = false;
   Timer? _realtimeRefreshDebounce;
   Future<void>? _activeLoad;
+  Future<void>? _activeAction;
   final FleetGateway _gateway;
 
   FleetCubit({FleetGateway? gateway})
@@ -83,19 +84,22 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
     String errorPrefix = '',
     Map<String, dynamic> rpcParams = const {},
   }) async {
+    if (_activeAction != null) return false;
+    final completer = Completer<void>();
+    _activeAction = completer.future;
     final snapshot = _snapshotState();
-    emit(
-      FleetActionLoading(
-        fleet: snapshot.fleet,
-        catalog: snapshot.catalog,
-        selectedManufacturers: snapshot.selectedManufacturers,
-        selectedCategories: snapshot.selectedCategories,
-        selectedRangeBrackets: snapshot.selectedRangeBrackets,
-        sortBy: snapshot.sortBy,
-      ),
-    );
-
     try {
+      emit(
+        FleetActionLoading(
+          fleet: snapshot.fleet,
+          catalog: snapshot.catalog,
+          selectedManufacturers: snapshot.selectedManufacturers,
+          selectedCategories: snapshot.selectedCategories,
+          selectedRangeBrackets: snapshot.selectedRangeBrackets,
+          sortBy: snapshot.sortBy,
+        ),
+      );
+
       final List<dynamic> response = await rpcCall();
 
       if (response.isEmpty) {
@@ -166,6 +170,9 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
       );
       _emitLoaded();
       return false;
+    } finally {
+      completer.complete();
+      _activeAction = null;
     }
   }
 
@@ -362,7 +369,7 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
         emit(
           FleetActionSuccess(
             message: message,
-            fleet: _cachedFleet,
+            fleet: List<UserFleetAircraft>.from(_cachedFleet),
             catalog: snapshot.catalog,
             selectedManufacturers: snapshot.selectedManufacturers,
             selectedCategories: snapshot.selectedCategories,
@@ -446,7 +453,7 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
         emit(
           FleetActionSuccess(
             message: message,
-            fleet: _cachedFleet,
+            fleet: List<UserFleetAircraft>.from(_cachedFleet),
             catalog: snapshot.catalog,
             selectedManufacturers: snapshot.selectedManufacturers,
             selectedCategories: snapshot.selectedCategories,

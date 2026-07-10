@@ -31,10 +31,23 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
   Timer? _realtimeRefreshDebounce;
   String? _userId;
   Future<void>? _activeLoad;
+  Future<void>? _activeAction;
 
   BankCubit({BankGateway? gateway})
     : _gateway = gateway ?? const SupabaseBankGateway(),
       super(const BankInitial());
+
+  Future<T?> _executeBankAction<T>(Future<T> Function() action) async {
+    if (_activeAction != null) return null;
+    final completer = Completer<void>();
+    _activeAction = completer.future;
+    try {
+      return await action();
+    } finally {
+      completer.complete();
+      _activeAction = null;
+    }
+  }
 
   /// Set up reactivity to simulation sync events.
   void setupReactivity(SimulationCubit simCubit, String userId) {
@@ -140,66 +153,81 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
     String loanType = 'unsecured',
     String? collateralAircraftId,
   }) async {
-    emit(const BankLoading());
+    await _executeBankAction(() async {
+      emit(const BankLoading());
 
-    try {
-      if (DevModeManager.isDevMode) {
-        _mockTakeLoan(principal, termWeeks);
-        return;
-      }
+      try {
+        if (DevModeManager.isDevMode) {
+          _mockTakeLoan(principal, termWeeks);
+          return;
+        }
 
-      final response = await _gateway.takeLoan(
-        principal,
-        termWeeks,
-        loanType: loanType,
-        collateralAircraftId: collateralAircraftId,
-      );
+        final response = await _gateway.takeLoan(
+          principal,
+          termWeeks,
+          loanType: loanType,
+          collateralAircraftId: collateralAircraftId,
+        );
 
-      if (response.isNotEmpty) {
-        final result = response.first as Map<String, dynamic>;
-        final success = result['success'] as bool? ?? false;
-        final message = result['message'] as String? ?? '';
-        final newCash = (result['new_cash'] as num?)?.toDouble() ?? 0.0;
+        if (response.isNotEmpty) {
+          final result = response.first as Map<String, dynamic>;
+          final success = result['success'] as bool? ?? false;
+          final message = result['message'] as String? ?? '';
+          final newCash = (result['new_cash'] as num?)?.toDouble() ?? 0.0;
 
-        if (success) {
-          final results = await Future.wait([
-            _gateway.getLoans(_userId ?? ''),
-            _gateway.getCreditReport(),
-            _gateway.getBankAccounts(),
-          ]);
+          if (success) {
+            final results = await Future.wait([
+              _gateway.getLoans(_userId ?? ''),
+              _gateway.getCreditReport(),
+              _gateway.getBankAccounts(),
+            ]);
 
-          _cachedLoans = (results[0] as List<dynamic>)
-              .map((m) => Loan.fromMap(m as Map<String, dynamic>))
-              .toList();
+            _cachedLoans = (results[0] as List<dynamic>)
+                .map((m) => Loan.fromMap(m as Map<String, dynamic>))
+                .toList();
 
-          final creditMap = results[1] as Map<String, dynamic>;
-          _cachedCreditReport = creditMap.isNotEmpty
-              ? CreditReport.fromMap(creditMap)
-              : null;
-          _cachedAccounts = results[2] as List<BankAccount>;
-          await _reloadCachedTransactions();
+            final creditMap = results[1] as Map<String, dynamic>;
+            _cachedCreditReport = creditMap.isNotEmpty
+                ? CreditReport.fromMap(creditMap)
+                : null;
+            _cachedAccounts = results[2] as List<BankAccount>;
+            await _reloadCachedTransactions();
 
-          if (isClosed) return;
-          emit(
-            BankLoanSuccess(
-              message: message,
-              newCash: newCash,
-              loans: _cachedLoans,
-              creditReport: _cachedCreditReport,
-              accounts: _cachedAccounts,
-              transactions: _cachedTransactions,
-            ),
-          );
+            if (isClosed) return;
+            emit(
+              BankLoanSuccess(
+                message: message,
+                newCash: newCash,
+                loans: _cachedLoans,
+                creditReport: _cachedCreditReport,
+                accounts: _cachedAccounts,
+                transactions: _cachedTransactions,
+              ),
+            );
+          } else {
+            // Log server-side validation failure
+            SupabaseManager.logRpcFailure('take_loan', {
+              'principal': principal,
+              'term_weeks': termWeeks,
+            }, message);
+            if (isClosed) return;
+            emit(
+              BankError(
+                message: message,
+                hasData: _cachedLoans.isNotEmpty,
+                loans: _cachedLoans,
+                creditReport: _cachedCreditReport,
+                accounts: _cachedAccounts,
+                transactions: _cachedTransactions,
+              ),
+            );
+          }
         } else {
-          // Log server-side validation failure
-          SupabaseManager.logRpcFailure('take_loan', {
-            'principal': principal,
-            'term_weeks': termWeeks,
-          }, message);
+          AppError.log('takeLoan', 'Empty response from take_loan RPC', null);
           if (isClosed) return;
           emit(
             BankError(
-              message: message,
+              message: AppStrings.loanProcessFailed,
               hasData: _cachedLoans.isNotEmpty,
               loans: _cachedLoans,
               creditReport: _cachedCreditReport,
@@ -208,12 +236,12 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
             ),
           );
         }
-      } else {
-        AppError.log('takeLoan', 'Empty response from take_loan RPC', null);
+      } catch (e, stack) {
+        AppError.log('takeLoan', e, stack);
         if (isClosed) return;
         emit(
           BankError(
-            message: AppStrings.loanProcessFailed,
+            message: AppError.extractMessage(e, AppStrings.loanProcessFailed),
             hasData: _cachedLoans.isNotEmpty,
             loans: _cachedLoans,
             creditReport: _cachedCreditReport,
@@ -222,20 +250,7 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
           ),
         );
       }
-    } catch (e, stack) {
-      AppError.log('takeLoan', e, stack);
-      if (isClosed) return;
-      emit(
-        BankError(
-          message: AppError.extractMessage(e, AppStrings.loanProcessFailed),
-          hasData: _cachedLoans.isNotEmpty,
-          loans: _cachedLoans,
-          creditReport: _cachedCreditReport,
-          accounts: _cachedAccounts,
-          transactions: _cachedTransactions,
-        ),
-      );
-    }
+    });
   }
 
   /// Finance an aircraft purchase.
@@ -244,72 +259,74 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
     double downPaymentPct,
     int termMonths,
   ) async {
-    emit(const BankLoading());
+    return await _executeBankAction(() async {
+      emit(const BankLoading());
 
-    try {
-      final response = await _gateway.financeAircraft(
-        aircraftModelId,
-        downPaymentPct,
-        termMonths,
-      );
+      try {
+        final response = await _gateway.financeAircraft(
+          aircraftModelId,
+          downPaymentPct,
+          termMonths,
+        );
 
-      if (response.isNotEmpty) {
-        final result = response.first as Map<String, dynamic>;
-        final success = result['success'] as bool? ?? false;
-        final message = result['message'] as String? ?? '';
+        if (response.isNotEmpty) {
+          final result = response.first as Map<String, dynamic>;
+          final success = result['success'] as bool? ?? false;
+          final message = result['message'] as String? ?? '';
 
-        if (success) {
-          final results = await Future.wait([
-            _gateway.getAircraftFinancing(),
-            _gateway.getLoans(_userId ?? ''),
-            _gateway.getBankAccounts(),
-          ]);
+          if (success) {
+            final results = await Future.wait([
+              _gateway.getAircraftFinancing(),
+              _gateway.getLoans(_userId ?? ''),
+              _gateway.getBankAccounts(),
+            ]);
 
-          _cachedFinancing = results[0]
-              .map((m) => Loan.fromMap(m as Map<String, dynamic>))
-              .toList();
-          _cachedLoans = results[1]
-              .map((m) => Loan.fromMap(m as Map<String, dynamic>))
-              .toList();
-          _cachedAccounts = results[2] as List<BankAccount>;
-          await _reloadCachedTransactions();
+            _cachedFinancing = results[0]
+                .map((m) => Loan.fromMap(m as Map<String, dynamic>))
+                .toList();
+            _cachedLoans = results[1]
+                .map((m) => Loan.fromMap(m as Map<String, dynamic>))
+                .toList();
+            _cachedAccounts = results[2] as List<BankAccount>;
+            await _reloadCachedTransactions();
 
-          _emitLoaded();
-          return true;
-        } else {
-          if (isClosed) return false;
-          emit(
-            BankError(
-              message: message,
-              hasData: _cachedLoans.isNotEmpty,
-              loans: _cachedLoans,
-              creditReport: _cachedCreditReport,
-              accounts: _cachedAccounts,
-              transactions: _cachedTransactions,
-            ),
-          );
-          return false;
+            _emitLoaded();
+            return true;
+          } else {
+            if (isClosed) return false;
+            emit(
+              BankError(
+                message: message,
+                hasData: _cachedLoans.isNotEmpty,
+                loans: _cachedLoans,
+                creditReport: _cachedCreditReport,
+                accounts: _cachedAccounts,
+                transactions: _cachedTransactions,
+              ),
+            );
+            return false;
+          }
         }
-      }
-      return false;
-    } catch (e, stack) {
-      AppError.log('financeAircraft', e, stack);
-      if (isClosed) return false;
-      emit(
-        BankError(
-          message: AppError.extractMessage(
-            e,
-            AppStrings.financingProcessFailed,
+        return false;
+      } catch (e, stack) {
+        AppError.log('financeAircraft', e, stack);
+        if (isClosed) return false;
+        emit(
+          BankError(
+            message: AppError.extractMessage(
+              e,
+              AppStrings.financingProcessFailed,
+            ),
+            hasData: _cachedLoans.isNotEmpty,
+            loans: _cachedLoans,
+            creditReport: _cachedCreditReport,
+            accounts: _cachedAccounts,
+            transactions: _cachedTransactions,
           ),
-          hasData: _cachedLoans.isNotEmpty,
-          loans: _cachedLoans,
-          creditReport: _cachedCreditReport,
-          accounts: _cachedAccounts,
-          transactions: _cachedTransactions,
-        ),
-      );
-      return false;
-    }
+        );
+        return false;
+      }
+    }) ?? false;
   }
 
   /// Load credit report for the given user.
@@ -368,47 +385,62 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
 
   /// Repay an existing loan (full or partial).
   Future<void> repayLoan(String loanId, {double? amount}) async {
-    emit(const BankLoading());
+    await _executeBankAction(() async {
+      emit(const BankLoading());
 
-    try {
-      final result = await _gateway.repayLoan(loanId, amount);
-      final success = result['success'] as bool? ?? false;
-      final message = result['message'] as String? ?? '';
+      try {
+        final result = await _gateway.repayLoan(loanId, amount);
+        final success = result['success'] as bool? ?? false;
+        final message = result['message'] as String? ?? '';
 
-      if (success) {
-        final results = await Future.wait([
-          _gateway.getLoans(_userId ?? ''),
-          _gateway.getCreditReport(),
-          _gateway.getBankAccounts(),
-        ]);
+        if (success) {
+          final results = await Future.wait([
+            _gateway.getLoans(_userId ?? ''),
+            _gateway.getCreditReport(),
+            _gateway.getBankAccounts(),
+          ]);
 
-        _cachedLoans = (results[0] as List<dynamic>)
-            .map((m) => Loan.fromMap(m as Map<String, dynamic>))
-            .toList();
+          _cachedLoans = (results[0] as List<dynamic>)
+              .map((m) => Loan.fromMap(m as Map<String, dynamic>))
+              .toList();
 
-        final creditMap = results[1] as Map<String, dynamic>;
-        _cachedCreditReport = creditMap.isNotEmpty
-            ? CreditReport.fromMap(creditMap)
-            : null;
-        _cachedAccounts = results[2] as List<BankAccount>;
-        await _reloadCachedTransactions();
+          final creditMap = results[1] as Map<String, dynamic>;
+          _cachedCreditReport = creditMap.isNotEmpty
+              ? CreditReport.fromMap(creditMap)
+              : null;
+          _cachedAccounts = results[2] as List<BankAccount>;
+          await _reloadCachedTransactions();
 
-        if (isClosed) return;
-        emit(
-          BankLoanSuccess(
-            message: message,
-            newCash: 0,
-            loans: _cachedLoans,
-            creditReport: _cachedCreditReport,
-            accounts: _cachedAccounts,
-            transactions: _cachedTransactions,
-          ),
-        );
-      } else {
+          if (isClosed) return;
+          emit(
+            BankLoanSuccess(
+              message: message,
+              newCash: 0,
+              loans: _cachedLoans,
+              creditReport: _cachedCreditReport,
+              accounts: _cachedAccounts,
+              transactions: _cachedTransactions,
+            ),
+          );
+        } else {
+          if (isClosed) return;
+          emit(
+            BankError(
+              message: message,
+              hasData: _cachedLoans.isNotEmpty,
+              loans: _cachedLoans,
+              creditReport: _cachedCreditReport,
+              accounts: _cachedAccounts,
+              transactions: _cachedTransactions,
+            ),
+          );
+        }
+      } catch (e, stack) {
+        AppError.log('repayLoan', e, stack);
         if (isClosed) return;
         emit(
           BankError(
-            message: message,
+            message: AppError.extractMessage(e, AppStrings.loanProcessFailed),
             hasData: _cachedLoans.isNotEmpty,
             loans: _cachedLoans,
             creditReport: _cachedCreditReport,
@@ -417,63 +449,65 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
           ),
         );
       }
-    } catch (e, stack) {
-      AppError.log('repayLoan', e, stack);
-      if (isClosed) return;
-      emit(
-        BankError(
-          message: AppError.extractMessage(e, AppStrings.loanProcessFailed),
-          hasData: _cachedLoans.isNotEmpty,
-          loans: _cachedLoans,
-          creditReport: _cachedCreditReport,
-          accounts: _cachedAccounts,
-          transactions: _cachedTransactions,
-        ),
-      );
-    }
+    });
   }
 
   /// Refinance an existing loan.
   Future<void> refinanceLoan(String loanId) async {
-    emit(const BankLoading());
+    await _executeBankAction(() async {
+      emit(const BankLoading());
 
-    try {
-      final result = await _gateway.refinanceLoan(loanId);
-      final success = result['success'] as bool? ?? false;
-      final message = result['message'] as String? ?? '';
+      try {
+        final result = await _gateway.refinanceLoan(loanId);
+        final success = result['success'] as bool? ?? false;
+        final message = result['message'] as String? ?? '';
 
-      if (success) {
-        final results = await Future.wait([
-          _gateway.getLoans(_userId ?? ''),
-          _gateway.getCreditReport(),
-          _gateway.getBankAccounts(),
-        ]);
+        if (success) {
+          final results = await Future.wait([
+            _gateway.getLoans(_userId ?? ''),
+            _gateway.getCreditReport(),
+            _gateway.getBankAccounts(),
+          ]);
 
-        _cachedLoans = (results[0] as List<dynamic>)
-            .map((m) => Loan.fromMap(m as Map<String, dynamic>))
-            .toList();
-        final creditMap = results[1] as Map<String, dynamic>;
-        _cachedCreditReport = creditMap.isNotEmpty
-            ? CreditReport.fromMap(creditMap)
-            : null;
-        _cachedAccounts = results[2] as List<BankAccount>;
-        await _reloadCachedTransactions();
+          _cachedLoans = (results[0] as List<dynamic>)
+              .map((m) => Loan.fromMap(m as Map<String, dynamic>))
+              .toList();
+          final creditMap = results[1] as Map<String, dynamic>;
+          _cachedCreditReport = creditMap.isNotEmpty
+              ? CreditReport.fromMap(creditMap)
+              : null;
+          _cachedAccounts = results[2] as List<BankAccount>;
+          await _reloadCachedTransactions();
 
-        if (isClosed) return;
-        emit(
-          BankRefinanceSuccess(
-            message: message,
-            loans: _cachedLoans,
-            creditReport: _cachedCreditReport,
-            accounts: _cachedAccounts,
-            transactions: _cachedTransactions,
-          ),
-        );
-      } else {
+          if (isClosed) return;
+          emit(
+            BankRefinanceSuccess(
+              message: message,
+              loans: _cachedLoans,
+              creditReport: _cachedCreditReport,
+              accounts: _cachedAccounts,
+              transactions: _cachedTransactions,
+            ),
+          );
+        } else {
+          if (isClosed) return;
+          emit(
+            BankError(
+              message: message,
+              hasData: _cachedLoans.isNotEmpty,
+              loans: _cachedLoans,
+              creditReport: _cachedCreditReport,
+              accounts: _cachedAccounts,
+              transactions: _cachedTransactions,
+            ),
+          );
+        }
+      } catch (e, stack) {
+        AppError.log('refinanceLoan', e, stack);
         if (isClosed) return;
         emit(
           BankError(
-            message: message,
+            message: AppError.extractMessage(e, AppStrings.loanRefinanceFailed),
             hasData: _cachedLoans.isNotEmpty,
             loans: _cachedLoans,
             creditReport: _cachedCreditReport,
@@ -482,20 +516,7 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
           ),
         );
       }
-    } catch (e, stack) {
-      AppError.log('refinanceLoan', e, stack);
-      if (isClosed) return;
-      emit(
-        BankError(
-          message: AppError.extractMessage(e, AppStrings.loanRefinanceFailed),
-          hasData: _cachedLoans.isNotEmpty,
-          loans: _cachedLoans,
-          creditReport: _cachedCreditReport,
-          accounts: _cachedAccounts,
-          transactions: _cachedTransactions,
-        ),
-      );
-    }
+    });
   }
 
   /// Load bank transactions for a specific account.

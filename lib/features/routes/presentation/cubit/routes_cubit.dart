@@ -31,6 +31,7 @@ class RoutesCubit extends Cubit<RoutesState> with SimulationReactiveMixin {
       RealtimeSubscriptionBag();
   Timer? _realtimeRefreshDebounce;
   Future<void>? _activeLoad;
+  Future<void>? _activeAction;
 
   RoutesCubit({RoutesGateway? gateway})
     : _gateway = gateway ?? const SupabaseRoutesGateway(),
@@ -74,18 +75,21 @@ class RoutesCubit extends Cubit<RoutesState> with SimulationReactiveMixin {
     required String userId,
     Map<String, dynamic> rpcParams = const {},
   }) async {
+    if (_activeAction != null) return false;
+    final completer = Completer<void>();
+    _activeAction = completer.future;
     final snapshot = _snapshotState();
-    emit(
-      RoutesActionLoading(
-        routes: snapshot.routes,
-        airports: snapshot.airports,
-        availableAircraft: snapshot.availableAircraft,
-        plannerMaintenancePreview: snapshot.plannerMaintenancePreview,
-        adjustmentMaintenancePreview: snapshot.adjustmentMaintenancePreview,
-      ),
-    );
-
     try {
+      emit(
+        RoutesActionLoading(
+          routes: snapshot.routes,
+          airports: snapshot.airports,
+          availableAircraft: snapshot.availableAircraft,
+          plannerMaintenancePreview: snapshot.plannerMaintenancePreview,
+          adjustmentMaintenancePreview: snapshot.adjustmentMaintenancePreview,
+        ),
+      );
+
       final List<dynamic> response = await rpcCall();
 
       final result = response.isNotEmpty
@@ -141,6 +145,9 @@ class RoutesCubit extends Cubit<RoutesState> with SimulationReactiveMixin {
       );
       _emitLoaded();
       return false;
+    } finally {
+      completer.complete();
+      _activeAction = null;
     }
   }
 
