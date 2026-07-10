@@ -40,11 +40,18 @@ class BankLoaded extends BankState {
   List<Loan> get historicalLoans =>
       loans.where((l) => !l.isActive).toList();
 
-  /// Total outstanding balance across all active loans.
-  double get totalOutstanding => activeLoans.fold(
-        0.0,
-        (sum, loan) => sum + loan.remainingBalance,
-      );
+  /// Total outstanding balance across all active loans (including aircraft financing).
+  double get totalOutstanding {
+    double total = activeLoans.fold(
+      0.0,
+      (sum, loan) => sum + loan.remainingBalance,
+    );
+    total += activeFinancing.fold(
+      0.0,
+      (sum, loan) => sum + loan.remainingBalance,
+    );
+    return total;
+  }
 
   /// Total weekly payment obligation across all active loans.
   double get totalWeeklyPayment => activeLoans.fold(

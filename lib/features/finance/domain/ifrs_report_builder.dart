@@ -23,52 +23,41 @@ class IfrsReportBuilder {
       }
     }
 
-    // Operating costs breakdown from transactions.
+    // COGS breakdown from transactions.
     double fuel = 0;
     double crew = 0;
     double maintenance = 0;
     double airportFees = 0;
+    double fleetLeasing = 0;
+    double hangarRepairs = 0;
     for (final txn in transactions) {
       if (txn.transactionType != 'debit') continue;
       final sub = txn.ifrsSubcategory ?? '';
       final cat = txn.ifrsCategory ?? '';
       final amt = txn.amount.abs();
-      if (sub == 'fuel_cost' || (cat == 'cogs' && sub.isEmpty)) {
+      if (sub == 'fuel' || sub == 'fuel_cost' || (cat == 'cogs' && sub.isEmpty)) {
         fuel += amt;
-      } else if (sub == 'crew_cost') {
+      } else if (sub == 'crew' || sub == 'crew_cost') {
         crew += amt;
-      } else if (sub == 'maintenance_cost') {
+      } else if (sub == 'maintenance' || sub == 'maintenance_cost') {
         maintenance += amt;
       } else if (sub == 'airport_fees') {
         airportFees += amt;
-      }
-    }
-
-    // Other expenses.
-    double fleetLeasing = 0;
-    double fleetAcquisition = 0;
-    double hangarRepairs = 0;
-    for (final txn in transactions) {
-      if (txn.transactionType != 'debit') continue;
-      final sub = txn.ifrsSubcategory ?? '';
-      final amt = txn.amount.abs();
-      if (sub == 'aircraft_lease' ||
+      } else if (sub == 'aircraft_lease' ||
+          sub == 'aircraft_lease_idle' ||
           sub == 'aircraft_lease_init' ||
           sub == 'aircraft_lease_exit') {
         fleetLeasing += amt;
-      } else if (sub == 'aircraft_purchase' ||
-          sub == 'aircraft_purchase_deposit') {
-        fleetAcquisition += amt;
       } else if (sub == 'aircraft_repair') {
         hangarRepairs += amt;
       }
     }
 
     final totalRevenue = ticketSales + cargoRevenue;
-    final totalOperatingCosts = fuel + crew + maintenance + airportFees;
+    final totalOperatingCosts =
+        fuel + crew + maintenance + airportFees + fleetLeasing + hangarRepairs;
     final grossProfit = totalRevenue - totalOperatingCosts;
-    final totalOtherExpenses = fleetLeasing + fleetAcquisition + hangarRepairs;
-    final netIncome = grossProfit - totalOtherExpenses;
+    final netIncome = grossProfit;
 
     return IncomeStatement(
       ticketSales: ticketSales,
@@ -78,12 +67,10 @@ class IfrsReportBuilder {
       crew: crew,
       maintenance: maintenance,
       airportFees: airportFees,
+      fleetLeasing: fleetLeasing,
+      hangarRepairs: hangarRepairs,
       totalOperatingCosts: totalOperatingCosts,
       grossProfit: grossProfit,
-      fleetLeasing: fleetLeasing,
-      fleetAcquisition: fleetAcquisition,
-      hangarRepairs: hangarRepairs,
-      totalOtherExpenses: totalOtherExpenses,
       netIncome: netIncome,
     );
   }
@@ -109,9 +96,8 @@ class IfrsReportBuilder {
     }
     final totalLiabilities = outstandingLoans;
 
-    // Equity
-    final netWorth = finance.snapshot.netWorth;
-    final totalEquity = netWorth;
+    // Equity — residual so the sheet always balances.
+    final totalEquity = totalAssets - totalLiabilities;
 
     return BalanceSheet(
       cash: cash,
@@ -119,8 +105,11 @@ class IfrsReportBuilder {
       totalAssets: totalAssets,
       outstandingLoans: outstandingLoans,
       totalLiabilities: totalLiabilities,
-      netWorth: netWorth,
+      netWorth: totalEquity,
       totalEquity: totalEquity,
+      leasedAircraftMonthlyExposure:
+          finance.snapshot.leasedAircraftMonthlyExposure,
+      leasedFleetCount: finance.snapshot.leasedFleetCount,
     );
   }
 
@@ -134,7 +123,7 @@ class IfrsReportBuilder {
       final cat = txn.ifrsCategory ?? '';
       final sub = txn.ifrsSubcategory ?? '';
       final amt = txn.amount.abs();
-      // Revenue inflows
+      // Revenue inflows (including cargo)
       if (txn.transactionType == 'credit' &&
           (cat == 'revenue' || sub == 'route_revenue' || sub == 'cargo_revenue')) {
         revenueInflows += amt;
@@ -142,43 +131,44 @@ class IfrsReportBuilder {
       // Operating outflows (cogs + opex)
       if (txn.transactionType == 'debit' &&
           (cat == 'cogs' || cat == 'opex' ||
-              sub == 'fuel_cost' ||
-              sub == 'crew_cost' ||
-              sub == 'maintenance_cost' ||
-              sub == 'airport_fees')) {
+              sub == 'fuel' || sub == 'fuel_cost' ||
+              sub == 'crew' || sub == 'crew_cost' ||
+              sub == 'maintenance' || sub == 'maintenance_cost' ||
+              sub == 'airport_fees' ||
+              sub == 'aircraft_lease' || sub == 'aircraft_lease_idle' ||
+              sub == 'aircraft_lease_init' || sub == 'aircraft_lease_exit' ||
+              sub == 'aircraft_repair')) {
         operatingOutflows += amt;
       }
     }
     final operatingCashFlow = revenueInflows - operatingOutflows;
 
-    // Investing — all capital expenditure (purchases + leases + repairs)
+    // Investing — capital expenditure (purchases only) and aircraft sales.
     double capitalExpenditure = 0;
+    double aircraftSales = 0;
     for (final txn in transactions) {
       final sub = txn.ifrsSubcategory ?? '';
       final amt = txn.amount.abs();
-      if (txn.transactionType == 'debit') {
-        if (sub == 'aircraft_purchase' ||
-            sub == 'aircraft_purchase_deposit' ||
-            sub == 'aircraft_lease' ||
-            sub == 'aircraft_lease_init' ||
-            sub == 'aircraft_lease_exit' ||
-            sub == 'aircraft_repair') {
-          capitalExpenditure += amt;
-        }
+      if (txn.transactionType == 'debit' &&
+          (sub == 'aircraft_purchase' || sub == 'aircraft_purchase_deposit')) {
+        capitalExpenditure += amt;
+      } else if (txn.transactionType == 'credit' && sub == 'aircraft_sale') {
+        aircraftSales += amt;
       }
     }
-    final investingCashFlow = -capitalExpenditure;
+    final investingCashFlow = aircraftSales - capitalExpenditure;
 
-    // Financing — loan proceeds/repayments from transaction subcategories.
+    // Financing — loan proceeds/repayments + late fees from transaction subcategories.
     double loanProceeds = 0;
     double loanRepayments = 0;
     for (final txn in transactions) {
       final sub = txn.ifrsSubcategory ?? '';
+      final txnType = txn.transactionType;
       final amt = txn.amount.abs();
-      if (sub == 'loan_disbursement' && txn.transactionType == 'credit') {
+      if (sub == 'loan_disbursement' && txnType == 'credit') {
         loanProceeds += amt;
-      } else if ((sub == 'loan_payment' || sub == 'financing_payment') &&
-          txn.transactionType == 'debit') {
+      } else if ((sub == 'loan_payment' || sub == 'financing_payment' || txnType == 'late_fee') &&
+          txnType == 'debit') {
         loanRepayments += amt;
       }
     }
@@ -191,7 +181,8 @@ class IfrsReportBuilder {
       revenueInflows: revenueInflows,
       operatingOutflows: operatingOutflows,
       operatingCashFlow: operatingCashFlow,
-      aircraftPurchases: capitalExpenditure,
+      capitalExpenditure: capitalExpenditure,
+      aircraftSales: aircraftSales,
       investingCashFlow: investingCashFlow,
       loanProceeds: loanProceeds,
       loanRepayments: loanRepayments,
@@ -211,12 +202,10 @@ class IncomeStatement {
   final double crew;
   final double maintenance;
   final double airportFees;
+  final double fleetLeasing;
+  final double hangarRepairs;
   final double totalOperatingCosts;
   final double grossProfit;
-  final double fleetLeasing;
-  final double fleetAcquisition;
-  final double hangarRepairs;
-  final double totalOtherExpenses;
   final double netIncome;
 
   const IncomeStatement({
@@ -227,12 +216,10 @@ class IncomeStatement {
     required this.crew,
     required this.maintenance,
     required this.airportFees,
+    required this.fleetLeasing,
+    required this.hangarRepairs,
     required this.totalOperatingCosts,
     required this.grossProfit,
-    required this.fleetLeasing,
-    required this.fleetAcquisition,
-    required this.hangarRepairs,
-    required this.totalOtherExpenses,
     required this.netIncome,
   });
 }
@@ -245,6 +232,8 @@ class BalanceSheet {
   final double totalLiabilities;
   final double netWorth;
   final double totalEquity;
+  final double leasedAircraftMonthlyExposure;
+  final int leasedFleetCount;
 
   const BalanceSheet({
     required this.cash,
@@ -254,6 +243,8 @@ class BalanceSheet {
     required this.totalLiabilities,
     required this.netWorth,
     required this.totalEquity,
+    required this.leasedAircraftMonthlyExposure,
+    required this.leasedFleetCount,
   });
 
   /// Whether Assets ≈ Liabilities + Equity (within rounding tolerance).
@@ -265,7 +256,8 @@ class CashFlows {
   final double revenueInflows;
   final double operatingOutflows;
   final double operatingCashFlow;
-  final double aircraftPurchases;
+  final double capitalExpenditure;
+  final double aircraftSales;
   final double investingCashFlow;
   final double loanProceeds;
   final double loanRepayments;
@@ -276,7 +268,8 @@ class CashFlows {
     required this.revenueInflows,
     required this.operatingOutflows,
     required this.operatingCashFlow,
-    required this.aircraftPurchases,
+    required this.capitalExpenditure,
+    required this.aircraftSales,
     required this.investingCashFlow,
     required this.loanProceeds,
     required this.loanRepayments,

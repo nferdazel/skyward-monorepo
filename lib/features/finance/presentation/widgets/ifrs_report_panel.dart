@@ -129,28 +129,18 @@ class IfrsReportPanel extends StatelessWidget {
               const SizedBox(height: AppSpacing.xs),
               _subtotalRow('Total Revenue', stmt.totalRevenue),
               const SizedBox(height: AppSpacing.lg),
-              _sectionLabel('OPERATING COSTS'),
+              _sectionLabel('COST OF GOODS SOLD'),
               const SizedBox(height: AppSpacing.sm),
               _lineItem('Fuel', stmt.fuel),
               _lineItem('Crew', stmt.crew),
               _lineItem('Maintenance', stmt.maintenance),
               _lineItem('Airport Fees', stmt.airportFees),
-              const SizedBox(height: AppSpacing.xs),
-              _divider(),
-              const SizedBox(height: AppSpacing.xs),
-              _subtotalRow('Total Operating Costs', stmt.totalOperatingCosts),
-              const SizedBox(height: AppSpacing.lg),
-              _totalRow('GROSS PROFIT', stmt.grossProfit),
-              const SizedBox(height: AppSpacing.lg),
-              _sectionLabel('OTHER EXPENSES'),
-              const SizedBox(height: AppSpacing.sm),
               _lineItem('Fleet Leasing', stmt.fleetLeasing),
-              _lineItem('Fleet Acquisition', stmt.fleetAcquisition),
               _lineItem('Hangar Repairs', stmt.hangarRepairs),
               const SizedBox(height: AppSpacing.xs),
               _divider(),
               const SizedBox(height: AppSpacing.xs),
-              _subtotalRow('Total Other Expenses', stmt.totalOtherExpenses),
+              _subtotalRow('Total COGS', stmt.totalOperatingCosts),
               const SizedBox(height: AppSpacing.lg),
               _totalRow('NET INCOME', stmt.netIncome),
             ],
@@ -196,13 +186,26 @@ class IfrsReportPanel extends StatelessWidget {
               const SizedBox(height: AppSpacing.lg),
               _sectionLabel('EQUITY'),
               const SizedBox(height: AppSpacing.sm),
-              _lineItem('Net Worth', bs.netWorth),
+              _lineItem('Retained Earnings', bs.netWorth),
               const SizedBox(height: AppSpacing.xs),
               _divider(),
               const SizedBox(height: AppSpacing.xs),
               _subtotalRow('Total Equity', bs.totalEquity),
               const SizedBox(height: AppSpacing.lg),
               _balanceCheck(bs),
+              if (bs.leasedFleetCount > 0) ...[
+                const SizedBox(height: AppSpacing.lg),
+                _sectionLabel('NOTES'),
+                const SizedBox(height: AppSpacing.sm),
+                _lineItem(
+                  'Leased Aircraft (${bs.leasedFleetCount})',
+                  bs.leasedAircraftMonthlyExposure,
+                ),
+                _noteText(
+                  'Monthly lease obligation',
+                  bs.leasedAircraftMonthlyExposure,
+                ),
+              ],
             ],
           ),
         ),
@@ -261,10 +264,11 @@ class IfrsReportPanel extends StatelessWidget {
               _sectionLabel('INVESTING'),
               const SizedBox(height: AppSpacing.sm),
               _lineItem(
-                'Aircraft Purchases',
-                cf.aircraftPurchases,
+                'Capital Expenditure',
+                cf.capitalExpenditure,
                 isNegative: true,
               ),
+              _lineItem('Aircraft Sales', cf.aircraftSales),
               const SizedBox(height: AppSpacing.xs),
               _divider(),
               const SizedBox(height: AppSpacing.xs),
@@ -402,6 +406,19 @@ class IfrsReportPanel extends StatelessWidget {
     return Container(
       height: 1,
       color: AppTheme.border.withValues(alpha: 0.5),
+    );
+  }
+
+  Widget _noteText(String label, double value) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 2),
+      child: Text(
+        '$label: ${_currency.format(value)}/month',
+        style: AppTypography.captionRegular.copyWith(
+          color: AppTheme.textMuted,
+          fontStyle: FontStyle.italic,
+        ),
+      ),
     );
   }
 }
