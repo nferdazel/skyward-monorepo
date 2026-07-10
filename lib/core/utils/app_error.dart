@@ -2,8 +2,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../features/auth/data/auth_gateway.dart';
 import '../../features/bank/data/bank_gateway.dart';
-import '../../features/fleet/data/fleet_gateway.dart';
 import '../../features/finance/data/finance_gateway.dart';
+import '../../features/fleet/data/fleet_gateway.dart';
 import '../../features/leaderboard/data/leaderboard_gateway.dart';
 import '../../features/routes/data/routes_gateway.dart';
 import '../../features/settings/data/settings_gateway.dart';

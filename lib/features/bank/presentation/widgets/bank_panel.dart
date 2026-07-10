@@ -5,8 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../core/constants/game_constants.dart';
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/constants/game_constants.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/app_formatters.dart';
 import '../../../../presentation/theme/app_spacing.dart';
@@ -89,8 +89,10 @@ class _BankPanelState extends State<BankPanel> {
   Widget _buildTakeLoanCta(BuildContext context, BankState state) {
     final canTake = switch (state) {
       BankLoaded(:final loans) => loans.where((l) => l.isActive).length < 3,
-      BankLoanSuccess(:final loans) => loans.where((l) => l.isActive).length < 3,
-      BankRefinanceSuccess(:final loans) => loans.where((l) => l.isActive).length < 3,
+      BankLoanSuccess(:final loans) =>
+        loans.where((l) => l.isActive).length < 3,
+      BankRefinanceSuccess(:final loans) =>
+        loans.where((l) => l.isActive).length < 3,
       BankError(:final loans) => loans.where((l) => l.isActive).length < 3,
       _ => false,
     };
@@ -124,16 +126,68 @@ class _BankPanelState extends State<BankPanel> {
   Widget _buildBody(BuildContext context, BankState state) {
     return switch (state) {
       BankInitial() || BankLoading() => _buildLoading(),
-      BankLoaded(:final loans, :final creditReport, :final accounts, :final transactions) =>
+      BankLoaded(
+        :final loans,
+        :final creditReport,
+        :final accounts,
+        :final transactions,
+      ) =>
         loans.isEmpty && creditReport == null
-            ? _buildEmptyState(context, creditReport: creditReport, accounts: accounts, transactions: transactions)
-            : _buildContent(context, loans, creditReport: creditReport, accounts: accounts, transactions: transactions),
-      BankError(:final hasData, :final loans, :final creditReport, :final accounts, :final transactions) =>
-        hasData ? _buildContent(context, loans, creditReport: creditReport, accounts: accounts, transactions: transactions) : _buildEmptyState(context),
-      BankLoanSuccess(:final loans, :final creditReport, :final accounts, :final transactions) =>
-        _buildContent(context, loans, creditReport: creditReport, accounts: accounts, transactions: transactions),
-      BankRefinanceSuccess(:final loans, :final creditReport, :final accounts, :final transactions) =>
-        _buildContent(context, loans, creditReport: creditReport, accounts: accounts, transactions: transactions),
+            ? _buildEmptyState(
+                context,
+                creditReport: creditReport,
+                accounts: accounts,
+                transactions: transactions,
+              )
+            : _buildContent(
+                context,
+                loans,
+                creditReport: creditReport,
+                accounts: accounts,
+                transactions: transactions,
+              ),
+      BankError(
+        :final hasData,
+        :final loans,
+        :final creditReport,
+        :final accounts,
+        :final transactions,
+      ) =>
+        hasData
+            ? _buildContent(
+                context,
+                loans,
+                creditReport: creditReport,
+                accounts: accounts,
+                transactions: transactions,
+              )
+            : _buildEmptyState(context),
+      BankLoanSuccess(
+        :final loans,
+        :final creditReport,
+        :final accounts,
+        :final transactions,
+      ) =>
+        _buildContent(
+          context,
+          loans,
+          creditReport: creditReport,
+          accounts: accounts,
+          transactions: transactions,
+        ),
+      BankRefinanceSuccess(
+        :final loans,
+        :final creditReport,
+        :final accounts,
+        :final transactions,
+      ) =>
+        _buildContent(
+          context,
+          loans,
+          creditReport: creditReport,
+          accounts: accounts,
+          transactions: transactions,
+        ),
       _ => _buildLoading(),
     };
   }
@@ -145,13 +199,21 @@ class _BankPanelState extends State<BankPanel> {
         child: SizedBox(
           width: 20,
           height: 20,
-          child: CircularProgressIndicator(color: AppTheme.primary, strokeWidth: 2),
+          child: CircularProgressIndicator(
+            color: AppTheme.primary,
+            strokeWidth: 2,
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildEmptyState(BuildContext context, {CreditReport? creditReport, List<BankAccount> accounts = const [], List<BankTransaction> transactions = const []}) {
+  Widget _buildEmptyState(
+    BuildContext context, {
+    CreditReport? creditReport,
+    List<BankAccount> accounts = const [],
+    List<BankTransaction> transactions = const [],
+  }) {
     final tierDescription = creditReport != null
         ? _tierDescription(creditReport.creditTier)
         : null;
@@ -162,7 +224,11 @@ class _BankPanelState extends State<BankPanel> {
       children: [
         // Top grid: Credit + Account
         if (creditReport != null || accounts.isNotEmpty) ...[
-          _buildTopGrid(context, creditReport: creditReport, accounts: accounts),
+          _buildTopGrid(
+            context,
+            creditReport: creditReport,
+            accounts: accounts,
+          ),
           const SizedBox(height: AppSpacing.sectionGap),
         ],
 
@@ -181,7 +247,13 @@ class _BankPanelState extends State<BankPanel> {
 
   // ── Content ─────────────────────────────────────────────────────────────
 
-  Widget _buildContent(BuildContext context, List<Loan> loans, {CreditReport? creditReport, List<BankAccount> accounts = const [], List<BankTransaction> transactions = const []}) {
+  Widget _buildContent(
+    BuildContext context,
+    List<Loan> loans, {
+    CreditReport? creditReport,
+    List<BankAccount> accounts = const [],
+    List<BankTransaction> transactions = const [],
+  }) {
     final activeLoans = loans.where((l) => l.isActive).toList();
     final historicalLoans = loans.where((l) => !l.isActive).toList();
 
@@ -207,7 +279,11 @@ class _BankPanelState extends State<BankPanel> {
       children: [
         // ── Top Grid: Credit Rating + Operating Account ──
         if (creditReport != null || accounts.isNotEmpty) ...[
-          _buildTopGrid(context, creditReport: creditReport, accounts: accounts),
+          _buildTopGrid(
+            context,
+            creditReport: creditReport,
+            accounts: accounts,
+          ),
           const SizedBox(height: AppSpacing.sectionGap),
         ],
 
@@ -215,7 +291,11 @@ class _BankPanelState extends State<BankPanel> {
         if (activeLoans.isNotEmpty) ...[
           AppSectionHeader(title: 'ACTIVE DEBT'),
           const SizedBox(height: AppSpacing.blockGap),
-          _buildDebtSummaryStrip(totalOutstanding, totalWeekly, remainingCapacity),
+          _buildDebtSummaryStrip(
+            totalOutstanding,
+            totalWeekly,
+            remainingCapacity,
+          ),
           const SizedBox(height: AppSpacing.md),
           // Loan cards
           for (int i = 0; i < activeLoans.length; i++) ...[
@@ -244,8 +324,13 @@ class _BankPanelState extends State<BankPanel> {
 
   // ── Top Grid: Credit Rating + Operating Account ─────────────────────────
 
-  Widget _buildTopGrid(BuildContext context, {CreditReport? creditReport, List<BankAccount> accounts = const []}) {
-    final operating = accounts.where((a) => a.isOperating).firstOrNull ??
+  Widget _buildTopGrid(
+    BuildContext context, {
+    CreditReport? creditReport,
+    List<BankAccount> accounts = const [],
+  }) {
+    final operating =
+        accounts.where((a) => a.isOperating).firstOrNull ??
         accounts.firstOrNull;
 
     return Row(
@@ -253,15 +338,17 @@ class _BankPanelState extends State<BankPanel> {
       children: [
         // Left: Credit Rating
         if (creditReport != null)
-          Expanded(
-            child: _buildCreditRatingCard(creditReport),
-          ),
+          Expanded(child: _buildCreditRatingCard(creditReport)),
         if (creditReport != null && operating != null)
           const SizedBox(width: AppSpacing.sm),
         // Right: Operating Account
         if (operating != null)
           Expanded(
-            child: _buildOperatingAccountCard(context, operating, creditReport: creditReport),
+            child: _buildOperatingAccountCard(
+              context,
+              operating,
+              creditReport: creditReport,
+            ),
           ),
       ],
     );
@@ -294,10 +381,7 @@ class _BankPanelState extends State<BankPanel> {
                 ),
               ),
               const Spacer(),
-              AppBadge(
-                label: report.creditTier,
-                color: tierColor,
-              ),
+              AppBadge(label: report.creditTier, color: tierColor),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
@@ -325,7 +409,9 @@ class _BankPanelState extends State<BankPanel> {
             const SizedBox(height: AppSpacing.md),
             Text(
               report.suggestions.first,
-              style: AppTypography.captionLight.copyWith(color: AppTheme.textMuted),
+              style: AppTypography.captionLight.copyWith(
+                color: AppTheme.textMuted,
+              ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
@@ -340,8 +426,8 @@ class _BankPanelState extends State<BankPanel> {
     final barColor = score >= 80
         ? AppTheme.success
         : score >= 40
-            ? AppTheme.warning
-            : AppTheme.error;
+        ? AppTheme.warning
+        : AppTheme.error;
 
     return Row(
       children: [
@@ -349,7 +435,9 @@ class _BankPanelState extends State<BankPanel> {
           width: 100,
           child: Text(
             label,
-            style: AppTypography.nanoLabel.copyWith(color: AppTheme.textSecondary),
+            style: AppTypography.nanoLabel.copyWith(
+              color: AppTheme.textSecondary,
+            ),
           ),
         ),
         const SizedBox(width: AppSpacing.sm),
@@ -382,7 +470,11 @@ class _BankPanelState extends State<BankPanel> {
 
   // ── Operating Account Card ──────────────────────────────────────────────
 
-  Widget _buildOperatingAccountCard(BuildContext context, BankAccount account, {CreditReport? creditReport}) {
+  Widget _buildOperatingAccountCard(
+    BuildContext context,
+    BankAccount account, {
+    CreditReport? creditReport,
+  }) {
     return AppCard(
       customBorder: Border(
         top: BorderSide(color: AppTheme.success, width: 1.5),
@@ -397,9 +489,7 @@ class _BankPanelState extends State<BankPanel> {
         children: [
           Text(
             'OPERATING ACCOUNT',
-            style: AppTypography.microLabel.copyWith(
-              color: AppTheme.textMuted,
-            ),
+            style: AppTypography.microLabel.copyWith(color: AppTheme.textMuted),
           ),
           const SizedBox(height: AppSpacing.md),
 
@@ -430,7 +520,9 @@ class _BankPanelState extends State<BankPanel> {
               children: [
                 Text(
                   'RATE',
-                  style: AppTypography.nanoLabel.copyWith(color: AppTheme.textMuted),
+                  style: AppTypography.nanoLabel.copyWith(
+                    color: AppTheme.textMuted,
+                  ),
                 ),
                 const Spacer(),
                 Text(
@@ -453,7 +545,9 @@ class _BankPanelState extends State<BankPanel> {
       children: [
         Text(
           label,
-          style: AppTypography.captionRegular.copyWith(color: AppTheme.textSecondary),
+          style: AppTypography.captionRegular.copyWith(
+            color: AppTheme.textSecondary,
+          ),
         ),
         const Spacer(),
         Text(
@@ -469,7 +563,11 @@ class _BankPanelState extends State<BankPanel> {
 
   // ── Debt Summary Strip ──────────────────────────────────────────────────
 
-  Widget _buildDebtSummaryStrip(double totalOutstanding, double totalWeekly, double remainingCapacity) {
+  Widget _buildDebtSummaryStrip(
+    double totalOutstanding,
+    double totalWeekly,
+    double remainingCapacity,
+  ) {
     return AppInfoStrip(
       child: Row(
         children: [
@@ -499,7 +597,9 @@ class _BankPanelState extends State<BankPanel> {
               child: AppLabeledValue(
                 label: 'REMAINING CAP',
                 value: AppFormatters.compactNumber(remainingCapacity),
-                valueColor: remainingCapacity > 0 ? AppTheme.success : AppTheme.error,
+                valueColor: remainingCapacity > 0
+                    ? AppTheme.success
+                    : AppTheme.error,
               ),
             ),
           ),
@@ -510,7 +610,10 @@ class _BankPanelState extends State<BankPanel> {
 
   // ── Transactions Table ──────────────────────────────────────────────────
 
-  Widget _buildTransactionsTable(BuildContext context, List<BankTransaction> transactions) {
+  Widget _buildTransactionsTable(
+    BuildContext context,
+    List<BankTransaction> transactions,
+  ) {
     final displayTxns = transactions.take(8).toList();
 
     return AppTableShell(
@@ -533,19 +636,31 @@ class _BankPanelState extends State<BankPanel> {
                 children: [
                   AppTableHeaderCell(
                     label: 'CATEGORY',
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md,
+                      vertical: AppSpacing.sm,
+                    ),
                   ),
                   AppTableHeaderCell(
                     label: 'DESCRIPTION',
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md,
+                      vertical: AppSpacing.sm,
+                    ),
                   ),
                   AppTableHeaderCell(
                     label: 'DATE',
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md,
+                      vertical: AppSpacing.sm,
+                    ),
                   ),
                   AppTableHeaderCell(
                     label: 'AMOUNT',
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md,
+                      vertical: AppSpacing.sm,
+                    ),
                   ),
                 ],
               ),
@@ -561,9 +676,7 @@ class _BankPanelState extends State<BankPanel> {
                 3: FlexColumnWidth(2),
               },
               defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-              children: [
-                _buildTransactionRow(displayTxns[i]),
-              ],
+              children: [_buildTransactionRow(displayTxns[i])],
             ),
         ],
       ),
@@ -583,32 +696,48 @@ class _BankPanelState extends State<BankPanel> {
       children: [
         // Category badge
         AppTableBodyCell(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
+          ),
           child: _buildTxnCategoryBadge(txn),
         ),
         // Description
         AppTableBodyCell(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
+          ),
           child: Text(
             txn.description ?? _typeLabel(txn.transactionType),
-            style: AppTypography.captionRegular.copyWith(color: AppTheme.textSecondary),
+            style: AppTypography.captionRegular.copyWith(
+              color: AppTheme.textSecondary,
+            ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
         ),
         // Date
         AppTableBodyCell(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
+          ),
           child: Text(
             gameDate != null ? AppFormatters.shortGameDateTime(gameDate) : '—',
-            style: AppTypography.captionLight.copyWith(color: AppTheme.textMuted),
+            style: AppTypography.captionLight.copyWith(
+              color: AppTheme.textMuted,
+            ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
         ),
         // Amount
         AppTableBodyCell(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
+          ),
           child: Align(
             alignment: Alignment.centerRight,
             child: Text(
@@ -674,8 +803,13 @@ class _BankPanelState extends State<BankPanel> {
   // ── Collapsible Loan History ────────────────────────────────────────────
 
   Widget _buildCollapsibleHistory(List<Loan> historicalLoans) {
-    final totalBorrowed = historicalLoans.fold<double>(0, (sum, l) => sum + l.principal);
-    final defaults = historicalLoans.where((l) => l.isDefaulted || l.isRepossessed).length;
+    final totalBorrowed = historicalLoans.fold<double>(
+      0,
+      (sum, l) => sum + l.principal,
+    );
+    final defaults = historicalLoans
+        .where((l) => l.isDefaulted || l.isRepossessed)
+        .length;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -730,7 +864,9 @@ class _BankPanelState extends State<BankPanel> {
               ],
             ],
           ),
-          crossFadeState: _historyExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+          crossFadeState: _historyExpanded
+              ? CrossFadeState.showSecond
+              : CrossFadeState.showFirst,
           duration: const Duration(milliseconds: 200),
         ),
       ],
@@ -741,12 +877,18 @@ class _BankPanelState extends State<BankPanel> {
 
   static Color _tierColor(String tier) {
     switch (tier) {
-      case 'Platinum': return AppTheme.tierPlatinum;
-      case 'Gold': return AppTheme.tierGold;
-      case 'Silver': return AppTheme.textSecondary;
-      case 'Standard': return AppTheme.textMuted;
-      case 'Subprime': return AppTheme.error;
-      default: return AppTheme.textSecondary;
+      case 'Platinum':
+        return AppTheme.tierPlatinum;
+      case 'Gold':
+        return AppTheme.tierGold;
+      case 'Silver':
+        return AppTheme.textSecondary;
+      case 'Standard':
+        return AppTheme.textMuted;
+      case 'Subprime':
+        return AppTheme.error;
+      default:
+        return AppTheme.textSecondary;
     }
   }
 
@@ -770,7 +912,8 @@ class _BankPanelState extends State<BankPanel> {
   static String _loanTermsDescription(CreditReport? report) {
     final minLoan = report?.minLoanAmount ?? 100000;
     final maxLoan = report?.maxUnsecuredLoan ?? 5000000;
-    final rate = report?.unsecuredInterestRate ??
+    final rate =
+        report?.unsecuredInterestRate ??
         report?.baseInterestRate ??
         GameConstants.defaultLoanInterestRate;
     final maxActiveLoans = report?.maxActiveLoans ?? 3;
@@ -805,8 +948,8 @@ class _LoanCard extends StatelessWidget {
     final progressColor = progress > 0.8
         ? AppTheme.success
         : progress > 0.4
-            ? AppTheme.primary
-            : AppTheme.warning;
+        ? AppTheme.primary
+        : AppTheme.warning;
 
     return Semantics(
       label: 'Loan ${AppFormatters.currency.format(loan.principal)}',
@@ -834,7 +977,9 @@ class _LoanCard extends StatelessWidget {
                 const SizedBox(width: AppSpacing.sm),
                 AppBadge(
                   label: loan.loanTypeLabel,
-                  color: loan.isSecured ? AppTheme.info : AppTheme.textSecondary,
+                  color: loan.isSecured
+                      ? AppTheme.info
+                      : AppTheme.textSecondary,
                   fontSize: AppTypography.nanoLabel.fontSize!,
                 ),
                 const Spacer(),
@@ -873,15 +1018,12 @@ class _LoanCard extends StatelessWidget {
                 ),
                 Text(
                   '${(progress * 100).toStringAsFixed(0)}%',
-                  style: AppTypography.badgeText.copyWith(
-                    color: progressColor,
-                  ),
+                  style: AppTypography.badgeText.copyWith(color: progressColor),
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 AppButton(
                   text: AppStrings.payOff,
-                  onPressed: () =>
-                      context.read<BankCubit>().repayLoan(loan.id),
+                  onPressed: () => context.read<BankCubit>().repayLoan(loan.id),
                   type: AppButtonType.secondary,
                   height: 28,
                 ),
@@ -991,7 +1133,8 @@ class _TakeLoanDialogState extends State<_TakeLoanDialog> {
 
     return AppDialogShell(
       title: AppStrings.takeLoan,
-      subtitle: '${AppStrings.borrowCapital} ${(interestRate * 100).toStringAsFixed(1)}% simple interest, auto-deducted weekly.',
+      subtitle:
+          '${AppStrings.borrowCapital} ${(interestRate * 100).toStringAsFixed(1)}% simple interest, auto-deducted weekly.',
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1008,13 +1151,16 @@ class _TakeLoanDialogState extends State<_TakeLoanDialog> {
             controller: _principalController,
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            style: AppTypography.bodyMedium.copyWith(color: AppTheme.textPrimary),
+            style: AppTypography.bodyMedium.copyWith(
+              color: AppTheme.textPrimary,
+            ),
             decoration: InputDecoration(
               prefixText: '\$ ',
               prefixStyle: AppTypography.hudValue.copyWith(
                 color: AppTheme.textSecondary,
               ),
-              hintText: '${minLoan.toStringAsFixed(0)} – ${maxLoan.toStringAsFixed(0)}',
+              hintText:
+                  '${minLoan.toStringAsFixed(0)} – ${maxLoan.toStringAsFixed(0)}',
               hintStyle: AppTypography.captionRegular.copyWith(
                 color: AppTheme.textMuted,
               ),
@@ -1057,15 +1203,17 @@ class _TakeLoanDialogState extends State<_TakeLoanDialog> {
             label: AppStrings.loanTerm,
             value: _termWeeks,
             items: _termOptions
-                .map((w) => DropdownMenuItem(
-                      value: w,
-                      child: Text(
-                        '$w weeks (${(w / 52).toStringAsFixed(1)} yr)',
-                        style: AppTypography.badgeText.copyWith(
-                          color: AppTheme.textPrimary,
-                        ),
+                .map(
+                  (w) => DropdownMenuItem(
+                    value: w,
+                    child: Text(
+                      '$w weeks (${(w / 52).toStringAsFixed(1)} yr)',
+                      style: AppTypography.badgeText.copyWith(
+                        color: AppTheme.textPrimary,
                       ),
-                    ))
+                    ),
+                  ),
+                )
                 .toList(),
             onChanged: (v) {
               if (v != null) setState(() => _termWeeks = v);
@@ -1101,8 +1249,7 @@ class _TakeLoanDialogState extends State<_TakeLoanDialog> {
         ],
       ),
       actions: BlocConsumer<BankCubit, BankState>(
-        buildWhen: (prev, cur) =>
-            (prev is BankLoading) != (cur is BankLoading),
+        buildWhen: (prev, cur) => (prev is BankLoading) != (cur is BankLoading),
         listenWhen: (prev, cur) => cur is BankLoanSuccess,
         listener: (context, state) {
           if (state is BankLoanSuccess) {
@@ -1128,13 +1275,14 @@ class _TakeLoanDialogState extends State<_TakeLoanDialog> {
                   text: 'CONFIRM',
                   icon: Icons.check,
                   isLoading: isLoading,
-                  onPressed: effectivePrincipal >= minLoan &&
+                  onPressed:
+                      effectivePrincipal >= minLoan &&
                           effectivePrincipal <= maxLoan &&
                           !isLoading
                       ? () => context.read<BankCubit>().takeLoan(
-                            effectivePrincipal,
-                            _termWeeks,
-                          )
+                          effectivePrincipal,
+                          _termWeeks,
+                        )
                       : null,
                   type: AppButtonType.primary,
                   height: 40,
@@ -1157,12 +1305,7 @@ class _TakeLoanDialogState extends State<_TakeLoanDialog> {
             color: AppTheme.textSecondary,
           ),
         ),
-        Text(
-          value,
-          style: AppTypography.badgeText.copyWith(
-            color: valueColor,
-          ),
-        ),
+        Text(value, style: AppTypography.badgeText.copyWith(color: valueColor)),
       ],
     );
   }

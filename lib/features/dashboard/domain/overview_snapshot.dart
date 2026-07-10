@@ -3,10 +3,10 @@ import 'package:intl/intl.dart';
 
 import '../../../core/constants/app_strings.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../auth/domain/user_model.dart';
 import '../../finance/presentation/cubit/finance_state.dart';
 import '../../fleet/domain/fleet_models.dart';
 import '../../fleet/presentation/cubit/fleet_state.dart';
-import '../../auth/domain/user_model.dart';
 import '../../leaderboard/domain/leaderboard_models.dart';
 import '../../leaderboard/presentation/cubit/leaderboard_state.dart';
 import '../../routes/domain/route_models.dart';
