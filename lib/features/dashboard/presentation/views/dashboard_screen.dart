@@ -79,7 +79,7 @@ class DashboardScreen extends StatelessWidget {
 class _AuthenticatedDashboardShell extends StatefulWidget {
   const _AuthenticatedDashboardShell({super.key, required this.initialUser});
 
-  final User initialUser;
+  final AppUser initialUser;
 
   @override
   State<_AuthenticatedDashboardShell> createState() =>
@@ -149,7 +149,7 @@ class _AuthenticatedDashboardShellState
     }
   }
 
-  void _bootstrapForUser(User user) {
+  void _bootstrapForUser(AppUser user) {
     PerfDebug.event(
       'dashboard.bootstrap',
       fields: {'user': user.id, 'eagerTabs': 'overview,fleet,routes'},
@@ -181,7 +181,7 @@ class _AuthenticatedDashboardShellState
       ..setupReactivity(_simulationCubit, user.id);
   }
 
-  void _ensureTabReady(int index, User user, SimulationState simulationState) {
+  void _ensureTabReady(int index, AppUser user, SimulationState simulationState) {
     if (_lazyTabCubit.state.loadedIndexes.contains(index)) return;
     PerfDebug.event(
       'dashboard.tab_init',

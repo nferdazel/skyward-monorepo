@@ -6,6 +6,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../finance/presentation/cubit/finance_state.dart';
 import '../../fleet/domain/fleet_models.dart';
 import '../../fleet/presentation/cubit/fleet_state.dart';
+import '../../auth/domain/user_model.dart';
 import '../../leaderboard/domain/leaderboard_models.dart';
 import '../../leaderboard/presentation/cubit/leaderboard_state.dart';
 import '../../routes/domain/route_models.dart';
@@ -96,7 +97,7 @@ class OverviewSnapshot {
   });
 
   static OverviewSnapshot fromStates({
-    required dynamic user,
+    required AppUser user,
     required SimulationState simState,
     required FleetState fleetState,
     required RoutesState routesState,

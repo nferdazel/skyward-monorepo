@@ -1,4 +1,6 @@
-class User {
+import 'package:equatable/equatable.dart';
+
+class AppUser with EquatableMixin {
   final String id;
   final String username;
   final String companyName;
@@ -20,7 +22,7 @@ class User {
   @Deprecated('Use bank_accounts.balance via get_user_balance() RPC')
   double get cashBalance => 0.0;
 
-  User({
+  AppUser({
     required this.id,
     required this.username,
     required this.companyName,
@@ -36,8 +38,8 @@ class User {
     this.actorType = 'player',
   });
 
-  factory User.fromMap(Map<String, dynamic> map) {
-    return User(
+  factory AppUser.fromMap(Map<String, dynamic> map) {
+    return AppUser(
       id: map['user_id'] ?? map['id'] ?? '',
       username: map['user_username'] ?? map['username'] ?? '',
       companyName: map['company_name'] ?? '',
@@ -58,7 +60,7 @@ class User {
     );
   }
 
-  User copyWith({
+  AppUser copyWith({
     String? id,
     String? username,
     String? companyName,
@@ -73,7 +75,7 @@ class User {
     bool? onboardingCompleted,
     String? actorType,
   }) {
-    return User(
+    return AppUser(
       id: id ?? this.id,
       username: username ?? this.username,
       companyName: companyName ?? this.companyName,
@@ -91,4 +93,21 @@ class User {
       actorType: actorType ?? this.actorType,
     );
   }
+
+  @override
+  List<Object?> get props => [
+    id,
+    username,
+    companyName,
+    ceoName,
+    netWorth,
+    gameCurrentTime,
+    autoGroundingThreshold,
+    hqAirportIata,
+    operationalStatus,
+    consecutiveNegativeDays,
+    recoveryStreakDays,
+    onboardingCompleted,
+    actorType,
+  ];
 }
