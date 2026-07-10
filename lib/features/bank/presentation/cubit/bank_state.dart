@@ -68,15 +68,10 @@ class BankLoaded extends BankState {
   /// Current credit tier.
   String get creditTier => creditReport?.creditTier ?? 'Standard';
 
-  /// Checking account (auto-created on user registration).
+  /// Operating account (auto-created on user registration).
   BankAccount? get checkingAccount =>
-      accounts.where((a) => a.isChecking).firstOrNull;
+      accounts.where((a) => a.isOperating).firstOrNull;
 
-  /// Savings account — not supported (always null).
-  BankAccount? get savingsAccount => null;
-
-  /// Whether the user has a savings account (always false).
-  bool get hasSavings => false;
 }
 
 class BankError extends BankState {

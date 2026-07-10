@@ -67,7 +67,7 @@ void main() {
       expect(report.isGoldOrAbove, isTrue);
       expect(report.maxFinancingAmount, 65000000.0);
       expect(report.suggestions, hasLength(2));
-      expect(report.scoreNormalized, closeTo(0.748, 0.0001));
+      expect(report.currentScore / 1000.0, closeTo(0.748, 0.0001));
     });
 
     test('CreditScoreSnapshot parses history rows used by BankCubit', () {
@@ -98,7 +98,7 @@ void main() {
 
       expect(account.userId, 'user-1');
       expect(account.balance, 15325000.0);
-      expect(account.isChecking, isTrue);
+      expect(account.isOperating, isTrue);
       expect(account.updatedAt, DateTime.parse('2026-06-21T00:00:00Z'));
     });
 

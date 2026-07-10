@@ -36,9 +36,6 @@ class CreditReport {
     required this.suggestions,
   });
 
-  /// Score as a fraction of 1000 (0.0 → 1.0).
-  double get scoreNormalized => currentScore / 1000.0;
-
   /// Whether the player qualifies for Platinum tier.
   bool get isPlatinum => creditTier == 'Platinum';
 

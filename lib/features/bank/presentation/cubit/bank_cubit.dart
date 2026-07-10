@@ -261,13 +261,17 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
         if (success) {
           final results = await Future.wait([
             _gateway.getAircraftFinancing(),
+            _gateway.getLoans(_userId ?? ''),
             _gateway.getBankAccounts(),
           ]);
 
           _cachedFinancing = results[0]
               .map((m) => Loan.fromMap(m as Map<String, dynamic>))
               .toList();
-          _cachedAccounts = results[1] as List<BankAccount>;
+          _cachedLoans = results[1]
+              .map((m) => Loan.fromMap(m as Map<String, dynamic>))
+              .toList();
+          _cachedAccounts = results[2] as List<BankAccount>;
           await _reloadCachedTransactions();
 
           _emitLoaded();
@@ -441,13 +445,18 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
       if (success) {
         final results = await Future.wait([
           _gateway.getLoans(_userId ?? ''),
+          _gateway.getCreditReport(),
           _gateway.getBankAccounts(),
         ]);
 
-        _cachedLoans = results[0]
+        _cachedLoans = (results[0] as List<dynamic>)
             .map((m) => Loan.fromMap(m as Map<String, dynamic>))
             .toList();
-        _cachedAccounts = results[1] as List<BankAccount>;
+        final creditMap = results[1] as Map<String, dynamic>;
+        _cachedCreditReport = creditMap.isNotEmpty
+            ? CreditReport.fromMap(creditMap)
+            : null;
+        _cachedAccounts = results[2] as List<BankAccount>;
         await _reloadCachedTransactions();
 
         if (isClosed) return;
@@ -720,7 +729,7 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
 
   String? _primaryAccountId(List<BankAccount> accounts) {
     for (final account in accounts) {
-      if (account.isChecking) return account.id;
+      if (account.isOperating) return account.id;
     }
     if (accounts.isEmpty) return null;
     return accounts.first.id;

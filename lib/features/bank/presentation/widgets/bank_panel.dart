@@ -239,7 +239,7 @@ class _BankPanelState extends State<BankPanel> {
   // ── Top Grid: Credit Rating + Operating Account ─────────────────────────
 
   Widget _buildTopGrid(BuildContext context, {CreditReport? creditReport, List<BankAccount> accounts = const []}) {
-    final operating = accounts.where((a) => a.isChecking).firstOrNull ??
+    final operating = accounts.where((a) => a.isOperating).firstOrNull ??
         accounts.firstOrNull;
 
     return Row(

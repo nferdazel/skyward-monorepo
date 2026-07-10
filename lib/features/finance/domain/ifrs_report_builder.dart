@@ -153,7 +153,6 @@ class IfrsReportBuilder {
 
     // Investing — all capital expenditure (purchases + leases + repairs)
     double capitalExpenditure = 0;
-    double aircraftSales = 0;
     for (final txn in transactions) {
       final sub = txn.ifrsSubcategory ?? '';
       final amt = txn.amount.abs();
@@ -193,7 +192,6 @@ class IfrsReportBuilder {
       operatingOutflows: operatingOutflows,
       operatingCashFlow: operatingCashFlow,
       aircraftPurchases: capitalExpenditure,
-      aircraftSales: aircraftSales,
       investingCashFlow: investingCashFlow,
       loanProceeds: loanProceeds,
       loanRepayments: loanRepayments,
@@ -268,7 +266,6 @@ class CashFlows {
   final double operatingOutflows;
   final double operatingCashFlow;
   final double aircraftPurchases;
-  final double aircraftSales;
   final double investingCashFlow;
   final double loanProceeds;
   final double loanRepayments;
@@ -280,7 +277,6 @@ class CashFlows {
     required this.operatingOutflows,
     required this.operatingCashFlow,
     required this.aircraftPurchases,
-    required this.aircraftSales,
     required this.investingCashFlow,
     required this.loanProceeds,
     required this.loanRepayments,

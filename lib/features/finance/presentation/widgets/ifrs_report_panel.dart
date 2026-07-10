@@ -265,7 +265,6 @@ class IfrsReportPanel extends StatelessWidget {
                 cf.aircraftPurchases,
                 isNegative: true,
               ),
-              _lineItem('Aircraft Sales', cf.aircraftSales),
               const SizedBox(height: AppSpacing.xs),
               _divider(),
               const SizedBox(height: AppSpacing.xs),

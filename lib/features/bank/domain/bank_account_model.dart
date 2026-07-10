@@ -30,5 +30,5 @@ class BankAccount {
     );
   }
 
-  bool get isChecking => accountType == 'operating';
+  bool get isOperating => accountType == 'operating';
 }

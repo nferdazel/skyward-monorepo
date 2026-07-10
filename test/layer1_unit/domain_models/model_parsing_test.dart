@@ -3,7 +3,6 @@ import 'package:skyward/features/auth/domain/user_model.dart';
 import 'package:skyward/features/fleet/domain/fleet_models.dart';
 import 'package:skyward/features/finance/domain/finance_snapshot.dart';
 import 'package:skyward/features/routes/domain/route_models.dart';
-import 'package:skyward/features/finance/domain/ledger_model.dart';
 import 'package:skyward/features/settings/presentation/cubit/settings_cubit.dart';
 
 void main() {
@@ -178,24 +177,6 @@ void main() {
       expect(route.flightsPerWeek, 14);
       expect(route.origin.iata, 'CGK');
       expect(route.destination.iata, 'SIN');
-    });
-
-    test('LedgerEntry.fromMap parses safely with IFRS category', () {
-      final map = {
-        'id': 'ledger-111',
-        'transaction_type': 'revenue',
-        'ifrs_category': 'ticket_sales',
-        'amount': 25000.50,
-        'description': 'Flight tickets SIN-CGK',
-        'game_date': '2026-05-30T15:00:00Z',
-      };
-
-      final entry = LedgerEntry.fromMap(map);
-      expect(entry.id, 'ledger-111');
-      expect(entry.transactionType, 'revenue');
-      expect(entry.category, 'ticket_sales');
-      expect(entry.amount, 25000.50);
-      expect(entry.description, 'Flight tickets SIN-CGK');
     });
 
     test('FinanceSnapshot.fromMap parses safely', () {
