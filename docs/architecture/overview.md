@@ -1,6 +1,6 @@
 # Skyward Architecture Baseline
 
-Last verified against code on 2026-07-09.
+Last verified against code on 2026-07-10.
 
 ## Application model
 
