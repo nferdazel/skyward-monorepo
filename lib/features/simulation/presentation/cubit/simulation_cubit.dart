@@ -29,7 +29,7 @@ class SimulationCubit extends Cubit<SimulationState>
   Future<AppUser?>? _activeSync;
   final SimulationGateway _gateway;
 
-  // Retry with exponential backoff
+  // Retry with linear backoff
   int _retryCount = 0;
   static const int _maxRetries = 5;
 
@@ -209,7 +209,7 @@ class SimulationCubit extends Cubit<SimulationState>
         _gateway.processSimulationDelta(),
         _gateway.loadUserProfile(userId),
         _gateway.getUserBalance(userId),
-      ]);
+      ]).timeout(const Duration(seconds: 30));
 
       final List<dynamic> response = results[0] as List<dynamic>;
       final Map<String, dynamic> userProfile = results[1] as Map<String, dynamic>;
@@ -302,7 +302,7 @@ class SimulationCubit extends Cubit<SimulationState>
     }
   }
 
-  /// Schedule a retry with exponential backoff: 2s, 4s, 6s, 8s, 10s
+  /// Schedule a retry with linear backoff: 2s, 4s, 6s, 8s, 10s
   void _retrySync() {
     if (_retryCount >= _maxRetries) return;
     _retryCount++;

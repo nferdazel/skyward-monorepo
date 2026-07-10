@@ -256,7 +256,7 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
         _gateway.loadTransactions(userId),
         _gateway.getFinanceSnapshot(),
         _gateway.getFinancialSnapshots(userId),
-      ]);
+      ]).timeout(const Duration(seconds: 30));
 
       final txnResponse = results[0] as List<dynamic>;
       final snapshotMap = results[1] as Map<String, dynamic>;
@@ -395,7 +395,7 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
       final results = await Future.wait<dynamic>([
         _gateway.getFinanceSnapshot(),
         _gateway.getFinancialSnapshots(userId),
-      ]);
+      ]).timeout(const Duration(seconds: 30));
 
       final snapshotMap = results[0] as Map<String, dynamic>;
       final snapshotsResponse = results[1] as List<dynamic>;

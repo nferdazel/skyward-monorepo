@@ -51,6 +51,10 @@ class _BankPanelState extends State<BankPanel> {
     return BlocConsumer<BankCubit, BankState>(
       buildWhen: (prev, curr) =>
           curr is! BankLoanSuccess && curr is! BankRefinanceSuccess,
+      listenWhen: (prev, cur) =>
+          cur is BankError ||
+          cur is BankLoanSuccess ||
+          cur is BankRefinanceSuccess,
       listener: (context, state) {
         if (state is BankError) {
           AppSnackBar.showError(context, state.message);
@@ -293,7 +297,6 @@ class _BankPanelState extends State<BankPanel> {
               AppBadge(
                 label: report.creditTier,
                 color: tierColor,
-                fontSize: 11,
               ),
             ],
           ),
@@ -832,13 +835,12 @@ class _LoanCard extends StatelessWidget {
                 AppBadge(
                   label: loan.loanTypeLabel,
                   color: loan.isSecured ? AppTheme.info : AppTheme.textSecondary,
-                  fontSize: 10,
+                  fontSize: AppTypography.nanoLabel.fontSize!,
                 ),
                 const Spacer(),
                 AppBadge(
                   label: '${(loan.interestRate * 100).toStringAsFixed(0)}% APR',
                   color: AppTheme.textSecondary,
-                  fontSize: 11,
                 ),
               ],
             ),
@@ -873,7 +875,6 @@ class _LoanCard extends StatelessWidget {
                   '${(progress * 100).toStringAsFixed(0)}%',
                   style: AppTypography.badgeText.copyWith(
                     color: progressColor,
-                    fontSize: 11,
                   ),
                 ),
                 const SizedBox(width: AppSpacing.sm),
@@ -933,7 +934,6 @@ class _HistoricalLoanRow extends StatelessWidget {
         AppBadge(
           label: loan.statusLabel,
           color: loan.isPaidOff ? AppTheme.success : AppTheme.error,
-          fontSize: 11,
         ),
       ],
     );
@@ -1101,6 +1101,9 @@ class _TakeLoanDialogState extends State<_TakeLoanDialog> {
         ],
       ),
       actions: BlocConsumer<BankCubit, BankState>(
+        buildWhen: (prev, cur) =>
+            (prev is BankLoading) != (cur is BankLoading),
+        listenWhen: (prev, cur) => cur is BankLoanSuccess,
         listener: (context, state) {
           if (state is BankLoanSuccess) {
             Navigator.pop(context);

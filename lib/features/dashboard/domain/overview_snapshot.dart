@@ -26,6 +26,8 @@ class OverviewPriority {
 }
 
 class OverviewSnapshot {
+  static final _compactCurrency = NumberFormat.compactCurrency(symbol: '\$');
+
   final int totalFleetCount;
   final int readyFleetCount;
   final int groundedCount;
@@ -227,7 +229,7 @@ class OverviewSnapshot {
         ? AppStrings.loadingLabel
         : (leaderGap <= 0
               ? AppStrings.worldLeaderLabel
-              : NumberFormat.compactCurrency(symbol: '\$').format(leaderGap));
+              : _compactCurrency.format(leaderGap));
     final leaderGapColor = leaderGap == null
         ? AppTheme.info
         : (leaderGap <= 0

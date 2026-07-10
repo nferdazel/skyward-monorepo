@@ -203,6 +203,9 @@ class _FinanceViewState extends State<FinanceView>
 
                   if (state is FinanceDataState) {
                     return BlocBuilder<FinanceSubTabCubit, LazyTabState>(
+                      buildWhen: (prev, cur) =>
+                          prev.activeIndex != cur.activeIndex ||
+                          !identical(prev.loadedIndexes, cur.loadedIndexes),
                       builder: (context, tabState) {
                         return IndexedStack(
                           index: tabState.activeIndex,

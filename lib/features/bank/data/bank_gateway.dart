@@ -24,7 +24,7 @@ abstract class BankGateway {
   });
   Future<Map<String, dynamic>> getCreditReport();
   Future<List<dynamic>> getCreditHistory();
-  Future<List<dynamic>> getAircraftFinancing();
+  Future<List<dynamic>> getAircraftFinancing(String userId);
   Future<List<dynamic>> financeAircraft(
     String aircraftModelId,
     double downPaymentPct,
@@ -32,7 +32,7 @@ abstract class BankGateway {
   );
   Future<Map<String, dynamic>> refinanceLoan(String loanId);
   Future<Map<String, dynamic>> repayLoan(String loanId, double? amount);
-  Future<List<BankAccount>> getBankAccounts();
+  Future<List<BankAccount>> getBankAccounts(String userId);
   Future<List<BankTransaction>> getBankTransactions(String accountId);
 }
 
@@ -139,7 +139,7 @@ class SupabaseBankGateway implements BankGateway {
   }
 
   @override
-  Future<List<dynamic>> getAircraftFinancing() async {
+  Future<List<dynamic>> getAircraftFinancing(String userId) async {
     try {
       return await SupabaseManager.client
           .from('loans')
@@ -149,11 +149,16 @@ class SupabaseBankGateway implements BankGateway {
             'missed_payments, originated_game_date, '
             'taken_at',
           )
+          .eq('user_id', userId)
           .eq('loan_type', 'aircraft_financing')
           .order('originated_game_date', ascending: false, nullsFirst: false)
           .order('taken_at', ascending: false);
     } on PostgrestException catch (e) {
-      SupabaseManager.logRpcFailure('getAircraftFinancing', {}, e.message);
+      SupabaseManager.logRpcFailure(
+        'getAircraftFinancing',
+        {'user_id': userId},
+        e.message,
+      );
       throw BankGatewayException(e.message, 'getAircraftFinancing');
     } catch (e, stack) {
       SupabaseManager.logError('getAircraftFinancing', e, stack);
@@ -248,19 +253,12 @@ class SupabaseBankGateway implements BankGateway {
   }
 
   @override
-  Future<List<BankAccount>> getBankAccounts() async {
+  Future<List<BankAccount>> getBankAccounts(String userId) async {
     try {
-      // Resolve auth UID → game user ID via the users table
-      final userId = await SupabaseManager.client
-          .from('users')
-          .select('id')
-          .eq('auth_user_id', SupabaseManager.client.auth.currentUser?.id ?? '')
-          .maybeSingle();
-      if (userId == null) return [];
       final response = await SupabaseManager.client
           .from('bank_accounts')
-          .select()
-          .eq('user_id', userId['id']);
+          .select('id, user_id, account_type, balance, created_at, updated_at')
+          .eq('user_id', userId);
       return (response as List)
           .map((m) => BankAccount.fromMap(Map<String, dynamic>.from(m)))
           .toList();
@@ -275,7 +273,11 @@ class SupabaseBankGateway implements BankGateway {
     try {
       final response = await SupabaseManager.client
           .from('bank_transactions')
-          .select()
+          .select(
+            'id, account_id, user_id, transaction_type, amount, '
+            'balance_after, description, ifrs_category, '
+            'ifrs_subcategory, game_date',
+          )
           .eq('account_id', accountId)
           .order('game_date', ascending: false)
           .limit(50);

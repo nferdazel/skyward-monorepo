@@ -55,7 +55,7 @@ class MockBankGateway implements BankGateway {
   }
 
   @override
-  Future<List<dynamic>> getAircraftFinancing() async {
+  Future<List<dynamic>> getAircraftFinancing(String userId) async {
     if (shouldThrowLoad) throw Exception('Financing load unavailable');
     return aircraftFinancingToReturn;
   }
@@ -85,7 +85,7 @@ class MockBankGateway implements BankGateway {
   }
 
   @override
-  Future<List<BankAccount>> getBankAccounts() async {
+  Future<List<BankAccount>> getBankAccounts(String userId) async {
     if (shouldThrowLoad) throw Exception('Accounts unavailable');
     return bankAccountsToReturn;
   }

@@ -156,8 +156,8 @@ class DashboardSidebar extends StatelessWidget {
                     },
               borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
               child: Container(
-                width: 36,
-                height: 36,
+                width: 44,
+                height: 44,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),

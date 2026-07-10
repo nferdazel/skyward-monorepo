@@ -246,6 +246,7 @@ class _SearchableAirportDropdownState extends State<SearchableAirportDropdown> {
                     final isSelected =
                         widget.selectedValue?.iata == airport.iata;
                     return InkWell(
+                      key: ValueKey(airport.iata),
                       onTap: () => _selectAirport(airport),
                       child: Container(
                         padding: const EdgeInsets.symmetric(

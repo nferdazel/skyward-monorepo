@@ -51,7 +51,11 @@ class SupabaseFleetGateway implements FleetGateway {
     try {
       return await SupabaseManager.client
           .from('aircraft_models')
-          .select()
+          .select(
+            'id, manufacturer, model_name, type, range_km, capacity, '
+            'speed_kmh, fuel_burn_per_km, maintenance_cost_per_hour, '
+            'purchase_price, lease_price_per_month',
+          )
           .order('purchase_price', ascending: true);
     } on PostgrestException catch (e) {
       SupabaseManager.logRpcFailure('loadCatalog', {}, e.message);

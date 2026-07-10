@@ -552,6 +552,8 @@ class _AuthenticatedDashboardShellState
       child: MultiBlocListener(
         listeners: [
           BlocListener<NavigationCubit, NavigationState>(
+            listenWhen: (prev, cur) =>
+                prev.activeIndex != cur.activeIndex,
             listener: (context, navState) {
               _ensureTabReady(
                 navState.activeIndex,
@@ -561,16 +563,22 @@ class _AuthenticatedDashboardShellState
             },
           ),
           BlocListener<FleetCubit, FleetState>(
+            listenWhen: (prev, cur) => cur is FleetLoaded,
             listener: (context, state) {
               if (state is FleetLoaded) _refreshNotifications();
             },
           ),
           BlocListener<RoutesCubit, RoutesState>(
+            listenWhen: (prev, cur) => cur is RoutesLoaded,
             listener: (context, state) {
               if (state is RoutesLoaded) _refreshNotifications();
             },
           ),
           BlocListener<BankCubit, BankState>(
+            listenWhen: (prev, cur) =>
+                cur is BankLoaded ||
+                cur is BankLoanSuccess ||
+                cur is BankRefinanceSuccess,
             listener: (context, state) {
               _refreshNotifications();
             },
@@ -674,6 +682,9 @@ class _AuthenticatedDashboardShellState
                               prev.activeIndex != cur.activeIndex,
                           builder: (context, navState) {
                             return BlocBuilder<LazyTabCubit, LazyTabState>(
+                              buildWhen: (prev, cur) =>
+                                  prev.activeIndex != cur.activeIndex ||
+                                  !identical(prev.loadedIndexes, cur.loadedIndexes),
                               builder: (context, lazyState) {
                                 return IndexedStack(
                                   index: navState.activeIndex,

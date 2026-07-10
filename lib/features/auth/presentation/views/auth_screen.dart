@@ -366,11 +366,15 @@ class _AuthScreenState extends State<AuthScreen> {
       create: (context) => AuthModeCubit(),
       child: Scaffold(
         body: BlocConsumer<AuthCubit, AuthState>(
+          listenWhen: (prev, cur) => cur is AuthError,
           listener: (context, state) {
           if (state is AuthError) {
               AppSnackBar.showError(context, state.message);
             }
           },
+          buildWhen: (prev, cur) =>
+              (prev is AuthLoading) != (cur is AuthLoading) ||
+              (prev is AuthAuthenticated) != (cur is AuthAuthenticated),
           builder: (context, state) {
             final isLoading = state is AuthLoading;
 
@@ -415,9 +419,6 @@ class _AuthScreenState extends State<AuthScreen> {
         Text(
           AppStrings.skyward,
           style: AppTypography.screenTitleLarge.copyWith(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            letterSpacing: AppTypography.spacingWide,
             color: AppTheme.primary,
           ),
         ),

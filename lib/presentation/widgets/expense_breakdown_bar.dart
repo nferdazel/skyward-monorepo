@@ -88,7 +88,6 @@ class ExpenseBreakdownBar extends StatelessWidget {
                     '${segment.label} $pct%',
                     style: AppTypography.badgeText.copyWith(
                       color: AppTheme.textSecondary,
-                      fontSize: 11,
                       letterSpacing: AppTypography.spacingNone,
                     ),
                   ),

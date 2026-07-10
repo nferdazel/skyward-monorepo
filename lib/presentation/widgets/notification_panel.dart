@@ -49,6 +49,7 @@ class NotificationPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
     return Material(
       elevation: 0,
       borderRadius: BorderRadius.circular(AppSpacing.radiusSoft),
@@ -70,12 +71,13 @@ class NotificationPanel extends StatelessWidget {
             else
               Flexible(
                 child: ListView.builder(
-                  shrinkWrap: true,
                   itemCount: notifications.length,
                   itemBuilder: (context, index) {
                     final n = notifications[index];
                     return _NotificationTile(
+                      key: ValueKey(index),
                       notification: n,
+                      now: now,
                       onTap: onNotificationTap != null
                           ? () => onNotificationTap!(n)
                           : null,
@@ -161,9 +163,15 @@ class NotificationPanel extends StatelessWidget {
 
 class _NotificationTile extends StatelessWidget {
   final GameNotification notification;
+  final DateTime now;
   final VoidCallback? onTap;
 
-  const _NotificationTile({required this.notification, this.onTap});
+  const _NotificationTile({
+    super.key,
+    required this.notification,
+    required this.now,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -243,7 +251,7 @@ class _NotificationTile extends StatelessWidget {
   }
 
   String _timeAgo(DateTime time) {
-    final diff = DateTime.now().difference(time);
+    final diff = now.difference(time);
     if (diff.inMinutes < 1) return 'Just now';
     if (diff.inHours < 1) return '${diff.inMinutes}m ago';
     if (diff.inDays < 1) return '${diff.inHours}h ago';

@@ -22,6 +22,8 @@ import '../../../simulation/presentation/cubit/simulation_cubit.dart';
 import '../../domain/overview_snapshot.dart';
 
 class OverviewTab extends StatelessWidget {
+  static final _currencyFormat = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
+
   final VoidCallback onNavigateToFleet;
   final VoidCallback onNavigateToRoutes;
 
@@ -51,7 +53,6 @@ class OverviewTab extends StatelessWidget {
   Widget _buildDesktopLayout(BuildContext context, AuthAuthenticated authState) {
     final user = authState.user;
     final overview = _selectOverviewSnapshot(context, user);
-    final currencyFormat = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
 
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
@@ -65,7 +66,7 @@ class OverviewTab extends StatelessWidget {
             children: [
               Expanded(
                 flex: 3,
-                child: _buildSignalsSection(context, overview, currencyFormat),
+                child: _buildSignalsSection(context, overview, _currencyFormat),
               ),
               const SizedBox(width: AppSpacing.xl),
               Expanded(

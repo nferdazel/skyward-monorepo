@@ -39,7 +39,7 @@ class AppLabeledValue extends StatelessWidget {
             value,
             style: AppTypography.badgeText.copyWith(
               color: valueColor ?? (emphasize ? AppTheme.primary : AppTheme.textPrimary),
-              letterSpacing: 0.0,
+              letterSpacing: AppTypography.spacingNone,
             ),
             overflow: TextOverflow.ellipsis,
             maxLines: 1,

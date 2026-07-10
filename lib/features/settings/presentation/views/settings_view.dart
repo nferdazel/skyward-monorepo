@@ -327,7 +327,7 @@ class _SettingsViewState extends State<SettingsView> {
                   AppStrings.autoGroundingLabel,
                   style: AppTypography.badgeText.copyWith(
                     color: AppTheme.textPrimary,
-                    letterSpacing: 0.0,
+                    letterSpacing: AppTypography.spacingNone,
                   ),
                 ),
               ),
@@ -336,7 +336,7 @@ class _SettingsViewState extends State<SettingsView> {
                 '${currentThreshold.toStringAsFixed(0)}%',
                 style: AppTypography.badgeText.copyWith(
                   color: AppTheme.warning,
-                  letterSpacing: 0.0,
+                  letterSpacing: AppTypography.spacingNone,
                 ),
               ),
             ],
@@ -379,7 +379,7 @@ class _SettingsViewState extends State<SettingsView> {
                       AppStrings.uiScalingLabel,
                       style: AppTypography.badgeText.copyWith(
                         color: AppTheme.textPrimary,
-                        letterSpacing: 0.0,
+                        letterSpacing: AppTypography.spacingNone,
                       ),
                     ),
                     const SizedBox(height: AppSpacing.xs),
@@ -425,7 +425,7 @@ class _SettingsViewState extends State<SettingsView> {
             AppStrings.defaultSeatPresetLabel,
             style: AppTypography.badgeText.copyWith(
               color: AppTheme.textPrimary,
-              letterSpacing: 0.0,
+              letterSpacing: AppTypography.spacingNone,
             ),
           ),
           const SizedBox(height: AppSpacing.xs),
@@ -474,7 +474,7 @@ class _SettingsViewState extends State<SettingsView> {
                       AppStrings.autoRepairThresholdLabel,
                       style: AppTypography.badgeText.copyWith(
                         color: AppTheme.textPrimary,
-                        letterSpacing: 0.0,
+                        letterSpacing: AppTypography.spacingNone,
                       ),
                     ),
                     const SizedBox(height: AppSpacing.xs),
@@ -493,7 +493,7 @@ class _SettingsViewState extends State<SettingsView> {
                 '${state.autoRepairThreshold.toStringAsFixed(0)}%',
                 style: AppTypography.badgeText.copyWith(
                   color: AppTheme.warning,
-                  letterSpacing: 0.0,
+                  letterSpacing: AppTypography.spacingNone,
                 ),
               ),
             ],
@@ -531,7 +531,7 @@ class _SettingsViewState extends State<SettingsView> {
                       AppStrings.fareMultiplierLabel,
                       style: AppTypography.badgeText.copyWith(
                         color: AppTheme.textPrimary,
-                        letterSpacing: 0.0,
+                        letterSpacing: AppTypography.spacingNone,
                       ),
                     ),
                     const SizedBox(height: AppSpacing.xs),
@@ -550,7 +550,7 @@ class _SettingsViewState extends State<SettingsView> {
                 '${state.fareMultiplier.toStringAsFixed(2)}x',
                 style: AppTypography.badgeText.copyWith(
                   color: AppTheme.primary,
-                  letterSpacing: 0.0,
+                  letterSpacing: AppTypography.spacingNone,
                 ),
               ),
             ],

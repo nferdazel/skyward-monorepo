@@ -98,9 +98,9 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
         _gateway.getLoans(userId),
         _gateway.getCreditReport(),
         _gateway.getCreditHistory(),
-        _gateway.getAircraftFinancing(),
-        _gateway.getBankAccounts(),
-      ]);
+        _gateway.getAircraftFinancing(userId),
+        _gateway.getBankAccounts(userId),
+      ]).timeout(const Duration(seconds: 30));
 
       _cachedLoans = (results[0] as List<dynamic>)
           .map((m) => Loan.fromMap(m as Map<String, dynamic>))
@@ -179,8 +179,8 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
             final results = await Future.wait([
               _gateway.getLoans(_userId ?? ''),
               _gateway.getCreditReport(),
-              _gateway.getBankAccounts(),
-            ]);
+              _gateway.getBankAccounts(_userId ?? ''),
+            ]).timeout(const Duration(seconds: 30));
 
             _cachedLoans = (results[0] as List<dynamic>)
                 .map((m) => Loan.fromMap(m as Map<String, dynamic>))
@@ -276,10 +276,10 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
 
           if (success) {
             final results = await Future.wait([
-              _gateway.getAircraftFinancing(),
+              _gateway.getAircraftFinancing(_userId ?? ''),
               _gateway.getLoans(_userId ?? ''),
-              _gateway.getBankAccounts(),
-            ]);
+              _gateway.getBankAccounts(_userId ?? ''),
+            ]).timeout(const Duration(seconds: 30));
 
             _cachedFinancing = results[0]
                 .map((m) => Loan.fromMap(m as Map<String, dynamic>))
@@ -359,7 +359,7 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
   /// Load aircraft financing plans for the given user.
   Future<void> loadAircraftFinancing(String userId) async {
     try {
-      final financingData = await _gateway.getAircraftFinancing();
+      final financingData = await _gateway.getAircraftFinancing(userId);
       _cachedFinancing = financingData
           .map((m) => Loan.fromMap(m as Map<String, dynamic>))
           .toList();
@@ -397,8 +397,8 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
           final results = await Future.wait([
             _gateway.getLoans(_userId ?? ''),
             _gateway.getCreditReport(),
-            _gateway.getBankAccounts(),
-          ]);
+            _gateway.getBankAccounts(_userId ?? ''),
+          ]).timeout(const Duration(seconds: 30));
 
           _cachedLoans = (results[0] as List<dynamic>)
               .map((m) => Loan.fromMap(m as Map<String, dynamic>))
@@ -466,8 +466,8 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
           final results = await Future.wait([
             _gateway.getLoans(_userId ?? ''),
             _gateway.getCreditReport(),
-            _gateway.getBankAccounts(),
-          ]);
+            _gateway.getBankAccounts(_userId ?? ''),
+          ]).timeout(const Duration(seconds: 30));
 
           _cachedLoans = (results[0] as List<dynamic>)
               .map((m) => Loan.fromMap(m as Map<String, dynamic>))
@@ -625,8 +625,8 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
           final results = await Future.wait([
             _gateway.getLoans(userId),
             _gateway.getCreditReport(),
-            _gateway.getAircraftFinancing(),
-          ]);
+            _gateway.getAircraftFinancing(userId),
+          ]).timeout(const Duration(seconds: 30));
           _cachedLoans = (results[0] as List<dynamic>)
               .map((m) => Loan.fromMap(m as Map<String, dynamic>))
               .toList();
@@ -642,13 +642,13 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
 
         case 'bank_accounts':
           // Account balance changed → reload bank accounts only
-          _cachedAccounts = await _gateway.getBankAccounts();
+          _cachedAccounts = await _gateway.getBankAccounts(userId);
           _emitLoaded();
           break;
 
         case 'bank_transactions':
           // New transaction → reload bank accounts + transactions
-          _cachedAccounts = await _gateway.getBankAccounts();
+          _cachedAccounts = await _gateway.getBankAccounts(userId);
           await _reloadCachedTransactions();
           _emitLoaded();
           break;

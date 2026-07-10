@@ -51,6 +51,13 @@ class _FleetViewState extends State<FleetView>
   late final TabController _tabController;
   late final LazyTabCubit _lazyTabCubit;
 
+  List<AircraftModel>? _cachedFilteredCatalog;
+  List<AircraftModel>? _cachedCatalogSource;
+  List<String>? _cachedManufacturers;
+  List<String>? _cachedCategories;
+  List<String>? _cachedRanges;
+  String? _cachedSortBy;
+
   static const _fleetColumnWidths = <int, TableColumnWidth>{
     0: FlexColumnWidth(1.1), // TAIL
     1: FlexColumnWidth(2.1), // AIRCRAFT
@@ -119,6 +126,8 @@ class _FleetViewState extends State<FleetView>
       child: MultiBlocListener(
         listeners: [
           BlocListener<FleetCubit, FleetState>(
+            listenWhen: (prev, cur) =>
+                cur is FleetActionSuccess || cur is FleetError,
             listener: (context, state) {
               if (state is FleetActionSuccess) {
                 final message = state.fleet.length == 1
@@ -134,6 +143,7 @@ class _FleetViewState extends State<FleetView>
             },
           ),
           BlocListener<BankCubit, BankState>(
+            listenWhen: (prev, cur) => cur is BankError,
             listener: (context, state) {
               if (state is BankError) {
                 AppSnackBar.showError(context, state.message);
@@ -171,6 +181,9 @@ class _FleetViewState extends State<FleetView>
               const SizedBox(height: AppSpacing.tabContentGap),
               Expanded(
                 child: BlocBuilder<LazyTabCubit, LazyTabState>(
+                  buildWhen: (prev, cur) =>
+                      prev.activeIndex != cur.activeIndex ||
+                      !identical(prev.loadedIndexes, cur.loadedIndexes),
                   builder: (context, tabState) {
                     return IndexedStack(
                       index: tabState.activeIndex,
@@ -497,10 +510,9 @@ class _FleetViewState extends State<FleetView>
                                   currencyFormat,
                                 ),
                         )
-                      : AppBadge(
+                      :                         AppBadge(
                           label: AppStrings.okStatus,
                           color: AppTheme.success,
-                          fontSize: 11,
                           letterSpacing: AppTypography.spacingRelaxed,
                           padding: EdgeInsets.symmetric(
                             horizontal: AppSpacing.sm,
@@ -945,6 +957,15 @@ class _FleetViewState extends State<FleetView>
     })
     filters,
   ) {
+    if (_cachedFilteredCatalog != null &&
+        identical(_cachedCatalogSource, catalog) &&
+        _cachedManufacturers == filters.manufacturers &&
+        _cachedCategories == filters.categories &&
+        _cachedRanges == filters.ranges &&
+        _cachedSortBy == filters.sortBy) {
+      return _cachedFilteredCatalog!;
+    }
+
     var result = catalog.where((model) {
       if (filters.manufacturers.isNotEmpty &&
           !filters.manufacturers.contains(model.manufacturer)) {
@@ -978,6 +999,12 @@ class _FleetViewState extends State<FleetView>
       }
     });
 
+    _cachedFilteredCatalog = result;
+    _cachedCatalogSource = catalog;
+    _cachedManufacturers = filters.manufacturers;
+    _cachedCategories = filters.categories;
+    _cachedRanges = filters.ranges;
+    _cachedSortBy = filters.sortBy;
     return result;
   }
 

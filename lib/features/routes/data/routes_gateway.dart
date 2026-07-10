@@ -49,7 +49,7 @@ class SupabaseRoutesGateway implements RoutesGateway {
     try {
       return await SupabaseManager.client
           .from('airports')
-          .select()
+          .select('iata, name, city, country, latitude, longitude, demand_index')
           .order('iata', ascending: true);
     } on PostgrestException catch (e) {
       SupabaseManager.logRpcFailure('loadAirports', {}, e.message);
@@ -103,6 +103,10 @@ class SupabaseRoutesGateway implements RoutesGateway {
     }
   }
 
+  /// Loads the user's fleet for route assignment.
+  ///
+  /// Intentionally duplicates the query from [FleetGateway.loadFleet] to keep
+  /// route feature isolated — avoids a cross-feature dependency on fleet.
   @override
   Future<List<dynamic>> loadAvailableFleet(String userId) async {
     try {

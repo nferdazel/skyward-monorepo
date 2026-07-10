@@ -71,6 +71,8 @@ class _RoutesViewState extends State<RoutesView> {
     final homeAirport = _resolveHomeAirport(authState.user.hqAirportIata);
 
     return BlocConsumer<RoutesCubit, RoutesState>(
+      listenWhen: (prev, cur) =>
+          cur is RoutesActionSuccess || cur is RoutesError,
       listener: (context, state) {
         if (state is RoutesActionSuccess) {
           final message = state.routes.length == 1
@@ -869,7 +871,7 @@ class _RoutesViewState extends State<RoutesView> {
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: false,
                       ),
-                      style: AppTypography.monoValue.copyWith(fontSize: 12),
+                      style: AppTypography.monoValue,
                       decoration: InputDecoration(
                         labelText: 'FARE',
                         labelStyle: AppTypography.microLabel.copyWith(
@@ -913,6 +915,9 @@ class _RoutesViewState extends State<RoutesView> {
                   const SizedBox(width: AppSpacing.md),
                   // Action Button
                   BlocBuilder<RoutesCubit, RoutesState>(
+                    buildWhen: (prev, cur) =>
+                        (prev is RoutesActionLoading) !=
+                        (cur is RoutesActionLoading),
                     builder: (context, routesState) {
                       final isLoading = routesState is RoutesActionLoading;
                       return AppButton(
@@ -1063,6 +1068,7 @@ class _RoutesViewState extends State<RoutesView> {
       flightsPerWeek: GameConstants.defaultWeeklyFlights,
     );
 
+    if (!mounted) return;
     if (success) {
       setState(() {
         _plannerOrigin = null;
@@ -1292,7 +1298,7 @@ class _RoutesViewState extends State<RoutesView> {
                   ),
                   style: AppTypography.badgeText.copyWith(
                     color: AppTheme.textPrimary,
-                    letterSpacing: 0.0,
+                    letterSpacing: AppTypography.spacingNone,
                   ),
                   decoration: InputDecoration(
                     labelText: AppStrings.ticketPriceInputLabel,
@@ -1307,6 +1313,15 @@ class _RoutesViewState extends State<RoutesView> {
                 const SizedBox(height: AppSpacing.md),
                 BlocBuilder<RoutesCubit, RoutesState>(
                   bloc: routesCubit,
+                  buildWhen: (prev, cur) {
+                    final p = prev is RoutesDataState
+                        ? prev.adjustmentMaintenancePreview
+                        : null;
+                    final c = cur is RoutesDataState
+                        ? cur.adjustmentMaintenancePreview
+                        : null;
+                    return p != c;
+                  },
                   builder: (context, routesState) {
                     final preview = routesState is RoutesDataState
                         ? routesState.adjustmentMaintenancePreview

@@ -1,3 +1,5 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../../features/auth/data/auth_gateway.dart';
 import '../../features/bank/data/bank_gateway.dart';
 import '../../features/fleet/data/fleet_gateway.dart';
@@ -45,6 +47,15 @@ class AppError {
     }
 
     return fallback;
+  }
+
+  /// Returns `true` when [error] represents a 401 Unauthorized response.
+  static bool isUnauthorizedError(Object error) {
+    if (error is PostgrestException) return error.code == '401';
+    if (error is AuthGatewayException) {
+      return error.message.contains('401');
+    }
+    return false;
   }
 
   /// Log error with a consistent, searchable format.

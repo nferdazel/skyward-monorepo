@@ -31,6 +31,9 @@ class LeaderboardView extends StatefulWidget {
 
 class _LeaderboardViewState extends State<LeaderboardView> {
   String _sortBy = 'net_worth';
+  List<LeaderboardEntry>? _cachedSortedRankings;
+  String _cachedSortBy = '';
+  List<LeaderboardEntry> _cachedSource = const [];
 
   @override
   void initState() {
@@ -44,6 +47,11 @@ class _LeaderboardViewState extends State<LeaderboardView> {
   }
 
   List<LeaderboardEntry> _computeSortedRankings(List<LeaderboardEntry> source) {
+    if (_cachedSortedRankings != null &&
+        _cachedSortBy == _sortBy &&
+        identical(_cachedSource, source)) {
+      return _cachedSortedRankings!;
+    }
     final sorted = List<LeaderboardEntry>.from(source);
     switch (_sortBy) {
       case 'net_worth':
@@ -58,6 +66,9 @@ class _LeaderboardViewState extends State<LeaderboardView> {
         );
         break;
     }
+    _cachedSortedRankings = sorted;
+    _cachedSortBy = _sortBy;
+    _cachedSource = source;
     return sorted;
   }
 
@@ -313,13 +324,16 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                 final isHuman = !entry.isBot;
                 final isSelected = selectedId == entry.id;
 
-                return _buildLeaderboardRow(
-                  context,
-                  entry,
-                  rank,
-                  isHuman,
-                  isSelected,
-                  cubit,
+                return KeyedSubtree(
+                  key: ValueKey(entry.id),
+                  child: _buildLeaderboardRow(
+                    context,
+                    entry,
+                    rank,
+                    isHuman,
+                    isSelected,
+                    cubit,
+                  ),
                 );
               },
             ),
@@ -801,7 +815,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
     final style = isMono
         ? AppTypography.buttonText.copyWith(
             color: color ?? AppTheme.textPrimary,
-            letterSpacing: 0.0,
+            letterSpacing: AppTypography.spacingNone,
           )
         : AppTypography.bodyMedium.copyWith(
             color: color ?? AppTheme.textPrimary,

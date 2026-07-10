@@ -190,7 +190,6 @@ class TopHud extends StatelessWidget {
                       unreadCount > 9 ? '9+' : '$unreadCount',
                       style: AppTypography.captionLight.copyWith(
                         color: AppTheme.textPrimary,
-                        fontSize: 11,
                         fontWeight: FontWeight.w700,
                       ),
                       textAlign: TextAlign.center,
