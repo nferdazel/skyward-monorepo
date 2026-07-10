@@ -1,4 +1,6 @@
-class BankAccount {
+import 'package:equatable/equatable.dart';
+
+class BankAccount with EquatableMixin {
   final String id;
   final String userId;
   final String accountType;
@@ -31,4 +33,7 @@ class BankAccount {
   }
 
   bool get isOperating => accountType == 'operating';
+
+  @override
+  List<Object?> get props => [id, userId, accountType, balance, createdAt, updatedAt];
 }

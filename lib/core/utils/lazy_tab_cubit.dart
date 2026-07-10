@@ -1,6 +1,7 @@
+import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-class LazyTabState {
+class LazyTabState with EquatableMixin {
   final int activeIndex;
   final Set<int> loadedIndexes;
 
@@ -25,6 +26,9 @@ class LazyTabState {
       loadedIndexes: loadedIndexes ?? this.loadedIndexes,
     );
   }
+
+  @override
+  List<Object?> get props => [activeIndex, loadedIndexes];
 }
 
 class LazyTabCubit extends Cubit<LazyTabState> {

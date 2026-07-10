@@ -1,3 +1,5 @@
+import 'package:equatable/equatable.dart';
+
 import '../../../fleet/domain/fleet_models.dart';
 import '../../domain/route_models.dart';
 
@@ -21,15 +23,21 @@ abstract class RoutesDataState extends RoutesState {
   });
 }
 
-class RoutesInitial extends RoutesState {
+class RoutesInitial extends RoutesState with EquatableMixin {
   const RoutesInitial();
+
+  @override
+  List<Object?> get props => [];
 }
 
-class RoutesLoading extends RoutesState {
+class RoutesLoading extends RoutesState with EquatableMixin {
   const RoutesLoading();
+
+  @override
+  List<Object?> get props => [];
 }
 
-class RoutesLoaded extends RoutesDataState {
+class RoutesLoaded extends RoutesDataState with EquatableMixin {
   const RoutesLoaded({
     required super.routes,
     required super.airports,
@@ -37,9 +45,18 @@ class RoutesLoaded extends RoutesDataState {
     super.plannerMaintenancePreview,
     super.adjustmentMaintenancePreview,
   }) : super();
+
+  @override
+  List<Object?> get props => [
+    routes,
+    airports,
+    availableAircraft,
+    plannerMaintenancePreview,
+    adjustmentMaintenancePreview,
+  ];
 }
 
-class RoutesActionLoading extends RoutesDataState {
+class RoutesActionLoading extends RoutesDataState with EquatableMixin {
   const RoutesActionLoading({
     required super.routes,
     required super.airports,
@@ -47,9 +64,18 @@ class RoutesActionLoading extends RoutesDataState {
     super.plannerMaintenancePreview,
     super.adjustmentMaintenancePreview,
   });
+
+  @override
+  List<Object?> get props => [
+    routes,
+    airports,
+    availableAircraft,
+    plannerMaintenancePreview,
+    adjustmentMaintenancePreview,
+  ];
 }
 
-class RoutesActionSuccess extends RoutesDataState {
+class RoutesActionSuccess extends RoutesDataState with EquatableMixin {
   final String message;
 
   const RoutesActionSuccess({
@@ -60,9 +86,19 @@ class RoutesActionSuccess extends RoutesDataState {
     super.plannerMaintenancePreview,
     super.adjustmentMaintenancePreview,
   });
+
+  @override
+  List<Object?> get props => [
+    routes,
+    airports,
+    availableAircraft,
+    plannerMaintenancePreview,
+    adjustmentMaintenancePreview,
+    message,
+  ];
 }
 
-class RoutesError extends RoutesDataState {
+class RoutesError extends RoutesDataState with EquatableMixin {
   final String message;
 
   final bool hasData;
@@ -76,4 +112,15 @@ class RoutesError extends RoutesDataState {
     super.plannerMaintenancePreview,
     super.adjustmentMaintenancePreview,
   });
+
+  @override
+  List<Object?> get props => [
+    routes,
+    airports,
+    availableAircraft,
+    plannerMaintenancePreview,
+    adjustmentMaintenancePreview,
+    message,
+    hasData,
+  ];
 }

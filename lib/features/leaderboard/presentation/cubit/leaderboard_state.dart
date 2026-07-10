@@ -1,3 +1,5 @@
+import 'package:equatable/equatable.dart';
+
 import '../../domain/leaderboard_models.dart';
 
 const Object _leaderboardUnset = Object();
@@ -6,12 +8,18 @@ abstract class LeaderboardState {
   const LeaderboardState();
 }
 
-class LeaderboardInitial extends LeaderboardState {
+class LeaderboardInitial extends LeaderboardState with EquatableMixin {
   const LeaderboardInitial();
+
+  @override
+  List<Object?> get props => [];
 }
 
-class LeaderboardLoading extends LeaderboardState {
+class LeaderboardLoading extends LeaderboardState with EquatableMixin {
   const LeaderboardLoading();
+
+  @override
+  List<Object?> get props => [];
 }
 
 /// Intermediate state that carries cached rankings.
@@ -22,7 +30,7 @@ abstract class LeaderboardDataState extends LeaderboardState {
   const LeaderboardDataState({required this.rankings});
 }
 
-class LeaderboardLoaded extends LeaderboardDataState {
+class LeaderboardLoaded extends LeaderboardDataState with EquatableMixin {
   final String? selectedCompetitorId;
   final CompetitorInsights? selectedInsights;
   final bool isLoadingInsights;
@@ -54,13 +62,24 @@ class LeaderboardLoaded extends LeaderboardDataState {
       isLoadingInsights: isLoadingInsights ?? this.isLoadingInsights,
     );
   }
+
+  @override
+  List<Object?> get props => [
+    rankings,
+    selectedCompetitorId,
+    selectedInsights,
+    isLoadingInsights,
+  ];
 }
 
-class LeaderboardError extends LeaderboardDataState {
+class LeaderboardError extends LeaderboardDataState with EquatableMixin {
   final String message;
 
   const LeaderboardError({
     required this.message,
     super.rankings = const [],
   });
+
+  @override
+  List<Object?> get props => [rankings, message];
 }

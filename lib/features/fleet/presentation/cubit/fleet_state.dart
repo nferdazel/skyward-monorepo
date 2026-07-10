@@ -1,3 +1,5 @@
+import 'package:equatable/equatable.dart';
+
 import '../../domain/fleet_models.dart';
 
 abstract class FleetState {
@@ -22,15 +24,21 @@ abstract class FleetDataState extends FleetState {
   });
 }
 
-class FleetInitial extends FleetState {
+class FleetInitial extends FleetState with EquatableMixin {
   const FleetInitial();
+
+  @override
+  List<Object?> get props => [];
 }
 
-class FleetLoading extends FleetState {
+class FleetLoading extends FleetState with EquatableMixin {
   const FleetLoading();
+
+  @override
+  List<Object?> get props => [];
 }
 
-class FleetLoaded extends FleetDataState {
+class FleetLoaded extends FleetDataState with EquatableMixin {
   const FleetLoaded({
     required super.fleet,
     required super.catalog,
@@ -59,9 +67,19 @@ class FleetLoaded extends FleetDataState {
       sortBy: sortBy ?? this.sortBy,
     );
   }
+
+  @override
+  List<Object?> get props => [
+    fleet,
+    catalog,
+    selectedManufacturers,
+    selectedCategories,
+    selectedRangeBrackets,
+    sortBy,
+  ];
 }
 
-class FleetActionLoading extends FleetDataState {
+class FleetActionLoading extends FleetDataState with EquatableMixin {
   const FleetActionLoading({
     required super.fleet,
     required super.catalog,
@@ -70,9 +88,19 @@ class FleetActionLoading extends FleetDataState {
     super.selectedRangeBrackets,
     super.sortBy,
   });
+
+  @override
+  List<Object?> get props => [
+    fleet,
+    catalog,
+    selectedManufacturers,
+    selectedCategories,
+    selectedRangeBrackets,
+    sortBy,
+  ];
 }
 
-class FleetActionSuccess extends FleetDataState {
+class FleetActionSuccess extends FleetDataState with EquatableMixin {
   final String message;
 
   const FleetActionSuccess({
@@ -84,9 +112,20 @@ class FleetActionSuccess extends FleetDataState {
     super.selectedRangeBrackets,
     super.sortBy,
   });
+
+  @override
+  List<Object?> get props => [
+    fleet,
+    catalog,
+    selectedManufacturers,
+    selectedCategories,
+    selectedRangeBrackets,
+    sortBy,
+    message,
+  ];
 }
 
-class FleetError extends FleetDataState {
+class FleetError extends FleetDataState with EquatableMixin {
   final String message;
 
   const FleetError({
@@ -101,4 +140,15 @@ class FleetError extends FleetDataState {
   });
 
   final bool hasData;
+
+  @override
+  List<Object?> get props => [
+    fleet,
+    catalog,
+    selectedManufacturers,
+    selectedCategories,
+    selectedRangeBrackets,
+    sortBy,
+    hasData,
+  ];
 }

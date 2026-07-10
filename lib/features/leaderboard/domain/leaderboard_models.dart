@@ -1,4 +1,6 @@
-class LeaderboardEntry {
+import 'package:equatable/equatable.dart';
+
+class LeaderboardEntry with EquatableMixin {
   final String id;
   final String companyName;
   final String ceoName;
@@ -43,9 +45,25 @@ class LeaderboardEntry {
       creditTier: map['credit_tier'] as String?,
     );
   }
+
+  @override
+  List<Object?> get props => [
+    id,
+    companyName,
+    ceoName,
+    isBot,
+    archetype,
+    cash,
+    netWorth,
+    fleetSize,
+    monthlyRevenue,
+    status,
+    consecutiveNegativeDays,
+    creditTier,
+  ];
 }
 
-class CompetitorInsights {
+class CompetitorInsights with EquatableMixin {
   final String companyName;
   final String ceoName;
   final double cash;
@@ -124,4 +142,17 @@ class CompetitorInsights {
       monthlyRevenue: monthlyRevenue ?? this.monthlyRevenue,
     );
   }
+
+  @override
+  List<Object?> get props => [
+    companyName,
+    ceoName,
+    cash,
+    netWorth,
+    status,
+    fleetBreakdown,
+    networkRoutes,
+    fleetSize,
+    monthlyRevenue,
+  ];
 }

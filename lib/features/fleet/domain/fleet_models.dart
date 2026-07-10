@@ -1,6 +1,8 @@
+import 'package:equatable/equatable.dart';
+
 import '../../../core/constants/game_constants.dart';
 
-class AircraftModel {
+class AircraftModel with EquatableMixin {
   final String id;
   final String manufacturer;
   final String modelName;
@@ -44,9 +46,24 @@ class AircraftModel {
           (map['lease_price_per_month'] as num?)?.toDouble() ?? 0.0,
     );
   }
+
+  @override
+  List<Object?> get props => [
+    id,
+    manufacturer,
+    modelName,
+    type,
+    rangeKm,
+    capacity,
+    speedKmh,
+    fuelBurnPerKm,
+    maintenanceCostPerHour,
+    purchasePrice,
+    leasePricePerMonth,
+  ];
 }
 
-class UserFleetAircraft {
+class UserFleetAircraft with EquatableMixin {
   final String id;
   final String nickname;
   final String acquisitionType;
@@ -130,4 +147,18 @@ class UserFleetAircraft {
     // Owned aircraft: capital repair cost proportional to asset value
     return wearPercent * (model.purchasePrice * 0.0005);
   }
+
+  @override
+  List<Object?> get props => [
+    id,
+    nickname,
+    acquisitionType,
+    condition,
+    status,
+    model,
+    economySeats,
+    businessSeats,
+    firstClassSeats,
+    tailNumber,
+  ];
 }

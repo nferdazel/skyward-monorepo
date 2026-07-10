@@ -1,5 +1,7 @@
+import 'package:equatable/equatable.dart';
+
 /// A credit report returned by the get_credit_report RPC.
-class CreditReport {
+class CreditReport with EquatableMixin {
   final int currentScore;
   final int fleetHealth;
   final int revenueStability;
@@ -74,13 +76,33 @@ class CreditReport {
       suggestions: (map['suggestions'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
-          const [],
+           const [],
     );
   }
+
+  @override
+  List<Object?> get props => [
+    currentScore,
+    fleetHealth,
+    revenueStability,
+    debtRatio,
+    cashReserve,
+    profitHistory,
+    creditTier,
+    maxUnsecuredLoan,
+    maxSecuredLoan,
+    maxFinancingAmount,
+    baseInterestRate,
+    unsecuredInterestRate,
+    securedInterestRate,
+    minLoanAmount,
+    maxActiveLoans,
+    suggestions,
+  ];
 }
 
 /// A historical credit score snapshot.
-class CreditScoreSnapshot {
+class CreditScoreSnapshot with EquatableMixin {
   final int score;
   final int fleetHealth;
   final int revenueStability;
@@ -112,4 +134,15 @@ class CreditScoreSnapshot {
           : DateTime(2020, 1, 1),
     );
   }
+
+  @override
+  List<Object?> get props => [
+    score,
+    fleetHealth,
+    revenueStability,
+    debtRatio,
+    cashReserve,
+    profitHistory,
+    gameDate,
+  ];
 }

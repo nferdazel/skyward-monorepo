@@ -1,5 +1,7 @@
 import 'dart:math';
 
+import 'package:equatable/equatable.dart';
+
 import '../../../core/constants/game_constants.dart';
 import '../../fleet/domain/fleet_models.dart';
 
@@ -10,7 +12,7 @@ import '../../fleet/domain/fleet_models.dart';
 // These Dart formulas intentionally omit those factors for simpler UI preview.
 // Do not treat these as authoritative financial figures.
 
-class RouteMaintenancePreview {
+class RouteMaintenancePreview with EquatableMixin {
   final int allocatedFlightsPerWeek;
   final int maxFlightsPerWeek;
   final double maintenanceHoursPerWeek;
@@ -30,11 +32,23 @@ class RouteMaintenancePreview {
     required this.isGrounded,
     required this.requiresAircraftAssignment,
   });
+
+  @override
+  List<Object?> get props => [
+    allocatedFlightsPerWeek,
+    maxFlightsPerWeek,
+    maintenanceHoursPerWeek,
+    grossDamagePercent,
+    selfHealingCreditPercent,
+    netHealthImpactPercent,
+    isGrounded,
+    requiresAircraftAssignment,
+  ];
 }
 
 enum RouteViabilityBand { strong, workable, weak, blocked }
 
-class RoutePlanningAssessment {
+class RoutePlanningAssessment with EquatableMixin {
   final UserFleetAircraft? recommendedAircraft;
   final int weeklyFlights;
   final int expectedPassengersPerFlight;
@@ -68,9 +82,28 @@ class RoutePlanningAssessment {
     required this.hasCompatibleAircraft,
     required this.viability,
   });
+
+  @override
+  List<Object?> get props => [
+    recommendedAircraft,
+    weeklyFlights,
+    expectedPassengersPerFlight,
+    loadFactorPercent,
+    directOperatingCostPerFlight,
+    revenuePerFlight,
+    contributionPerFlight,
+    weeklyContribution,
+    flightDurationHours,
+    maxWeeklyFlights,
+    maintenanceHoursPerWeek,
+    netWearPerWeek,
+    requiresAircraftAssignment,
+    hasCompatibleAircraft,
+    viability,
+  ];
 }
 
-class Airport {
+class Airport with EquatableMixin {
   final String iata;
   final String name;
   final String city;
@@ -122,9 +155,12 @@ class Airport {
   static double _toRadians(double degree) {
     return degree * pi / 180.0;
   }
+
+  @override
+  List<Object?> get props => [iata, name, city, country, latitude, longitude, demandIndex];
 }
 
-class UserRoute {
+class UserRoute with EquatableMixin {
   final String id;
   final String originIata;
   final String destinationIata;
@@ -536,4 +572,19 @@ class UserRoute {
       requiresAircraftAssignment: false,
     );
   }
+
+  @override
+  List<Object?> get props => [
+    id,
+    originIata,
+    destinationIata,
+    distanceKm,
+    ticketPrice,
+    assignedAircraftId,
+    flightsPerWeek,
+    origin,
+    destination,
+    assignedAircraft,
+    status,
+  ];
 }

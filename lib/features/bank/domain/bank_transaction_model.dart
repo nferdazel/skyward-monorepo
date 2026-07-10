@@ -1,4 +1,6 @@
-class BankTransaction {
+import 'package:equatable/equatable.dart';
+
+class BankTransaction with EquatableMixin {
   final String id;
   final String accountId;
   final String userId;
@@ -39,4 +41,18 @@ class BankTransaction {
           : null,
     );
   }
+
+  @override
+  List<Object?> get props => [
+    id,
+    accountId,
+    userId,
+    transactionType,
+    amount,
+    balanceAfter,
+    description,
+    ifrsCategory,
+    ifrsSubcategory,
+    gameDate,
+  ];
 }

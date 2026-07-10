@@ -1,3 +1,5 @@
+import 'package:equatable/equatable.dart';
+
 import '../../../bank/domain/bank_transaction_model.dart';
 import '../../domain/finance_snapshot.dart';
 
@@ -5,7 +7,7 @@ abstract class FinanceState {
   const FinanceState();
 }
 
-class FinanceDailySnapshot {
+class FinanceDailySnapshot with EquatableMixin {
   final DateTime gameDate;
   final double revenue;
   final double expense;
@@ -21,11 +23,14 @@ class FinanceDailySnapshot {
     this.cash = 0.0,
     this.netWorth = 0.0,
   });
+
+  @override
+  List<Object?> get props => [gameDate, revenue, expense, net, cash, netWorth];
 }
 
 /// Immutable value object bundling all computed finance metrics.
 /// Adding a new metric requires editing only this class and the cubit builder.
-class FinanceMetrics {
+class FinanceMetrics with EquatableMixin {
   final FinanceSnapshot snapshot;
   final List<BankTransaction> transactions;
   final List<FinanceDailySnapshot> dailySnapshots;
@@ -86,6 +91,28 @@ class FinanceMetrics {
       expenseConcentration = 0.0,
       leaseExpenseShare = 0.0,
       repairExpenseShare = 0.0;
+
+  @override
+  List<Object?> get props => [
+    snapshot,
+    transactions,
+    dailySnapshots,
+    financialSnapshots,
+    totalTicketSales,
+    totalOperations,
+    totalLease,
+    totalRepair,
+    totalPurchase,
+    totalRevenue,
+    totalExpense,
+    netProfit,
+    averageDailyNet,
+    latestDailyNet,
+    worstDailyNet,
+    expenseConcentration,
+    leaseExpenseShare,
+    repairExpenseShare,
+  ];
 }
 
 abstract class FinanceDataState extends FinanceState {
@@ -115,19 +142,28 @@ abstract class FinanceDataState extends FinanceState {
   double get repairExpenseShare => metrics.repairExpenseShare;
 }
 
-class FinanceInitial extends FinanceState {
+class FinanceInitial extends FinanceState with EquatableMixin {
   const FinanceInitial();
+
+  @override
+  List<Object?> get props => [];
 }
 
-class FinanceLoading extends FinanceDataState {
+class FinanceLoading extends FinanceDataState with EquatableMixin {
   const FinanceLoading({required super.metrics});
+
+  @override
+  List<Object?> get props => [metrics];
 }
 
-class FinanceLoaded extends FinanceDataState {
+class FinanceLoaded extends FinanceDataState with EquatableMixin {
   const FinanceLoaded({required super.metrics});
+
+  @override
+  List<Object?> get props => [metrics];
 }
 
-class FinanceError extends FinanceDataState {
+class FinanceError extends FinanceDataState with EquatableMixin {
   final String message;
   final bool hasData;
 
@@ -136,4 +172,7 @@ class FinanceError extends FinanceDataState {
     this.hasData = false,
     super.metrics = const FinanceMetrics.empty(),
   });
+
+  @override
+  List<Object?> get props => [metrics, message, hasData];
 }

@@ -1,7 +1,9 @@
+import 'package:equatable/equatable.dart';
+
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/game_constants.dart';
 
-class SimulationState {
+class SimulationState with EquatableMixin {
   static const Object _unset = Object();
   final DateTime gameTime;
   final double cashBalance;
@@ -71,4 +73,19 @@ class SimulationState {
           : errorMessage as String?,
     );
   }
+
+  @override
+  List<Object?> get props => [
+    gameTime,
+    cashBalance,
+    fuelPricePerLiter,
+    gameSpeedMultiplier,
+    isSyncing,
+    lastFlightsRun,
+    lastElapsedDays,
+    operationalStatus,
+    consecutiveNegativeDays,
+    recoveryStreakDays,
+    errorMessage,
+  ];
 }

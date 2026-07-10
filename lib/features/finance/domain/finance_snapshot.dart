@@ -1,4 +1,6 @@
-class FinanceSnapshot {
+import 'package:equatable/equatable.dart';
+
+class FinanceSnapshot with EquatableMixin {
   final String actorId;
   final bool isBot;
   final String companyName;
@@ -78,4 +80,23 @@ class FinanceSnapshot {
       ledgerWindowDays: (map['ledger_window_days'] as num?)?.toInt() ?? 30,
     );
   }
+
+  @override
+  List<Object?> get props => [
+    actorId,
+    isBot,
+    companyName,
+    cash,
+    netWorth,
+    ownedAircraftAssetValue,
+    leasedAircraftMonthlyExposure,
+    fleetCount,
+    ownedFleetCount,
+    leasedFleetCount,
+    activeRouteCount,
+    rollingRevenue30d,
+    rollingExpense30d,
+    rollingNet30d,
+    ledgerWindowDays,
+  ];
 }

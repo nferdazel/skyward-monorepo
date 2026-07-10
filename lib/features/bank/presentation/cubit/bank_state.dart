@@ -1,3 +1,5 @@
+import 'package:equatable/equatable.dart';
+
 import '../../domain/bank_account_model.dart';
 import '../../domain/bank_transaction_model.dart';
 import '../../domain/credit_report_model.dart';
@@ -7,15 +9,21 @@ abstract class BankState {
   const BankState();
 }
 
-class BankInitial extends BankState {
+class BankInitial extends BankState with EquatableMixin {
   const BankInitial();
+
+  @override
+  List<Object?> get props => [];
 }
 
-class BankLoading extends BankState {
+class BankLoading extends BankState with EquatableMixin {
   const BankLoading();
+
+  @override
+  List<Object?> get props => [];
 }
 
-class BankLoaded extends BankState {
+class BankLoaded extends BankState with EquatableMixin {
   final List<Loan> loans;
   final CreditReport? creditReport;
   final List<CreditScoreSnapshot> creditHistory;
@@ -79,9 +87,18 @@ class BankLoaded extends BankState {
   BankAccount? get checkingAccount =>
       accounts.where((a) => a.isOperating).firstOrNull;
 
+  @override
+  List<Object?> get props => [
+    loans,
+    creditReport,
+    creditHistory,
+    aircraftFinancing,
+    accounts,
+    transactions,
+  ];
 }
 
-class BankError extends BankState {
+class BankError extends BankState with EquatableMixin {
   final String message;
   final bool hasData;
   final List<Loan> loans;
@@ -97,9 +114,19 @@ class BankError extends BankState {
     this.accounts = const [],
     this.transactions = const [],
   });
+
+  @override
+  List<Object?> get props => [
+    message,
+    hasData,
+    loans,
+    creditReport,
+    accounts,
+    transactions,
+  ];
 }
 
-class BankLoanSuccess extends BankState {
+class BankLoanSuccess extends BankState with EquatableMixin {
   final String message;
   final double newCash;
   final List<Loan> loans;
@@ -115,9 +142,19 @@ class BankLoanSuccess extends BankState {
     this.accounts = const [],
     this.transactions = const [],
   });
+
+  @override
+  List<Object?> get props => [
+    message,
+    newCash,
+    loans,
+    creditReport,
+    accounts,
+    transactions,
+  ];
 }
 
-class BankRefinanceSuccess extends BankState {
+class BankRefinanceSuccess extends BankState with EquatableMixin {
   final String message;
   final List<Loan> loans;
   final CreditReport? creditReport;
@@ -131,6 +168,15 @@ class BankRefinanceSuccess extends BankState {
     this.accounts = const [],
     this.transactions = const [],
   });
+
+  @override
+  List<Object?> get props => [
+    message,
+    loans,
+    creditReport,
+    accounts,
+    transactions,
+  ];
 }
 
 

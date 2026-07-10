@@ -1,5 +1,7 @@
+import 'package:equatable/equatable.dart';
+
 /// A bank loan taken by a player for capital.
-class Loan {
+class Loan with EquatableMixin {
   final String id;
   final double principal;
   final double interestRate;
@@ -108,4 +110,19 @@ class Loan {
           : null,
     );
   }
+
+  @override
+  List<Object?> get props => [
+    id,
+    principal,
+    interestRate,
+    remainingBalance,
+    weeklyPayment,
+    status,
+    loanType,
+    collateralAircraftId,
+    missedPayments,
+    originatedGameDate,
+    takenAt,
+  ];
 }
