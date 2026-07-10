@@ -73,17 +73,27 @@ class SupabaseFinanceGateway implements FinanceGateway {
       // Until a real historical net-worth surface exists, return the current
       // net-worth snapshot as a single chart point instead of probing a
       // phantom contract and silently swallowing the error.
-      final response = await SupabaseManager.client
+      final userResponse = await SupabaseManager.client
           .from('users')
-          .select('game_current_time, cash, net_worth')
+          .select('game_current_time, net_worth')
           .eq('id', userId)
           .maybeSingle();
-      if (response == null) return const [];
+      if (userResponse == null) return const [];
+
+      final accountResponse = await SupabaseManager.client
+          .from('bank_accounts')
+          .select('balance')
+          .eq('user_id', userId)
+          .eq('account_type', 'operating')
+          .maybeSingle();
+
+      final cash = (accountResponse?['balance'] as num?)?.toDouble() ?? 0.0;
+
       return [
         {
-          'game_date': response['game_current_time'],
-          'cash': response['cash'],
-          'net_worth': response['net_worth'],
+          'game_date': userResponse['game_current_time'],
+          'cash': cash,
+          'net_worth': userResponse['net_worth'],
         },
       ];
     } on PostgrestException catch (e) {
