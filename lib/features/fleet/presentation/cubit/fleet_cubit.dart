@@ -589,7 +589,8 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
         }
 
         _suppressNextFleetRealtimeReload = true;
-        _cachedFleet.removeWhere((aircraft) => aircraft.id == fleetId);
+        await _reloadFleetFromBackend(userId);
+
         if (isClosed) return false;
         emit(
           FleetActionSuccess(
@@ -666,7 +667,8 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
         }
 
         _suppressNextFleetRealtimeReload = true;
-        _cachedFleet.removeWhere((aircraft) => aircraft.id == fleetId);
+        await _reloadFleetFromBackend(userId);
+
         if (isClosed) return false;
         emit(
           FleetActionSuccess(
@@ -774,6 +776,14 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
   void setSortBy(String sortBy) {
     _sortBy = sortBy;
     _emitLoaded();
+  }
+
+  Future<void> _reloadFleetFromBackend(String userId) async {
+    final List<dynamic> fleetResponse = await _gateway.loadFleet(userId);
+    _cachedFleet =
+        fleetResponse
+            .map((r) => UserFleetAircraft.fromMap(r as Map<String, dynamic>))
+            .toList();
   }
 
   Future<void> _appendLatestAircraftToCache({

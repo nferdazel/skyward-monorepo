@@ -1,14 +1,14 @@
-import '../../bank/presentation/cubit/bank_state.dart';
-import '../presentation/cubit/finance_state.dart';
+import '../../bank/domain/bank_transaction_model.dart';
+import 'finance_snapshot.dart';
 
-/// Stateless utility that takes [FinanceState] + [BankState] and produces
+/// Stateless utility that takes raw finance data and produces
 /// structured IFRS-style financial report data for the drill-down panel.
 class IfrsReportBuilder {
   const IfrsReportBuilder._();
 
-  static IncomeStatement buildIncomeStatement(FinanceDataState finance) {
-    final transactions = finance.transactions;
-
+  static IncomeStatement buildIncomeStatement(
+    List<BankTransaction> transactions,
+  ) {
     // Revenue breakdown from transactions.
     double ticketSales = 0;
     double cargoRevenue = 0;
@@ -76,24 +76,15 @@ class IfrsReportBuilder {
   }
 
   static BalanceSheet buildBalanceSheet(
-    FinanceDataState finance,
-    BankState bank,
+    FinanceSnapshot snapshot,
+    double outstandingLoans,
   ) {
     // Assets
-    final cash = finance.snapshot.cash;
-    final fleetNetBookValue = finance.snapshot.ownedAircraftAssetValue;
+    final cash = snapshot.cash;
+    final fleetNetBookValue = snapshot.ownedAircraftAssetValue;
     final totalAssets = cash + fleetNetBookValue;
 
-    // Liabilities — active loan balances from bank state.
-    double outstandingLoans = 0;
-    if (bank is BankLoaded) {
-      outstandingLoans = bank.totalOutstanding;
-    } else if (bank is BankError) {
-      // Use cached data even on error state.
-      outstandingLoans = bank.loans
-          .where((l) => l.isActive)
-          .fold(0.0, (sum, l) => sum + l.remainingBalance);
-    }
+    // Liabilities
     final totalLiabilities = outstandingLoans;
 
     // Equity — residual so the sheet always balances.
@@ -107,15 +98,12 @@ class IfrsReportBuilder {
       totalLiabilities: totalLiabilities,
       netWorth: totalEquity,
       totalEquity: totalEquity,
-      leasedAircraftMonthlyExposure:
-          finance.snapshot.leasedAircraftMonthlyExposure,
-      leasedFleetCount: finance.snapshot.leasedFleetCount,
+      leasedAircraftMonthlyExposure: snapshot.leasedAircraftMonthlyExposure,
+      leasedFleetCount: snapshot.leasedFleetCount,
     );
   }
 
-  static CashFlows buildCashFlows(FinanceDataState finance) {
-    final transactions = finance.transactions;
-
+  static CashFlows buildCashFlows(List<BankTransaction> transactions) {
     // Operating
     double revenueInflows = 0;
     double operatingOutflows = 0;

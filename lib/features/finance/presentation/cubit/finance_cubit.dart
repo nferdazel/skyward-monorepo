@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/database/supabase_client.dart';
@@ -23,7 +22,6 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
   FinanceSnapshot _cachedSnapshot = const FinanceSnapshot.empty();
   List<BankTransaction> _cachedTransactions = [];
   List<FinanceDailySnapshot> _cachedFinancialSnapshots = [];
-  Timer? _realtimeRefreshDebounce;
   Future<void>? _activeTransactionLoad;
   Future<void>? _activeSnapshotRefresh;
   int _consecutiveSnapshotFailures = 0;
@@ -220,7 +218,6 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
   @override
   Future<void> close() async {
     disposeReactivity();
-    _realtimeRefreshDebounce?.cancel();
     await _realtimeSubscriptions.clear();
     return super.close();
   }
@@ -453,16 +450,6 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
     }
   }
 
-  void _scheduleRealtimeRefresh(String userId) {
-    PerfDebug.event(
-      'finance.realtime_refresh_scheduled',
-      fields: {'user': userId},
-    );
-    _realtimeRefreshDebounce?.cancel();
-    _realtimeRefreshDebounce = Timer(const Duration(milliseconds: 200), () {
-      unawaited(_refreshSnapshotOnly(userId));
-    });
-  }
 
   /// Seed detailed mock bank transactions for local development visual fidelity.
   void _devLoadMockTransactions() {
@@ -556,23 +543,7 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
   void _setupRealtime(String userId) {
     if (DevModeManager.isDevMode || SupabaseManager.hasMockClient) return;
     unawaited(_realtimeSubscriptions.clear());
-
-    // Subscribe to bank_transactions — covers all financial activity.
-    final txnChannel = SupabaseManager.client
-        .channel('public:bank_transactions:user_id=eq.$userId')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'bank_transactions',
-          filter: PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq,
-            column: 'user_id',
-            value: userId,
-          ),
-          callback: (_) => _scheduleRealtimeRefresh(userId),
-        )
-        .subscribe();
-
-    _realtimeSubscriptions.add(txnChannel);
+    // bank_transactions realtime is handled by BankCubit; FinanceCubit
+    // refreshes via SimulationReactiveMixin when simulation syncs.
   }
 }

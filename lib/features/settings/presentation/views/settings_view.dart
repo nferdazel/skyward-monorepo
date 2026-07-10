@@ -3,7 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/game_constants.dart';
-import '../../../../core/database/supabase_client.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/dev_mode_manager.dart';
 import '../../../../presentation/theme/app_spacing.dart';
@@ -186,7 +185,7 @@ class _SettingsViewState extends State<SettingsView> {
   Widget _buildProfileFormSection(
     BuildContext context,
     SettingsState state,
-    User user,
+    AppUser user,
   ) {
     final cubit = context.read<SettingsCubit>();
 
@@ -272,7 +271,7 @@ class _SettingsViewState extends State<SettingsView> {
 
   Future<void> _refreshAuthoritativeProfileState(
     BuildContext context,
-    User user, {
+    AppUser user, {
     required String companyName,
     required double autoGroundingThreshold,
     required String hqAirportIata,
@@ -301,7 +300,7 @@ class _SettingsViewState extends State<SettingsView> {
   Widget _buildGameSettingsSection(
     BuildContext context,
     SettingsState state,
-    User user,
+    AppUser user,
   ) {
     final cubit = context.read<SettingsCubit>();
     final currentThreshold =
@@ -743,12 +742,9 @@ class _SettingsViewState extends State<SettingsView> {
 
                         if (!DevModeManager.isDevMode) {
                           try {
-                            final response = await SupabaseManager.client
-                                .from('users')
-                                .select('id, company_name, ceo_name, game_current_time, hq_airport_iata, auto_grounding_threshold, operational_status, consecutive_negative_days, recovery_streak_days')
-                                .eq('id', userId)
-                                .single();
-                            final freshUser = User.fromMap(response);
+                            final response =
+                                await settingsCubit.loadUserProfile(userId);
+                            final freshUser = AppUser.fromMap(response);
                             freshCash = GameConstants.startingCash;
                             freshTime = freshUser.gameCurrentTime;
                             authCubit.updateActiveUser(freshUser);

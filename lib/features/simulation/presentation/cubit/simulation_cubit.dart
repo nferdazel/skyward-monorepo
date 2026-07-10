@@ -26,7 +26,7 @@ class SimulationCubit extends Cubit<SimulationState>
       RealtimeSubscriptionBag();
   bool _loopRunning = false;
   bool _lifecycleObserverRegistered = false;
-  Future<User?>? _activeSync;
+  Future<AppUser?>? _activeSync;
   final SimulationGateway _gateway;
 
   // Retry with exponential backoff
@@ -34,16 +34,16 @@ class SimulationCubit extends Cubit<SimulationState>
   static const int _maxRetries = 5;
 
   // Cache for game_config settings to avoid redundant fetches
-  static Map<String, dynamic>? _cachedGameSettings;
-  static DateTime? _cachedSettingsTime;
+  Map<String, dynamic>? _cachedGameSettings;
+  DateTime? _cachedSettingsTime;
 
   /// Test-only: set user ID without booting the full simulation loop.
   @visibleForTesting
   void setTestUserId(String userId) => _currentUserId = userId;
 
-  /// Test-only: clear the static game-settings cache between tests.
+  /// Test-only: clear the game-settings cache between tests.
   @visibleForTesting
-  static void clearSettingsCache() {
+  void clearSettingsCache() {
     _cachedGameSettings = null;
     _cachedSettingsTime = null;
   }
@@ -148,7 +148,11 @@ class SimulationCubit extends Cubit<SimulationState>
     _safeEmit(state.copyWith(cashBalance: cashBalance, errorMessage: null));
   }
 
-  void applyBackendUserUpdate(User updatedUser) {
+  Future<void> markOnboardingComplete(String authUserId) {
+    return _gateway.markOnboardingComplete(authUserId);
+  }
+
+  void applyBackendUserUpdate(AppUser updatedUser) {
     // Reuse the sync-complete transition so dependent cubits refresh after
     // backend world ticks that arrive through realtime.
     // Note: cashBalance is NOT sourced from User anymore — it comes from
@@ -166,7 +170,7 @@ class SimulationCubit extends Cubit<SimulationState>
   }
 
   // Backend world-clock reconcile. The RPC owns elapsed-time simulation.
-  Future<User?> syncWithDatabase() async {
+  Future<AppUser?> syncWithDatabase() async {
     if (_activeSync != null) return _activeSync;
     _activeSync = _performSyncWithDatabase();
     try {
@@ -176,7 +180,7 @@ class SimulationCubit extends Cubit<SimulationState>
     }
   }
 
-  Future<User?> _performSyncWithDatabase() async {
+  Future<AppUser?> _performSyncWithDatabase() async {
     final userId = _currentUserId;
     if (userId == null) return null;
 
@@ -221,7 +225,7 @@ class SimulationCubit extends Cubit<SimulationState>
         flightsRun = (result['flights_run'] as num?)?.toInt() ?? 0;
       }
 
-      final authoritativeUser = User.fromMap(userProfile);
+      final authoritativeUser = AppUser.fromMap(userProfile);
 
       // Fetch global settings dynamically to retrieve live fuel price (Pillar 3.2)
       // Cached for 5 minutes to avoid redundant round-trips.
@@ -344,6 +348,8 @@ class SimulationCubit extends Cubit<SimulationState>
     _retryTimer = null;
     _balanceRefreshDebounce?.cancel();
     _balanceRefreshDebounce = null;
+    _cachedGameSettings = null;
+    _cachedSettingsTime = null;
     if (_lifecycleObserverRegistered) {
       _maybeBinding()?.removeObserver(this);
       _lifecycleObserverRegistered = false;
@@ -368,7 +374,7 @@ class SimulationCubit extends Cubit<SimulationState>
             value: userId,
           ),
           callback: (payload) {
-            final updatedUser = User.fromMap(payload.newRecord);
+            final updatedUser = AppUser.fromMap(payload.newRecord);
             applyBackendUserUpdate(updatedUser);
           },
         )

@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../core/database/supabase_client.dart';
 import '../../core/theme/app_theme.dart';
 import '../../features/auth/presentation/cubit/auth_cubit.dart';
 import '../../features/auth/presentation/cubit/auth_state.dart';
+import '../../features/simulation/presentation/cubit/simulation_cubit.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 import 'app_button.dart';
@@ -30,17 +30,14 @@ Future<void> markOnboardingComplete() async {
 }
 
 /// Persists onboarding_completed = true to the database for the given user.
-Future<void> _persistOnboardingToDatabase(String userId) async {
+Future<void> _persistOnboardingToDatabase(
+  String authUserId,
+  SimulationCubit simulationCubit,
+) async {
   try {
-    await SupabaseManager.client
-        .from('users')
-        .update({'onboarding_completed': true}).eq(
-          'auth_user_id',
-          SupabaseManager.client.auth.currentUser?.id ?? '',
-        );
+    await simulationCubit.markOnboardingComplete(authUserId);
   } catch (e) {
     // Non-fatal: local cache is the primary gate; DB sync is best-effort.
-    SupabaseManager.logError('persist_onboarding_completed', e);
   }
 }
 
@@ -145,7 +142,8 @@ class _OnboardingOverlayState extends State<OnboardingOverlay> {
     // Also persist to the database so onboarding never shows on another device.
     final authState = context.read<AuthCubit>().state;
     if (authState is AuthAuthenticated) {
-      _persistOnboardingToDatabase(authState.user.id);
+      final simulationCubit = context.read<SimulationCubit>();
+      _persistOnboardingToDatabase(authState.user.id, simulationCubit);
     }
     widget.onComplete();
   }

@@ -17,6 +17,7 @@ abstract class SettingsGateway {
   Future<List<dynamic>> saveAirlineSettings(Map<String, dynamic> params);
   Future<List<dynamic>> resetUserAirline();
   Future<Map<String, dynamic>> deleteAccount();
+  Future<Map<String, dynamic>> loadUserProfile(String userId);
 }
 
 class SupabaseSettingsGateway implements SettingsGateway {
@@ -96,6 +97,31 @@ class SupabaseSettingsGateway implements SettingsGateway {
     } catch (e, stack) {
       SupabaseManager.logError('deleteAccount', e, stack);
       throw SettingsGatewayException(e.toString(), 'deleteAccount');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> loadUserProfile(String userId) async {
+    try {
+      return await SupabaseManager.client
+          .from('users')
+          .select(
+            'id, company_name, ceo_name, game_current_time, '
+            'hq_airport_iata, auto_grounding_threshold, operational_status, '
+            'consecutive_negative_days, recovery_streak_days',
+          )
+          .eq('id', userId)
+          .single();
+    } on PostgrestException catch (e) {
+      SupabaseManager.logRpcFailure(
+        'loadUserProfile',
+        {'id': userId},
+        e.message,
+      );
+      throw SettingsGatewayException(e.message, 'loadUserProfile');
+    } catch (e, stack) {
+      SupabaseManager.logError('loadUserProfile', e, stack);
+      throw SettingsGatewayException(e.toString(), 'loadUserProfile');
     }
   }
 }

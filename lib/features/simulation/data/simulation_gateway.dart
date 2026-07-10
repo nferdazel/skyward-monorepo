@@ -17,6 +17,7 @@ abstract class SimulationGateway {
   Future<Map<String, dynamic>> loadUserProfile(String userId);
   Future<List<dynamic>> loadGameSettings();
   Future<double> getUserBalance(String userId);
+  Future<void> markOnboardingComplete(String authUserId);
 }
 
 class SupabaseSimulationGateway implements SimulationGateway {
@@ -115,6 +116,28 @@ class SupabaseSimulationGateway implements SimulationGateway {
     } catch (e, stack) {
       SupabaseManager.logError('getUserBalance', e, stack);
       throw SimulationGatewayException(e.toString(), 'getUserBalance');
+    }
+  }
+
+  @override
+  Future<void> markOnboardingComplete(String authUserId) async {
+    try {
+      await SupabaseManager.client
+          .from('users')
+          .update({'onboarding_completed': true}).eq(
+            'auth_user_id',
+            authUserId,
+          );
+    } on PostgrestException catch (e) {
+      SupabaseManager.logRpcFailure(
+        'markOnboardingComplete',
+        {'auth_user_id': authUserId},
+        e.message,
+      );
+      throw SimulationGatewayException(e.message, 'markOnboardingComplete');
+    } catch (e, stack) {
+      SupabaseManager.logError('markOnboardingComplete', e, stack);
+      throw SimulationGatewayException(e.toString(), 'markOnboardingComplete');
     }
   }
 }

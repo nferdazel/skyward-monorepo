@@ -33,13 +33,25 @@ class IfrsReportPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final incomeStatement = IfrsReportBuilder.buildIncomeStatement(
-      financeState,
+      financeState.transactions,
     );
+
+    double outstandingLoans = 0;
+    if (bankState is BankLoaded) {
+      outstandingLoans = (bankState as BankLoaded).totalOutstanding;
+    } else if (bankState is BankError) {
+      outstandingLoans = (bankState as BankError).loans
+          .where((l) => l.isActive)
+          .fold(0.0, (sum, l) => sum + l.remainingBalance);
+    }
+
     final balanceSheet = IfrsReportBuilder.buildBalanceSheet(
-      financeState,
-      bankState,
+      financeState.snapshot,
+      outstandingLoans,
     );
-    final cashFlows = IfrsReportBuilder.buildCashFlows(financeState);
+    final cashFlows = IfrsReportBuilder.buildCashFlows(
+      financeState.transactions,
+    );
 
     return Material(
       color: AppTheme.surface,
