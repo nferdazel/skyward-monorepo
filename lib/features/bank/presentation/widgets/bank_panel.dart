@@ -49,6 +49,8 @@ class _BankPanelState extends State<BankPanel> {
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<BankCubit, BankState>(
+      buildWhen: (prev, curr) =>
+          curr is! BankLoanSuccess && curr is! BankRefinanceSuccess,
       listener: (context, state) {
         if (state is BankError) {
           AppSnackBar.showError(context, state.message);

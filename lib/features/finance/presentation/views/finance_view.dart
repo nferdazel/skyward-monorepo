@@ -75,7 +75,6 @@ class _FinanceViewState extends State<FinanceView>
       }
       PerfDebug.event('finance.tab_switch', fields: {'tab': index});
       _lazyTabCubit.activate(index);
-      setState(() {});
     });
   }
 
@@ -111,28 +110,33 @@ class _FinanceViewState extends State<FinanceView>
         body: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.start,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                AppTabItem(
-                  label: AppStrings.financeOverviewTab,
-                  isActive: _tabController.index == 0,
-                  onTap: () => _onTabTap(0),
-                ),
-                const SizedBox(width: AppSpacing.xxl),
-                AppTabItem(
-                  label: AppStrings.financeTransactionsTab,
-                  isActive: _tabController.index == 1,
-                  onTap: () => _onTabTap(1),
-                ),
-                const SizedBox(width: AppSpacing.xxl),
-                AppTabItem(
-                  label: AppStrings.bankTab,
-                  isActive: _tabController.index == 2,
-                  onTap: () => _onTabTap(2),
-                ),
-              ],
+            ListenableBuilder(
+              listenable: _tabController,
+              builder: (context, _) {
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    AppTabItem(
+                      label: AppStrings.financeOverviewTab,
+                      isActive: _tabController.index == 0,
+                      onTap: () => _onTabTap(0),
+                    ),
+                    const SizedBox(width: AppSpacing.xxl),
+                    AppTabItem(
+                      label: AppStrings.financeTransactionsTab,
+                      isActive: _tabController.index == 1,
+                      onTap: () => _onTabTap(1),
+                    ),
+                    const SizedBox(width: AppSpacing.xxl),
+                    AppTabItem(
+                      label: AppStrings.bankTab,
+                      isActive: _tabController.index == 2,
+                      onTap: () => _onTabTap(2),
+                    ),
+                  ],
+                );
+              },
             ),
             const SizedBox(height: AppSpacing.tabContentGap),
             Expanded(
@@ -991,12 +995,15 @@ class _FinanceViewState extends State<FinanceView>
               itemCount: state.transactions.length,
               itemBuilder: (context, index) {
                 final txn = state.transactions[index];
-                return Table(
-                  columnWidths: _ledgerColumnWidths,
-                  defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-                  children: [
-                    _buildTableEntryRow(txn, currencyFormat, dateFormat),
-                  ],
+                return KeyedSubtree(
+                  key: ValueKey(txn.id),
+                  child: Table(
+                    columnWidths: _ledgerColumnWidths,
+                    defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                    children: [
+                      _buildTableEntryRow(txn, currencyFormat, dateFormat),
+                    ],
+                  ),
                 );
               },
             ),

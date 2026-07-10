@@ -84,7 +84,6 @@ class _FleetViewState extends State<FleetView>
       }
       PerfDebug.event('fleet.tab_switch', fields: {'tab': index});
       _lazyTabCubit.activate(index);
-      setState(() {});
     });
   }
 
@@ -147,22 +146,27 @@ class _FleetViewState extends State<FleetView>
           body: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  AppTabItem(
-                    label: AppStrings.activeFleetTab,
-                    isActive: _tabController.index == 0,
-                    onTap: () => _onTabTap(0),
-                  ),
-                  const SizedBox(width: AppSpacing.xxl),
-                  AppTabItem(
-                    label: AppStrings.acquireAircraftTab,
-                    isActive: _tabController.index == 1,
-                    onTap: () => _onTabTap(1),
-                  ),
-                ],
+              ListenableBuilder(
+                listenable: _tabController,
+                builder: (context, _) {
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      AppTabItem(
+                        label: AppStrings.activeFleetTab,
+                        isActive: _tabController.index == 0,
+                        onTap: () => _onTabTap(0),
+                      ),
+                      const SizedBox(width: AppSpacing.xxl),
+                      AppTabItem(
+                        label: AppStrings.acquireAircraftTab,
+                        isActive: _tabController.index == 1,
+                        onTap: () => _onTabTap(1),
+                      ),
+                    ],
+                  );
+                },
               ),
               const SizedBox(height: AppSpacing.tabContentGap),
               Expanded(
@@ -327,14 +331,17 @@ class _FleetViewState extends State<FleetView>
               itemCount: fleetList.length,
               itemBuilder: (context, index) {
                 final aircraft = fleetList[index];
-                return _buildFleetRow(
-                  context,
-                  aircraft,
-                  userId,
-                  currencyFormat,
-                  isActionLoading,
-                  autoGroundingThreshold,
-                  assignedFleetIds,
+                return KeyedSubtree(
+                  key: ValueKey(aircraft.id),
+                  child: _buildFleetRow(
+                    context,
+                    aircraft,
+                    userId,
+                    currencyFormat,
+                    isActionLoading,
+                    autoGroundingThreshold,
+                    assignedFleetIds,
+                  ),
                 );
               },
             ),
@@ -810,38 +817,7 @@ class _FleetViewState extends State<FleetView>
                 sortBy: 'price_asc',
               );
 
-        var filteredCatalog = catalog.where((model) {
-          if (filters.manufacturers.isNotEmpty &&
-              !filters.manufacturers.contains(model.manufacturer)) {
-            return false;
-          }
-          if (filters.categories.isNotEmpty &&
-              !filters.categories.contains(_catalogCategoryLabel(model.type))) {
-            return false;
-          }
-          if (filters.ranges.isNotEmpty &&
-              !filters.ranges.contains(_rangeBracketLabel(model.rangeKm))) {
-            return false;
-          }
-          return true;
-        }).toList();
-
-        filteredCatalog.sort((a, b) {
-          switch (filters.sortBy) {
-            case 'price_asc':
-              return a.purchasePrice.compareTo(b.purchasePrice);
-            case 'price_desc':
-              return b.purchasePrice.compareTo(a.purchasePrice);
-            case 'range_desc':
-              return b.rangeKm.compareTo(a.rangeKm);
-            case 'capacity_desc':
-              return b.capacity.compareTo(a.capacity);
-            case 'fuel_efficiency':
-              return a.fuelBurnPerKm.compareTo(b.fuelBurnPerKm);
-            default:
-              return a.purchasePrice.compareTo(b.purchasePrice);
-          }
-        });
+        final filteredCatalog = _filterAndSortCatalog(catalog, filters);
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -959,6 +935,52 @@ class _FleetViewState extends State<FleetView>
     );
   }
 
+  List<AircraftModel> _filterAndSortCatalog(
+    List<AircraftModel> catalog,
+    ({
+      List<String> manufacturers,
+      List<String> categories,
+      List<String> ranges,
+      String sortBy,
+    })
+    filters,
+  ) {
+    var result = catalog.where((model) {
+      if (filters.manufacturers.isNotEmpty &&
+          !filters.manufacturers.contains(model.manufacturer)) {
+        return false;
+      }
+      if (filters.categories.isNotEmpty &&
+          !filters.categories.contains(_catalogCategoryLabel(model.type))) {
+        return false;
+      }
+      if (filters.ranges.isNotEmpty &&
+          !filters.ranges.contains(_rangeBracketLabel(model.rangeKm))) {
+        return false;
+      }
+      return true;
+    }).toList();
+
+    result.sort((a, b) {
+      switch (filters.sortBy) {
+        case 'price_asc':
+          return a.purchasePrice.compareTo(b.purchasePrice);
+        case 'price_desc':
+          return b.purchasePrice.compareTo(a.purchasePrice);
+        case 'range_desc':
+          return b.rangeKm.compareTo(a.rangeKm);
+        case 'capacity_desc':
+          return b.capacity.compareTo(a.capacity);
+        case 'fuel_efficiency':
+          return a.fuelBurnPerKm.compareTo(b.fuelBurnPerKm);
+        default:
+          return a.purchasePrice.compareTo(b.purchasePrice);
+      }
+    });
+
+    return result;
+  }
+
   String _catalogCategoryLabel(String type) {
     switch (type) {
       case 'regional_turboprop':
@@ -1019,12 +1041,15 @@ class _FleetViewState extends State<FleetView>
               itemCount: catalog.length,
               itemBuilder: (context, index) {
                 final model = catalog[index];
-                return _buildCatalogRow(
-                  context,
-                  model,
-                  userId,
-                  currencyFormat,
-                  isActionLoading,
+                return KeyedSubtree(
+                  key: ValueKey(model.id),
+                  child: _buildCatalogRow(
+                    context,
+                    model,
+                    userId,
+                    currencyFormat,
+                    isActionLoading,
+                  ),
                 );
               },
             ),

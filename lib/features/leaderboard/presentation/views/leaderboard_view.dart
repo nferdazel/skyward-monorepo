@@ -32,35 +32,33 @@ class LeaderboardView extends StatefulWidget {
 class _LeaderboardViewState extends State<LeaderboardView> {
   String _sortBy = 'net_worth';
 
-  late List<LeaderboardEntry> _sortedRankings;
-
   @override
   void initState() {
     super.initState();
-    _sortedRankings = [];
   }
 
   void _changeSort(String sortBy) {
     setState(() {
       _sortBy = sortBy;
-      _sortRankings();
     });
   }
 
-  void _sortRankings() {
+  List<LeaderboardEntry> _computeSortedRankings(List<LeaderboardEntry> source) {
+    final sorted = List<LeaderboardEntry>.from(source);
     switch (_sortBy) {
       case 'net_worth':
-        _sortedRankings.sort((a, b) => b.netWorth.compareTo(a.netWorth));
+        sorted.sort((a, b) => b.netWorth.compareTo(a.netWorth));
         break;
       case 'fleet_size':
-        _sortedRankings.sort((a, b) => b.fleetSize.compareTo(a.fleetSize));
+        sorted.sort((a, b) => b.fleetSize.compareTo(a.fleetSize));
         break;
       case 'monthly_revenue':
-        _sortedRankings.sort(
+        sorted.sort(
           (a, b) => b.monthlyRevenue.compareTo(a.monthlyRevenue),
         );
         break;
     }
+    return sorted;
   }
 
   @override
@@ -76,6 +74,17 @@ class _LeaderboardViewState extends State<LeaderboardView> {
     }
 
     return BlocConsumer<LeaderboardCubit, LeaderboardState>(
+      buildWhen: (prev, curr) =>
+          curr is LeaderboardInitial ||
+          curr is LeaderboardLoading ||
+          (curr is LeaderboardLoaded &&
+              (prev is! LeaderboardLoaded ||
+                  prev.rankings != curr.rankings ||
+                  prev.selectedCompetitorId != curr.selectedCompetitorId ||
+                  prev.selectedInsights != curr.selectedInsights ||
+                  prev.isLoadingInsights != curr.isLoadingInsights)) ||
+          (curr is LeaderboardError &&
+              (prev is! LeaderboardError || prev.message != curr.message)),
       listenWhen: (_, state) =>
           state is LeaderboardLoaded &&
           state.rankings.isNotEmpty &&
@@ -91,11 +100,10 @@ class _LeaderboardViewState extends State<LeaderboardView> {
       builder: (context, state) {
         final cubit = context.read<LeaderboardCubit>();
 
-        // Sync sorted rankings from bloc state
-        if (state is LeaderboardLoaded) {
-          _sortedRankings = List<LeaderboardEntry>.from(state.rankings);
-          _sortRankings();
-        }
+        // Compute sorted rankings from bloc state (no instance mutation)
+        final sortedRankings = state is LeaderboardLoaded
+            ? _computeSortedRankings(state.rankings)
+            : const <LeaderboardEntry>[];
 
         return SizedBox(
           width: double.infinity,
@@ -111,7 +119,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                 const SizedBox(height: AppSpacing.blockGap),
                 Expanded(
                   child: RepaintBoundary(
-                    child: _buildRankingsContent(context, state, cubit),
+                    child: _buildRankingsContent(context, state, cubit, sortedRankings),
                   ),
                 ),
               ],
@@ -126,6 +134,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
     BuildContext context,
     LeaderboardState state,
     LeaderboardCubit cubit,
+    List<LeaderboardEntry> sortedRankings,
   ) {
     if (state is LeaderboardLoading) {
       return _buildSkeletonLoader();
@@ -163,8 +172,8 @@ class _LeaderboardViewState extends State<LeaderboardView> {
           ],
         ),
       );
-    } else if (state is LeaderboardLoaded) {
-      if (_sortedRankings.isEmpty) {
+      } else if (state is LeaderboardLoaded) {
+        if (sortedRankings.isEmpty) {
         return AppEmptyState(
           icon: Icons.leaderboard_outlined,
           title: AppStrings.leaderboardEmptyTitle,
@@ -178,7 +187,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
             child: RepaintBoundary(
               child: _buildDesktopRankings(
                 context,
-                _sortedRankings,
+                sortedRankings,
                 state,
                 cubit,
               ),

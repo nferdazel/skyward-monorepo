@@ -1,3 +1,4 @@
+import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants/app_strings.dart';
@@ -7,7 +8,7 @@ import '../../../../core/utils/app_error.dart';
 import '../../../../core/utils/dev_mode_manager.dart';
 import '../../data/settings_gateway.dart';
 
-class SettingsState {
+class SettingsState with EquatableMixin {
   static const Object _unset = Object();
 
   final double uiScale;
@@ -69,6 +70,21 @@ class SettingsState {
       fareMultiplier: fareMultiplier ?? this.fareMultiplier,
     );
   }
+
+  @override
+  List<Object?> get props => [
+    uiScale,
+    airports,
+    isLoadingAirports,
+    selectedHq,
+    groundingThreshold,
+    isSaving,
+    errorMessage,
+    isSaveSuccess,
+    seatPreset,
+    autoRepairThreshold,
+    fareMultiplier,
+  ];
 }
 
 class SettingsCubit extends Cubit<SettingsState> {
@@ -85,14 +101,17 @@ class SettingsCubit extends Cubit<SettingsState> {
       super(const SettingsState());
 
   void setUiScale(double scale) {
+    if (state.uiScale == scale) return;
     emit(state.copyWith(uiScale: scale));
   }
 
   void setHq(String hq) {
+    if (state.selectedHq == hq) return;
     emit(state.copyWith(selectedHq: hq));
   }
 
   void setGroundingThreshold(double threshold) {
+    if (state.groundingThreshold == threshold) return;
     emit(state.copyWith(groundingThreshold: threshold));
   }
 
@@ -288,6 +307,10 @@ class SettingsCubit extends Cubit<SettingsState> {
       );
       return false;
     }
+  }
+
+  Future<Map<String, dynamic>> loadUserProfile(String userId) {
+    return _gateway.loadUserProfile(userId);
   }
 
   /// Permanently delete the authenticated user's account and all data.

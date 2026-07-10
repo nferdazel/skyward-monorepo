@@ -473,12 +473,15 @@ class _RoutesViewState extends State<RoutesView> {
               itemBuilder: (context, index) {
                 final route = routes[index];
                 final isSelected = route.id == _selectedRouteId;
-                return _buildRouteCard(
-                  context,
-                  route,
-                  isSelected,
-                  autoGroundingThreshold,
-                  userId,
+                return KeyedSubtree(
+                  key: ValueKey(route.id),
+                  child: _buildRouteCard(
+                    context,
+                    route,
+                    isSelected,
+                    autoGroundingThreshold,
+                    userId,
+                  ),
                 );
               },
             ),

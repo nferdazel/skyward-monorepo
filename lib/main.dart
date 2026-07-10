@@ -42,6 +42,7 @@ class MyApp extends StatelessWidget {
         BlocProvider<SettingsCubit>(create: (context) => SettingsCubit()),
       ],
       child: BlocBuilder<SettingsCubit, SettingsState>(
+        buildWhen: (prev, curr) => prev.uiScale != curr.uiScale,
         builder: (context, settingsState) {
           return MaterialApp(
             title: 'SKYWARD',
