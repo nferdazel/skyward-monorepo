@@ -178,6 +178,7 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
 
   bool _isTicketSales(String category, String subcategory) {
     return category == 'revenue' ||
+        subcategory == 'ticket_revenue' ||
         subcategory == 'route_revenue' ||
         subcategory == 'cargo_revenue';
   }

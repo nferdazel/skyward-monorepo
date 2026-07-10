@@ -16,7 +16,7 @@ class IfrsReportBuilder {
       if (txn.transactionType != 'credit') continue;
       final sub = txn.ifrsSubcategory ?? '';
       final amt = txn.amount.abs();
-      if (sub == 'route_revenue') {
+      if (sub == 'ticket_revenue' || sub == 'route_revenue') {
         ticketSales += amt;
       } else if (sub == 'cargo_revenue') {
         cargoRevenue += amt;
@@ -113,7 +113,7 @@ class IfrsReportBuilder {
       final amt = txn.amount.abs();
       // Revenue inflows (including cargo)
       if (txn.transactionType == 'credit' &&
-          (cat == 'revenue' || sub == 'route_revenue' || sub == 'cargo_revenue')) {
+          (cat == 'revenue' || sub == 'ticket_revenue' || sub == 'route_revenue' || sub == 'cargo_revenue')) {
         revenueInflows += amt;
       }
       // Operating outflows (cogs + opex)
