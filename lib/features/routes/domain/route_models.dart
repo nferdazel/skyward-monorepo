@@ -3,6 +3,13 @@ import 'dart:math';
 import '../../../core/constants/game_constants.dart';
 import '../../fleet/domain/fleet_models.dart';
 
+// NOTE: Client-side route economics are planning estimates for UI display.
+// The authoritative server-side calculations live in get_route_performance()
+// (SQL), which includes cargo revenue (5% of ticket revenue), fuel/crew/
+// maintenance shock event multipliers, and uses the shared simulation engine.
+// These Dart formulas intentionally omit those factors for simpler UI preview.
+// Do not treat these as authoritative financial figures.
+
 class RouteMaintenancePreview {
   final int allocatedFlightsPerWeek;
   final int maxFlightsPerWeek;
