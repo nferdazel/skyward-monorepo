@@ -5,9 +5,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_strings.dart';
-import '../../../../core/utils/app_formatters.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/condition_colors.dart';
+import '../../../../core/utils/app_formatters.dart';
 import '../../../../core/utils/lazy_tab_cubit.dart';
 import '../../../../core/utils/perf_debug.dart';
 import '../../../../presentation/theme/app_spacing.dart';
@@ -22,19 +22,19 @@ import '../../../../presentation/widgets/app_info_strip.dart';
 import '../../../../presentation/widgets/app_labeled_value.dart';
 import '../../../../presentation/widgets/app_multi_select_field.dart';
 import '../../../../presentation/widgets/app_snackbar.dart';
+import '../../../../presentation/widgets/app_tab_item.dart';
 import '../../../../presentation/widgets/app_table_cells.dart';
 import '../../../../presentation/widgets/app_table_icon_action.dart';
 import '../../../../presentation/widgets/app_table_shell.dart';
 import '../../../../presentation/widgets/segmented_progress_bar.dart';
-import '../../../../presentation/widgets/app_tab_item.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
+import '../../../bank/presentation/cubit/bank_cubit.dart';
+import '../../../bank/presentation/cubit/bank_state.dart';
 import '../../../finance/presentation/cubit/finance_cubit.dart';
 import '../../../routes/presentation/cubit/routes_cubit.dart';
 import '../../../routes/presentation/cubit/routes_state.dart';
 import '../../../simulation/presentation/cubit/simulation_cubit.dart';
-import '../../../bank/presentation/cubit/bank_cubit.dart';
-import '../../../bank/presentation/cubit/bank_state.dart';
 import '../../domain/fleet_models.dart';
 import '../cubit/fleet_cubit.dart';
 import '../cubit/fleet_state.dart';
@@ -1558,11 +1558,13 @@ class _FleetViewState extends State<FleetView>
                         onPressed: !isEligible
                             ? null
                             : () async {
-                                final success = await context.read<BankCubit>().financeAircraft(
-                                  model.id,
-                                  downPaymentPct,
-                                  termMonths,
-                                );
+                                final success = await context
+                                    .read<BankCubit>()
+                                    .financeAircraft(
+                                      model.id,
+                                      downPaymentPct,
+                                      termMonths,
+                                    );
                                 if (success && context.mounted) {
                                   await _refreshAuthoritativeSimulationState(
                                     context,
