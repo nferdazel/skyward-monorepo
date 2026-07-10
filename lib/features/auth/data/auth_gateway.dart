@@ -1,17 +1,20 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../../../../core/database/supabase_client.dart';
 import '../domain/user_model.dart';
 
 class AuthGatewayException implements Exception {
   final String message;
+  final StackTrace? stackTrace;
 
-  const AuthGatewayException(this.message);
+  const AuthGatewayException(this.message, [this.stackTrace]);
 
   @override
   String toString() => message;
 }
 
 class AuthSessionPayload {
-  final User user;
+  final AppUser user;
   final String token;
 
   const AuthSessionPayload({
@@ -47,19 +50,25 @@ class SupabaseAuthGateway implements AuthGateway {
 
   @override
   Future<AuthSessionPayload?> restoreSession() async {
-    final client = SupabaseManager.maybeClient;
-    if (client == null) {
-      return null;
-    }
+    try {
+      final client = SupabaseManager.maybeClient;
+      if (client == null) {
+        return null;
+      }
 
-    final session = client.auth.currentSession;
-    final authUserId = session?.user.id;
-    if (session == null || authUserId == null) {
-      return null;
-    }
+      final session = client.auth.currentSession;
+      final authUserId = session?.user.id;
+      if (session == null || authUserId == null) {
+        return null;
+      }
 
-    final user = await _loadUserProfile(authUserId);
-    return AuthSessionPayload(user: user, token: session.accessToken);
+      final user = await _loadUserProfile(authUserId);
+      return AuthSessionPayload(user: user, token: session.accessToken);
+    } on PostgrestException catch (e, stack) {
+      throw AuthGatewayException(e.message, stack);
+    } catch (e, stack) {
+      throw AuthGatewayException(e.toString(), stack);
+    }
   }
 
   @override
@@ -69,32 +78,40 @@ class SupabaseAuthGateway implements AuthGateway {
     required String companyName,
     required String ceoName,
   }) async {
-    final response = await SupabaseManager.client.functions.invoke(
-      'register-with-username',
-      body: {
-        'username': username,
-        'password': password,
-        'companyName': companyName,
-        'ceoName': ceoName,
-      },
-    );
-
-    final data = response.data;
-    final payload = data is Map<String, dynamic>
-        ? data
-        : data is Map
-            ? Map<String, dynamic>.from(data)
-            : <String, dynamic>{};
-
-    if (response.status >= 400 ||
-        payload['success'] == false ||
-        payload['success'] == null) {
-      throw AuthGatewayException(
-        payload['message'] as String? ?? 'Registration failed.',
+    try {
+      final response = await SupabaseManager.client.functions.invoke(
+        'register-with-username',
+        body: {
+          'username': username,
+          'password': password,
+          'companyName': companyName,
+          'ceoName': ceoName,
+        },
       );
-    }
 
-    return login(username: username, password: password);
+      final data = response.data;
+      final payload = data is Map<String, dynamic>
+          ? data
+          : data is Map
+              ? Map<String, dynamic>.from(data)
+              : <String, dynamic>{};
+
+      if (response.status >= 400 ||
+          payload['success'] == false ||
+          payload['success'] == null) {
+        throw AuthGatewayException(
+          payload['message'] as String? ?? 'Registration failed.',
+        );
+      }
+
+      return login(username: username, password: password);
+    } on AuthGatewayException {
+      rethrow;
+    } on PostgrestException catch (e, stack) {
+      throw AuthGatewayException(e.message, stack);
+    } catch (e, stack) {
+      throw AuthGatewayException(e.toString(), stack);
+    }
   }
 
   @override
@@ -102,28 +119,42 @@ class SupabaseAuthGateway implements AuthGateway {
     required String username,
     required String password,
   }) async {
-    final response = await SupabaseManager.client.auth.signInWithPassword(
-      email: _buildSyntheticAuthEmail(username),
-      password: password,
-    );
+    try {
+      final response = await SupabaseManager.client.auth.signInWithPassword(
+        email: _buildSyntheticAuthEmail(username),
+        password: password,
+      );
 
-    final session = response.session;
-    final authUserId = response.user?.id;
-    if (session == null || authUserId == null) {
-      throw const AuthGatewayException('Login failed.');
+      final session = response.session;
+      final authUserId = response.user?.id;
+      if (session == null || authUserId == null) {
+        throw const AuthGatewayException('Login failed.');
+      }
+
+      final user = await _loadUserProfile(authUserId);
+      return AuthSessionPayload(user: user, token: session.accessToken);
+    } on AuthGatewayException {
+      rethrow;
+    } on PostgrestException catch (e, stack) {
+      throw AuthGatewayException(e.message, stack);
+    } catch (e, stack) {
+      throw AuthGatewayException(e.toString(), stack);
     }
-
-    final user = await _loadUserProfile(authUserId);
-    return AuthSessionPayload(user: user, token: session.accessToken);
   }
 
   @override
-  Future<void> logout() {
-    final client = SupabaseManager.maybeClient;
-    if (client == null) {
-      return Future.value();
+  Future<void> logout() async {
+    try {
+      final client = SupabaseManager.maybeClient;
+      if (client == null) {
+        return;
+      }
+      await client.auth.signOut();
+    } on PostgrestException catch (e, stack) {
+      throw AuthGatewayException(e.message, stack);
+    } catch (e, stack) {
+      throw AuthGatewayException(e.toString(), stack);
     }
-    return client.auth.signOut();
   }
 
   @override
@@ -134,32 +165,40 @@ class SupabaseAuthGateway implements AuthGateway {
     String ceoName = '',
     String hqAirportIata = '',
   }) async {
-    final response = await SupabaseManager.client.functions.invoke(
-      'reset-password',
-      body: {
-        'username': username,
-        'newPassword': newPassword,
-        'companyName': companyName,
-        'ceoName': ceoName,
-        'hqAirportIata': hqAirportIata,
-      },
-    );
-
-    final data = response.data;
-    final payload = data is Map<String, dynamic>
-        ? data
-        : data is Map
-            ? Map<String, dynamic>.from(data)
-            : <String, dynamic>{};
-
-    if (response.status >= 400 || payload['success'] != true) {
-      throw AuthGatewayException(
-        payload['message'] as String? ?? 'Password reset failed.',
+    try {
+      final response = await SupabaseManager.client.functions.invoke(
+        'reset-password',
+        body: {
+          'username': username,
+          'newPassword': newPassword,
+          'companyName': companyName,
+          'ceoName': ceoName,
+          'hqAirportIata': hqAirportIata,
+        },
       );
+
+      final data = response.data;
+      final payload = data is Map<String, dynamic>
+          ? data
+          : data is Map
+              ? Map<String, dynamic>.from(data)
+              : <String, dynamic>{};
+
+      if (response.status >= 400 || payload['success'] != true) {
+        throw AuthGatewayException(
+          payload['message'] as String? ?? 'Password reset failed.',
+        );
+      }
+    } on AuthGatewayException {
+      rethrow;
+    } on PostgrestException catch (e, stack) {
+      throw AuthGatewayException(e.message, stack);
+    } catch (e, stack) {
+      throw AuthGatewayException(e.toString(), stack);
     }
   }
 
-  Future<User> _loadUserProfile(String authUserId) async {
+  Future<AppUser> _loadUserProfile(String authUserId) async {
     final response = await SupabaseManager.client
         .from('users')
         .select(
@@ -177,7 +216,7 @@ class SupabaseAuthGateway implements AuthGateway {
       );
     }
 
-    return User.fromMap(Map<String, dynamic>.from(response));
+    return AppUser.fromMap(Map<String, dynamic>.from(response));
   }
 
   String _buildSyntheticAuthEmail(String username) {

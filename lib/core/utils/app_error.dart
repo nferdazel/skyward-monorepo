@@ -1,3 +1,11 @@
+import '../../features/auth/data/auth_gateway.dart';
+import '../../features/bank/data/bank_gateway.dart';
+import '../../features/fleet/data/fleet_gateway.dart';
+import '../../features/finance/data/finance_gateway.dart';
+import '../../features/leaderboard/data/leaderboard_gateway.dart';
+import '../../features/routes/data/routes_gateway.dart';
+import '../../features/settings/data/settings_gateway.dart';
+import '../../features/simulation/data/simulation_gateway.dart';
 import '../database/supabase_client.dart';
 
 /// Standardized error handling utility for all cubits.
@@ -10,6 +18,16 @@ class AppError {
   /// a cleaned-up human-readable string. Falls back to [fallback] when no
   /// specific pattern is matched.
   static String extractMessage(dynamic error, String fallback) {
+    // Gateway exceptions — return the message directly
+    if (error is AuthGatewayException) return error.message;
+    if (error is FleetGatewayException) return error.message;
+    if (error is RoutesGatewayException) return error.message;
+    if (error is SimulationGatewayException) return error.message;
+    if (error is FinanceGatewayException) return error.message;
+    if (error is LeaderboardGatewayException) return error.message;
+    if (error is SettingsGatewayException) return error.message;
+    if (error is BankGatewayException) return error.message;
+
     final raw = error.toString();
 
     // Network layer
@@ -24,15 +42,6 @@ class AppError {
     if (raw.contains('PostgrestException')) {
       final match = RegExp(r'message: (.+?)(?:,|\})').firstMatch(raw);
       return match?.group(1)?.trim() ?? fallback;
-    }
-
-    // BankGatewayException — extract the wrapped message
-    if (error is Exception && raw.startsWith('BankGatewayException')) {
-      final bracketEnd = raw.indexOf(']: ');
-      if (bracketEnd != -1) {
-        final inner = raw.substring(bracketEnd + 3);
-        return extractMessage(inner, fallback);
-      }
     }
 
     return fallback;

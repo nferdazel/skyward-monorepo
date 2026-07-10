@@ -48,7 +48,7 @@ class AuthCubit extends Cubit<AuthState> {
       if (DevModeManager.isDevMode) {
         // Dev Fallback Mode
         await Future.delayed(const Duration(milliseconds: 800));
-        final mockUser = User(
+        final mockUser = AppUser(
           id: 'dev-user-uuid',
           username: username,
           companyName: companyName,
@@ -83,7 +83,7 @@ class AuthCubit extends Cubit<AuthState> {
     try {
       if (DevModeManager.isDevMode) {
         await Future.delayed(const Duration(milliseconds: 800));
-        final mockUser = User(
+        final mockUser = AppUser(
           id: 'dev-user-uuid',
           username: username,
           companyName: '$username Airlines',
@@ -126,7 +126,7 @@ class AuthCubit extends Cubit<AuthState> {
     }
   }
 
-  void updateActiveUser(User updatedUser) {
+  void updateActiveUser(AppUser updatedUser) {
     if (state is AuthAuthenticated) {
       final currentToken = (state as AuthAuthenticated).token;
       emit(AuthAuthenticated(user: updatedUser, token: currentToken));
@@ -134,7 +134,7 @@ class AuthCubit extends Cubit<AuthState> {
   }
 
   void _devFallbackLogin(String token) {
-    final mockUser = User(
+    final mockUser = AppUser(
       id: 'dev-user-uuid',
       username: 'devmode',
       companyName: 'Skyward Star Airlines',
@@ -151,13 +151,18 @@ class AuthCubit extends Cubit<AuthState> {
     String ceoName = '',
     String hqAirportIata = '',
   }) async {
-    await _authGateway.resetPassword(
-      username: username,
-      newPassword: newPassword,
-      companyName: companyName,
-      ceoName: ceoName,
-      hqAirportIata: hqAirportIata,
-    );
+    try {
+      await _authGateway.resetPassword(
+        username: username,
+        newPassword: newPassword,
+        companyName: companyName,
+        ceoName: ceoName,
+        hqAirportIata: hqAirportIata,
+      );
+    } catch (e, stack) {
+      SupabaseManager.logError('reset_password', e, stack);
+      rethrow;
+    }
   }
 
   String _extractErrorMessage(Object error) {
