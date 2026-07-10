@@ -64,6 +64,20 @@ Chronology note from the current audit pass:
 - `bank_transactions` itself has no `created_at`, so do not use old queries
   that try to break ties with a non-existent wall-clock column
 
+## 3b. IFRS subcategory distribution
+
+Use this to verify the IFRS classification of bank transactions. The
+`ifrs_category` field serves dual purpose for income statement and cash flow
+reporting.
+
+```sql
+SELECT ifrs_category, ifrs_subcategory, COUNT(*), SUM(amount)
+FROM bank_transactions
+WHERE user_id = '<your_user_id>'
+GROUP BY ifrs_category, ifrs_subcategory
+ORDER BY ifrs_category, ifrs_subcategory;
+```
+
 ## 4. Fleet condition and status
 
 ```sql

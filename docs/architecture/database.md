@@ -122,6 +122,22 @@ Operational rule:
   and route/simulation financial effects are expected to leave an auditable row here
 - `game_date` is in-game time, not wall-clock time; comparing it directly to
   real-world timestamps such as `loans.taken_at` is misleading
+- `ifrs_category` serves dual purpose: it maps to both income statement line
+  items (`revenue`, `cogs`, `opex`) and cash flow categories (`investing`,
+  `financing`)
+
+Valid IFRS subcategory values:
+- `revenue`: `ticket_revenue`, `cargo_revenue`
+- `cogs`: `fuel_cost`, `crew_cost`, `maintenance_cost`
+- `opex`: `aircraft_lease`, `aircraft_lease_idle`
+- `investing`: `aircraft_purchase`, `aircraft_purchase_deposit`,
+  `aircraft_lease_deposit`, `aircraft_sale`
+- `financing`: `loan_disbursement`, `loan_repayment`, `financing_payment`,
+  `financing_late_fee`, `loan_refinance`
+
+**Migration note:** Database migrations currently write older subcategory values
+(`ticket_revenue` for combined revenue, `fuel`/`crew`/`maintenance` for COGS).
+The Flutter IFRS report builder expects the newer values listed above.
 
 ### `fleet_aircraft`
 

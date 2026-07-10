@@ -332,6 +332,56 @@ This is the live Flutter-to-Supabase contract surface.
   - `regulatory` events were removed (migration 42) — they were generated but
     never consumed by the simulation
 
+### IFRS categories
+
+`bank_transactions` uses a simplified IFRS-inspired classification for income
+statement and cash flow reporting. The `ifrs_category` field serves dual purpose:
+it maps to both income statement line items and cash flow statement categories.
+
+**Income statement categories:**
+- `revenue` — operating income (ticket revenue and cargo revenue as separate subcategories)
+- `cogs` — cost of goods sold (fuel, crew, maintenance — simplified from strict IFRS where crew/maintenance would be OpEx)
+- `opex` — operating expenses (aircraft lease carrying costs)
+- `financing` — interest and loan-related flows
+
+**Cash flow categories:**
+- `investing` — aircraft acquisition and disposal
+- `financing` — loan origination and repayment
+
+**Valid subcategory values by category:**
+
+| `ifrs_category` | `ifrs_subcategory` | Description |
+|-----------------|-------------------|-------------|
+| `revenue` | `ticket_revenue` | Passenger ticket revenue |
+| `revenue` | `cargo_revenue` | Cargo revenue (5% of ticket revenue) |
+| `cogs` | `fuel_cost` | Fuel cost per route |
+| `cogs` | `crew_cost` | Crew cost per route ($350/flight-hour default) |
+| `cogs` | `maintenance_cost` | Maintenance cost per route + repair costs |
+| `opex` | `aircraft_lease` | Monthly lease carrying costs for idle aircraft |
+| `opex` | `aircraft_lease_idle` | Lease costs for unassigned leased aircraft |
+| `investing` | `aircraft_purchase` | Full aircraft purchase |
+| `investing` | `aircraft_purchase_deposit` | Down payment for financed aircraft |
+| `investing` | `aircraft_lease_deposit` | Lease security deposit |
+| `investing` | `aircraft_sale` | Aircraft disposal proceeds |
+| `financing` | `loan_disbursement` | Loan principal received |
+| `financing` | `loan_repayment` | Loan principal + interest payments |
+| `financing` | `financing_payment` | Aircraft financing payments |
+| `financing` | `financing_late_fee` | Late payment penalties |
+| `financing` | `loan_refinance` | Refinance balance adjustments |
+
+**IFRS simplification note:** In strict IFRS, crew and maintenance costs would be
+classified as operating expenses (OpEx) under employee costs and maintenance
+provisions respectively. Skyward simplifies these as COGS to provide a clearer
+route-level profitability view, since these costs are directly attributable to
+flight operations.
+
+**Migration note:** The database migrations currently write `ticket_revenue` for
+combined passenger+cargo revenue, and `fuel`/`crew`/`maintenance` for COGS
+subcategories. The Flutter IFRS report builder expects the newer values
+(`cargo_revenue`, `fuel_cost`, `crew_cost`, `maintenance_cost`). A migration is
+needed to update existing transaction rows and align the database writes with the
+Flutter expectations.
+
 `deactivate_expired_events`
 - caller: `process_world_tick` after advancing the season clock
 - params:
