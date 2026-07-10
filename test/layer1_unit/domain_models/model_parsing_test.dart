@@ -18,7 +18,7 @@ void main() {
         'hq_airport_iata': 'CGK',
       };
 
-      final user = User.fromMap(map);
+      final user = AppUser.fromMap(map);
       expect(user.id, 'user-123');
       expect(user.username, 'ceo_sky');
       expect(user.companyName, 'Skyward Airways');
@@ -29,7 +29,7 @@ void main() {
     });
 
     test('User.fromMap handles missing/null values safely', () {
-      final user = User.fromMap({});
+      final user = AppUser.fromMap({});
       expect(user.id, '');
       expect(user.username, '');
       expect(user.companyName, '');

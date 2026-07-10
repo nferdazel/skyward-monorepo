@@ -38,6 +38,12 @@ class MockSettingsGateway implements SettingsGateway {
     if (shouldThrow) throw Exception(throwMessage ?? 'Test delete error');
     return deleteAccountToReturn;
   }
+
+  @override
+  Future<Map<String, dynamic>> loadUserProfile(String userId) async {
+    if (shouldThrow) throw Exception(throwMessage ?? 'Test profile error');
+    return const {};
+  }
 }
 
 // =============================================================================

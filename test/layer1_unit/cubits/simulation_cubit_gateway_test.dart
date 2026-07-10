@@ -54,6 +54,9 @@ class MockSimulationGateway implements SimulationGateway {
   Future<double> getUserBalance(String userId) async {
     return balanceToReturn;
   }
+
+  @override
+  Future<void> markOnboardingComplete(String authUserId) async {}
 }
 
 /// Gateway whose futures are controlled by pre-created Completers.
@@ -85,6 +88,9 @@ class DelayedSimulationGateway implements SimulationGateway {
 
   @override
   Future<double> getUserBalance(String userId) => balanceCompleter.future;
+
+  @override
+  Future<void> markOnboardingComplete(String authUserId) async {}
 }
 
 // =============================================================================
@@ -119,9 +125,6 @@ void main() {
       SupabaseManager.supabaseAnonKey = 'test-anon-key-not-dev-mode';
 
       gateway = MockSimulationGateway()..profileToReturn = _mockUserProfile;
-
-      // Reset the static cache so tests don't interfere with each other.
-      SimulationCubit.clearSettingsCache();
     });
 
     tearDown(() {
@@ -259,7 +262,7 @@ void main() {
         'applyBackendUserUpdate: updates state with new user data',
         build: () => SimulationCubit(gateway: gateway),
         act: (cubit) {
-          final updatedUser = User(
+          final updatedUser = AppUser(
             id: 'user-1',
             username: 'test_ceo',
             companyName: 'Test Airlines',
@@ -324,10 +327,9 @@ void main() {
           await cubit.syncWithDatabase();
           expect(gateway.loadGameSettingsCallCount, 1);
 
-          // Simulate cache expiry by backdating the static cache time.
-          // We access the private static fields via the clearSettingsCache
-          // helper, then re-populate with a stale timestamp.
-          SimulationCubit.clearSettingsCache();
+          // Simulate cache expiry by clearing the instance cache.
+          // We access the cache via the clearSettingsCache helper.
+          cubit.clearSettingsCache();
           // Force a re-populate so the next call sees a stale entry.
           // We do a sync which will call loadGameSettings again (cache was cleared).
           await cubit.syncWithDatabase();
@@ -347,7 +349,7 @@ void main() {
           expect(gateway.loadGameSettingsCallCount, 1);
 
           // Clear cache explicitly — next sync should fetch fresh.
-          SimulationCubit.clearSettingsCache();
+          cubit.clearSettingsCache();
 
           await cubit.syncWithDatabase();
           expect(gateway.loadGameSettingsCallCount, 2);

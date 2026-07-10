@@ -46,7 +46,7 @@ void main() {
         'updateActiveUser emits AuthAuthenticated with updated user properties',
         build: () => authCubit,
         seed: () => AuthAuthenticated(
-          user: User(
+          user: AppUser(
             id: 'u-1',
             username: 'chief',
             companyName: 'Chief Airways',
@@ -56,7 +56,7 @@ void main() {
           token: 'token-abc',
         ),
         act: (cubit) {
-          final updated = User(
+          final updated = AppUser(
             id: 'u-1',
             username: 'chief',
             companyName: 'Chief Airways',
@@ -99,7 +99,7 @@ void main() {
         build: () => simulationCubit,
         act: (cubit) {
           cubit.applyBackendUserUpdate(
-            User(
+            AppUser(
               id: 'u-1',
               username: 'chief',
               companyName: 'Chief Airways',

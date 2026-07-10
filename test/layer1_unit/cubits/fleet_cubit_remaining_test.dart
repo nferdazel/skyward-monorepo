@@ -15,11 +15,16 @@ class MockFleetGateway implements FleetGateway {
   List<dynamic> rpcToReturn = [];
   List<dynamic> latestAircraftToReturn = [];
   Map<String, dynamic> singleAircraftToReturn = {};
+  List<dynamic>? fleetToReturnAfterRpc;
   bool shouldThrow = false;
+  int _rpcCallCount = 0;
 
   @override
   Future<List<dynamic>> loadFleet(String userId) async {
     if (shouldThrow) throw Exception('Test fleet load error');
+    if (fleetToReturnAfterRpc != null && _rpcCallCount > 0) {
+      return fleetToReturnAfterRpc!;
+    }
     return fleetToReturn;
   }
 
@@ -50,12 +55,14 @@ class MockFleetGateway implements FleetGateway {
   @override
   Future<List<dynamic>> sellAircraft(Map<String, dynamic> params) async {
     if (shouldThrow) throw Exception('Test sell error');
+    _rpcCallCount++;
     return rpcToReturn;
   }
 
   @override
   Future<List<dynamic>> terminateLease(Map<String, dynamic> params) async {
     if (shouldThrow) throw Exception('Test terminate error');
+    _rpcCallCount++;
     return rpcToReturn;
   }
 
@@ -531,6 +538,7 @@ void main() {
           final gateway = MockFleetGateway()
             ..catalogToReturn = [_mockModelMap]
             ..fleetToReturn = [_mockFleetMap]
+            ..fleetToReturnAfterRpc = []
             ..rpcToReturn = [
               <String, dynamic>{
                 'success': true,
@@ -688,6 +696,7 @@ void main() {
           final gateway = MockFleetGateway()
             ..catalogToReturn = [_mockModelMap]
             ..fleetToReturn = [_mockFleetMap, _mockLeasedFleetMap]
+            ..fleetToReturnAfterRpc = [_mockFleetMap]
             ..rpcToReturn = [
               <String, dynamic>{
                 'success': true,

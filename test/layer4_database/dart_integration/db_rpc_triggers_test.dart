@@ -45,7 +45,7 @@ void main() {
         'game_current_time': '2026-05-30T12:00:00Z',
       };
       
-      final user = User.fromMap(userMap);
+      final user = AppUser.fromMap(userMap);
       expect(user.id, 'user-uuid-1');
       // Cash is now sourced from bank_accounts.balance, not users.cash
       expect(user.netWorth, 0.0);

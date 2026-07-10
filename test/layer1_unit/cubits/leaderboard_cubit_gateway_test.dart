@@ -803,8 +803,7 @@ void main() {
         expect: () => [
           const LeaderboardLoading(),
           isA<LeaderboardLoaded>(),
-          // Silent refresh should NOT emit LeaderboardLoading
-          isA<LeaderboardLoaded>(),
+          // Silent refresh with same data is deduplicated by Equatable
         ],
       );
 

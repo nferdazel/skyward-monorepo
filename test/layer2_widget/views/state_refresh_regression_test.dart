@@ -38,7 +38,7 @@ class TestSimulationCubit extends SimulationCubit {
   }
 
   @override
-  Future<User?> syncWithDatabase() async {
+  Future<AppUser?> syncWithDatabase() async {
     syncCalls++;
     return null;
   }
@@ -209,12 +209,12 @@ class TestSettingsCubit extends SettingsCubit {
   }
 }
 
-User _testUser({
+AppUser _testUser({
   String companyName = 'Test Airlines',
   String hqAirportIata = 'SIN',
   double autoGroundingThreshold = 30.0,
 }) {
-  return User(
+  return AppUser(
     id: '123e4567-e89b-12d3-a456-426614174000',
     username: 'testpilot',
     companyName: companyName,

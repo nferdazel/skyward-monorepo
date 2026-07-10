@@ -27,7 +27,7 @@ void main() {
 
     authCubit.emit(
       AuthAuthenticated(
-        user: User(
+        user: AppUser(
           id: 'test-user-id',
           username: 'testpilot',
           companyName: 'Test Airlines',
@@ -77,7 +77,7 @@ void main() {
 
     authCubit.emit(
       AuthAuthenticated(
-        user: User(
+        user: AppUser(
           id: 'test-user-id',
           username: 'testpilot',
           companyName: 'Test Airlines',

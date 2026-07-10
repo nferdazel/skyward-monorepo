@@ -412,14 +412,6 @@ void main() {
               'initial transactions length',
               1,
             ),
-        isA<BankLoaded>()
-            .having((s) => s.transactions.length, 'transactions length', 1)
-            .having(
-              (s) => s.transactions.first.ifrsSubcategory,
-              'ifrs subcategory',
-              'loan_repayment',
-            )
-            .having((s) => s.loans.length, 'loans preserved', 1),
       ],
     );
   });

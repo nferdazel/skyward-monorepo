@@ -10,7 +10,7 @@ import 'package:skyward/features/fleet/presentation/cubit/fleet_cubit.dart';
 import 'package:skyward/features/fleet/presentation/cubit/fleet_state.dart';
 import 'package:skyward/features/routes/presentation/cubit/routes_cubit.dart';
 import 'package:skyward/features/routes/presentation/cubit/routes_state.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' hide User, AuthState;
+import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
 
 // Test-only subclass of AuthCubit to safely seed initial authenticated states
 class SeedTestAuthCubit extends AuthCubit {
@@ -103,7 +103,7 @@ void main() {
     late RoutesCubit routesCubit;
     late FakeSupabaseClient fakeClient;
 
-    final mockUser = User(
+    final mockUser = AppUser(
       id: 'u-99',
       username: 'react_pilot',
       companyName: 'Reactive Air',

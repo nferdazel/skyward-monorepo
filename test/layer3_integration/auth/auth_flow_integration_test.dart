@@ -89,7 +89,7 @@ void main() {
               expect(username, 'pilot1');
               expect(password, 'password123');
               return AuthSessionPayload(
-                user: User(
+                user: AppUser(
                   id: 'user-123',
                   username: 'pilot1',
                   companyName: 'Pilot Airways',
@@ -158,7 +158,7 @@ void main() {
         authCubit = AuthCubit(
           authGateway: FakeAuthGateway(
             onRestoreSession: () async => AuthSessionPayload(
-              user: User(
+              user: AppUser(
                 id: 'user-123',
                 username: 'pilot1',
                 companyName: 'Pilot Airways',
@@ -208,7 +208,7 @@ void main() {
               expect(username, 'newpilot');
               expect(companyName, 'New Pilot Air');
               return AuthSessionPayload(
-                user: User(
+                user: AppUser(
                   id: 'user-789',
                   username: 'newpilot',
                   companyName: 'New Pilot Air',
