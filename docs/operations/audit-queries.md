@@ -1,6 +1,6 @@
 # Skyward Live Backend Audit Queries
 
-Last verified on 2026-06-27.
+Last verified on 2026-07-09.
 
 Use these against the linked Supabase project when you want to inspect runtime
 behavior without changing application code.
@@ -355,6 +355,19 @@ from get_owner_route_optimizer(
   true,
   true
 );
+```
+
+## 19b. Route performance analytics
+
+`get_route_performance()` returns per-route financial performance for both
+players and bots. This is the authoritative server-side calculation that
+includes cargo revenue, fuel/crew/maintenance costs, and shock event
+multipliers.
+
+```sql
+select *
+from get_route_performance('<your_user_id>')
+order by weekly_profit desc;
 ```
 
 ## 20. Native SQL audit pass

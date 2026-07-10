@@ -10,14 +10,14 @@ Skyward is a Flutter airline-tycoon simulation with a Supabase/Postgres backend.
 The app handles UI, local session flow, and command dispatch. The backend owns
 authoritative simulation, economy, world time, and operational validation.
 
-Last verified against code, docs, and linked live audit state on `2026-06-27`.
+Last verified against code, docs, and linked live audit state on `2026-07-09`.
 
 ## Current shape
 
 - Flutter frontend with feature-first modules
 - Cubit-only app state
 - Supabase-backed auth, simulation, finance, routes, fleet, leaderboard, bank,
-  and achievement data surfaces
+  and settings data surfaces
 - backend-owned world clock through `season_clock`
 - bank-centric cash model:
   - `bank_accounts` is canonical cash

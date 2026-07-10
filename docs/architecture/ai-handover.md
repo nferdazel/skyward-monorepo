@@ -1,6 +1,6 @@
 # Skyward AI Handover
 
-Last verified against code on 2026-06-27.
+Last verified against code on 2026-07-09.
 
 ## Current shape
 
@@ -81,8 +81,8 @@ Security migration note:
 - Security Phase 2 adds a server-side username registration surface that
   creates auto-confirmed synthetic-email auth identities.
 - Live DB verification confirms `handle_new_auth_user()` is attached to
-  `auth.users`, but that attachment is not declared by the public migrations
-  alone.
+  `auth.users` via `on_auth_user_created` trigger (declared in migration
+  `20260709180000_declare_auth_trigger.sql`).
 - Security Phase 3 switches the Flutter auth flow to Supabase Auth sessions,
   while preserving the username-only UX through synthetic emails.
 - Security Phase 4 starts moving client-facing gameplay RPCs onto auth-bound
@@ -134,6 +134,11 @@ Recent work tightened:
   `refinance_loan`, and `get_credit_report`
 - actor-parity hardening now also shares bankruptcy side effects and repair
   side effects across player and bot mutation paths
+- migration 35 completes actor parity: `sell_aircraft`, `terminate_aircraft_lease`,
+  and `assign_aircraft_to_route` now delegate to shared helpers that both player
+  and bot paths use
+- bankruptcy parity regression from migration 33 is now fixed: `execute_bot_decisions()`
+  calls `apply_actor_bankruptcy_state()` instead of inline UPDATE statements
 - delete-account now has a live-proven end-to-end audit script
 - aircraft, bank, settings-save, and airline-reset flows now force
   authoritative follow-up reloads for the affected cubits instead of relying

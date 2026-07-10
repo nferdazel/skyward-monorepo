@@ -1,6 +1,6 @@
 # Skyward Architecture Baseline
 
-Last verified against code on 2026-06-27.
+Last verified against code on 2026-07-09.
 
 ## Application model
 
@@ -106,8 +106,9 @@ Skyward is now bank-centric:
 - Supabase Auth is the source of session truth
 - gameplay RPC wrappers resolve the player row from `auth.uid()`
 - app-facing reads are protected by RLS
-- live DB verification confirms `handle_new_auth_user()` is attached to `auth.users`
-- the repo's public migrations still do not declare that auth-side trigger attachment
+- live DB verification confirms `handle_new_auth_user()` is attached to
+  `auth.users` via `on_auth_user_created` trigger (declared in migration
+  `20260709180000`)
 
 ## Primary user-facing surfaces
 

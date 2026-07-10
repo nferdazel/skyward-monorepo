@@ -1,6 +1,6 @@
 # Skyward Backend Hardening Plan
 
-Last verified on 2026-06-27.
+Last verified on 2026-07-09.
 
 This document turns the current backend scorecard into an execution backlog.
 It is intentionally phase-based, with concrete scope, checks, and exit
@@ -26,7 +26,7 @@ Current emphasis:
 | Bank / ledger | 8.5/10 | Low |
 | Credit / loans | 8.5/10 | Low |
 | Fleet / routes mutation authority | 8.0/10 | Medium |
-| Bot / player parity | 7.5/10 | High |
+| Bot / player parity | 9.0/10 | Low |
 | Finance historical surfaces | 7.0/10 | High |
 | Auth / ownership / RLS | 8.0/10 | Medium |
 | Ops / audit surfaces | 8.0/10 | Medium |
@@ -114,11 +114,11 @@ parity is intended.
 
 ### Checklist
 
-- [ ] map all player mutation entrypoints against bot mutation entrypoints
-- [ ] classify each asymmetry as intentional or accidental
-- [ ] refactor accidental asymmetries through shared helpers
-- [ ] add regression coverage for each parity fix
-- [ ] document intentional asymmetries explicitly
+- [x] map all player mutation entrypoints against bot mutation entrypoints
+- [x] classify each asymmetry as intentional or accidental
+- [x] refactor accidental asymmetries through shared helpers
+- [x] add regression coverage for each parity fix
+- [x] document intentional asymmetries explicitly
 
 ### Current Progress
 
@@ -142,6 +142,14 @@ parity is intended.
 - this closes the currently proven accidental asymmetries in bankruptcy and
   repair side effects; the remaining Phase 2 task is documenting intentional
   bot-only behavior so future work does not "fix" designed differences
+- migration 35 (`20260709143000_actor_parity_hardening.sql`) completes Phase 2:
+  - restores bankruptcy parity regression from migration 33
+  - creates shared `sell_actor_aircraft()`, `terminate_actor_lease()`, and
+    `assign_actor_aircraft_to_route()` helpers
+  - routes all player-facing fleet/route RPCs through the same shared helpers
+    that bot decision paths use
+  - all fleet, route, and bank mutation paths are now unified between player
+    and bot
 
 ### Intentional Asymmetries
 
@@ -300,10 +308,10 @@ proves.
 
 ### Checklist
 
-- [ ] enumerate all live-proven but repo-undeclared behaviors
-- [ ] decide whether to migrate, document, or intentionally keep external
-- [ ] close auth bootstrap declaration gap where feasible
-- [ ] verify docs do not overstate what public migrations alone guarantee
+- [x] enumerate all live-proven but repo-undeclared behaviors
+- [x] decide whether to migrate, document, or intentionally keep external
+- [x] close auth bootstrap declaration gap where feasible
+- [x] verify docs do not overstate what public migrations alone guarantee
 
 ### Exit Criteria
 

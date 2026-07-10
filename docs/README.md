@@ -1,6 +1,6 @@
 # Skyward Docs
 
-Last verified on 2026-06-27.
+Last verified on 2026-07-09.
 
 This folder is the current maintenance record for Skyward's live runtime.
 It is intentionally organized by operational question, not by historical phase.
@@ -24,7 +24,8 @@ Live runtime characteristics:
   - `bank_transactions` is canonical money movement
 - auth-bound gameplay RPC wrappers using `auth.uid()`
 - username-only auth UX backed by synthetic auth emails
-- live `auth.users -> handle_new_auth_user()` bootstrap trigger, proven in the linked DB
+- live `auth.users -> handle_new_auth_user()` bootstrap trigger (declared in
+  migration `20260709180000_declare_auth_trigger.sql`)
 - shared season clock in `season_clock`
 - deterministic daily simulation boundaries for player and bot processing
 - route/fleet/bank/settings writes go through RPCs
@@ -96,6 +97,8 @@ Current repo migration set:
 - `31_use_game_clock_for_loan_mutations.sql`
 - `32_keep_lease_termination_on_exact_game_time.sql`
 - `33_backend_stability_fixes.sql`
+- `34_tick_configurability_and_fixes.sql`
+- `20260709143000_actor_parity_hardening.sql`
 
 High-level grouping:
 - `00`-`07`
@@ -115,6 +118,41 @@ High-level grouping:
   Backend stability: critical `refinance_loan()` regression fix, per-bot error
   handling in `execute_bot_decisions()`, migration of hardcoded magic numbers
   to `game_config`
+- `34`
+  Tick configurability: `tick_interval_seconds` and `max_catchup_ticks` via
+  `game_config`, day-boundary payment loop for multi-week catch-ups, human
+  `finance_aircraft` gets Regional-archetype default seats
+- `20260709143000`
+  Actor parity hardening: restores bankruptcy parity regression from migration
+  33, creates shared helpers for `sell_aircraft`, `terminate_aircraft_lease`,
+  and `assign_aircraft_to_route` so all fleet/route/bank mutation paths are
+  unified between player and bot
+- `20260709150000`
+  Bot realism pass: shared `get_route_performance()` function, smart route
+  deletion based on commercial performance, route optimization (aircraft
+  reassignment), secondary hub exploration, fleet diversity, lowered purchase
+  threshold, competitive pricing response, desperate stage recovery, active
+  loan repayment
+- `20260709160000`
+  Fix world_tick_log compaction: pg_cron fails to execute DELETE through
+  `compact_world_tick_log(false)` — add simpler `prune_world_tick_log()`
+  wrapper with no parameters; update cron job to use it
+- `20260709170000`
+  Fix round(double precision, integer) bug in get_route_performance() caused by
+  type propagation from distance_km; drop 4 confirmed dead functions
+  (compact_world_tick_log, get_world_tick_log_compaction_report, get_config_text,
+  calculate_effective_passenger_capacity)
+- `20260709180000`
+  Declare auth.users bootstrap trigger in repo (previously live-only, not declared
+  in public migrations)
+- `20260709190000`
+  Refactor execute_bot_decisions() into 7 focused sub-functions:
+  bot_evaluate_distress, bot_handle_repair, bot_handle_route_lifecycle,
+  bot_handle_fleet_growth, bot_handle_route_creation, bot_handle_pricing,
+  bot_handle_financial
+- `20260709200000`
+  Fix get_competitor_insights() to use canonical calculate_user_net_worth()
+  instead of stale users.net_worth column; add live fleet_size and route_count
 
 ## Standard Verification
 

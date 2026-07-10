@@ -1,6 +1,6 @@
 # Skyward Simulation Troubleshooting
 
-Last verified on 2026-06-27.
+Last verified on 2026-07-09.
 
 ## Operational checks
 

@@ -1,6 +1,6 @@
 # Skyward Database Design
 
-Last verified against code, migrations, and linked live schema on 2026-06-27.
+Last verified against code, migrations, and linked live schema on 2026-07-09.
 
 This file records the current public schema shape and the operational meaning
 of the tables that actually exist in the linked runtime.
@@ -87,8 +87,8 @@ Important fields:
 Important notes:
 - `auth_user_id` is the ownership bridge from `auth.uid()`
 - `cash` is no longer the canonical money store
-- live DB verification confirms `handle_new_auth_user()` is attached to `auth.users`
-- repo-local public migrations still do not declare that auth-side trigger attachment
+- `handle_new_auth_user()` is attached to `auth.users` via `on_auth_user_created` trigger
+- declared in migration `20260709180000_declare_auth_trigger.sql`
 
 ### `bank_accounts`
 
@@ -241,9 +241,15 @@ Operational note:
 Backend-only bot behavior state.
 
 Important fields:
-- per-bot cooldown state
-- distress / recovery metadata
-- humanization and inertia controls
+- `user_id` (PK, FK to users)
+- `archetype` (Regional/Aggressive/Balanced)
+- `distress_stage` (stable/cautious/defensive/desperate)
+- `consecutive_loss_days` — tracks chronic route losses
+- `secondary_hub_iata` — optional non-HQ origin for route creation
+- `recovery_loan_taken` — prevents multiple recovery loans per desperate episode
+- Cooldown timestamps: `last_growth_action_at`, `last_route_change_at`,
+  `last_pricing_review_at`, `last_repair_action_at`, `last_route_optimization_at`,
+  `last_route_audit_at`, `last_financial_action_at`
 
 ### `game_events`
 
@@ -292,6 +298,11 @@ Used for:
 - credit-tier policy
 - lease deposit policy
 - economy/simulation constants that remain backend-owned
+- bot behavior tuning (8 entries added in migration 36):
+  `bot_consecutive_loss_days_threshold`, `bot_route_optimization_cooldown_hours`,
+  `bot_secondary_hub_chance`, `bot_fleet_diversity_chance`,
+  `bot_purchase_cash_multiplier`, `bot_competitive_price_threshold`,
+  `bot_recovery_loan_amount`, `bot_loan_repayment_ratio`
 
 ## Live trigger surface
 
@@ -304,9 +315,8 @@ Repo-local schema defines and the audit pass verified these trigger paths:
 5. `trg_loan_reconcile_net_worth` on `loans`
 
 Additional auth-side truth:
-- `handle_new_auth_user()` is live-attached to `auth.users`
-- that attachment is proven in the linked DB
-- that attachment is not declared by the repo's public migrations
+- `handle_new_auth_user()` is attached to `auth.users` via `on_auth_user_created` trigger
+- declared in migration `20260709180000_declare_auth_trigger.sql`
 
 ## Live cron / ops surface
 
@@ -314,7 +324,13 @@ Repo-defined scheduler jobs:
 
 1. `skyward_world_tick` → `ensure_world_current()`
 2. `skyward_prune_bank_transactions` → `prune_bank_transactions(false)`
-3. `skyward_compact_world_tick_log` → `compact_world_tick_log(false)`
+3. `skyward_prune_world_tick_log` → `prune_world_tick_log()`
+
+Note: migration 34 added `tick_interval_seconds` and `max_catchup_ticks` as
+configurable `game_config` entries so tick behavior can be tuned without
+redeploying. The original `skyward_compact_world_tick_log` cron job was replaced
+by `skyward_prune_world_tick_log` in migration 37 because pg_cron failed to
+execute DELETE through the `compact_world_tick_log(false)` parameterized call.
 
 ## Important schema truths
 

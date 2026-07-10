@@ -1,6 +1,6 @@
 # Skyward Supabase Contract Map
 
-Last verified against code on 2026-06-27.
+Last verified against code on 2026-07-09.
 
 This is the live Flutter-to-Supabase contract surface.
 
@@ -48,8 +48,8 @@ This is the live Flutter-to-Supabase contract surface.
   - expects the authenticated bootstrap flow to create the matching
     `public.users` actor row
   - live DB verification confirms `handle_new_auth_user()` is attached to
-    `auth.users`, but that trigger attachment is not declared by the public
-    migrations in this repo
+    `auth.users` via `on_auth_user_created` trigger (declared in migration
+    `20260709180000_declare_auth_trigger.sql`)
 - phase note:
   - Security Phase 6 removed the legacy `register_company`, `login_company`,
     and `validate_session` RPCs entirely
@@ -147,6 +147,31 @@ This is the live Flutter-to-Supabase contract surface.
   - compares actors on the in-game clock (`users.game_current_time` against
     `season_clock.current_game_time`), not against wall-clock time
 
+`prune_world_tick_log`
+- caller: pg_cron (`skyward_prune_world_tick_log` at `30 3 * * *`)
+- params: none
+- current behavior:
+  - deletes `world_tick_log` rows older than `world_tick_log_raw_real_days`
+    (default 7 real-world days)
+  - replaces `compact_world_tick_log(false)` which pg_cron failed to execute
+
+`get_route_performance`
+- caller: `execute_bot_decisions()` sub-functions (bot_handle_route_lifecycle,
+  bot_handle_fleet_growth, bot_handle_route_creation)
+- params:
+  - `p_user_id`
+- current behavior:
+  - returns per-route financial performance: origin, destination, distance,
+    ticket_price, flights_per_week, assigned_aircraft, effective_capacity,
+    expected_passengers, load_factor, revenue_per_flight, cost_per_flight,
+    profit_per_flight, weekly_profit
+  - cost calculations include fuel (with shock multipliers), crew, and
+    maintenance
+  - revenue includes cargo (5% of ticket revenue)
+  - shared function — works for both players and bots
+  - client-side route economics in `route_models.dart` are planning estimates
+    only; this function is authoritative for simulation
+
 `get_database_size_report`
 - caller: backend audit / operations checks
 - params: none
@@ -206,8 +231,8 @@ This is the live Flutter-to-Supabase contract surface.
   - resolves the future Supabase Auth identity anchor to `public.users.id`
 
 `handle_new_auth_user`
-- caller: live `auth.users` bootstrap trigger; attachment is live-verified but
-  not declared by the public migrations in this repo
+- caller: `auth.users` bootstrap trigger (`on_auth_user_created`)
+- declared in migration `20260709180000_declare_auth_trigger.sql`
 - current behavior:
   - validates synthetic-email/metadata bootstrap assumptions
   - creates the matching `public.users` row with future auth ownership linkage
@@ -364,6 +389,7 @@ This is the live Flutter-to-Supabase contract surface.
   - Flutter now calls an auth-bound wrapper that resolves the player row from
     `auth.uid()`
   - catches up simulation before sale
+  - delegates to shared `sell_actor_aircraft()` helper (migration 35)
   - requires an owned aircraft
   - blocks disposal while the aircraft is still assigned
   - credits condition-adjusted residual value
@@ -380,6 +406,7 @@ This is the live Flutter-to-Supabase contract surface.
   - Flutter now calls an auth-bound wrapper that resolves the player row from
     `auth.uid()`
   - catches up simulation before termination
+  - delegates to shared `terminate_actor_lease()` helper (migration 35)
   - requires a leased aircraft
   - blocks disposal while the aircraft is still assigned
   - charges a lease exit fee
@@ -431,6 +458,7 @@ This is the live Flutter-to-Supabase contract surface.
   - Flutter now calls an auth-bound wrapper that resolves the player row from
     `auth.uid()`
   - catches up simulation before changing assignment
+  - delegates to shared `assign_actor_aircraft_to_route()` helper (migration 35)
   - validates ownership, safety threshold, route range fit, weekly schedule fit,
     and single-route assignment server-side
   - Flutter follows success with the same authoritative simulation and
@@ -566,10 +594,12 @@ This is the live Flutter-to-Supabase contract surface.
 - params:
   - `p_id`
   - `p_is_bot`
-- current client behavior:
-  - executes through a security-definer read surface after Security Phase 5
-  - bot intelligence is loaded from the live RPC, not synthetic client fallback
-  - competitor dialogs reflect the live backend status surface (`Active`, `Distress`, `Maintenance`, `Recovery`, `Bankrupt`)
+- current behavior:
+  - uses `calculate_user_net_worth()` for canonical net worth (migration 41)
+  - returns live `fleet_size` and `route_count` from direct queries
+  - returns `distress_stage`, `consecutive_negative_days`, `recovery_streak_days`
+    from `bot_profiles`
+  - `p_is_bot` parameter is declared but unused in the function body
 
 ### Settings
 
@@ -659,15 +689,22 @@ The app also depends indirectly on backend jobs that are not called as standalon
   - calls `ensure_world_current(NULL)` once per minute
   - advances `season_clock` only until actor simulation migrates into world ticks
 - `execute_bot_decisions()`
-  - archetype-specific fleet growth
-  - archetype-specific route doctrine retuning on existing active routes
-  - idle-aircraft route deployment
-  - distance-stage and demand-aware route selection by archetype
-  - contribution-based distress route cutbacks
-  - paid bot repair recovery for grounded airframes now shares the same
-    authoritative repair helper used by player repairs
-  - reserve-aware expansion gates tied to active lease burden
-  - premium cabin seat distributions per archetype
-  - competitive response pricing on shared O-D routes
-  - bot aircraft purchasing when cash > 3× starting capital
+  - refactored into 7 focused sub-functions (migration 40):
+    - `bot_evaluate_distress()` — distress stage + archetype params
+    - `bot_handle_repair()` — repair logic (normal + desperate recovery)
+    - `bot_handle_route_lifecycle()` — audit + trim + optimization
+    - `bot_handle_fleet_growth()` — lease + purchase
+    - `bot_handle_route_creation()` — new route with secondary hub support
+    - `bot_handle_pricing()` — pricing review with competitive response
+    - `bot_handle_financial()` — loan repayment + request
+  - bankruptcy side effects now flow through shared `apply_actor_bankruptcy_state()`
+    helper (migration 35 restored parity that migration 33 inadvertently reverted)
+  - smart route deletion based on commercial performance via `get_route_performance()`
+  - route optimization (aircraft reassignment from underperforming routes)
+  - secondary hub exploration (20% chance to use existing destination as new origin)
+  - fleet diversity (30% chance of alternative aircraft model per archetype)
+  - lowered purchase threshold ($22.5M from $45M)
+  - competitive pricing response (react to competitor average price)
+  - desperate stage recovery (conditional repair, recovery loan)
+  - active loan repayment when cash allows
   - soft-delete bankruptcy (status = 'Bankrupt', fleet grounded, data preserved)
