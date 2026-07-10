@@ -401,66 +401,42 @@ class _AuthenticatedDashboardShellState
 
     // Credit tier milestone notifications
     final bankState = _bankCubit.state;
-    final creditScore = bankState is BankLoaded
-        ? bankState.creditReport?.currentScore
-        : null;
-    if (creditScore != null) {
-      final currentTier = creditScore >= 900
-          ? 'AAA'
-          : creditScore >= 800
-          ? 'AA'
-          : creditScore >= 700
-          ? 'A'
-          : creditScore >= 600
-          ? 'BBB'
-          : creditScore >= 500
-          ? 'BB'
-          : 'B';
+    final creditReport =
+        bankState is BankLoaded ? bankState.creditReport : null;
+    if (creditReport != null) {
+      final currentTier = creditReport.creditTier;
 
       if (_lastCreditTier != null && currentTier != _lastCreditTier) {
-        final tierIndex = [
-          'B',
-          'BB',
-          'BBB',
-          'A',
-          'AA',
-          'AAA',
-        ].indexOf(currentTier);
-        final lastTierIndex = [
-          'B',
-          'BB',
-          'BBB',
-          'A',
-          'AA',
-          'AAA',
-        ].indexOf(_lastCreditTier!);
+        const tierOrder = [
+          'Subprime',
+          'Standard',
+          'Silver',
+          'Gold',
+          'Platinum',
+        ];
+        final tierIndex = tierOrder.indexOf(currentTier);
+        final lastTierIndex = tierOrder.indexOf(_lastCreditTier!);
 
         if (tierIndex > lastTierIndex) {
-          // Tier upgraded
           final messages = {
-            'AAA': (
+            'Platinum': (
               'CREDIT UPGRADE',
-              'You reached AAA tier! Lowest interest rates unlocked.',
+              'You reached Platinum tier! Lowest interest rates unlocked.',
               NotificationType.success,
             ),
-            'AA': (
+            'Gold': (
               'CREDIT UPGRADE',
-              'You reached AA tier! Improved loan terms available.',
+              'You reached Gold tier! Improved loan terms available.',
               NotificationType.success,
             ),
-            'A': (
+            'Silver': (
               'CREDIT UPGRADE',
-              'You reached A tier! Better financing options unlocked.',
+              'You reached Silver tier! Better financing options unlocked.',
               NotificationType.success,
             ),
-            'BBB': (
+            'Standard': (
               'CREDIT UPGRADE',
-              'You reached BBB tier. Keep building your credit.',
-              NotificationType.info,
-            ),
-            'BB': (
-              'CREDIT UPGRADE',
-              'You reached BB tier. Continue improving operations.',
+              'You reached Standard tier. Keep building your credit.',
               NotificationType.info,
             ),
           };
@@ -476,7 +452,6 @@ class _AuthenticatedDashboardShellState
             );
           }
         } else if (tierIndex < lastTierIndex) {
-          // Tier downgraded
           newNotifications.add(
             GameNotification(
               title: 'CREDIT DOWNGRADE',
