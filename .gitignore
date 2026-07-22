@@ -60,3 +60,6 @@ AGENTS.md
 
 # Graphify knowledge graph output
 .graphify/
+
+# Old migration archive (pre-consolidation)
+migrations_old/
