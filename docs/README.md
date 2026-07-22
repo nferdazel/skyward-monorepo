@@ -63,151 +63,34 @@ Completed plans:
 
 ## Migrations
 
-Apply migrations in numeric order.
+The migration history has been consolidated into a single baseline file.
 
 Current repo migration set:
-- `00_baseline.sql`
-- `01_critical_fixes.sql`
-- `02_fix_stale_refs.sql`
-- `03_fix_search_path.sql`
-- `04_critical_fixes_v2.sql`
-- `05_bot_fixes.sql`
-- `06_simulation_credit_fixes.sql`
-- `07_data_fixes.sql`
-- `08_finance_phase1_cash_movement.sql`
-- `09_finance_phase3_net_worth_consistency.sql`
-- `10_finance_phase4_credit_consistency.sql`
-- `11_finance_phase5_lease_carrying_cost.sql`
-- `12_actor_parity_route_economics.sql`
-- `13_actor_parity_daily_servicing.sql`
-- `14_credit_policy_unification.sql`
-- `15_acquisition_progression_rebalance.sql`
-- `16_bot_humanization_inertia.sql`
-- `17_bot_decision_tick_alignment.sql`
-- `18_actor_parity_mutation_helpers.sql`
-- `19_finance_ledger_integrity.sql`
-- `20_credit_and_zero_amount_guardrails.sql`
-- `21_player_sim_zero_interval_guard.sql`
-- `22_actor_bankruptcy_parity.sql`
-- `23_actor_repair_helper_parity.sql`
-- `24_finance_snapshot_active_routes.sql`
-- `25_attach_bank_balance_net_worth_trigger.sql`
-- `26_drop_dead_legacy_helpers.sql`
-- `27_drop_bank_transaction_compaction.sql`
-- `28_add_bank_transaction_retention.sql`
-- `29_sync_finance_aircraft_game_time.sql`
-- `30_add_loan_originated_game_date.sql`
-- `31_use_game_clock_for_loan_mutations.sql`
-- `32_keep_lease_termination_on_exact_game_time.sql`
-- `33_backend_stability_fixes.sql`
-- `34_tick_configurability_and_fixes.sql`
-- `20260709143000_actor_parity_hardening.sql`
-- `20260709150000_bot_realism_pass.sql`
-- `20260709160000_fix_world_tick_log_prune.sql`
-- `20260709170000_fix_round_bug_and_dead_code.sql`
-- `20260709180000_declare_auth_trigger.sql`
-- `20260709190000_refactor_bot_decisions.sql`
-- `20260709200000_fix_competitor_insights_net_worth.sql`
-- `20260710100000_fix_game_events.sql`
-- `20260710110000_fix_repay_loan_aircraft_financing.sql`
-- `20260710120000_fix_player_wear_cap.sql`
-- `20260710130000_fix_terminate_lease_balance_check.sql`
-- `20260710140000_fix_route_performance_formula.sql`
-- `20260710150000_fix_ifrs_subcategories.sql`
-- `20260710160000_fix_security_and_indexes.sql`
-- `20260710170000_rename_stale_constraints.sql`
-- `20260710180000_fix_sql_lock_scope.sql`
-- `20260710190000_fix_player_sim_parity.sql`
-- `20260710200000_fix_day_boundary_counters.sql`
-- `20260710210000_fix_bot_stale_cash.sql`
-- `20260710220000_consolidate_player_simulation.sql`
-- `20260710230000_consolidate_bot_simulation.sql`
-- `20260710240000_fix_database_constraints.sql`
-- `20260710250000_fix_performance_indexes.sql`
+- `00_baseline.sql` — consolidated schema (7191 lines, 312K)
 
-High-level grouping:
-- `00`-`07`
-  Baseline schema plus early correctness fixes
-- `08`-`11`
-  Finance stabilization, bank-centric cash, net-worth reconciliation, lease carrying cost
-- `12`-`18`
-  Actor parity, servicing, and bot decision-path hardening
-- `19`-`32`
-  Ledger integrity, zero-amount guardrails, player sync safety, bankruptcy parity, shared repair mechanics, finance snapshot contract truthfulness, missing trigger attachment cleanup, and dead helper removal
-  plus removal of the dormant bank compaction surface and reintroduction of a
-  simpler game-date-based ledger retention policy, plus finance-aircraft
-  game-time sync, plus in-game loan origination chronology, plus repayment /
-  lease-termination chronology fixes to keep player-facing ledger rows on the
-  exact shared game clock
-- `33`
-  Backend stability: critical `refinance_loan()` regression fix, per-bot error
-  handling in `execute_bot_decisions()`, migration of hardcoded magic numbers
-  to `game_config`
-- `34`
-  Tick configurability: `tick_interval_seconds` and `max_catchup_ticks` via
-  `game_config`, day-boundary payment loop for multi-week catch-ups, human
-  `finance_aircraft` gets Regional-archetype default seats
-- `20260709143000`
-  Actor parity hardening: restores bankruptcy parity regression from migration
-  33, creates shared helpers for `sell_aircraft`, `terminate_aircraft_lease`,
-  and `assign_aircraft_to_route` so all fleet/route/bank mutation paths are
-  unified between player and bot
-- `20260709150000`
-  Bot realism pass: shared `get_route_performance()` function, smart route
-  deletion based on commercial performance, route optimization (aircraft
-  reassignment), secondary hub exploration, fleet diversity, lowered purchase
-  threshold, competitive pricing response, desperate stage recovery, active
-  loan repayment
-- `20260709160000`
-  Fix world_tick_log compaction: pg_cron fails to execute DELETE through
-  `compact_world_tick_log(false)` — add simpler `prune_world_tick_log()`
-  wrapper with no parameters; update cron job to use it
-- `20260709170000`
-  Fix round(double precision, integer) bug in get_route_performance() caused by
-  type propagation from distance_km; drop 4 confirmed dead functions
-  (compact_world_tick_log, get_world_tick_log_compaction_report, get_config_text,
-  calculate_effective_passenger_capacity)
-- `20260709180000`
-  Declare auth.users bootstrap trigger in repo (previously live-only, not declared
-  in public migrations)
-- `20260709190000`
-  Refactor execute_bot_decisions() into 7 focused sub-functions:
-  bot_evaluate_distress, bot_handle_repair, bot_handle_route_lifecycle,
-  bot_handle_fleet_growth, bot_handle_route_creation, bot_handle_pricing,
-  bot_handle_financial
-- `20260709200000`
-  Fix get_competitor_insights() to use canonical calculate_user_net_worth()
-  instead of stale users.net_worth column; add live fleet_size and route_count
-- `20260710100000`
-  Fix game_events: weather type mismatch ('weather' → 'weather_disruption'),
-  replace dead regulatory events with maintenance_shock generation
-- `20260710110000`
-  Fix repay_loan: transition fleet_aircraft.acquisition_type from 'finance' to
-  'purchase' when aircraft_financing loan is fully repaid
-- `20260710120000`
-  Fix player/bot wear asymmetry: cap player wear formula at v_time_fraction
-  (LEAST(elapsed_days/7, 1.0)) to match bot behavior
-- `20260710130000`
-  Fix terminate_actor_lease: add balance sufficiency check before exit fee debit
-- `20260710140000`
-  Fix get_route_performance: align passenger formula with simulation's inline
-  calculation (remove competition/congestion/hub factors that simulation doesn't use)
-- `20260710150000`
-  Fix IFRS subcategories: backfill fuel→fuel_cost, crew→crew_cost,
-  maintenance→maintenance_cost; split cargo revenue into separate subcategory;
-  add negative amount guard; add accrual/refund to transaction_type CHECK
-- `20260710160000`
-  Fix security: REVOKE EXECUTE on 27 SECURITY DEFINER inner overloads; add 6
-  missing indexes on fleet_aircraft, route_assignments, users, world_tick_log,
-  game_events
-- `20260710170000`
-  Rename 7 stale constraint/index names from old table names
-  (user_fleet_* → fleet_aircraft_*, user_routes_* → route_assignments_*)
-- `20260710180000`
-  Remove unnecessary FOR UPDATE locks from repay_loan and terminate_actor_lease
-- `20260710190000`
-  Fix player simulation parity: add flight cap at physical max
-  (168/flight_duration) and enforce absolute_minimum_safety_limit grounding
+This baseline was generated on 2026-07-22 by dumping the live Supabase schema
+using `supabase db dump --linked --schema public`. It replaces the previous 58
+individual migration files which are archived in `migrations_old/` for reference.
+
+The baseline includes:
+- 16 tables (achievements, aircraft_models, airports, bank_accounts, bank_transactions, bot_profiles, credit_score_history, credit_scores, fleet_aircraft, game_config, game_events, loans, route_assignments, season_clock, users, world_tick_log)
+- 119 functions (all gameplay RPCs, simulation, finance, bot decision, credit scoring, etc.)
+- 5 triggers (bank account creation, net worth reconciliation, HQ change sync)
+- 26 indexes (performance-optimized for key query patterns)
+- SECURITY DEFINER wrappers with auth-bound access control
+- pg_cron jobs (world tick, bank transaction pruning, world tick log pruning)
+
+### Historical migration reference
+
+The previous58 migrations covered these phases:
+1. **Baseline & critical fixes** (00-07): Schema establishment, security hardening
+2. **Finance overhaul** (08-11): Bank-centric cash, net worth, credit, lease economics
+3. **Actor parity** (12-18): Player/bot simulation alignment through shared helpers
+4. **Ledger integrity** (19-27): Zero-amount guards, bankruptcy/repair parity
+5. **Game clock alignment** (28-32): All ledger writes use in-game time
+6. **Stability & consolidation** (33-34): Backend stability, tick configurability
+7. **Bot realism & hardening** (35-41): Sub-function decomposition, behavioral improvements
+8. **Targeted fixes & consolidation** (20260710 series): Wear cap, IFRS cleanup, security lockdown
   threshold, matching bot behavior
 - `20260710210000`
   Fix stale cash in execute_bot_decisions: refresh v_bot_cash after each
