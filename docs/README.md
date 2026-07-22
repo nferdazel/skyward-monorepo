@@ -1,6 +1,6 @@
 # Skyward Docs
 
-Last verified on 2026-07-10.
+Last verified on 2026-07-22.
 
 This folder is the current maintenance record for Skyward's live runtime.
 It is intentionally organized by operational question, not by historical phase.
@@ -58,6 +58,9 @@ Standards:
 - [standards/maintainer-standard.md](standards/maintainer-standard.md)
 - [../SECURITY.md](../SECURITY.md)
 
+Completed plans:
+- [plans/phase4-bot-realism-pass.md](plans/phase4-bot-realism-pass.md) — completed, migration `20260709150000`
+
 ## Migrations
 
 Apply migrations in numeric order.
@@ -99,6 +102,28 @@ Current repo migration set:
 - `33_backend_stability_fixes.sql`
 - `34_tick_configurability_and_fixes.sql`
 - `20260709143000_actor_parity_hardening.sql`
+- `20260709150000_bot_realism_pass.sql`
+- `20260709160000_fix_world_tick_log_prune.sql`
+- `20260709170000_fix_round_bug_and_dead_code.sql`
+- `20260709180000_declare_auth_trigger.sql`
+- `20260709190000_refactor_bot_decisions.sql`
+- `20260709200000_fix_competitor_insights_net_worth.sql`
+- `20260710100000_fix_game_events.sql`
+- `20260710110000_fix_repay_loan_aircraft_financing.sql`
+- `20260710120000_fix_player_wear_cap.sql`
+- `20260710130000_fix_terminate_lease_balance_check.sql`
+- `20260710140000_fix_route_performance_formula.sql`
+- `20260710150000_fix_ifrs_subcategories.sql`
+- `20260710160000_fix_security_and_indexes.sql`
+- `20260710170000_rename_stale_constraints.sql`
+- `20260710180000_fix_sql_lock_scope.sql`
+- `20260710190000_fix_player_sim_parity.sql`
+- `20260710200000_fix_day_boundary_counters.sql`
+- `20260710210000_fix_bot_stale_cash.sql`
+- `20260710220000_consolidate_player_simulation.sql`
+- `20260710230000_consolidate_bot_simulation.sql`
+- `20260710240000_fix_database_constraints.sql`
+- `20260710250000_fix_performance_indexes.sql`
 
 High-level grouping:
 - `00`-`07`
@@ -198,6 +223,13 @@ High-level grouping:
   NOT NULL on fleet_aircraft.user_id and bank_transactions.game_date,
   FK on bot_profiles.secondary_hub_iata, CHECK on route_assignments.status
   and bot_profiles.distress_stage, index on bot_profiles.archetype
+- `20260710200000`
+  Fix day boundary counter undercounting: consecutive_negative_days and
+  recovery_streak_days now increment by CEIL(p_elapsed_days) instead of 1,
+  making bankruptcy threshold reachable during catch-up
+- `20260710250000`
+  Fix performance indexes: add idx_bank_transactions_game_date, rebuild
+  idx_users_active_bots to match actual query pattern
 
 ## Standard Verification
 

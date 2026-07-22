@@ -1,6 +1,6 @@
 # Skyward Database Design
 
-Last verified against code, migrations, and linked live schema on 2026-07-10.
+Last verified against code, migrations, and linked live schema on 2026-07-22.
 
 This file records the current public schema shape and the operational meaning
 of the tables that actually exist in the linked runtime.

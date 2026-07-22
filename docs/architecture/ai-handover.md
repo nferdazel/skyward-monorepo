@@ -1,6 +1,6 @@
 # Skyward AI Handover
 
-Last verified against code on 2026-07-10.
+Last verified against code on 2026-07-22.
 
 ## Current shape
 
@@ -134,10 +134,10 @@ Recent work tightened:
   `refinance_loan`, and `get_credit_report`
 - actor-parity hardening now also shares bankruptcy side effects and repair
   side effects across player and bot mutation paths
-- migration 35 completes actor parity: `sell_aircraft`, `terminate_aircraft_lease`,
+- migration `20260709143000_actor_parity_hardening.sql` completes actor parity: `sell_aircraft`, `terminate_aircraft_lease`,
   and `assign_aircraft_to_route` now delegate to shared helpers that both player
   and bot paths use
-- bankruptcy parity regression from migration 33 is now fixed: `execute_bot_decisions()`
+- bankruptcy parity regression from migration `33_backend_stability_fixes.sql` is now fixed: `execute_bot_decisions()`
   calls `apply_actor_bankruptcy_state()` instead of inline UPDATE statements
 - delete-account now has a live-proven end-to-end audit script
 - aircraft, bank, settings-save, and airline-reset flows now force
@@ -203,8 +203,8 @@ audits when you need real operational state.
    semantics and should not be bundled with UI or docs work.
 9. Keep validating the ledger-retention audit RPCs before any live maintenance
    runs.
-10. Next backend policy step is Phase 16 foundation: player activity tracking,
-   simulation status, and inactive-player audit/reporting.
+10. Next backend policy step is player activity tracking,
+    simulation status, and inactive-player audit/reporting.
 11. Finance now separates current balance-sheet state from rolling 30-day ledger
     analytics. The backend contract for both human players and bots is
     `get_finance_snapshot()`.
