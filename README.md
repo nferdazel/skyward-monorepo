@@ -10,7 +10,7 @@ Skyward is a Flutter airline-tycoon simulation with a Supabase/Postgres backend.
 The app handles UI, local session flow, and command dispatch. The backend owns
 authoritative simulation, economy, world time, and operational validation.
 
-Last verified against code, docs, and linked live audit state on `2026-07-10`.
+Last verified against code, docs, and linked live audit state on `2026-07-22`.
 
 ## Current shape
 
@@ -77,6 +77,8 @@ For the maintained backend/runtime record, use:
 - [docs/architecture/supabase-contracts.md](docs/architecture/supabase-contracts.md)
 - [docs/architecture/database.md](docs/architecture/database.md)
 - [docs/operations/audit-queries.md](docs/operations/audit-queries.md)
+- [CONTRIBUTING.md](CONTRIBUTING.md)
+- [SECURITY.md](SECURITY.md)
 
 ## Local setup
 
@@ -155,9 +157,15 @@ Required GitHub secrets:
 
 ## Repo guide
 
-- `lib/`: Flutter application code
-- `docs/` and `migrations/`: maintained SQL and backend/runtime docs
-- `test/`: unit, widget, integration, and database-oriented test layers
+- `lib/`: Flutter application code (10 feature modules, 11 cubits, 8 gateways)
+- `docs/`: maintained documentation
+  - `docs/architecture/`: system design, database schema, Supabase contracts
+  - `docs/operations/`: audit queries, backend hardening plan, simulation guide
+  - `docs/standards/`: maintainer operating contract
+  - `docs/plans/`: completed design plans (archived)
+- `migrations/`: 58 SQL migration files (baseline + 34 sequential + 23 timestamped)
+- `test/`: 4-layer test suite (unit, widget, integration, database)
+- `supabase/`: edge functions and Supabase config
 - `.opencode/`: local agent context docs kept in sync during backend passes
 
 ## License

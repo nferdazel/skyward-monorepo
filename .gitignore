@@ -57,3 +57,6 @@ AUDIT_CHARTER.md
 AGENTS.md
 
 .opencode
+
+# Graphify knowledge graph output
+.graphify/

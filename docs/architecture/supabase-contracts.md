@@ -1,6 +1,6 @@
 # Skyward Supabase Contract Map
 
-Last verified against code on 2026-07-10.
+Last verified against code on 2026-07-22.
 
 This is the live Flutter-to-Supabase contract surface.
 

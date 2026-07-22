@@ -1,6 +1,6 @@
 # Skyward Simulation Troubleshooting
 
-Last verified on 2026-07-10.
+Last verified on 2026-07-22.
 
 ## Operational checks
 
@@ -63,7 +63,12 @@ Loan payments are processed at game-day boundaries during `process_player_simula
 
 ## Achievement checking
 
+> **Note:** The `features/achievements/` Flutter module was removed on 2026-06-27
+> (orphaned, never instantiated by dashboard runtime). The `achievements` table
+> and `check_achievements()` function remain in the database but have no active
+> Flutter consumer. Achievement evaluation still runs server-side during
+> `process_actor_day_boundary()` but results are not surfaced to players.
+
 Achievements are evaluated at game-day boundaries during simulation processing:
 - progress values are updated based on current player state (fleet size, route count, net worth, etc.)
 - achievements unlock when progress meets the threshold
-- unlocked achievements may gate future progression milestones

@@ -1,5 +1,8 @@
 # Phase 4 Plan: Bot Realism Pass
 
+> **Status: COMPLETED** — Implemented in migration `20260709150000_bot_realism_pass.sql`
+> (internally "Migration 36"). All exit criteria met. Verified against linked DB.
+
 ## Goal
 
 Make bots feel less scripted and more operator-like without breaking balance.
@@ -259,19 +262,19 @@ lowest risk. Items 4-6 are quick wins. Items 7-9 are more nuanced.
 
 ## Exit Criteria
 
-- [ ] Bot decisions look consistent over time (no random flailing)
-- [ ] Bots delete chronically unprofitable routes
-- [ ] Bots occasionally reassign aircraft to better routes
-- [ ] Bots have diverse fleet compositions
-- [ ] Bots respond to competitor pricing
-- [ ] Desperate bots can recover with intervention
-- [ ] Bots actively repay loans when cash allows
-- [ ] `get_route_performance()` works for both players and bots
-- [ ] No bot-specific tables — all data surfaces are shared
-- [ ] No major regressions in finance stability
-- [ ] `flutter analyze` clean
-- [ ] `flutter test` passing
-- [ ] Native SQL audit passes against linked DB
+- [x] Bot decisions look consistent over time (no random flailing)
+- [x] Bots delete chronically unprofitable routes
+- [x] Bots occasionally reassign aircraft to better routes
+- [x] Bots have diverse fleet compositions
+- [x] Bots respond to competitor pricing
+- [x] Desperate bots can recover with intervention
+- [x] Bots actively repay loans when cash allows
+- [x] `get_route_performance()` works for both players and bots
+- [x] No bot-specific tables — all data surfaces are shared
+- [x] No major regressions in finance stability
+- [x] `flutter analyze` clean
+- [x] `flutter test` passing
+- [x] Native SQL audit passes against linked DB
 
 ## Risk Assessment
 

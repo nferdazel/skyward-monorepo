@@ -1,6 +1,6 @@
 # Skyward Live Backend Audit Queries
 
-Last verified on 2026-07-10.
+Last verified on 2026-07-22.
 
 Use these against the linked Supabase project when you want to inspect runtime
 behavior without changing application code.
