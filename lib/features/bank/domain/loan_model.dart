@@ -1,7 +1,7 @@
 import 'package:equatable/equatable.dart';
 
 /// A bank loan taken by a player for capital.
-class Loan with EquatableMixin {
+class Loan with Equatable {
   final String id;
   final double principal;
   final double interestRate;

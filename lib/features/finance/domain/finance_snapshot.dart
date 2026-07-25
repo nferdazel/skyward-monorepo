@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-class FinanceSnapshot with EquatableMixin {
+class FinanceSnapshot with Equatable {
   final String actorId;
   final bool isBot;
   final String companyName;

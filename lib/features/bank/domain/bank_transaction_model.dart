@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-class BankTransaction with EquatableMixin {
+class BankTransaction with Equatable {
   final String id;
   final String accountId;
   final String userId;

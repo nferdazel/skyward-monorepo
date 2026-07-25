@@ -24,21 +24,21 @@ abstract class FleetDataState extends FleetState {
   });
 }
 
-class FleetInitial extends FleetState with EquatableMixin {
+class FleetInitial extends FleetState with Equatable {
   const FleetInitial();
 
   @override
   List<Object?> get props => [];
 }
 
-class FleetLoading extends FleetState with EquatableMixin {
+class FleetLoading extends FleetState with Equatable {
   const FleetLoading();
 
   @override
   List<Object?> get props => [];
 }
 
-class FleetLoaded extends FleetDataState with EquatableMixin {
+class FleetLoaded extends FleetDataState with Equatable {
   const FleetLoaded({
     required super.fleet,
     required super.catalog,
@@ -79,7 +79,7 @@ class FleetLoaded extends FleetDataState with EquatableMixin {
   ];
 }
 
-class FleetActionLoading extends FleetDataState with EquatableMixin {
+class FleetActionLoading extends FleetDataState with Equatable {
   const FleetActionLoading({
     required super.fleet,
     required super.catalog,
@@ -100,7 +100,7 @@ class FleetActionLoading extends FleetDataState with EquatableMixin {
   ];
 }
 
-class FleetActionSuccess extends FleetDataState with EquatableMixin {
+class FleetActionSuccess extends FleetDataState with Equatable {
   final String message;
 
   const FleetActionSuccess({
@@ -125,7 +125,7 @@ class FleetActionSuccess extends FleetDataState with EquatableMixin {
   ];
 }
 
-class FleetError extends FleetDataState with EquatableMixin {
+class FleetError extends FleetDataState with Equatable {
   final String message;
 
   const FleetError({

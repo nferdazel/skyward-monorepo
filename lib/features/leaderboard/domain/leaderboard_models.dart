@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-class LeaderboardEntry with EquatableMixin {
+class LeaderboardEntry with Equatable {
   final String id;
   final String companyName;
   final String ceoName;
@@ -63,7 +63,7 @@ class LeaderboardEntry with EquatableMixin {
   ];
 }
 
-class CompetitorInsights with EquatableMixin {
+class CompetitorInsights with Equatable {
   final String companyName;
   final String ceoName;
   final double cash;

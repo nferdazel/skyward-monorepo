@@ -1,7 +1,7 @@
 import 'package:equatable/equatable.dart';
 
 /// A credit report returned by the get_credit_report RPC.
-class CreditReport with EquatableMixin {
+class CreditReport with Equatable {
   final int currentScore;
   final int fleetHealth;
   final int revenueStability;
@@ -102,7 +102,7 @@ class CreditReport with EquatableMixin {
 }
 
 /// A historical credit score snapshot.
-class CreditScoreSnapshot with EquatableMixin {
+class CreditScoreSnapshot with Equatable {
   final int score;
   final int fleetHealth;
   final int revenueStability;

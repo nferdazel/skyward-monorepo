@@ -8,14 +8,14 @@ abstract class LeaderboardState {
   const LeaderboardState();
 }
 
-class LeaderboardInitial extends LeaderboardState with EquatableMixin {
+class LeaderboardInitial extends LeaderboardState with Equatable {
   const LeaderboardInitial();
 
   @override
   List<Object?> get props => [];
 }
 
-class LeaderboardLoading extends LeaderboardState with EquatableMixin {
+class LeaderboardLoading extends LeaderboardState with Equatable {
   const LeaderboardLoading();
 
   @override
@@ -30,7 +30,7 @@ abstract class LeaderboardDataState extends LeaderboardState {
   const LeaderboardDataState({required this.rankings});
 }
 
-class LeaderboardLoaded extends LeaderboardDataState with EquatableMixin {
+class LeaderboardLoaded extends LeaderboardDataState with Equatable {
   final String? selectedCompetitorId;
   final CompetitorInsights? selectedInsights;
   final bool isLoadingInsights;
@@ -72,7 +72,7 @@ class LeaderboardLoaded extends LeaderboardDataState with EquatableMixin {
   ];
 }
 
-class LeaderboardError extends LeaderboardDataState with EquatableMixin {
+class LeaderboardError extends LeaderboardDataState with Equatable {
   final String message;
 
   const LeaderboardError({

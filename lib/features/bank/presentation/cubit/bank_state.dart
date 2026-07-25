@@ -9,21 +9,21 @@ abstract class BankState {
   const BankState();
 }
 
-class BankInitial extends BankState with EquatableMixin {
+class BankInitial extends BankState with Equatable {
   const BankInitial();
 
   @override
   List<Object?> get props => [];
 }
 
-class BankLoading extends BankState with EquatableMixin {
+class BankLoading extends BankState with Equatable {
   const BankLoading();
 
   @override
   List<Object?> get props => [];
 }
 
-class BankLoaded extends BankState with EquatableMixin {
+class BankLoaded extends BankState with Equatable {
   final List<Loan> loans;
   final CreditReport? creditReport;
   final List<CreditScoreSnapshot> creditHistory;
@@ -98,7 +98,7 @@ class BankLoaded extends BankState with EquatableMixin {
   ];
 }
 
-class BankError extends BankState with EquatableMixin {
+class BankError extends BankState with Equatable {
   final String message;
   final bool hasData;
   final List<Loan> loans;
@@ -126,7 +126,7 @@ class BankError extends BankState with EquatableMixin {
   ];
 }
 
-class BankLoanSuccess extends BankState with EquatableMixin {
+class BankLoanSuccess extends BankState with Equatable {
   final String message;
   final double newCash;
   final List<Loan> loans;
@@ -154,7 +154,7 @@ class BankLoanSuccess extends BankState with EquatableMixin {
   ];
 }
 
-class BankRefinanceSuccess extends BankState with EquatableMixin {
+class BankRefinanceSuccess extends BankState with Equatable {
   final String message;
   final List<Loan> loans;
   final CreditReport? creditReport;
