@@ -286,6 +286,17 @@ class AppStrings {
   static const String activeState = 'ACTIVE';
   static const String groundedState = 'GROUNDED';
   static const String maintenanceState = 'MAINTENANCE';
+
+  // Fleet summary strip
+  static const String fleetSummaryReady = 'READY';
+  static const String fleetSummaryGrounded = 'GROUNDED';
+  static const String fleetSummaryLeaseBurn = 'LEASE BURN';
+  static const String fleetSummaryRepairAll = 'REPAIR ALL';
+
+  // Fleet status
+  static const String earningStatus = 'EARNING';
+  static const String idleStatus = 'IDLE';
+  static const String minimalRepairTooltip = 'Minimal wear — repair not recommended';
   static const String aircraftSubtitlePrefix = 'AIRCRAFT';
   static const String capacitySubtitlePrefix = 'CAPACITY';
   static const String slotsExceededPrefix = 'SLOTS EXCEEDED! Over-capacity by ';
@@ -791,6 +802,40 @@ class AppStrings {
   static const String financeAircraft = 'Finance Aircraft';
   static const String cancel = 'CANCEL';
 
+  // Fleet catalog
+  static const String speedHeader = 'SPEED';
+  static const String financeableLabel = 'FINANCEABLE';
+  static const String insufficientFundsTooltip =
+      'Insufficient cash and financing capacity';
+  static const String maintenanceCostLabel = 'Maint';
+
   // Shared widgets
   static const String dialogDismissButton = 'DISMISS';
+
+  // Fleet acquire dialog
+  static const String cashAfterLabel = 'Cash after:';
+  static const String breakevenLabel = 'Buy breaks even in';
+  static const String breakevenMonthsSuffix = 'months';
+
+  // Fleet filters
+  static const String clearFiltersLabel = 'CLEAR FILTERS';
+  static const String filterResultCount = '%s of %s models';
+
+  // Fleet finance dialog
+  static const String financeDialogTitle = 'FINANCE: %s %s';
+  static const String financeSecuredPricingDesc = 'Secured pricing uses your current credit tier.';
+  static const String financeExceedsCapDesc = 'This aircraft exceeds your current financing cap.';
+  static const String downPaymentLabel = 'Down Payment:';
+  static const String monthlyServicingLabel = 'Monthly Servicing';
+  static const String weeklyServicingLabel = 'Weekly Servicing';
+  static const String totalCostLabel = 'Total Cost';
+  static const String vsBuyOutrightLabel = 'vs Buy Outright';
+  static const String aircraftPriceLabel = 'Aircraft Price';
+  static const String financingCapLabel = 'Financing Cap';
+  static const String securedRateLabel = 'Secured Rate';
+  static const String financingTermLabel = 'FINANCING TERM';
+  static const String improveCreditTierHint = 'Improve your credit tier to unlock higher financing limits.';
+
+  // Fleet repair dialog
+  static const String conditionBeforeAfter = '%s%% → %s%%';
 }

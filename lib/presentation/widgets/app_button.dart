@@ -15,6 +15,8 @@ class AppButton extends StatelessWidget {
   final IconData? icon;
   final double? width;
   final double height;
+  final Color? backgroundColor;
+  final Color? textColor;
 
   const AppButton({
     super.key,
@@ -25,6 +27,8 @@ class AppButton extends StatelessWidget {
     this.icon,
     this.width,
     this.height = 40.0,
+    this.backgroundColor,
+    this.textColor,
   });
 
   @override
@@ -34,11 +38,13 @@ class AppButton extends StatelessWidget {
 
     Color getBgColor() {
       if (!isEnabled) return AppTheme.border;
+      if (backgroundColor != null) return backgroundColor!;
       return isPrimary ? AppTheme.primary : Colors.transparent;
     }
 
     Color getTextColor() {
       if (!isEnabled) return AppTheme.textMuted;
+      if (textColor != null) return textColor!;
       return isPrimary ? Colors.black : AppTheme.primary;
     }
 
