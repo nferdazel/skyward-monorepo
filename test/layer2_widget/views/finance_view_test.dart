@@ -111,8 +111,8 @@ void main() {
     expect(find.text(AppStrings.financeOverviewTab), findsOneWidget);
     expect(find.text(AppStrings.financeTransactionsTab), findsOneWidget);
     // Section headers from overview tab
-    expect(find.text(AppStrings.currentPositionTitle), findsOneWidget);
-    expect(find.text(AppStrings.rollingOperationsTitle), findsOneWidget);
-    expect(find.text(AppStrings.ledgerCategoryAnalytics), findsOneWidget);
+    expect(find.text(AppStrings.financeHealthHeroTitle), findsOneWidget);
+    expect(find.text(AppStrings.financePerformanceTitle), findsOneWidget);
+    expect(find.text(AppStrings.financePositionTitle), findsAtLeastNWidgets(1));
   });
 }

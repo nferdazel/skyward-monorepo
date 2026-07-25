@@ -627,34 +627,11 @@ class AppStrings {
   static const String failedToLoadLedgerLogs = 'Failed to load ledger logs.';
   static const String ledgerLoadFailed = 'Failed to load ledger.';
   static const String snapshotRefreshFailed = 'Failed to refresh finance snapshot.';
-  static const String currentPositionTitle = 'CURRENT POSITION';
-  static const String currentPositionDesc =
-      'Backend-authoritative balance sheet and network footprint at the current game time.';
-  static const String rollingOperationsTitle = 'LAST 30 IN-GAME DAYS';
-  static const String rollingOperationsDesc =
-      'Rolling operating performance from the retained finance ledger window.';
-  static const String ledgerCategoryAnalytics = 'LEDGER CATEGORY ANALYTICS';
-  static const String auditedTransactionLogs = 'AUDITED TRANSACTION LOGS';
-  static const String totalCashInflow = '30D CASH INFLOW';
-  static const String totalCashOutflow = '30D CASH OUTFLOW';
-  static const String netOperationsYield = '30D NET YIELD';
-  static const String financeRollingWindowNote =
-      'Ledger totals reflect the retained last 30 in-game days, not lifetime company cash movement.';
-  static const String ownedAssetValue = 'OWNED ASSET VALUE';
-  static const String monthlyLeaseExposure = 'MONTHLY LEASE EXPOSURE';
-  static const String fleetComposition = 'FLEET MIX';
-  static const String financeLedgerWindowLabel = 'LEDGER WINDOW';
-  static const String financeCurrentStateNote =
-      'Current cash and net worth are not derived from the rolling ledger totals below.';
   static const String ticketRevenueCategory = 'TICKET REVENUE';
   static const String fuelLandingCategory = 'FUEL & LANDING';
   static const String fleetLeasingCategory = 'FLEET LEASING';
   static const String hangarRepairsCategory = 'HANGAR REPAIRS';
   static const String fleetAcquisitionCategory = 'FLEET ACQUISITION';
-  static const String auditedCategoryHeader = 'AUDITED CATEGORY';
-  static const String transactionDetailsHeader = 'TRANSACTION DETAILS';
-  static const String gameCalendarHeader = 'GAME CALENDAR';
-  static const String cashFlowYieldHeader = 'CASH FLOW YIELD';
   static const String ticketSalesBadge = 'TICKET SALES';
   static const String operationsBadge = 'OPERATIONS';
   static const String aircraftLeaseBadge = 'AIRCRAFT LEASE';
@@ -664,6 +641,45 @@ class AppStrings {
       'FINANCIAL AUDIT SHEET IS EMPTY';
   static const String financialAuditSheetEmptyDesc =
       'Your ledger logs will populate once flights are dispatched or assets acquired.';
+
+  // Finance — Zone 1: Health Hero
+  static const String financeHealthHeroTitle = 'FINANCIAL HEALTH';
+  static const String financeCashLabel = 'CASH';
+  static const String financeNet30dLabel = '30D NET';
+  static const String financeRunwayLabel = 'RUNWAY';
+  static const String financeNetWorthLabel = 'NET WORTH';
+  static const String financeRunwayVerdict = 'At current burn, cash lasts %s days.';
+
+  // Finance — Zone 2: Performance
+  static const String financePerformanceTitle = 'PERFORMANCE (30D)';
+  static const String financeMoneyInLabel = 'MONEY IN';
+  static const String financeMoneyOutLabel = 'MONEY OUT';
+  static const String financeMarginLabel = 'MARGIN';
+  static const String financeLargestExpenseProse = '%s is %s of your burn.';
+  static const String financeViewFullReportCta = 'VIEW FULL REPORT';
+
+  // Finance — Zone 3: Position
+  static const String financePositionTitle = 'POSITION';
+  static const String financePositionEquation = 'Cash + Owned Assets';
+  static const String financePositionEquals = '= Net Worth';
+  static const String financeLeaseExposureLabel = 'MONTHLY LEASE';
+  static const String financeFleetMixLabel = 'FLEET MIX';
+
+  // Finance — Transactions
+  static const String financeFilterAll = 'ALL';
+  static const String financeFilterRevenue = 'REVENUE';
+  static const String financeFilterExpenses = 'EXPENSES';
+  static const String financeFilterLeasing = 'LEASING';
+  static const String financeFilterFuelOps = 'FUEL/OPS';
+  static const String financeFilterRepairs = 'REPAIRS';
+  static const String financeFilterPurchases = 'PURCHASES';
+  static const String financeSearchHint = 'SEARCH TRANSACTIONS...';
+  static const String financeDayNetLabel = 'NET';
+  static const String financeCategoryHeader = 'CATEGORY';
+  static const String financeDescriptionHeader = 'DESCRIPTION';
+  static const String financeDateHeader = 'DATE';
+  static const String financeAmountHeader = 'AMOUNT';
+  static const String financeBalanceHeader = 'BALANCE';
 
   // Status values
   static const String statusActive = 'Active';
