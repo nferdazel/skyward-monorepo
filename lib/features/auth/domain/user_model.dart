@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-class AppUser with EquatableMixin {
+class AppUser with Equatable {
   final String id;
   final String username;
   final String companyName;

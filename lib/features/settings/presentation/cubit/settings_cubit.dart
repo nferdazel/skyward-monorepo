@@ -8,7 +8,7 @@ import '../../../../core/utils/app_error.dart';
 import '../../../../core/utils/dev_mode_manager.dart';
 import '../../data/settings_gateway.dart';
 
-class SettingsState with EquatableMixin {
+class SettingsState with Equatable {
   static const Object _unset = Object();
 
   final double uiScale;

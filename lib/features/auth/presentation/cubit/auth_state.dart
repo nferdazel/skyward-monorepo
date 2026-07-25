@@ -6,21 +6,21 @@ abstract class AuthState {
   const AuthState();
 }
 
-class AuthInitial extends AuthState with EquatableMixin {
+class AuthInitial extends AuthState with Equatable {
   const AuthInitial();
 
   @override
   List<Object?> get props => [];
 }
 
-class AuthLoading extends AuthState with EquatableMixin {
+class AuthLoading extends AuthState with Equatable {
   const AuthLoading();
 
   @override
   List<Object?> get props => [];
 }
 
-class AuthAuthenticated extends AuthState with EquatableMixin {
+class AuthAuthenticated extends AuthState with Equatable {
   final AppUser user;
   final String token;
 
@@ -30,14 +30,14 @@ class AuthAuthenticated extends AuthState with EquatableMixin {
   List<Object?> get props => [user, token];
 }
 
-class AuthUnauthenticated extends AuthState with EquatableMixin {
+class AuthUnauthenticated extends AuthState with Equatable {
   const AuthUnauthenticated();
 
   @override
   List<Object?> get props => [];
 }
 
-class AuthError extends AuthState with EquatableMixin {
+class AuthError extends AuthState with Equatable {
   final String message;
 
   const AuthError({required this.message});

@@ -1,7 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-class LazyTabState with EquatableMixin {
+class LazyTabState with Equatable {
   final int activeIndex;
   final Set<int> loadedIndexes;
 

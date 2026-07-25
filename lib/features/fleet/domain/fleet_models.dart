@@ -2,7 +2,7 @@ import 'package:equatable/equatable.dart';
 
 import '../../../core/constants/game_constants.dart';
 
-class AircraftModel with EquatableMixin {
+class AircraftModel with Equatable {
   final String id;
   final String manufacturer;
   final String modelName;
@@ -63,7 +63,7 @@ class AircraftModel with EquatableMixin {
   ];
 }
 
-class UserFleetAircraft with EquatableMixin {
+class UserFleetAircraft with Equatable {
   final String id;
   final String nickname;
   final String acquisitionType;

@@ -3,7 +3,7 @@ import 'package:equatable/equatable.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/game_constants.dart';
 
-class SimulationState with EquatableMixin {
+class SimulationState with Equatable {
   static const Object _unset = Object();
   final DateTime gameTime;
   final double cashBalance;

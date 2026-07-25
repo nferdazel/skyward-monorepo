@@ -7,7 +7,7 @@ abstract class FinanceState {
   const FinanceState();
 }
 
-class FinanceDailySnapshot with EquatableMixin {
+class FinanceDailySnapshot with Equatable {
   final DateTime gameDate;
   final double revenue;
   final double expense;
@@ -30,7 +30,7 @@ class FinanceDailySnapshot with EquatableMixin {
 
 /// Immutable value object bundling all computed finance metrics.
 /// Adding a new metric requires editing only this class and the cubit builder.
-class FinanceMetrics with EquatableMixin {
+class FinanceMetrics with Equatable {
   final FinanceSnapshot snapshot;
   final List<BankTransaction> transactions;
   final List<FinanceDailySnapshot> dailySnapshots;
@@ -142,28 +142,28 @@ abstract class FinanceDataState extends FinanceState {
   double get repairExpenseShare => metrics.repairExpenseShare;
 }
 
-class FinanceInitial extends FinanceState with EquatableMixin {
+class FinanceInitial extends FinanceState with Equatable {
   const FinanceInitial();
 
   @override
   List<Object?> get props => [];
 }
 
-class FinanceLoading extends FinanceDataState with EquatableMixin {
+class FinanceLoading extends FinanceDataState with Equatable {
   const FinanceLoading({required super.metrics});
 
   @override
   List<Object?> get props => [metrics];
 }
 
-class FinanceLoaded extends FinanceDataState with EquatableMixin {
+class FinanceLoaded extends FinanceDataState with Equatable {
   const FinanceLoaded({required super.metrics});
 
   @override
   List<Object?> get props => [metrics];
 }
 
-class FinanceError extends FinanceDataState with EquatableMixin {
+class FinanceError extends FinanceDataState with Equatable {
   final String message;
   final bool hasData;
 

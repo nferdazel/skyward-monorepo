@@ -12,7 +12,7 @@ import '../../fleet/domain/fleet_models.dart';
 // These Dart formulas intentionally omit those factors for simpler UI preview.
 // Do not treat these as authoritative financial figures.
 
-class RouteMaintenancePreview with EquatableMixin {
+class RouteMaintenancePreview with Equatable {
   final int allocatedFlightsPerWeek;
   final int maxFlightsPerWeek;
   final double maintenanceHoursPerWeek;
@@ -48,7 +48,7 @@ class RouteMaintenancePreview with EquatableMixin {
 
 enum RouteViabilityBand { strong, workable, weak, blocked }
 
-class RoutePlanningAssessment with EquatableMixin {
+class RoutePlanningAssessment with Equatable {
   final UserFleetAircraft? recommendedAircraft;
   final int weeklyFlights;
   final int expectedPassengersPerFlight;
@@ -103,7 +103,7 @@ class RoutePlanningAssessment with EquatableMixin {
   ];
 }
 
-class Airport with EquatableMixin {
+class Airport with Equatable {
   final String iata;
   final String name;
   final String city;
@@ -160,7 +160,7 @@ class Airport with EquatableMixin {
   List<Object?> get props => [iata, name, city, country, latitude, longitude, demandIndex];
 }
 
-class UserRoute with EquatableMixin {
+class UserRoute with Equatable {
   final String id;
   final String originIata;
   final String destinationIata;

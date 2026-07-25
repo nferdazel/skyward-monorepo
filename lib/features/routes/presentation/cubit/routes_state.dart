@@ -23,21 +23,21 @@ abstract class RoutesDataState extends RoutesState {
   });
 }
 
-class RoutesInitial extends RoutesState with EquatableMixin {
+class RoutesInitial extends RoutesState with Equatable {
   const RoutesInitial();
 
   @override
   List<Object?> get props => [];
 }
 
-class RoutesLoading extends RoutesState with EquatableMixin {
+class RoutesLoading extends RoutesState with Equatable {
   const RoutesLoading();
 
   @override
   List<Object?> get props => [];
 }
 
-class RoutesLoaded extends RoutesDataState with EquatableMixin {
+class RoutesLoaded extends RoutesDataState with Equatable {
   const RoutesLoaded({
     required super.routes,
     required super.airports,
@@ -56,7 +56,7 @@ class RoutesLoaded extends RoutesDataState with EquatableMixin {
   ];
 }
 
-class RoutesActionLoading extends RoutesDataState with EquatableMixin {
+class RoutesActionLoading extends RoutesDataState with Equatable {
   const RoutesActionLoading({
     required super.routes,
     required super.airports,
@@ -75,7 +75,7 @@ class RoutesActionLoading extends RoutesDataState with EquatableMixin {
   ];
 }
 
-class RoutesActionSuccess extends RoutesDataState with EquatableMixin {
+class RoutesActionSuccess extends RoutesDataState with Equatable {
   final String message;
 
   const RoutesActionSuccess({
@@ -98,7 +98,7 @@ class RoutesActionSuccess extends RoutesDataState with EquatableMixin {
   ];
 }
 
-class RoutesError extends RoutesDataState with EquatableMixin {
+class RoutesError extends RoutesDataState with Equatable {
   final String message;
 
   final bool hasData;
