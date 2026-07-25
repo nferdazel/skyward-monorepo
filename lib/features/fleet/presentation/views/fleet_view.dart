@@ -59,23 +59,23 @@ class _FleetViewState extends State<FleetView>
   String? _cachedSortBy;
 
   static const _fleetColumnWidths = <int, TableColumnWidth>{
-    0: FlexColumnWidth(1.1), // TAIL
-    1: FlexColumnWidth(2.1), // AIRCRAFT
-    2: FlexColumnWidth(1.0), // ACQ
-    3: FlexColumnWidth(1.1), // CONDITION
-    4: FlexColumnWidth(1.0), // STATUS
-    5: FlexColumnWidth(1.8), // CABIN
-    6: FlexColumnWidth(1.0), // ACTIONS
+    0: FlexColumnWidth(2.8), // AIRCRAFT (merged TAIL + AIRCRAFT)
+    1: FlexColumnWidth(1.0), // ACQ
+    2: FlexColumnWidth(1.1), // CONDITION
+    3: FlexColumnWidth(1.0), // STATUS
+    4: FlexColumnWidth(1.8), // CABIN
+    5: FlexColumnWidth(1.0), // ACTIONS
   };
 
   static const _catalogColumnWidths = <int, TableColumnWidth>{
-    0: FlexColumnWidth(2.4), // AIRCRAFT
-    1: FlexColumnWidth(1.2), // CLASS
-    2: FlexColumnWidth(1.0), // RANGE
-    3: FlexColumnWidth(0.9), // SEATS
-    4: FlexColumnWidth(1.0), // BURN
-    5: FlexColumnWidth(1.7), // PRICING
-    6: FlexColumnWidth(1.2), // ACTIONS
+    0: FlexColumnWidth(2.2), // AIRCRAFT
+    1: FlexColumnWidth(1.0), // CLASS
+    2: FlexColumnWidth(0.9), // RANGE
+    3: FlexColumnWidth(1.0), // SPEED
+    4: FlexColumnWidth(0.8), // SEATS
+    5: FlexColumnWidth(0.9), // BURN
+    6: FlexColumnWidth(1.6), // PRICING
+    7: FlexColumnWidth(1.2), // ACTIONS
   };
 
   @override
@@ -288,6 +288,12 @@ class _FleetViewState extends State<FleetView>
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            _buildFleetSummaryStrip(
+              fleetList,
+              autoGroundingThreshold,
+              currencyFormat,
+            ),
+            const SizedBox(height: AppSpacing.md),
             Expanded(
               child: RepaintBoundary(
                 child: _buildActiveFleetTable(
@@ -304,6 +310,85 @@ class _FleetViewState extends State<FleetView>
           ],
         );
       },
+    );
+  }
+
+  Widget _buildFleetSummaryStrip(
+    List<UserFleetAircraft> fleet,
+    double threshold,
+    NumberFormat currencyFormat,
+  ) {
+    final ready =
+        fleet.where((a) => !a.isMaintenanceGrounded(threshold)).length;
+    final grounded =
+        fleet.where((a) => a.isMaintenanceGrounded(threshold)).length;
+    final leaseBurn = fleet
+        .where((a) => a.acquisitionType == 'lease')
+        .fold<double>(0, (s, a) => s + a.model.leasePricePerMonth);
+    final repairAll =
+        fleet.fold<double>(0, (s, a) => s + a.repairCost);
+
+    return AppCard(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      child: Row(
+        children: [
+          _buildSummaryKpi(
+            AppStrings.fleetSummaryReady,
+            '$ready',
+            AppTheme.success,
+          ),
+          _buildVerticalDivider(),
+          _buildSummaryKpi(
+            AppStrings.fleetSummaryGrounded,
+            '$grounded',
+            AppTheme.error,
+          ),
+          _buildVerticalDivider(),
+          _buildSummaryKpi(
+            AppStrings.fleetSummaryLeaseBurn,
+            currencyFormat.format(leaseBurn),
+            AppTheme.warning,
+          ),
+          _buildVerticalDivider(),
+          _buildSummaryKpi(
+            AppStrings.fleetSummaryRepairAll,
+            currencyFormat.format(repairAll),
+            AppTheme.error,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummaryKpi(String label, String value, Color valueColor) {
+    return Expanded(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: AppTypography.microLabel.copyWith(
+              color: AppTheme.textMuted,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            value,
+            style: AppTypography.monoValue.copyWith(color: valueColor),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVerticalDivider() {
+    return Container(
+      width: 1,
+      height: 28,
+      color: AppTheme.border,
     );
   }
 
@@ -327,7 +412,6 @@ class _FleetViewState extends State<FleetView>
               TableRow(
                 decoration: BoxDecoration(color: AppTheme.surfaceRaised),
                 children: [
-                  _tableHeaderCell(AppStrings.tailHeader),
                   _tableHeaderCell(AppStrings.aircraftHeader),
                   _tableHeaderCell(AppStrings.acquisitionHeader),
                   _tableHeaderCell(AppStrings.conditionHeader),
@@ -390,31 +474,22 @@ class _FleetViewState extends State<FleetView>
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  AppBadge.primary(label: aircraft.tailNumber),
-                  const SizedBox(height: AppSpacing.sm),
-                  Text(
-                    aircraft.nickname.toUpperCase(),
-                    style: AppTypography.badgeText.copyWith(
-                      color: AppTheme.textSecondary,
-                      letterSpacing: AppTypography.spacingRelaxed,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-            _tableCell(
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    aircraft.model.modelName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTypography.bodyMedium.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.textPrimary,
-                    ),
+                  Row(
+                    children: [
+                      AppBadge.primary(label: aircraft.tailNumber),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Text(
+                          aircraft.model.modelName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.bodyMedium.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   Text(
@@ -426,19 +501,19 @@ class _FleetViewState extends State<FleetView>
                       letterSpacing: AppTypography.spacingRelaxed,
                     ),
                   ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    '${aircraft.model.capacity} ${AppStrings.capacityPaxSuffix}',
-                    style: AppTypography.monoValue.copyWith(
-                      color: AppTheme.primary,
-                    ),
-                  ),
                 ],
               ),
             ),
             _tableCell(_buildAcquisitionBadge(aircraft.acquisitionType)),
             _tableCell(_buildWearConditionCell(aircraft.condition)),
-            _tableCell(_buildStatusBadge(aircraft.status, isGrounded)),
+            _tableCell(_buildStatusBadge(
+              aircraft.status,
+              isGrounded,
+              isAssigned,
+              isLeased: aircraft.acquisitionType == 'lease',
+              leasePricePerMonth: aircraft.model.leasePricePerMonth,
+              currencyFormat: currencyFormat,
+            )),
             _tableCell(
               Builder(
                 builder: (context) {
@@ -494,31 +569,48 @@ class _FleetViewState extends State<FleetView>
                         _showSeatConfigDialog(context, aircraft, userId),
                   ),
                   const SizedBox(width: AppSpacing.xs),
-                  aircraft.condition < 100.0
-                      ? AppTableIconAction(
-                          tooltip:
-                              '${AppStrings.repairTooltipPrefix}${currencyFormat.format(aircraft.repairCost)}',
-                          icon: Icons.build_outlined,
-                          size: 32,
-                          iconSize: 16,
-                          onPressed: isActionLoading
-                              ? null
-                              : () => _confirmRepair(
-                                  context,
-                                  aircraft,
-                                  userId,
-                                  currencyFormat,
+                  SizedBox(
+                    width: 32,
+                    height: 32,
+                    child: aircraft.condition >= 95.0
+                        ? Tooltip(
+                            message: AppStrings.minimalRepairTooltip,
+                            child: AppBadge(
+                              label: AppStrings.okStatus,
+                              color: AppTheme.success,
+                              letterSpacing: AppTypography.spacingRelaxed,
+                              padding: EdgeInsets.symmetric(
+                                horizontal: AppSpacing.sm,
+                                vertical: AppSpacing.xs,
+                              ),
+                            ),
+                          )
+                        : aircraft.condition < 100.0
+                            ? AppTableIconAction(
+                                tooltip:
+                                    '${AppStrings.repairTooltipPrefix}${currencyFormat.format(aircraft.repairCost)}',
+                                icon: Icons.build_outlined,
+                                size: 32,
+                                iconSize: 16,
+                                onPressed: isActionLoading
+                                    ? null
+                                    : () => _confirmRepair(
+                                        context,
+                                        aircraft,
+                                        userId,
+                                        currencyFormat,
+                                      ),
+                              )
+                            : AppBadge(
+                                label: AppStrings.okStatus,
+                                color: AppTheme.success,
+                                letterSpacing: AppTypography.spacingRelaxed,
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: AppSpacing.sm,
+                                  vertical: AppSpacing.xs,
                                 ),
-                        )
-                      :                         AppBadge(
-                          label: AppStrings.okStatus,
-                          color: AppTheme.success,
-                          letterSpacing: AppTypography.spacingRelaxed,
-                          padding: EdgeInsets.symmetric(
-                            horizontal: AppSpacing.sm,
-                            vertical: AppSpacing.xs,
-                          ),
-                        ),
+                              ),
+                  ),
                 ],
               ),
             ),
@@ -814,6 +906,20 @@ class _FleetViewState extends State<FleetView>
 
         final isActionLoading = state is FleetActionLoading;
 
+        // Read affordability context
+        final cashBalance =
+            context.select((SimulationCubit cubit) => cubit.state.cashBalance);
+        final bankState = context.read<BankCubit>().state;
+        final creditReport = switch (bankState) {
+          BankLoaded(:final creditReport) => creditReport,
+          BankLoanSuccess(:final creditReport) => creditReport,
+          BankRefinanceSuccess(:final creditReport) => creditReport,
+          BankError(:final creditReport) => creditReport,
+          _ => null,
+        };
+        final maxFinancingAmount =
+            creditReport?.maxFinancingAmount ?? double.infinity;
+
         final cubit = context.read<FleetCubit>();
         final filters = state is FleetDataState
             ? (
@@ -830,19 +936,76 @@ class _FleetViewState extends State<FleetView>
               );
 
         final filteredCatalog = _filterAndSortCatalog(catalog, filters);
+        final hasActiveFilter = filters.manufacturers.isNotEmpty ||
+            filters.categories.isNotEmpty ||
+            filters.ranges.isNotEmpty;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildFilterSortBar(context, cubit, filters),
+            _buildFilterSortBar(context, cubit, filters, catalog: catalog),
+            // Result count + clear-all
+            Padding(
+              padding: const EdgeInsets.only(
+                left: AppSpacing.xs,
+                bottom: AppSpacing.sm,
+              ),
+              child: Row(
+                children: [
+                  Text(
+                    '${filteredCatalog.length} of ${catalog.length} models',
+                    style: AppTypography.captionRegular.copyWith(
+                      color: AppTheme.textMuted,
+                    ),
+                  ),
+                  if (hasActiveFilter) ...[
+                    const SizedBox(width: AppSpacing.md),
+                    GestureDetector(
+                      onTap: () {
+                        cubit.setManufacturerFilter([]);
+                        cubit.setCategoryFilter([]);
+                        cubit.setRangeBracketFilter([]);
+                      },
+                      child: Text(
+                        AppStrings.clearFiltersLabel,
+                        style: AppTypography.badgeText.copyWith(
+                          color: AppTheme.primary,
+                          letterSpacing: AppTypography.spacingRelaxed,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
             Expanded(
               child: filteredCatalog.isEmpty
                   ? Center(
-                      child: Text(
-                        AppStrings.noAircraftMatchCriteria,
-                        style: AppTypography.bodyMedium.copyWith(
-                          color: AppTheme.textMuted,
-                        ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            AppStrings.noAircraftMatchCriteria,
+                            style: AppTypography.bodyMedium.copyWith(
+                              color: AppTheme.textMuted,
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          GestureDetector(
+                            onTap: () {
+                              cubit.setManufacturerFilter([]);
+                              cubit.setCategoryFilter([]);
+                              cubit.setRangeBracketFilter([]);
+                            },
+                            child: Text(
+                              AppStrings.clearFiltersLabel,
+                              style: AppTypography.badgeText.copyWith(
+                                color: AppTheme.primary,
+                                letterSpacing: AppTypography.spacingRelaxed,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     )
                   : _buildCatalogTable(
@@ -851,6 +1014,8 @@ class _FleetViewState extends State<FleetView>
                       userId,
                       currencyFormat,
                       isActionLoading,
+                      cashBalance,
+                      maxFinancingAmount,
                     ),
             ),
           ],
@@ -868,20 +1033,11 @@ class _FleetViewState extends State<FleetView>
       List<String> ranges,
       String sortBy,
     })
-    filters,
-  ) {
-    final manufacturers = [
-      'Boeing',
-      'Airbus',
-      'Embraer',
-      'ATR',
-      'Bombardier',
-      'COMAC',
-      'De Havilland',
-      'CASA',
-      'Sukhoi',
-      'Irkut',
-    ];
+    filters, {
+    required List<AircraftModel> catalog,
+  }) {
+    final manufacturers = catalog.map((m) => m.manufacturer).toSet().toList()
+      ..sort();
     final categories = [
       'Regional Turboprop',
       'Regional Jet',
@@ -1039,6 +1195,8 @@ class _FleetViewState extends State<FleetView>
     String userId,
     NumberFormat currencyFormat,
     bool isActionLoading,
+    double cashBalance,
+    double maxFinancingAmount,
   ) {
     return AppTableShell(
       child: Column(
@@ -1054,6 +1212,7 @@ class _FleetViewState extends State<FleetView>
                   _tableHeaderCell(AppStrings.aircraftHeader),
                   _tableHeaderCell(AppStrings.classHeader),
                   _tableHeaderCell(AppStrings.rangeHeader),
+                  _tableHeaderCell(AppStrings.speedHeader),
                   _tableHeaderCell(AppStrings.seatsHeader),
                   _tableHeaderCell(AppStrings.burnHeader),
                   _tableHeaderCell(AppStrings.pricingHeader),
@@ -1076,6 +1235,8 @@ class _FleetViewState extends State<FleetView>
                     userId,
                     currencyFormat,
                     isActionLoading,
+                    cashBalance,
+                    maxFinancingAmount,
                   ),
                 );
               },
@@ -1092,8 +1253,16 @@ class _FleetViewState extends State<FleetView>
     String userId,
     NumberFormat currencyFormat,
     bool isActionLoading,
+    double cashBalance,
+    double maxFinancingAmount,
   ) {
-    return Table(
+    // P1 #6b: Affordability indicators
+    final canBuyCash = cashBalance >= model.purchasePrice;
+    final canFinance = model.purchasePrice <= maxFinancingAmount;
+    final canLease = cashBalance >= model.leasePricePerMonth;
+    final isAffordable = canBuyCash || canFinance || canLease;
+
+    Widget row = Table(
       columnWidths: _catalogColumnWidths,
       defaultVerticalAlignment: TableCellVerticalAlignment.middle,
       children: [
@@ -1150,6 +1319,19 @@ class _FleetViewState extends State<FleetView>
                 ),
               ),
             ),
+            // P1 #6a: SPEED column
+            _tableCell(
+              Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  '${model.speedKmh} km/h',
+                  textAlign: TextAlign.right,
+                  style: AppTypography.monoValue.copyWith(
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+              ),
+            ),
             _tableCell(
               Align(
                 alignment: Alignment.centerRight,
@@ -1162,18 +1344,24 @@ class _FleetViewState extends State<FleetView>
                 ),
               ),
             ),
+            // P1 #6c: BURN cell with maintenance cost tooltip
             _tableCell(
-              Align(
-                alignment: Alignment.centerRight,
-                child: Text(
-                  '${model.fuelBurnPerKm} L/KM',
-                  textAlign: TextAlign.right,
-                  style: AppTypography.monoValue.copyWith(
-                    color: AppTheme.textPrimary,
+              Tooltip(
+                message:
+                    '${AppStrings.burnHeader}: ${model.fuelBurnPerKm} L/km · ${AppStrings.maintenanceCostLabel}: ${currencyFormat.format(model.maintenanceCostPerHour)}/hr',
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    '${model.fuelBurnPerKm} L/KM',
+                    textAlign: TextAlign.right,
+                    style: AppTypography.monoValue.copyWith(
+                      color: AppTheme.textPrimary,
+                    ),
                   ),
                 ),
               ),
             ),
+            // P1 #6b: PRICING column with FINANCEABLE chip
             _tableCell(
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
@@ -1193,6 +1381,26 @@ class _FleetViewState extends State<FleetView>
                       color: AppTheme.primary,
                     ),
                   ),
+                  if (canFinance && !canBuyCash) ...[
+                    const SizedBox(height: AppSpacing.xs),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm,
+                        vertical: AppSpacing.xs,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primary.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        AppStrings.financeableLabel,
+                        style: AppTypography.badgeText.copyWith(
+                          color: AppTheme.primary,
+                          letterSpacing: AppTypography.spacingRelaxed,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -1246,6 +1454,16 @@ class _FleetViewState extends State<FleetView>
         ),
       ],
     );
+
+    // P1 #6b: Dim unaffordable rows
+    if (!isAffordable) {
+      row = Tooltip(
+        message: AppStrings.insufficientFundsTooltip,
+        child: Opacity(opacity: 0.5, child: row),
+      );
+    }
+
+    return row;
   }
 
   // ATOMIC SEAT CONFIGURATION AND ACQUISITION FLOW (Pillar 3, Item 3: No Naming prompt, Seat Config first)
@@ -1270,6 +1488,9 @@ class _FleetViewState extends State<FleetView>
                 (economy * 1) + (business * 2) + (firstClass * 3);
             final bool isValid = occupiedSlots <= capacity;
             final int remainingSlots = capacity - occupiedSlots;
+            final cash = ctx.select(
+              (SimulationCubit cubit) => cubit.state.cashBalance,
+            );
 
             return AppDialogShell(
               title: isLease
@@ -1290,6 +1511,25 @@ class _FleetViewState extends State<FleetView>
                       height: 1.4,
                     ),
                   ),
+                  const SizedBox(height: AppSpacing.sm),
+                  // Cash-impact strip
+                  Text(
+                    '${AppStrings.cashAfterLabel} ${AppFormatters.currency.format(cash - (isLease ? model.leasePricePerMonth : model.purchasePrice))}',
+                    style: AppTypography.badgeText.copyWith(
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                  // Breakeven note (buy vs lease)
+                  if (!isLease && model.leasePricePerMonth > 0)
+                    Padding(
+                      padding: const EdgeInsets.only(top: AppSpacing.xs),
+                      child: Text(
+                        '${AppStrings.breakevenLabel} ${(model.purchasePrice / model.leasePricePerMonth).round()} ${AppStrings.breakevenMonthsSuffix}',
+                        style: AppTypography.captionRegular.copyWith(
+                          color: AppTheme.textMuted,
+                        ),
+                      ),
+                    ),
                   const SizedBox(height: AppSpacing.md),
                   Divider(color: AppTheme.border, height: 1),
                   const SizedBox(height: AppSpacing.md),
@@ -1492,23 +1732,34 @@ class _FleetViewState extends State<FleetView>
           final isEligible = model.purchasePrice <= maxFinancingAmount;
 
           return AppDialogShell(
-            title: 'FINANCE: ${model.manufacturer} ${model.modelName}',
+            title: AppStrings.financeDialogTitle
+                .replaceFirst('%s', model.manufacturer)
+                .replaceFirst('%s', model.modelName),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   isEligible
-                      ? 'Secured pricing uses your current credit tier.'
-                      : 'This aircraft exceeds your current financing cap.',
+                      ? AppStrings.financeSecuredPricingDesc
+                      : AppStrings.financeExceedsCapDesc,
                   style: AppTypography.captionRegular.copyWith(
                     color: isEligible ? AppTheme.textMuted : AppTheme.warning,
                   ),
                 ),
+                if (!isEligible) ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    AppStrings.improveCreditTierHint,
+                    style: AppTypography.captionRegular.copyWith(
+                      color: AppTheme.textMuted,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: AppSpacing.sm),
                 // Down payment slider
                 Text(
-                  'Down Payment: ${(downPaymentPct * 100).round()}%',
+                  '${AppStrings.downPaymentLabel} ${(downPaymentPct * 100).round()}%',
                   style: AppTypography.bodyMedium,
                 ),
                 Slider(
@@ -1518,8 +1769,45 @@ class _FleetViewState extends State<FleetView>
                   divisions: 8,
                   onChanged: (v) => setDialogState(() => downPaymentPct = v),
                 ),
+                // Down-payment preset chips
+                Wrap(
+                  spacing: AppSpacing.sm,
+                  children: [0.10, 0.20, 0.30, 0.50].map((pct) {
+                    final isSelected =
+                        (downPaymentPct * 100).round() == (pct * 100).round();
+                    return GestureDetector(
+                      onTap: () =>
+                          setDialogState(() => downPaymentPct = pct),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.md,
+                          vertical: AppSpacing.xs,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? AppTheme.primary.withValues(alpha: 0.15)
+                              : AppTheme.background,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: isSelected
+                                ? AppTheme.primary
+                                : AppTheme.border,
+                          ),
+                        ),
+                        child: Text(
+                          '${(pct * 100).round()}%',
+                          style: AppTypography.badgeText.copyWith(
+                            color: isSelected
+                                ? AppTheme.primary
+                                : AppTheme.textSecondary,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
                 Text(
-                  '\$${_formatNumber(downPayment)}',
+                  AppFormatters.currency.format(downPayment),
                   style: AppTypography.monoValue,
                 ),
 
@@ -1527,14 +1815,14 @@ class _FleetViewState extends State<FleetView>
 
                 // Term selector
                 AppDropdownField<int>(
-                  label: 'FINANCING TERM',
+                  label: AppStrings.financingTermLabel,
                   value: termMonths,
                   items: [12, 24, 36, 48, 60]
                       .map(
                         (m) => DropdownMenuItem(
                           value: m,
                           child: Text(
-                            '${m ~/ 12} months (${(m ~/ 12)} yr)',
+                            '$m months (${m ~/ 12} yr)',
                             style: AppTypography.badgeText.copyWith(
                               color: AppTheme.textPrimary,
                             ),
@@ -1555,36 +1843,36 @@ class _FleetViewState extends State<FleetView>
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       _summaryRow(
-                        'Aircraft Price',
-                        '\$${_formatNumber(model.purchasePrice)}',
+                        AppStrings.aircraftPriceLabel,
+                        AppFormatters.currency.format(model.purchasePrice),
                       ),
                       _summaryRow(
-                        'Financing Cap',
-                        '\$${_formatNumber(maxFinancingAmount)}',
+                        AppStrings.financingCapLabel,
+                        AppFormatters.currency.format(maxFinancingAmount),
                       ),
                       _summaryRow(
-                        'Secured Rate',
+                        AppStrings.securedRateLabel,
                         '${(securedRate * 100).toStringAsFixed(1)}% APR',
                       ),
                       _summaryRow(
-                        'Down Payment',
-                        '\$${_formatNumber(downPayment)}',
+                        AppStrings.downPaymentLabel,
+                        AppFormatters.currency.format(downPayment),
                       ),
                       _summaryRow(
-                        'Monthly Servicing',
-                        '\$${_formatNumber(monthlyPayment)}',
+                        AppStrings.monthlyServicingLabel,
+                        AppFormatters.currency.format(monthlyPayment),
                       ),
                       _summaryRow(
-                        'Weekly Servicing',
-                        '\$${_formatNumber(weeklyPayment)}',
+                        AppStrings.weeklyServicingLabel,
+                        AppFormatters.currency.format(weeklyPayment),
                       ),
                       _summaryRow(
-                        'Total Cost',
-                        '\$${_formatNumber(totalCost)}',
+                        AppStrings.totalCostLabel,
+                        AppFormatters.currency.format(totalCost),
                       ),
                       _summaryRow(
-                        'vs Buy Outright',
-                        '+\$${_formatNumber(totalCost - model.purchasePrice)}',
+                        AppStrings.vsBuyOutrightLabel,
+                        '+${AppFormatters.currency.format(totalCost - model.purchasePrice)}',
                       ),
                     ],
                   ),
@@ -1670,11 +1958,46 @@ class _FleetViewState extends State<FleetView>
       builder: (dialogCtx) {
         return AppDialogShell(
           title: AppStrings.performMaintenance,
-          content: Text(
-            '${AppStrings.repairConfirmPrefix}${aircraft.tailNumber}${AppStrings.repairConfirmMiddle}${aircraft.model.modelName}${AppStrings.repairConfirmSuffix}${currencyFormat.format(aircraft.repairCost)}${AppStrings.repairConfirmCostSuffix}',
-            style: AppTypography.bodyMedium.copyWith(
-              color: AppTheme.textPrimary,
-            ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${AppStrings.repairConfirmPrefix}${aircraft.tailNumber}${AppStrings.repairConfirmMiddle}${aircraft.model.modelName}${AppStrings.repairConfirmSuffix}${currencyFormat.format(aircraft.repairCost)}${AppStrings.repairConfirmCostSuffix}',
+                style: AppTypography.bodyMedium.copyWith(
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              // Before/after condition preview
+              Row(
+                children: [
+                  Text(
+                    '${aircraft.condition.toStringAsFixed(0)}%',
+                    style: AppTypography.monoValue.copyWith(
+                      color: ConditionColors.colorFor(aircraft.condition),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm,
+                    ),
+                    child: Text(
+                      '→',
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: AppTheme.textMuted,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '100%',
+                    style: AppTypography.monoValue.copyWith(
+                      color: AppTheme.success,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
           actions: Row(
             children: [
@@ -1792,11 +2115,6 @@ class _FleetViewState extends State<FleetView>
                       value: currencyFormat.format(exposureAmount),
                       valueColor: isLease ? AppTheme.warning : AppTheme.success,
                     ),
-                    AppLabeledValue(
-                      label: AppStrings.assignedFleetLabel,
-                      value: AppStrings.idleFleetLabel,
-                      valueColor: AppTheme.success,
-                    ),
                   ],
                 ),
               ),
@@ -1814,32 +2132,35 @@ class _FleetViewState extends State<FleetView>
               ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
-                child: AppButton(
-                  text: isLease
-                      ? AppStrings.confirmLeaseTermination
-                      : AppStrings.confirmSale,
-                  onPressed: () async {
-                    Navigator.pop(dialogCtx);
-                    if (isLease) {
-                      await fleetCubit.terminateLease(
-                        userId: userId,
-                        fleetId: aircraft.id,
-                        onBalanceChanged: (newCash) =>
-                            _applyCashBalance(context, userId, newCash),
-                      );
-                    } else {
-                      await fleetCubit.sellAircraft(
-                        userId: userId,
-                        fleetId: aircraft.id,
-                        onBalanceChanged: (newCash) =>
-                            _applyCashBalance(context, userId, newCash),
-                      );
-                    }
-                  },
-                  type: AppButtonType.primary,
-                  height: 40,
-                ),
-              ),
+                    child: AppButton(
+                      text: isLease
+                          ? AppStrings.confirmLeaseTermination
+                          : AppStrings.confirmSale,
+                      onPressed: () async {
+                        Navigator.pop(dialogCtx);
+                        if (isLease) {
+                          await fleetCubit.terminateLease(
+                            userId: userId,
+                            fleetId: aircraft.id,
+                            onBalanceChanged: (newCash) =>
+                                _applyCashBalance(context, userId, newCash),
+                          );
+                        } else {
+                          await fleetCubit.sellAircraft(
+                            userId: userId,
+                            fleetId: aircraft.id,
+                            onBalanceChanged: (newCash) =>
+                                _applyCashBalance(context, userId, newCash),
+                          );
+                        }
+                      },
+                      type: AppButtonType.primary,
+                      backgroundColor:
+                          isLease ? AppTheme.warning : null,
+                      textColor: isLease ? Colors.black : null,
+                      height: 40,
+                    ),
+                  ),
             ],
           ),
         );
@@ -1917,13 +2238,40 @@ class _FleetViewState extends State<FleetView>
     );
   }
 
-  Widget _buildStatusBadge(String status, bool isGrounded) {
+  Widget _buildStatusBadge(
+    String status,
+    bool isGrounded,
+    bool isAssigned, {
+    bool isLeased = false,
+    double leasePricePerMonth = 0,
+    NumberFormat? currencyFormat,
+  }) {
     if (isGrounded) {
       return AppBadge.error(label: AppStrings.groundedState);
-    } else if (status == 'active') {
-      return AppBadge.success(label: AppStrings.activeState);
-    } else {
+    } else if (status == 'maintenance') {
       return AppBadge.warning(label: AppStrings.maintenanceState);
+    } else if (isAssigned) {
+      return AppBadge.success(label: AppStrings.earningStatus);
+    } else {
+      // IDLE — not assigned, not grounded, not maintenance
+      if (isLeased && currencyFormat != null) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AppBadge.warning(label: AppStrings.idleStatus),
+            const SizedBox(height: 2),
+            Text(
+              '−${currencyFormat.format(leasePricePerMonth)}/mo',
+              style: AppTypography.badgeText.copyWith(
+                color: AppTheme.warning,
+                letterSpacing: AppTypography.spacingNone,
+              ),
+            ),
+          ],
+        );
+      }
+      return AppBadge.warning(label: AppStrings.idleStatus);
     }
   }
 
@@ -1943,8 +2291,6 @@ class _FleetViewState extends State<FleetView>
     if (state is FleetDataState) return state.catalog;
     return [];
   }
-
-  String _formatNumber(double value) => AppFormatters.compactNumber(value);
 
   Widget _tableHeaderCell(String label) {
     return AppTableHeaderCell(label: label, color: AppTheme.textSecondary);
