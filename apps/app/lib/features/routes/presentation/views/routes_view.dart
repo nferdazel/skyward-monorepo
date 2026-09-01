@@ -1904,18 +1904,17 @@ class _RoutesViewState extends State<RoutesView> {
   Airport? _findNearestAirport(LatLng point, List<Airport> airports) {
     if (airports.isEmpty) return null;
     Airport? nearest;
-    double minDist = double.infinity;
+    double minDistSq = double.infinity;
+    final pLat = point.latitude;
+    final pLon = point.longitude;
+    final cosLat = math.cos(pLat * math.pi / 180.0);
+
     for (final airport in airports) {
-      final dLat = (airport.latitude - point.latitude) * math.pi / 180.0;
-      final dLon = (airport.longitude - point.longitude) * math.pi / 180.0;
-      final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
-          math.cos(point.latitude * math.pi / 180.0) *
-              math.cos(airport.latitude * math.pi / 180.0) *
-              math.sin(dLon / 2) *
-              math.sin(dLon / 2);
-      final d = 2 * math.asin(math.sqrt(a));
-      if (d < minDist) {
-        minDist = d;
+      final dLat = airport.latitude - pLat;
+      final dLon = (airport.longitude - pLon) * cosLat;
+      final distSq = dLat * dLat + dLon * dLon;
+      if (distSq < minDistSq) {
+        minDistSq = distSq;
         nearest = airport;
       }
     }
