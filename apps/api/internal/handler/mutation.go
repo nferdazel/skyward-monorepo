@@ -54,7 +54,11 @@ func (h *MutationHandler) FleetPurchase(w http.ResponseWriter, r *http.Request) 
 		httperr.WriteError(w, nil, httperr.Validation("invalid request body"))
 		return
 	}
-	res, _ := h.Engine.Fleet.Purchase(r.Context(), uid, p)
+	res, err := h.Engine.Fleet.Purchase(r.Context(), uid, p)
+	if err != nil {
+		httperr.WriteError(w, nil, httperr.Internal("fleet purchase failed"))
+		return
+	}
 	h.respondChannel(w, res, "fleet_aircraft", "INSERT")
 }
 
@@ -63,7 +67,11 @@ func (h *MutationHandler) FleetSell(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	res, _ := h.Engine.Fleet.Sell(r.Context(), uid, r.PathValue("id"))
+	res, err := h.Engine.Fleet.Sell(r.Context(), uid, r.PathValue("id"))
+	if err != nil {
+		httperr.WriteError(w, nil, httperr.Internal("fleet sell failed"))
+		return
+	}
 	h.respondChannel(w, res, "fleet_aircraft", "DELETE")
 }
 
@@ -72,7 +80,11 @@ func (h *MutationHandler) FleetRepair(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	res, _ := h.Engine.Fleet.Repair(r.Context(), uid, r.PathValue("id"))
+	res, err := h.Engine.Fleet.Repair(r.Context(), uid, r.PathValue("id"))
+	if err != nil {
+		httperr.WriteError(w, nil, httperr.Internal("fleet repair failed"))
+		return
+	}
 	h.respondChannel(w, res, "fleet_aircraft", "UPDATE")
 }
 
@@ -90,7 +102,11 @@ func (h *MutationHandler) FleetConfigureSeats(w http.ResponseWriter, r *http.Req
 		httperr.WriteError(w, nil, httperr.Validation("invalid request body"))
 		return
 	}
-	res, _ := h.Engine.Fleet.ConfigureSeats(r.Context(), uid, r.PathValue("id"), p.EconomySeats, p.BusinessSeats, p.FirstClassSeats)
+	res, err := h.Engine.Fleet.ConfigureSeats(r.Context(), uid, r.PathValue("id"), p.EconomySeats, p.BusinessSeats, p.FirstClassSeats)
+	if err != nil {
+		httperr.WriteError(w, nil, httperr.Internal("configure seats failed"))
+		return
+	}
 	h.respondChannel(w, res, "fleet_aircraft", "UPDATE")
 }
 
@@ -106,7 +122,11 @@ func (h *MutationHandler) RouteCreate(w http.ResponseWriter, r *http.Request) {
 		httperr.WriteError(w, nil, httperr.Validation("invalid request body"))
 		return
 	}
-	res, _ := h.Engine.Routes.Create(r.Context(), uid, p)
+	res, err := h.Engine.Routes.Create(r.Context(), uid, p)
+	if err != nil {
+		httperr.WriteError(w, nil, httperr.Internal("create route failed"))
+		return
+	}
 	h.respondChannel(w, res, "route_assignments", "INSERT")
 }
 
@@ -115,7 +135,11 @@ func (h *MutationHandler) RouteDelete(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	res, _ := h.Engine.Routes.Delete(r.Context(), uid, r.PathValue("id"))
+	res, err := h.Engine.Routes.Delete(r.Context(), uid, r.PathValue("id"))
+	if err != nil {
+		httperr.WriteError(w, nil, httperr.Internal("delete route failed"))
+		return
+	}
 	h.respondChannel(w, res, "route_assignments", "DELETE")
 }
 
@@ -131,7 +155,11 @@ func (h *MutationHandler) SettingsSave(w http.ResponseWriter, r *http.Request) {
 		httperr.WriteError(w, nil, httperr.Validation("invalid request body"))
 		return
 	}
-	res, _ := h.Engine.Settings.Save(r.Context(), uid, p)
+	res, err := h.Engine.Settings.Save(r.Context(), uid, p)
+	if err != nil {
+		httperr.WriteError(w, nil, httperr.Internal("save settings failed"))
+		return
+	}
 	h.respondChannel(w, res, "users", "UPDATE")
 }
 
@@ -140,7 +168,11 @@ func (h *MutationHandler) SettingsReset(w http.ResponseWriter, r *http.Request) 
 	if !ok {
 		return
 	}
-	res, _ := h.Engine.Settings.Reset(r.Context(), uid)
+	res, err := h.Engine.Settings.Reset(r.Context(), uid)
+	if err != nil {
+		httperr.WriteError(w, nil, httperr.Internal("reset settings failed"))
+		return
+	}
 	h.respondChannel(w, res, "users", "UPDATE")
 }
 
@@ -169,7 +201,11 @@ func (h *MutationHandler) BankTakeLoan(w http.ResponseWriter, r *http.Request) {
 		httperr.WriteError(w, nil, httperr.Validation("invalid request body"))
 		return
 	}
-	res, _ := h.Engine.Bank.TakeLoan(r.Context(), uid, p)
+	res, err := h.Engine.Bank.TakeLoan(r.Context(), uid, p)
+	if err != nil {
+		httperr.WriteError(w, nil, httperr.Internal("take loan failed"))
+		return
+	}
 	h.respondChannel(w, res, "loans", "INSERT")
 }
 
@@ -182,7 +218,11 @@ func (h *MutationHandler) BankRepayLoan(w http.ResponseWriter, r *http.Request) 
 		Amount *float64 `json:"amount,omitempty"`
 	}
 	_ = json.NewDecoder(r.Body).Decode(&p)
-	res, _ := h.Engine.Bank.Repay(r.Context(), uid, r.PathValue("id"), p.Amount)
+	res, err := h.Engine.Bank.Repay(r.Context(), uid, r.PathValue("id"), p.Amount)
+	if err != nil {
+		httperr.WriteError(w, nil, httperr.Internal("repay loan failed"))
+		return
+	}
 	h.respondChannel(w, res, "loans", "UPDATE")
 }
 
@@ -198,7 +238,11 @@ func (h *MutationHandler) FleetLease(w http.ResponseWriter, r *http.Request) {
 		httperr.WriteError(w, nil, httperr.Validation("invalid request body"))
 		return
 	}
-	res, _ := h.Engine.Fleet.Lease(r.Context(), uid, p)
+	res, err := h.Engine.Fleet.Lease(r.Context(), uid, p)
+	if err != nil {
+		httperr.WriteError(w, nil, httperr.Internal("lease aircraft failed"))
+		return
+	}
 	h.respondChannel(w, res, "fleet_aircraft", "INSERT")
 }
 
@@ -207,7 +251,11 @@ func (h *MutationHandler) FleetTerminateLease(w http.ResponseWriter, r *http.Req
 	if !ok {
 		return
 	}
-	res, _ := h.Engine.Fleet.TerminateLease(r.Context(), uid, r.PathValue("id"))
+	res, err := h.Engine.Fleet.TerminateLease(r.Context(), uid, r.PathValue("id"))
+	if err != nil {
+		httperr.WriteError(w, nil, httperr.Internal("terminate lease failed"))
+		return
+	}
 	h.respondChannel(w, res, "fleet_aircraft", "DELETE")
 }
 
@@ -225,7 +273,11 @@ func (h *MutationHandler) RouteAssign(w http.ResponseWriter, r *http.Request) {
 		httperr.WriteError(w, nil, httperr.Validation("invalid request body"))
 		return
 	}
-	res, _ := h.Engine.Routes.Assign(r.Context(), uid, r.PathValue("id"), p.AircraftID)
+	res, err := h.Engine.Routes.Assign(r.Context(), uid, r.PathValue("id"), p.AircraftID)
+	if err != nil {
+		httperr.WriteError(w, nil, httperr.Internal("route assign failed"))
+		return
+	}
 	h.respondChannel(w, res, "route_assignments", "UPDATE")
 }
 
@@ -242,7 +294,11 @@ func (h *MutationHandler) RouteUpdateFreqPrice(w http.ResponseWriter, r *http.Re
 		httperr.WriteError(w, nil, httperr.Validation("invalid request body"))
 		return
 	}
-	res, _ := h.Engine.Routes.UpdateFreqPrice(r.Context(), uid, r.PathValue("id"), p.TicketPrice, p.FlightsPerWeek)
+	res, err := h.Engine.Routes.UpdateFreqPrice(r.Context(), uid, r.PathValue("id"), p.TicketPrice, p.FlightsPerWeek)
+	if err != nil {
+		httperr.WriteError(w, nil, httperr.Internal("update route failed"))
+		return
+	}
 	h.respondChannel(w, res, "route_assignments", "UPDATE")
 }
 
@@ -253,7 +309,11 @@ func (h *MutationHandler) BankRefinanceLoan(w http.ResponseWriter, r *http.Reque
 	if !ok {
 		return
 	}
-	res, _ := h.Engine.Bank.Refinance(r.Context(), uid, r.PathValue("id"))
+	res, err := h.Engine.Bank.Refinance(r.Context(), uid, r.PathValue("id"))
+	if err != nil {
+		httperr.WriteError(w, nil, httperr.Internal("refinance loan failed"))
+		return
+	}
 	h.respondChannel(w, res, "loans", "UPDATE")
 }
 
@@ -267,7 +327,11 @@ func (h *MutationHandler) BankFinanceAircraft(w http.ResponseWriter, r *http.Req
 		httperr.WriteError(w, nil, httperr.Validation("invalid request body"))
 		return
 	}
-	res, _ := h.Engine.Bank.FinanceAircraft(r.Context(), uid, p)
+	res, err := h.Engine.Bank.FinanceAircraft(r.Context(), uid, p)
+	if err != nil {
+		httperr.WriteError(w, nil, httperr.Internal("finance aircraft failed"))
+		return
+	}
 	h.respondChannel(w, res, "loans", "INSERT")
 }
 
