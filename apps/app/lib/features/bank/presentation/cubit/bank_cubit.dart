@@ -627,6 +627,7 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
             _gateway.getCreditReport(),
             _gateway.getAircraftFinancing(userId),
           ]).timeout(const Duration(seconds: 30));
+          if (isClosed) return;
           _cachedLoans = (results[0] as List<dynamic>)
               .map((m) => Loan.fromMap(m as Map<String, dynamic>))
               .toList();
@@ -643,13 +644,16 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
         case 'bank_accounts':
           // Account balance changed → reload bank accounts only
           _cachedAccounts = await _gateway.getBankAccounts(userId);
+          if (isClosed) return;
           _emitLoaded();
           break;
 
         case 'bank_transactions':
           // New transaction → reload bank accounts + transactions
           _cachedAccounts = await _gateway.getBankAccounts(userId);
+          if (isClosed) return;
           await _reloadCachedTransactions();
+          if (isClosed) return;
           _emitLoaded();
           break;
 
