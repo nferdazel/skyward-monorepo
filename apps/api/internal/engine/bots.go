@@ -273,9 +273,7 @@ func (e *Engine) botHandleRouteLifecycle(ctx context.Context, botID string, game
 					_, _ = e.Routes.Delete(ctx, botID, worst.RouteID)
 				} else {
 					newFreq := math.Max(6, float64(freq)-6)
-					_, _ = e.Routes.UpdateFreqPrice(ctx, botID, worst.RouteID, 0, int(newFreq)) // TODO: price adj
-					// UpdateFreqPrice requires price>0; bypass via direct SQL di bawah
-					e.Pool.Exec(ctx, `UPDATE route_assignments SET flights_per_week=$1 WHERE id=$2`, int(newFreq), worst.RouteID)
+					_, _ = e.Routes.UpdateFreqPrice(ctx, botID, worst.RouteID, 0, int(newFreq))
 				}
 				e.Pool.Exec(ctx, `UPDATE bot_profiles SET last_route_change_at=$1 WHERE user_id=$2`, gameTime, botID)
 			}

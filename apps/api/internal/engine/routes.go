@@ -142,16 +142,20 @@ func (r *RoutesService) Assign(ctx context.Context, userID, routeID, aircraftID 
 
 // UpdateFreqPrice — PATCH /routes/{id}. Faithful port of update_route_frequency_and_price.
 func (r *RoutesService) UpdateFreqPrice(ctx context.Context, userID, routeID string, price float64, freq int) (*MutationResult, error) {
-	if price <= 0 || freq < 1 || freq > 168 {
-		return &MutationResult{false, "Invalid route economics or schedule.", 0}, nil
+	if freq < 1 || freq > 168 {
+		return &MutationResult{false, "Invalid route schedule frequency.", 0}, nil
 	}
 	var routeDist float64
+	var currentPrice float64
 	var assigned *string
 	err := r.engine.Pool.QueryRow(ctx,
-		`SELECT distance_km, assigned_aircraft_id FROM route_assignments WHERE id=$1 AND user_id=$2`, routeID, userID).
-		Scan(&routeDist, &assigned)
+		`SELECT distance_km, ticket_price, assigned_aircraft_id FROM route_assignments WHERE id=$1 AND user_id=$2`, routeID, userID).
+		Scan(&routeDist, &currentPrice, &assigned)
 	if err != nil {
 		return &MutationResult{false, "Route not found.", 0}, nil
+	}
+	if price <= 0 {
+		price = currentPrice
 	}
 	if assigned != nil {
 		var rangeKM, speedKMH int
