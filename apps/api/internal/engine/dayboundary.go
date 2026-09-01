@@ -117,13 +117,22 @@ func (e *Engine) ProcessLoanPayments(ctx context.Context, userID string, gameDat
 			continue
 		}
 		if cash >= payment {
-			e.Ledger.DebitAccount(ctx, userID, payment, "financing", "loan_payment", "Weekly loan payment", gameDate)
-			cash -= payment
-			e.Pool.Exec(ctx, `UPDATE loans SET remaining_balance = remaining_balance - $1 WHERE id=$2`, payment, l.ID)
-			var rem float64
-			e.Pool.QueryRow(ctx, `SELECT remaining_balance FROM loans WHERE id=$1`, l.ID).Scan(&rem)
-			if rem <= 0 {
-				e.Pool.Exec(ctx, `UPDATE loans SET status='paid_off', remaining_balance=0 WHERE id=$1`, l.ID)
+			tx, txErr := e.Pool.Begin(ctx)
+			if txErr == nil {
+				_, dErr := e.Ledger.DebitTx(ctx, tx, userID, payment, "financing", "loan_payment", "Weekly loan payment", gameDate)
+				if dErr == nil {
+					_, _ = tx.Exec(ctx, `
+						UPDATE loans SET remaining_balance = GREATEST(0, remaining_balance - $1),
+						       status = CASE WHEN remaining_balance - $1 <= 0.005 THEN 'paid_off'::varchar ELSE status END
+						WHERE id=$2`, payment, l.ID)
+					if tx.Commit(ctx) == nil {
+						cash -= payment
+					} else {
+						tx.Rollback(ctx) //nolint:errcheck
+					}
+				} else {
+					tx.Rollback(ctx) //nolint:errcheck
+				}
 			}
 		} else {
 			lateFee := payment * 0.10
@@ -168,13 +177,22 @@ func (e *Engine) ProcessAircraftFinancingPayments(ctx context.Context, userID st
 			continue
 		}
 		if cash >= payment {
-			e.Ledger.DebitAccount(ctx, userID, payment, "financing", "financing_payment", "Aircraft financing payment", gameDate)
-			cash -= payment
-			e.Pool.Exec(ctx, `UPDATE loans SET remaining_balance = remaining_balance - $1 WHERE id=$2`, payment, l.ID)
-			var rem float64
-			e.Pool.QueryRow(ctx, `SELECT remaining_balance FROM loans WHERE id=$1`, l.ID).Scan(&rem)
-			if rem <= 0 {
-				e.Pool.Exec(ctx, `UPDATE loans SET status='paid_off', remaining_balance=0 WHERE id=$1`, l.ID)
+			tx, txErr := e.Pool.Begin(ctx)
+			if txErr == nil {
+				_, dErr := e.Ledger.DebitTx(ctx, tx, userID, payment, "financing", "financing_payment", "Aircraft financing payment", gameDate)
+				if dErr == nil {
+					_, _ = tx.Exec(ctx, `
+						UPDATE loans SET remaining_balance = GREATEST(0, remaining_balance - $1),
+						       status = CASE WHEN remaining_balance - $1 <= 0.005 THEN 'paid_off'::varchar ELSE status END
+						WHERE id=$2`, payment, l.ID)
+					if tx.Commit(ctx) == nil {
+						cash -= payment
+					} else {
+						tx.Rollback(ctx) //nolint:errcheck
+					}
+				} else {
+					tx.Rollback(ctx) //nolint:errcheck
+				}
 			}
 		} else {
 			lateFee := payment * 0.05
