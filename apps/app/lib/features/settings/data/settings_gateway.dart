@@ -1,0 +1,127 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../../core/database/supabase_client.dart';
+
+class SettingsGatewayException implements Exception {
+  final String message;
+  final String operation;
+
+  const SettingsGatewayException(this.message, this.operation);
+
+  @override
+  String toString() => 'SettingsGatewayException [$operation]: $message';
+}
+
+abstract class SettingsGateway {
+  Future<List<dynamic>> loadAirports();
+  Future<List<dynamic>> saveAirlineSettings(Map<String, dynamic> params);
+  Future<List<dynamic>> resetUserAirline();
+  Future<Map<String, dynamic>> deleteAccount();
+  Future<Map<String, dynamic>> loadUserProfile(String userId);
+}
+
+class SupabaseSettingsGateway implements SettingsGateway {
+  const SupabaseSettingsGateway();
+
+  @override
+  Future<List<dynamic>> loadAirports() async {
+    try {
+      return await SupabaseManager.client
+          .from('airports')
+          .select('iata, name, city, country')
+          .order('country', ascending: true);
+    } on PostgrestException catch (e) {
+      SupabaseManager.logRpcFailure('loadAirports', {}, e.message);
+      throw SettingsGatewayException(e.message, 'loadAirports');
+    } catch (e, stack) {
+      SupabaseManager.logError('loadAirports', e, stack);
+      throw SettingsGatewayException(e.toString(), 'loadAirports');
+    }
+  }
+
+  @override
+  Future<List<dynamic>> saveAirlineSettings(
+    Map<String, dynamic> params,
+  ) async {
+    try {
+      return await SupabaseManager.client.rpc(
+        'save_airline_settings',
+        params: params,
+      );
+    } on PostgrestException catch (e) {
+      SupabaseManager.logRpcFailure(
+        'save_airline_settings',
+        params,
+        e.message,
+      );
+      throw SettingsGatewayException(e.message, 'saveAirlineSettings');
+    } catch (e, stack) {
+      SupabaseManager.logError('saveAirlineSettings', e, stack);
+      throw SettingsGatewayException(e.toString(), 'saveAirlineSettings');
+    }
+  }
+
+  @override
+  Future<List<dynamic>> resetUserAirline() async {
+    try {
+      return await SupabaseManager.client.rpc('reset_user_airline');
+    } on PostgrestException catch (e) {
+      SupabaseManager.logRpcFailure('reset_user_airline', {}, e.message);
+      throw SettingsGatewayException(e.message, 'resetUserAirline');
+    } catch (e, stack) {
+      SupabaseManager.logError('resetUserAirline', e, stack);
+      throw SettingsGatewayException(e.toString(), 'resetUserAirline');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> deleteAccount() async {
+    try {
+      final response =
+          await SupabaseManager.client.functions.invoke('delete-account');
+      final data = response.data;
+      final payload = data is Map<String, dynamic>
+          ? data
+          : data is Map
+              ? Map<String, dynamic>.from(data)
+              : <String, dynamic>{};
+      if (response.status >= 400 || payload['success'] != true) {
+        throw SettingsGatewayException(
+          payload['message'] as String? ?? 'Delete account failed.',
+          'deleteAccount',
+        );
+      }
+      return payload;
+    } on SettingsGatewayException {
+      rethrow;
+    } catch (e, stack) {
+      SupabaseManager.logError('deleteAccount', e, stack);
+      throw SettingsGatewayException(e.toString(), 'deleteAccount');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> loadUserProfile(String userId) async {
+    try {
+      return await SupabaseManager.client
+          .from('users')
+          .select(
+            'id, company_name, ceo_name, game_current_time, '
+            'hq_airport_iata, auto_grounding_threshold, operational_status, '
+            'consecutive_negative_days, recovery_streak_days',
+          )
+          .eq('id', userId)
+          .single();
+    } on PostgrestException catch (e) {
+      SupabaseManager.logRpcFailure(
+        'loadUserProfile',
+        {'id': userId},
+        e.message,
+      );
+      throw SettingsGatewayException(e.message, 'loadUserProfile');
+    } catch (e, stack) {
+      SupabaseManager.logError('loadUserProfile', e, stack);
+      throw SettingsGatewayException(e.toString(), 'loadUserProfile');
+    }
+  }
+}
