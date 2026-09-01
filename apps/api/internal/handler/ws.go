@@ -113,7 +113,7 @@ func (s *WSServer) ServeWS(w http.ResponseWriter, r *http.Request) {
 				s.Hub.Unsubscribe(client, ch)
 			}
 		case "ping":
-			client.Send <- []byte(`{"type":"pong"}`)
+			client.TrySend([]byte(`{"type":"pong"}`))
 		}
 	}
 }

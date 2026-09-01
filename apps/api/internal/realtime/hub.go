@@ -35,12 +35,38 @@ type Client struct {
 	UserID   string
 	Send     chan []byte
 	channels map[string]bool
+	closed   bool
 	mu       sync.Mutex
 }
 
 // NewClient — buat client terdaftar pada hub.
 func NewClient(hub *Hub, userID string) *Client {
 	return &Client{hub: hub, UserID: userID, Send: make(chan []byte, 16), channels: map[string]bool{}}
+}
+
+// TrySend — kirim pesan secara aman tanpa memicu panic jika channel sudah ditutup.
+func (c *Client) TrySend(msg []byte) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.closed {
+		return false
+	}
+	select {
+	case c.Send <- msg:
+		return true
+	default:
+		return false
+	}
+}
+
+// Close — tutup channel Send secara aman dan tandai status closed.
+func (c *Client) Close() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if !c.closed {
+		c.closed = true
+		close(c.Send)
+	}
 }
 
 // Register — daftarkan client baru ke hub.
@@ -63,7 +89,7 @@ func (h *Hub) Unregister(c *Client) {
 			}
 		}
 	}
-	close(c.Send)
+	c.Close()
 }
 
 // Subscribe — client subscribe channel.
@@ -118,11 +144,7 @@ func (h *Hub) Broadcast(channel, event string) {
 		return
 	}
 	for c := range clients {
-		select {
-		case c.Send <- msg:
-		default:
-			// slow client — biarkan writer pump menangani timeout
-		}
+		c.TrySend(msg)
 	}
 	if h.logger != nil {
 		h.logger.Debug("broadcast", "channel", channel, "event", event, "clients", len(clients))
@@ -135,9 +157,7 @@ func (h *Hub) BroadcastAll(event string) {
 	defer h.mu.Unlock()
 	msg, _ := json.Marshal(Event{Type: "change", Event: event})
 	for c := range h.clients {
-		select {
-		case c.Send <- msg:
-		default:
-		}
+		c.TrySend(msg)
 	}
 }
+
