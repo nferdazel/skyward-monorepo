@@ -149,20 +149,28 @@ func (f *FleetService) Sell(ctx context.Context, userID, fleetID string) (*Mutat
 	if err != nil {
 		return &MutationResult{Success: false, Message: "delete aircraft failed"}, nil
 	}
-	tx.Commit(ctx) //nolint:errcheck
+	if err := tx.Commit(ctx); err != nil {
+		return &MutationResult{Success: false, Message: "commit failed"}, nil
+	}
 	return &MutationResult{Success: true, Message: fmt.Sprintf("Aircraft sold for $%.2f.", saleValue), NewCash: newCash}, nil
 }
 
 // Repair — POST /fleet/{id}/repair. Faithful port of perform_actor_aircraft_repair (player path).
 func (f *FleetService) Repair(ctx context.Context, userID, fleetID string) (*MutationResult, error) {
+	tx, err := f.engine.Pool.Begin(ctx)
+	if err != nil {
+		return &MutationResult{Success: false, Message: "transaction error"}, nil
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+
 	var condition float64
 	var acqType string
 	var purchasePrice, leasePrice float64
 	var modelName string
-	err := f.engine.Pool.QueryRow(ctx, `
+	err = tx.QueryRow(ctx, `
 		SELECT f.condition, f.acquisition_type, m.purchase_price, m.lease_price_per_month, m.model_name
 		FROM fleet_aircraft f JOIN aircraft_models m ON m.id=f.aircraft_model_id
-		WHERE f.id=$1 AND f.user_id=$2`, fleetID, userID).
+		WHERE f.id=$1 AND f.user_id=$2 FOR UPDATE`, fleetID, userID).
 		Scan(&condition, &acqType, &purchasePrice, &leasePrice, &modelName)
 	if err != nil {
 		return &MutationResult{Success: false, Message: "Aircraft not found."}, nil
@@ -182,12 +190,6 @@ func (f *FleetService) Repair(ctx context.Context, userID, fleetID string) (*Mut
 			Message: fmt.Sprintf("Insufficient funds for repair. Required: $%.2f", repairCost), NewCash: cash}, nil
 	}
 
-	tx, err := f.engine.Pool.Begin(ctx)
-	if err != nil {
-		return &MutationResult{Success: false, Message: "transaction error", NewCash: cash}, nil
-	}
-	defer tx.Rollback(ctx) //nolint:errcheck
-
 	gameTime, _ := f.engine.Ledger.GetUserGameTime(ctx, userID)
 	desc := fmt.Sprintf("Maintenance completed for %s - restored from %.2f%% to 100%%", modelName, condition)
 	newCash, err := f.engine.Ledger.DebitTx(ctx, tx, userID, repairCost, "cogs", "maintenance", desc, gameTime)
@@ -198,7 +200,9 @@ func (f *FleetService) Repair(ctx context.Context, userID, fleetID string) (*Mut
 	if err != nil {
 		return &MutationResult{Success: false, Message: "update aircraft failed", NewCash: cash}, nil
 	}
-	tx.Commit(ctx) //nolint:errcheck
+	if err := tx.Commit(ctx); err != nil {
+		return &MutationResult{Success: false, Message: "commit failed", NewCash: cash}, nil
+	}
 	return &MutationResult{Success: true, Message: "Aircraft maintenance complete. Health restored to 100%!", NewCash: newCash}, nil
 }
 
@@ -329,10 +333,18 @@ func (f *FleetService) TerminateLease(ctx context.Context, userID, fleetID strin
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
 	gameTime, _ := f.engine.Ledger.GetUserGameTime(ctx, userID)
-	newCash, _ := f.engine.Ledger.DebitTx(ctx, tx, userID, exitFee, "opex", "lease_termination",
+	newCash, debitErr := f.engine.Ledger.DebitTx(ctx, tx, userID, exitFee, "opex", "lease_termination",
 		fmt.Sprintf("Terminated leased aircraft %s [%s]", modelName, deref(tail, "NO-TAIL")), gameTime)
-	tx.Exec(ctx, `DELETE FROM fleet_aircraft WHERE id=$1 AND user_id=$2`, fleetID, userID)
-	tx.Commit(ctx) //nolint:errcheck
+	if debitErr != nil {
+		return &MutationResult{false, "debit fee failed: " + debitErr.Error(), cash}, nil
+	}
+	_, delErr := tx.Exec(ctx, `DELETE FROM fleet_aircraft WHERE id=$1 AND user_id=$2`, fleetID, userID)
+	if delErr != nil {
+		return &MutationResult{false, "delete aircraft failed", cash}, nil
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return &MutationResult{false, "commit failed", cash}, nil
+	}
 	return &MutationResult{true, "Lease terminated successfully!", newCash}, nil
 }
 
