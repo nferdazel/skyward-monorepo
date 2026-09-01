@@ -19,8 +19,6 @@ type TakeLoanParams struct {
 
 // TakeLoan — POST /bank/loans. Faithful port of take_loan(p_user_id,...).
 func (b *BankService) TakeLoan(ctx context.Context, userID string, p TakeLoanParams) (*MutationResult, error) {
-	// Validasi dasar + policy (credit tier config) — TODO Fase 6 lengkap.
-	// Mirip take_loan: cek tier, limits, disbursement.
 	if p.Principal <= 0 {
 		return &MutationResult{Success: false, Message: "Loan amount must be positive."}, nil
 	}
@@ -31,21 +29,6 @@ func (b *BankService) TakeLoan(ctx context.Context, userID string, p TakeLoanPar
 	if loanType == "" {
 		loanType = "unsecured"
 	}
-	// max_active_loans dari config
-	var maxActive int
-	b.engine.Pool.QueryRow(ctx, `SELECT COALESCE((value#>>'{max_active_loans}')::int, 3) FROM game_config WHERE key='credit_tier_config'`).Scan(&maxActive)
-	var activeLoans int
-	b.engine.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM loans WHERE user_id=$1 AND status='active'`, userID).Scan(&activeLoans)
-	if activeLoans >= maxActive {
-		return &MutationResult{Success: false, Message: "Maximum active loans reached."}, nil
-	}
-	// rate dari tier policy — ambil unsecured rate Standard dulu (Fase 6 refine)
-	var rate float64 = 0.12
-	b.engine.Pool.QueryRow(ctx, `SELECT COALESCE((value#>>'{Standard,rate_unsecured}')::numeric, 0.12) FROM game_config WHERE key='credit_tier_config'`).Scan(&rate)
-
-	// weekly payment (simple amortization, mirror take_loan)
-	weekly := p.Principal * (1 + rate) / float64(p.TermWeeks)
-	monthly := weekly * 4.33
 
 	tx, err := b.engine.Pool.Begin(ctx)
 	if err != nil {
@@ -53,8 +36,27 @@ func (b *BankService) TakeLoan(ctx context.Context, userID string, p TakeLoanPar
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
 
+	var maxActive int
+	err = tx.QueryRow(ctx, `SELECT COALESCE((value#>>'{max_active_loans}')::int, 3) FROM game_config WHERE key='credit_tier_config'`).Scan(&maxActive)
+	if err != nil {
+		maxActive = 3
+	}
+	var activeLoans int
+	err = tx.QueryRow(ctx, `SELECT COUNT(*) FROM loans WHERE user_id=$1 AND status='active'`, userID).Scan(&activeLoans)
+	if err != nil {
+		return &MutationResult{Success: false, Message: "failed to query active loans"}, nil
+	}
+	if activeLoans >= maxActive {
+		return &MutationResult{Success: false, Message: "Maximum active loans reached."}, nil
+	}
+
+	var rate float64 = 0.12
+	tx.QueryRow(ctx, `SELECT COALESCE((value#>>'{Standard,rate_unsecured}')::numeric, 0.12) FROM game_config WHERE key='credit_tier_config'`).Scan(&rate)
+
+	weekly := p.Principal * (1 + rate) / float64(p.TermWeeks)
+	monthly := weekly * 4.33
+
 	gameTime, _ := b.engine.Ledger.GetUserGameTime(ctx, userID)
-	var newCash float64
 	var loanID string
 	err = tx.QueryRow(ctx, `
 		INSERT INTO loans (user_id, loan_type, principal, interest_rate, remaining_balance, weekly_payment, monthly_payment, status, term_months, originated_game_date)
@@ -64,22 +66,30 @@ func (b *BankService) TakeLoan(ctx context.Context, userID string, p TakeLoanPar
 	if err != nil {
 		return &MutationResult{Success: false, Message: "insert loan failed"}, nil
 	}
-	newCash, err = b.engine.Ledger.CreditTx(ctx, tx, userID, p.Principal, "financing", "loan_disbursement",
+	newCash, err := b.engine.Ledger.CreditTx(ctx, tx, userID, p.Principal, "financing", "loan_disbursement",
 		fmt.Sprintf("Loan disbursement (%s)", loanType), gameTime)
 	if err != nil {
 		return &MutationResult{Success: false, Message: "disbursement failed"}, nil
 	}
-	tx.Commit(ctx) //nolint:errcheck
+	if err := tx.Commit(ctx); err != nil {
+		return &MutationResult{Success: false, Message: "commit failed"}, nil
+	}
 	return &MutationResult{Success: true, Message: "Loan approved and funds disbursed.", NewCash: newCash}, nil
 }
 
 // Repay — POST /bank/loans/{id}/repay. Faithful port of repay_loan.
 func (b *BankService) Repay(ctx context.Context, userID, loanID string, amount *float64) (*MutationResult, error) {
+	tx, err := b.engine.Pool.Begin(ctx)
+	if err != nil {
+		return &MutationResult{Success: false, Message: "transaction error"}, nil
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+
 	var remaining float64
 	var loanType string
 	var collateral *string
-	err := b.engine.Pool.QueryRow(ctx,
-		`SELECT remaining_balance, loan_type, collateral_aircraft_id FROM loans WHERE id=$1 AND user_id=$2 AND status='active'`,
+	err = tx.QueryRow(ctx,
+		`SELECT remaining_balance, loan_type, collateral_aircraft_id FROM loans WHERE id=$1 AND user_id=$2 AND status='active' FOR UPDATE`,
 		loanID, userID).Scan(&remaining, &loanType, &collateral)
 	if err != nil {
 		return &MutationResult{Success: false, Message: "Loan not found or already paid off."}, nil
@@ -93,20 +103,19 @@ func (b *BankService) Repay(ctx context.Context, userID, loanID string, amount *
 	if payment <= 0 {
 		return &MutationResult{Success: false, Message: "Payment amount must be positive."}, nil
 	}
-	cash, _ := b.engine.Ledger.GetBalance(ctx, userID)
+
+	var cash float64
+	err = tx.QueryRow(ctx, `SELECT balance FROM bank_accounts WHERE user_id=$1 AND account_type='operating' FOR UPDATE`, userID).Scan(&cash)
+	if err != nil {
+		return &MutationResult{Success: false, Message: "failed to fetch balance"}, nil
+	}
 	if cash < payment {
 		return &MutationResult{Success: false, Message: fmt.Sprintf("Insufficient cash. Need $%.2f, have $%.2f.", payment, cash), NewCash: cash}, nil
 	}
 
-	tx, err := b.engine.Pool.Begin(ctx)
-	if err != nil {
-		return &MutationResult{Success: false, Message: "transaction error", NewCash: cash}, nil
-	}
-	defer tx.Rollback(ctx) //nolint:errcheck
-
 	gameTime, _ := b.engine.Ledger.GetUserGameTime(ctx, userID)
 	desc := "Loan partial repayment"
-	paidOff := remaining-payment <= 0
+	paidOff := (remaining - payment) <= 0.005
 	if paidOff {
 		desc = "Loan fully repaid"
 	}
@@ -115,17 +124,18 @@ func (b *BankService) Repay(ctx context.Context, userID, loanID string, amount *
 		return &MutationResult{Success: false, Message: "ledger debit failed", NewCash: cash}, nil
 	}
 	_, err = tx.Exec(ctx, `
-		UPDATE loans SET remaining_balance = remaining_balance - $1,
-		       status = CASE WHEN remaining_balance - $1 <= 0 THEN 'paid_off'::varchar ELSE status END
+		UPDATE loans SET remaining_balance = GREATEST(0, remaining_balance - $1),
+		       status = CASE WHEN remaining_balance - $1 <= 0.005 THEN 'paid_off'::varchar ELSE status END
 		WHERE id=$2`, payment, loanID)
 	if err != nil {
 		return &MutationResult{Success: false, Message: "update loan failed", NewCash: cash}, nil
 	}
-	// financed aircraft → owned saat lunas
 	if paidOff && loanType == "aircraft_financing" && collateral != nil {
-		tx.Exec(ctx, `UPDATE fleet_aircraft SET acquisition_type='purchase' WHERE id=$1 AND user_id=$2 AND acquisition_type='finance'`, *collateral, userID)
+		_, _ = tx.Exec(ctx, `UPDATE fleet_aircraft SET acquisition_type='purchase' WHERE id=$1 AND user_id=$2 AND acquisition_type='finance'`, *collateral, userID)
 	}
-	tx.Commit(ctx) //nolint:errcheck
+	if err := tx.Commit(ctx); err != nil {
+		return &MutationResult{Success: false, Message: "commit failed", NewCash: cash}, nil
+	}
 	msg := "Payment applied."
 	if paidOff {
 		msg = "Loan fully repaid!"
