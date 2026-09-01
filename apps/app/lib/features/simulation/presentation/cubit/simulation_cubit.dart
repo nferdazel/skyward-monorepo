@@ -394,7 +394,11 @@ class SimulationCubit extends Cubit<SimulationState>
           ),
           callback: (_) => _scheduleRealtimeBalanceRefresh(userId),
         )
-        .subscribe();
+        .subscribe((status, [error]) {
+          if (status == RealtimeSubscribeStatus.subscribed) {
+            _scheduleRealtimeBalanceRefresh(userId);
+          }
+        });
 
     _realtimeSubscriptions.add(userChannel);
     _realtimeSubscriptions.add(bankChannel);
