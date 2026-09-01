@@ -73,14 +73,17 @@ func (l *LedgerService) applyTx(ctx context.Context, tx pgx.Tx, userID string, a
 		err := tx.QueryRow(ctx, `SELECT COALESCE(balance,0) FROM bank_accounts WHERE user_id=$1 AND account_type='operating' LIMIT 1`, userID).Scan(&b)
 		return b, err
 	}
-	op := "-"
-	if credit {
-		op = "+"
-	}
 	var newBalance float64
-	err := tx.QueryRow(ctx, fmt.Sprintf(
-		`UPDATE bank_accounts SET balance = balance %s $1 WHERE user_id=$2 AND account_type='operating' RETURNING balance`, op),
-		amount, userID).Scan(&newBalance)
+	var err error
+	if credit {
+		err = tx.QueryRow(ctx,
+			`UPDATE bank_accounts SET balance = balance + $1 WHERE user_id=$2 AND account_type='operating' RETURNING balance`,
+			amount, userID).Scan(&newBalance)
+	} else {
+		err = tx.QueryRow(ctx,
+			`UPDATE bank_accounts SET balance = balance - $1 WHERE user_id=$2 AND account_type='operating' AND balance >= $1 RETURNING balance`,
+			amount, userID).Scan(&newBalance)
+	}
 	if err != nil {
 		return 0, fmt.Errorf("ledger update: %w", err)
 	}
