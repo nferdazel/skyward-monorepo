@@ -104,7 +104,7 @@ class SupabaseAuthGateway implements AuthGateway {
         );
       }
 
-      return login(username: username, password: password);
+      return await login(username: username, password: password);
     } on AuthGatewayException {
       rethrow;
     } on PostgrestException catch (e, stack) {
