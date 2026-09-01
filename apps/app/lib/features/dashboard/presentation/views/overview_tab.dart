@@ -163,10 +163,14 @@ class OverviewTab extends StatelessWidget {
             children: [
               Icon(icon, color: AppTheme.textMuted, size: 14),
               const SizedBox(width: AppSpacing.sm),
-              Text(
-                title,
-                style: AppTypography.microLabel.copyWith(
-                  color: AppTheme.textMuted,
+              Expanded(
+                child: Text(
+                  title,
+                  style: AppTypography.microLabel.copyWith(
+                    color: AppTheme.textMuted,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               const SizedBox(width: AppSpacing.xs),
@@ -215,10 +219,14 @@ class OverviewTab extends StatelessWidget {
             children: [
               Icon(Icons.timer_outlined, color: AppTheme.textMuted, size: 14),
               const SizedBox(width: AppSpacing.sm),
-              Text(
-                AppStrings.runwayEstimateLabel,
-                style: AppTypography.microLabel.copyWith(
-                  color: AppTheme.textMuted,
+              Expanded(
+                child: Text(
+                  AppStrings.runwayEstimateLabel,
+                  style: AppTypography.microLabel.copyWith(
+                    color: AppTheme.textMuted,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               const SizedBox(width: AppSpacing.xs),
