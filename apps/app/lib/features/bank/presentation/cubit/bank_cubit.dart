@@ -609,7 +609,8 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
 
   void _scheduleTargetedRefresh(String userId, String tableName) {
     _realtimeRefreshDebounce?.cancel();
-    _realtimeRefreshDebounce = Timer(const Duration(milliseconds: 200), () {
+    _realtimeRefreshDebounce = Timer(const Duration(milliseconds: 400), () {
+      if (isClosed) return;
       unawaited(_refreshForTable(userId, tableName));
     });
   }
