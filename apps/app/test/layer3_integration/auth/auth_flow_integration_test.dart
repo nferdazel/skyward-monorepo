@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:skyward/core/utils/dev_mode_manager.dart';
 import 'package:skyward/features/auth/data/auth_gateway.dart';
 import 'package:skyward/features/auth/domain/user_model.dart';
 import 'package:skyward/features/auth/presentation/cubit/auth_cubit.dart';
@@ -76,8 +77,13 @@ void main() {
   group('Layer 3 Auth Integration Tests', () {
     late AuthCubit authCubit;
 
+    setUp(() {
+      DevModeManager.isDevMode = false;
+    });
+
     tearDown(() async {
       await authCubit.close();
+      DevModeManager.resetDevMode();
     });
 
     test(

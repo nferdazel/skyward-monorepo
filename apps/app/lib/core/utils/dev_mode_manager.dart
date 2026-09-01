@@ -3,8 +3,11 @@ import '../database/supabase_client.dart';
 class DevModeManager {
   static const _devModeUrl = 'YOUR_SUPABASE_URL';
   static const _devModeKey = 'YOUR_SUPABASE_KEY';
+  static bool? _override;
 
-  static bool get isDevMode => SupabaseManager.isDevMode;
+  static set isDevMode(bool value) => _override = value;
+  static bool get isDevMode => _override ?? SupabaseManager.isDevMode;
+  static void resetDevMode() => _override = null;
 
   static bool get isMockEnvironment {
     return SupabaseManager.supabaseUrl == _devModeUrl || SupabaseManager.supabaseAnonKey == _devModeKey;
