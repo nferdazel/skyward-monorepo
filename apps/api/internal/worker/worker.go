@@ -8,6 +8,7 @@ package worker
 import (
 	"context"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -31,7 +32,8 @@ type Worker struct {
 	enabled bool
 	// interval default (fallback); nilai sebenarnya dari season_clock.tick_interval_seconds
 	interval time.Duration
-	mu       *Status
+	status   *Status
+	mu       sync.RWMutex
 	done     chan struct{}
 }
 
@@ -43,7 +45,7 @@ func New(pool *pgxpool.Pool, tickFn func(context.Context) error, logger *slog.Lo
 		logger:   logger,
 		enabled:  enabled,
 		interval: time.Duration(intervalSec) * time.Second,
-		mu:       &Status{Alive: false, Status: "initialized"},
+		status:   &Status{Alive: false, Status: "initialized"},
 		done:     make(chan struct{}),
 	}
 }
@@ -68,11 +70,23 @@ func (w *Worker) Stop() {
 
 // Alive — apakah worker hidup dan tidak dalam error state.
 func (w *Worker) Alive() bool {
-	return w.mu.Alive
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+	if w.status == nil {
+		return false
+	}
+	return w.status.Alive
 }
 
 // Status — copy status saat ini.
-func (w *Worker) Status() Status { return *w.mu }
+func (w *Worker) Status() Status {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+	if w.status == nil {
+		return Status{}
+	}
+	return *w.status
+}
 
 // backoff — kapasitas backoff exponensial.
 func backoff(n int) time.Duration {
@@ -89,34 +103,45 @@ func backoff(n int) time.Duration {
 
 func (w *Worker) loop(ctx context.Context) {
 	w.logger.Info("worker started", "interval", w.interval)
-	w.mu.Alive = true
-	w.mu.Status = "running"
+	w.mu.Lock()
+	w.status.Alive = true
+	w.status.Status = "running"
+	w.mu.Unlock()
+
 	ticker := time.NewTicker(w.interval)
 	defer ticker.Stop()
 	errors := 0
 	for {
 		select {
 		case <-ctx.Done():
-			w.mu.Status = "stopped"
-			w.mu.Alive = false
+			w.mu.Lock()
+			w.status.Status = "stopped"
+			w.status.Alive = false
+			w.mu.Unlock()
 			w.logger.Info("worker stopped")
 			return
 		case <-w.done:
-			w.mu.Status = "stopped"
-			w.mu.Alive = false
+			w.mu.Lock()
+			w.status.Status = "stopped"
+			w.status.Alive = false
+			w.mu.Unlock()
 			w.logger.Info("worker stopped (signal)")
 			return
 		case <-ticker.C:
 			if err := w.runTick(ctx); err != nil {
 				errors++
-				w.mu.ErrorsCount = errors
+				w.mu.Lock()
+				w.status.ErrorsCount = errors
+				w.mu.Unlock()
 				w.logger.Error("tick failed", "error", err, "errors_total", errors)
 				// backoff on error
 				ticker.Reset(backoff(errors))
 				continue
 			}
 			errors = 0
-			w.mu.ErrorsCount = 0
+			w.mu.Lock()
+			w.status.ErrorsCount = 0
+			w.mu.Unlock()
 			// TODO Fase 6: baca season_clock.tick_interval_seconds dan reset
 			// ticker.Interval bila berubah.
 		}
@@ -132,8 +157,10 @@ func (w *Worker) runTick(ctx context.Context) error {
 		return err
 	}
 	elapsed := time.Since(start)
-	w.mu.LastTickAt = time.Now().UTC().Format(time.RFC3339)
-	w.mu.LastTickMs = elapsed.Milliseconds()
+	w.mu.Lock()
+	w.status.LastTickAt = time.Now().UTC().Format(time.RFC3339)
+	w.status.LastTickMs = elapsed.Milliseconds()
+	w.mu.Unlock()
 	w.logger.Info("tick selesai", "duration_ms", elapsed.Milliseconds())
 	return nil
 }
