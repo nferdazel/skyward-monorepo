@@ -189,6 +189,10 @@ func calcMaxWeeklyFlights(distance float64, speed int, turnaround float64) int {
 	if distance <= 0 || speed <= 0 {
 		return 0
 	}
+	flightTime := distance/float64(speed) + turnaround
+	if flightTime <= 0 {
+		return 0
+	}
 	maxWeekly := 168.0 // max_weekly_flights from game_config
-	return int(maxWeekly / (distance/float64(speed) + turnaround))
+	return int(maxWeekly / flightTime)
 }
