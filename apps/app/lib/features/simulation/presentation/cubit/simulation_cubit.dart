@@ -4,7 +4,7 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'
-    show PostgresChangeEvent, PostgresChangeFilter, PostgresChangeFilterType, PostgrestException;
+    show PostgresChangeEvent, PostgresChangeFilter, PostgresChangeFilterType, PostgrestException, RealtimeSubscribeStatus;
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/game_constants.dart';
