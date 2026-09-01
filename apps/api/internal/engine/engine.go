@@ -152,10 +152,17 @@ func (l *LedgerService) getHQPrefix(ctx context.Context, iata string) (string, e
 	return prefix, err
 }
 
-// GetUserGameTime — user game_current_time dengan FOR UPDATE lock.
+// GetUserGameTime — user game_current_time.
 func (l *LedgerService) GetUserGameTime(ctx context.Context, userID string) (time.Time, error) {
 	var t time.Time
-	err := l.engine.Pool.QueryRow(ctx, `SELECT game_current_time FROM users WHERE id=$1 FOR UPDATE`, userID).Scan(&t)
+	err := l.engine.Pool.QueryRow(ctx, `SELECT game_current_time FROM users WHERE id=$1`, userID).Scan(&t)
+	return t, err
+}
+
+// GetUserGameTimeTx — user game_current_time dengan FOR UPDATE row lock dalam transaksi.
+func (l *LedgerService) GetUserGameTimeTx(ctx context.Context, tx pgx.Tx, userID string) (time.Time, error) {
+	var t time.Time
+	err := tx.QueryRow(ctx, `SELECT game_current_time FROM users WHERE id=$1 FOR UPDATE`, userID).Scan(&t)
 	return t, err
 }
 

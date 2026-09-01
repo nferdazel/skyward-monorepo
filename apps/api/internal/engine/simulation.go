@@ -105,7 +105,7 @@ func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime ti
 	// user data
 	var userGameTime time.Time
 	var autoThreshold float64
-	e.Pool.QueryRow(ctx, `SELECT game_current_time, auto_grounding_threshold FROM users WHERE id=$1 FOR UPDATE`, userID).Scan(&userGameTime, &autoThreshold)
+	e.Pool.QueryRow(ctx, `SELECT game_current_time, auto_grounding_threshold FROM users WHERE id=$1`, userID).Scan(&userGameTime, &autoThreshold)
 
 	elapsed := targetTime.Sub(userGameTime).Hours() / 24.0
 	if elapsed <= 0 {
