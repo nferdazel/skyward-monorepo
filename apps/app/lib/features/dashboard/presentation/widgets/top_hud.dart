@@ -81,28 +81,32 @@ class TopHud extends StatelessWidget {
         label: '$label: $value',
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: AppTypography.microLabel.copyWith(
-                  color: AppTheme.textMuted,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: AppTypography.microLabel.copyWith(
+                    color: AppTheme.textMuted,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 1),
-              Text(
-                value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: (isMono ? AppTypography.monoValue : AppTypography.bodyLarge)
-                    .copyWith(
-                  color: color,
-                  fontWeight: FontWeight.w600,
+                const SizedBox(height: 1),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: (isMono ? AppTypography.monoValue : AppTypography.bodyLarge)
+                      .copyWith(
+                    color: color,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
