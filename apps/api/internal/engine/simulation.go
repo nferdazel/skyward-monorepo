@@ -152,8 +152,15 @@ func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime ti
 	}
 
 	flightsRun := 0.0
+
+	tx, txErr := e.Pool.Begin(ctx)
+	if txErr != nil {
+		return
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+
 	for _, r := range routes {
-		// event multipliers
+		// event multipliers (from cached fuelMult, maintMult)
 		demandEvent := 1.0
 		e.Pool.QueryRow(ctx, `SELECT COALESCE(effect_value,1.0) FROM game_events WHERE event_type='demand_surge' AND is_active=true AND effect_target IN ($1,$2) AND start_game_time<=$3 AND end_game_time>$3 ORDER BY start_game_time DESC LIMIT 1`, r.OriginIATA, r.DestIATA, targetTime).Scan(&demandEvent)
 		capacityEvent := 1.0
@@ -192,29 +199,29 @@ func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime ti
 		crewCostTotal *= timeFraction
 		maintCost *= timeFraction
 
-		// write ledger rows
+		// write ledger rows inside transaction
 		if revenue > 0 {
-			e.Ledger.CreditAccount(ctx, userID, revenue, "revenue", "ticket_revenue",
+			_, _ = e.Ledger.CreditTx(ctx, tx, userID, revenue, "revenue", "ticket_revenue",
 				fmt.Sprintf("Route %s-%s", r.OriginIATA, r.DestIATA), targetTime)
 		}
 		if cargoRev > 0 {
-			e.Ledger.CreditAccount(ctx, userID, cargoRev, "revenue", "cargo_revenue",
+			_, _ = e.Ledger.CreditTx(ctx, tx, userID, cargoRev, "revenue", "cargo_revenue",
 				fmt.Sprintf("Cargo: %s-%s", r.OriginIATA, r.DestIATA), targetTime)
 		}
 		if fuelCost > 0 {
-			e.Ledger.DebitAccount(ctx, userID, fuelCost, "cogs", "fuel_cost",
+			_, _ = e.Ledger.DebitTx(ctx, tx, userID, fuelCost, "cogs", "fuel_cost",
 				fmt.Sprintf("Fuel: %s-%s", r.OriginIATA, r.DestIATA), targetTime)
 		}
 		if crewCostTotal > 0 {
-			e.Ledger.DebitAccount(ctx, userID, crewCostTotal, "cogs", "crew_cost",
+			_, _ = e.Ledger.DebitTx(ctx, tx, userID, crewCostTotal, "cogs", "crew_cost",
 				fmt.Sprintf("Crew: %s-%s", r.OriginIATA, r.DestIATA), targetTime)
 		}
 		if maintCost > 0 {
-			e.Ledger.DebitAccount(ctx, userID, maintCost, "cogs", "maintenance_cost",
+			_, _ = e.Ledger.DebitTx(ctx, tx, userID, maintCost, "cogs", "maintenance_cost",
 				fmt.Sprintf("Maintenance: %s-%s", r.OriginIATA, r.DestIATA), targetTime)
 		}
 		if leaseCost > 0 {
-			e.Ledger.DebitAccount(ctx, userID, leaseCost, "opex", "aircraft_lease",
+			_, _ = e.Ledger.DebitTx(ctx, tx, userID, leaseCost, "opex", "aircraft_lease",
 				fmt.Sprintf("Lease: %s-%s", r.OriginIATA, r.DestIATA), targetTime)
 		}
 
@@ -227,27 +234,29 @@ func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime ti
 		grossDamage := wearPerCycle * float64(flights) * timeFraction
 		selfHeal := grossDamage * autoRepair
 		netDamage := math.Max(0, grossDamage-selfHeal)
-		e.Pool.Exec(ctx, `UPDATE fleet_aircraft SET condition = GREATEST(0, condition - $1) WHERE id=$2`, netDamage, r.AircraftID)
+		_, _ = tx.Exec(ctx, `UPDATE fleet_aircraft SET condition = GREATEST(0, condition - $1) WHERE id=$2`, netDamage, r.AircraftID)
 
 		flightsRun += float64(flights) * (elapsed / 7.0)
 	}
 
 	// idle lease cost
 	var idleLeaseCost float64
-	e.Pool.QueryRow(ctx, `
+	tx.QueryRow(ctx, `
 		SELECT COALESCE(SUM(am.lease_price_per_month * ($1 / 30.0)), 0)
 		FROM fleet_aircraft fa JOIN aircraft_models am ON am.id=fa.aircraft_model_id
 		WHERE fa.user_id=$2 AND fa.acquisition_type='lease' AND NOT EXISTS (
 			SELECT 1 FROM route_assignments ra WHERE ra.assigned_aircraft_id=fa.id AND ra.status='active'
 		)`, elapsed, userID).Scan(&idleLeaseCost)
 	if idleLeaseCost > 0 {
-		e.Ledger.DebitAccount(ctx, userID, idleLeaseCost, "opex", "aircraft_lease_idle",
+		_, _ = e.Ledger.DebitTx(ctx, tx, userID, idleLeaseCost, "opex", "aircraft_lease_idle",
 			"Idle lease carrying cost", targetTime)
 	}
 
 	// update user game time
+	_, _ = tx.Exec(ctx, `UPDATE users SET game_current_time=$1, last_active_at=NOW() WHERE id=$2`, targetTime, userID)
+	_ = tx.Commit(ctx)
+
 	cashAfter, _ := e.Ledger.GetBalance(ctx, userID)
-	e.Pool.Exec(ctx, `UPDATE users SET game_current_time=$1, last_active_at=NOW() WHERE id=$2`, targetTime, userID)
 
 	// bankruptcy
 	if cashAfter <= bankruptcyThreshold {
