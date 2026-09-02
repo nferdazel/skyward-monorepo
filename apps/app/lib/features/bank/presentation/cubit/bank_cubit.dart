@@ -10,6 +10,7 @@ import '../../../../core/mixins/simulation_reactive_mixin.dart';
 import '../../../../core/realtime/realtime_subscription_bag.dart';
 import '../../../../core/utils/app_error.dart';
 import '../../../../core/utils/dev_mode_manager.dart';
+import '../../../../core/utils/safe_cast.dart';
 import '../../../simulation/presentation/cubit/simulation_cubit.dart';
 import '../../data/bank_gateway.dart';
 import '../../domain/bank_account_model.dart';
@@ -102,24 +103,26 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
         _gateway.getBankAccounts(userId),
       ]).timeout(const Duration(seconds: 30));
 
-      _cachedLoans = (results[0] as List<dynamic>)
-          .map((m) => Loan.fromMap(m as Map<String, dynamic>))
+      _cachedLoans = toSafeList(results[0])
+          .map((m) => Loan.fromMap(toSafeMap(m)))
           .toList();
 
-      final creditMap = results[1] as Map<String, dynamic>;
+      final creditMap = toSafeMap(results[1]);
       _cachedCreditReport = creditMap.isNotEmpty
           ? CreditReport.fromMap(creditMap)
           : null;
 
-      _cachedCreditHistory = (results[2] as List<dynamic>)
-          .map((m) => CreditScoreSnapshot.fromMap(m as Map<String, dynamic>))
+      _cachedCreditHistory = toSafeList(results[2])
+          .map((m) => CreditScoreSnapshot.fromMap(toSafeMap(m)))
           .toList();
 
-      _cachedFinancing = (results[3] as List<dynamic>)
-          .map((m) => Loan.fromMap(m as Map<String, dynamic>))
+      _cachedFinancing = toSafeList(results[3])
+          .map((m) => Loan.fromMap(toSafeMap(m)))
           .toList();
 
-      _cachedAccounts = results[4] as List<BankAccount>;
+      _cachedAccounts = results[4] is List<BankAccount>
+          ? (results[4] as List<BankAccount>)
+          : toSafeList(results[4]).map((m) => BankAccount.fromMap(toSafeMap(m))).toList();
       await _reloadCachedTransactions();
 
       _emitLoaded();
@@ -170,7 +173,7 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
         );
 
         if (response.isNotEmpty) {
-          final result = response.first as Map<String, dynamic>;
+          final result = toSafeMap(response.first);
           final success = result['success'] as bool? ?? false;
           final message = result['message'] as String? ?? '';
           final newCash = (result['new_cash'] as num?)?.toDouble() ?? 0.0;
@@ -182,15 +185,17 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
               _gateway.getBankAccounts(_userId ?? ''),
             ]).timeout(const Duration(seconds: 30));
 
-            _cachedLoans = (results[0] as List<dynamic>)
-                .map((m) => Loan.fromMap(m as Map<String, dynamic>))
+            _cachedLoans = toSafeList(results[0])
+                .map((m) => Loan.fromMap(toSafeMap(m)))
                 .toList();
 
-            final creditMap = results[1] as Map<String, dynamic>;
+            final creditMap = toSafeMap(results[1]);
             _cachedCreditReport = creditMap.isNotEmpty
                 ? CreditReport.fromMap(creditMap)
                 : null;
-            _cachedAccounts = results[2] as List<BankAccount>;
+            _cachedAccounts = results[2] is List<BankAccount>
+                ? (results[2] as List<BankAccount>)
+                : toSafeList(results[2]).map((m) => BankAccount.fromMap(toSafeMap(m))).toList();
             await _reloadCachedTransactions();
 
             if (isClosed) return;
@@ -270,7 +275,7 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
         );
 
         if (response.isNotEmpty) {
-          final result = response.first as Map<String, dynamic>;
+          final result = toSafeMap(response.first);
           final success = result['success'] as bool? ?? false;
           final message = result['message'] as String? ?? '';
 
@@ -281,13 +286,15 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
               _gateway.getBankAccounts(_userId ?? ''),
             ]).timeout(const Duration(seconds: 30));
 
-            _cachedFinancing = results[0]
-                .map((m) => Loan.fromMap(m as Map<String, dynamic>))
+            _cachedFinancing = toSafeList(results[0])
+                .map((m) => Loan.fromMap(toSafeMap(m)))
                 .toList();
-            _cachedLoans = results[1]
-                .map((m) => Loan.fromMap(m as Map<String, dynamic>))
+            _cachedLoans = toSafeList(results[1])
+                .map((m) => Loan.fromMap(toSafeMap(m)))
                 .toList();
-            _cachedAccounts = results[2] as List<BankAccount>;
+            _cachedAccounts = results[2] is List<BankAccount>
+                ? (results[2] as List<BankAccount>)
+                : toSafeList(results[2]).map((m) => BankAccount.fromMap(toSafeMap(m))).toList();
             await _reloadCachedTransactions();
 
             _emitLoaded();
@@ -332,7 +339,7 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
   /// Load credit report for the given user.
   Future<void> loadCreditReport(String userId) async {
     try {
-      final creditMap = await _gateway.getCreditReport();
+      final creditMap = toSafeMap(await _gateway.getCreditReport());
       _cachedCreditReport = creditMap.isNotEmpty
           ? CreditReport.fromMap(creditMap)
           : null;
@@ -360,8 +367,8 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
   Future<void> loadAircraftFinancing(String userId) async {
     try {
       final financingData = await _gateway.getAircraftFinancing(userId);
-      _cachedFinancing = financingData
-          .map((m) => Loan.fromMap(m as Map<String, dynamic>))
+      _cachedFinancing = toSafeList(financingData)
+          .map((m) => Loan.fromMap(toSafeMap(m)))
           .toList();
       _emitLoaded();
     } catch (e, stack) {
@@ -389,7 +396,7 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
       emit(const BankLoading());
 
       try {
-        final result = await _gateway.repayLoan(loanId, amount);
+        final result = toSafeMap(await _gateway.repayLoan(loanId, amount));
         final success = result['success'] as bool? ?? false;
         final message = result['message'] as String? ?? '';
 
@@ -400,15 +407,17 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
             _gateway.getBankAccounts(_userId ?? ''),
           ]).timeout(const Duration(seconds: 30));
 
-          _cachedLoans = (results[0] as List<dynamic>)
-              .map((m) => Loan.fromMap(m as Map<String, dynamic>))
+          _cachedLoans = toSafeList(results[0])
+              .map((m) => Loan.fromMap(toSafeMap(m)))
               .toList();
 
-          final creditMap = results[1] as Map<String, dynamic>;
+          final creditMap = toSafeMap(results[1]);
           _cachedCreditReport = creditMap.isNotEmpty
               ? CreditReport.fromMap(creditMap)
               : null;
-          _cachedAccounts = results[2] as List<BankAccount>;
+          _cachedAccounts = results[2] is List<BankAccount>
+              ? (results[2] as List<BankAccount>)
+              : toSafeList(results[2]).map((m) => BankAccount.fromMap(toSafeMap(m))).toList();
           await _reloadCachedTransactions();
 
           if (isClosed) return;
@@ -458,7 +467,7 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
       emit(const BankLoading());
 
       try {
-        final result = await _gateway.refinanceLoan(loanId);
+        final result = toSafeMap(await _gateway.refinanceLoan(loanId));
         final success = result['success'] as bool? ?? false;
         final message = result['message'] as String? ?? '';
 
@@ -469,14 +478,16 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
             _gateway.getBankAccounts(_userId ?? ''),
           ]).timeout(const Duration(seconds: 30));
 
-          _cachedLoans = (results[0] as List<dynamic>)
-              .map((m) => Loan.fromMap(m as Map<String, dynamic>))
+          _cachedLoans = toSafeList(results[0])
+              .map((m) => Loan.fromMap(toSafeMap(m)))
               .toList();
-          final creditMap = results[1] as Map<String, dynamic>;
+          final creditMap = toSafeMap(results[1]);
           _cachedCreditReport = creditMap.isNotEmpty
               ? CreditReport.fromMap(creditMap)
               : null;
-          _cachedAccounts = results[2] as List<BankAccount>;
+          _cachedAccounts = results[2] is List<BankAccount>
+              ? (results[2] as List<BankAccount>)
+              : toSafeList(results[2]).map((m) => BankAccount.fromMap(toSafeMap(m))).toList();
           await _reloadCachedTransactions();
 
           if (isClosed) return;
@@ -629,15 +640,15 @@ class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
             _gateway.getAircraftFinancing(userId),
           ]).timeout(const Duration(seconds: 30));
           if (isClosed) return;
-          _cachedLoans = (results[0] as List<dynamic>)
-              .map((m) => Loan.fromMap(m as Map<String, dynamic>))
+          _cachedLoans = toSafeList(results[0])
+              .map((m) => Loan.fromMap(toSafeMap(m)))
               .toList();
-          final creditMap = results[1] as Map<String, dynamic>;
+          final creditMap = toSafeMap(results[1]);
           _cachedCreditReport = creditMap.isNotEmpty
               ? CreditReport.fromMap(creditMap)
               : null;
-          _cachedFinancing = (results[2] as List<dynamic>)
-              .map((m) => Loan.fromMap(m as Map<String, dynamic>))
+          _cachedFinancing = toSafeList(results[2])
+              .map((m) => Loan.fromMap(toSafeMap(m)))
               .toList();
           _emitLoaded();
           break;

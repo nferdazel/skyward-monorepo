@@ -11,6 +11,7 @@ import '../../../../core/realtime/realtime_subscription_bag.dart';
 import '../../../../core/utils/app_error.dart';
 import '../../../../core/utils/dev_mode_manager.dart';
 import '../../../../core/utils/perf_debug.dart';
+import '../../../../core/utils/safe_cast.dart';
 import '../../../fleet/domain/fleet_models.dart';
 import '../../../simulation/presentation/cubit/simulation_cubit.dart';
 import '../../data/routes_gateway.dart';
@@ -90,10 +91,10 @@ class RoutesCubit extends Cubit<RoutesState> with SimulationReactiveMixin {
         ),
       );
 
-      final List<dynamic> response = await rpcCall();
+      final List<dynamic> response = toSafeList(await rpcCall());
 
       final result = response.isNotEmpty
-          ? response[0] as Map<String, dynamic>
+          ? toSafeMap(response[0])
           : <String, dynamic>{};
       final success = result['success'] as bool? ?? false;
       final message = result['message'] as String? ?? failureMessage;

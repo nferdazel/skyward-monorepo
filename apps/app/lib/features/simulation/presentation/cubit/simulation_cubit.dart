@@ -12,6 +12,7 @@ import '../../../../core/database/supabase_client.dart';
 import '../../../../core/realtime/realtime_subscription_bag.dart';
 import '../../../../core/utils/app_error.dart';
 import '../../../../core/utils/dev_mode_manager.dart';
+import '../../../../core/utils/safe_cast.dart';
 import '../../../auth/domain/user_model.dart';
 import '../../data/simulation_gateway.dart';
 import 'simulation_state.dart';
@@ -211,15 +212,15 @@ class SimulationCubit extends Cubit<SimulationState>
         _gateway.getUserBalance(userId),
       ]).timeout(const Duration(seconds: 30));
 
-      final List<dynamic> response = results[0] as List<dynamic>;
-      final Map<String, dynamic> userProfile = results[1] as Map<String, dynamic>;
-      final double bankBalance = results[2] as double;
+      final List<dynamic> response = toSafeList(results[0]);
+      final Map<String, dynamic> userProfile = toSafeMap(results[1]);
+      final double bankBalance = (results[2] as num?)?.toDouble() ?? 0.0;
 
       double elapsedGameDays = 0.0;
       int flightsRun = 0;
 
       if (response.isNotEmpty) {
-        final result = response[0] as Map<String, dynamic>;
+        final result = toSafeMap(response[0]);
         elapsedGameDays =
             (result['elapsed_game_days'] as num?)?.toDouble() ?? 0.0;
         flightsRun = (result['flights_run'] as num?)?.toInt() ?? 0;
@@ -242,10 +243,10 @@ class SimulationCubit extends Cubit<SimulationState>
                 ?.toDouble() ??
             GameConstants.defaultGameSpeedMultiplier;
       } else {
-        final List<dynamic> settingsResponse = await _gateway.loadGameSettings();
+        final List<dynamic> settingsResponse = toSafeList(await _gateway.loadGameSettings());
 
         if (settingsResponse.isNotEmpty) {
-          _cachedGameSettings = settingsResponse[0] as Map<String, dynamic>;
+          _cachedGameSettings = toSafeMap(settingsResponse[0]);
           _cachedSettingsTime = DateTime.now();
           fuelPrice =
               (_cachedGameSettings!['fuel_price_per_liter'] as num?)?.toDouble() ??

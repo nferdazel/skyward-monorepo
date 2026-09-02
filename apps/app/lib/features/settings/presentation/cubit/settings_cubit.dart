@@ -6,6 +6,7 @@ import '../../../../core/constants/game_constants.dart';
 import '../../../../core/database/supabase_client.dart';
 import '../../../../core/utils/app_error.dart';
 import '../../../../core/utils/dev_mode_manager.dart';
+import '../../../../core/utils/safe_cast.dart';
 import '../../data/settings_gateway.dart';
 
 class SettingsState with Equatable {
@@ -214,15 +215,14 @@ class SettingsCubit extends Cubit<SettingsState> {
   }) async {
     emit(state.copyWith(isSaving: true));
     try {
-      if (!DevModeManager.isDevMode) {
-        final List<dynamic> response = await _gateway.saveAirlineSettings({
+        final List<dynamic> response = toSafeList(await _gateway.saveAirlineSettings({
           'p_company_name': companyName,
           'p_auto_grounding_threshold': autoGroundingThreshold,
           'p_hq_airport_iata': hqAirportIata,
-        });
+        }));
 
         final result = response.isNotEmpty
-            ? response[0] as Map<String, dynamic>
+            ? toSafeMap(response[0])
             : <String, dynamic>{};
         final success = result['success'] as bool? ?? false;
         final message = result['message'] as String? ?? AppStrings.settingsSaveFailed;
@@ -274,9 +274,9 @@ class SettingsCubit extends Cubit<SettingsState> {
     emit(state.copyWith(isSaving: true));
     try {
       if (!DevModeManager.isDevMode) {
-        final List<dynamic> response = await _gateway.resetUserAirline();
+        final List<dynamic> response = toSafeList(await _gateway.resetUserAirline());
         if (response.isNotEmpty) {
-          final result = response[0] as Map<String, dynamic>;
+          final result = toSafeMap(response[0]);
           final success = result['success'] as bool? ?? false;
           final message = result['message'] as String? ?? AppStrings.airlineWipeFailed;
           if (!success) {
