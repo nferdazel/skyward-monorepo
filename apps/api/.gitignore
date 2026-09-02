@@ -13,7 +13,7 @@
 # Test artifacts
 *.out
 *.test
-server
+/server
 
 # Working/design docs (prinsip: docs kerja gitignored)
 docs/
