@@ -123,6 +123,7 @@ func main() {
 func registerRoutes(ctx context.Context, mux *http.ServeMux, logger *slog.Logger, cfg config.Config, pool *pgxpool.Pool, st *store.Store, wk *worker.Worker, hub *realtime.Hub) {
 	health := &handler.HealthHandler{Pool: pool, Worker: wk}
 	mux.Handle("GET /healthz", http.HandlerFunc(health.Healthz))
+	mux.Handle("GET /health", http.HandlerFunc(health.Healthz))
 	mux.Handle("GET /readyz", http.HandlerFunc(health.Ready))
 	mux.Handle("GET /version", http.HandlerFunc(health.Version))
 

@@ -177,7 +177,7 @@ func (f *FleetService) Repair(ctx context.Context, userID, fleetID string) (*Mut
 	}
 	cash, _ := f.engine.Ledger.GetBalance(ctx, userID)
 	if condition >= 100.0 {
-		return &MutationResult{Success: false, Message: fmt.Sprintf("Aircraft %s is already in pristine condition.", modelName), NewCash: cash}, nil
+		return &MutationResult{Success: true, Message: fmt.Sprintf("Aircraft %s is already in pristine condition (100%%).", modelName), NewCash: cash}, nil
 	}
 	var repairCost float64
 	if acqType == "lease" {

@@ -288,7 +288,7 @@ func (h *ReadHandler) BankAccounts(w http.ResponseWriter, r *http.Request) {
 func (h *ReadHandler) BankTransactionsByAccount(w http.ResponseWriter, r *http.Request) {
 	accountID := r.URL.Query().Get("accountId")
 	if accountID == "" {
-		httperr.WriteError(w, nil, httperr.Validation("accountId required"))
+		h.FinanceTransactions(w, r)
 		return
 	}
 	txns, err := h.Store.GetBankTransactionsByAccount(r.Context(), accountID, 50)
