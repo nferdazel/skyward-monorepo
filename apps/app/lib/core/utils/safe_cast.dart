@@ -1,6 +1,5 @@
 /// Universal defensive casting utilities to prevent `TypeError` on web
 /// when dealing with untyped JSON / PostgREST / RPC map results.
-library safe_cast;
 
 /// Converts any object to `Map<String, dynamic>` safely.
 /// Returns an empty map if [input] is null or not a Map.
