@@ -18,17 +18,19 @@ class BankAccount with Equatable {
   });
 
   factory BankAccount.fromMap(Map<String, dynamic> map) {
+    DateTime? parseDate(dynamic val) {
+      if (val == null) return null;
+      if (val is DateTime) return val;
+      return DateTime.tryParse(val.toString());
+    }
+
     return BankAccount(
-      id: map['id'] as String,
-      userId: map['user_id'] as String,
-      accountType: map['account_type'] as String,
+      id: map['id']?.toString() ?? '',
+      userId: map['user_id']?.toString() ?? '',
+      accountType: map['account_type']?.toString() ?? 'operating',
       balance: (map['balance'] as num?)?.toDouble() ?? 0.0,
-      createdAt: map['created_at'] != null
-          ? DateTime.parse(map['created_at'] as String)
-          : null,
-      updatedAt: map['updated_at'] != null
-          ? DateTime.parse(map['updated_at'] as String)
-          : null,
+      createdAt: parseDate(map['created_at']),
+      updatedAt: parseDate(map['updated_at']),
     );
   }
 

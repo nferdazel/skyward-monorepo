@@ -92,22 +92,24 @@ class Loan with Equatable {
   }
 
   factory Loan.fromMap(Map<String, dynamic> map) {
+    DateTime? parseDate(dynamic val) {
+      if (val == null) return null;
+      if (val is DateTime) return val;
+      return DateTime.tryParse(val.toString());
+    }
+
     return Loan(
       id: map['id']?.toString() ?? '',
       principal: (map['principal'] as num?)?.toDouble() ?? 0.0,
       interestRate: (map['interest_rate'] as num?)?.toDouble() ?? 0.05,
       remainingBalance: (map['remaining_balance'] as num?)?.toDouble() ?? 0.0,
       weeklyPayment: (map['weekly_payment'] as num?)?.toDouble() ?? 0.0,
-      status: map['status'] as String? ?? 'active',
-      loanType: map['loan_type'] as String? ?? 'unsecured',
-      collateralAircraftId: map['collateral_aircraft_id'] as String?,
+      status: map['status']?.toString() ?? 'active',
+      loanType: map['loan_type']?.toString() ?? 'unsecured',
+      collateralAircraftId: map['collateral_aircraft_id']?.toString(),
       missedPayments: (map['missed_payments'] as num?)?.toInt() ?? 0,
-      originatedGameDate: map['originated_game_date'] != null
-          ? DateTime.tryParse(map['originated_game_date'] as String)
-          : null,
-      takenAt: map['taken_at'] != null
-          ? DateTime.tryParse(map['taken_at'] as String)
-          : null,
+      originatedGameDate: parseDate(map['originated_game_date']),
+      takenAt: parseDate(map['taken_at']),
     );
   }
 

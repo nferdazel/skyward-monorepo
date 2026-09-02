@@ -42,7 +42,7 @@ class LeaderboardEntry with Equatable {
       monthlyRevenue: (map['monthly_revenue'] as num?)?.toDouble() ?? 0.0,
       status: map['status'] ?? 'Active',
       consecutiveNegativeDays: (map['consecutive_negative_days'] as num?)?.toInt() ?? 0,
-      creditTier: map['credit_tier'] as String?,
+      creditTier: map['credit_tier']?.toString(),
     );
   }
 
