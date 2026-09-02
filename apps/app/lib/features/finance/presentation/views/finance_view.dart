@@ -55,7 +55,6 @@ class _FinanceViewState extends State<FinanceView>
     _lazyTabCubit = FinanceSubTabCubit();
     _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(() {
-      if (_tabController.indexIsChanging) return;
       final index = _tabController.index;
       if (!_lazyTabCubit.state.loadedIndexes.contains(index)) {
         PerfDebug.event('finance.tab_init', fields: {'tab': index});
@@ -75,6 +74,7 @@ class _FinanceViewState extends State<FinanceView>
   void _onTabTap(int index) {
     if (_tabController.index != index) {
       _tabController.animateTo(index);
+      _lazyTabCubit.activate(index);
     }
   }
 
@@ -127,11 +127,7 @@ class _FinanceViewState extends State<FinanceView>
             const SizedBox(height: AppSpacing.tabContentGap),
             Expanded(
               child: BlocBuilder<FinanceCubit, FinanceState>(
-                buildWhen: (prev, curr) =>
-                    prev.runtimeType != curr.runtimeType ||
-                    (prev is FinanceDataState &&
-                        curr is FinanceDataState &&
-                        prev.metrics != curr.metrics),
+                buildWhen: (prev, curr) => true,
                 builder: (context, state) {
                   if (state is FinanceInitial) {
                     return Center(
@@ -282,6 +278,7 @@ class _FinanceViewState extends State<FinanceView>
                 _activeFilter = _filterForCategory(category);
               });
               _tabController.animateTo(1);
+              _lazyTabCubit.activate(1);
             },
           ),
           const SizedBox(height: AppSpacing.sectionGap),
@@ -437,38 +434,46 @@ class _FinanceViewState extends State<FinanceView>
               style: AppTypography.bodyMedium.copyWith(
                 color: AppTheme.textPrimary,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
           // Date
           SizedBox(
-            width: 80,
+            width: 120,
             child: Text(
               _dateTimeFormat.format(gameDate),
               style: AppTypography.captionRegular.copyWith(
                 color: AppTheme.textSecondary,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
           // Amount
           SizedBox(
-            width: 100,
+            width: 110,
             child: Text(
               AppFormatters.currency.format(txn.amount),
               style: AppTypography.monoValue.copyWith(
                 color: txn.amount >= 0 ? AppTheme.success : AppTheme.error,
               ),
               textAlign: TextAlign.right,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
           // Balance
           SizedBox(
-            width: 100,
+            width: 110,
             child: Text(
               AppFormatters.currencyDetailed.format(txn.balanceAfter),
               style: AppTypography.monoValue.copyWith(
                 color: AppTheme.textSecondary,
               ),
               textAlign: TextAlign.right,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],

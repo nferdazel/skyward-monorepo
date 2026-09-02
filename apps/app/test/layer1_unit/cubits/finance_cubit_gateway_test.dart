@@ -29,7 +29,7 @@ class MockFinanceGateway implements FinanceGateway {
   }
 
   @override
-  Future<Map<String, dynamic>> getFinanceSnapshot() async {
+  Future<Map<String, dynamic>> getFinanceSnapshot([String? userId]) async {
     getFinanceSnapshotCallCount++;
     if (shouldThrowOnSnapshot) throw Exception('Test snapshot error');
     return snapshotToReturn;
