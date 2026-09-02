@@ -1,6 +1,5 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
-
 import '../../../core/database/supabase_client.dart';
+import '../../../core/utils/safe_cast.dart';
 import '../domain/bank_account_model.dart';
 import '../domain/bank_transaction_model.dart';
 
@@ -106,7 +105,10 @@ class SupabaseBankGateway implements BankGateway {
     try {
       final response = await SupabaseManager.client.rpc('get_credit_report');
       if (response is List && response.isNotEmpty) {
-        return response.first as Map<String, dynamic>;
+        return toSafeMap(response.first);
+      }
+      if (response is Map) {
+        return toSafeMap(response);
       }
       return {};
     } on PostgrestException catch (e) {
@@ -210,7 +212,10 @@ class SupabaseBankGateway implements BankGateway {
         },
       );
       if (response is List && response.isNotEmpty) {
-        return response.first as Map<String, dynamic>;
+        return toSafeMap(response.first);
+      }
+      if (response is Map) {
+        return toSafeMap(response);
       }
       return {};
     } on PostgrestException catch (e) {
@@ -236,7 +241,10 @@ class SupabaseBankGateway implements BankGateway {
         },
       );
       if (response is List && response.isNotEmpty) {
-        return response.first as Map<String, dynamic>;
+        return toSafeMap(response.first);
+      }
+      if (response is Map) {
+        return toSafeMap(response);
       }
       return {};
     } on PostgrestException catch (e) {
@@ -259,8 +267,8 @@ class SupabaseBankGateway implements BankGateway {
           .from('bank_accounts')
           .select('id, user_id, account_type, balance, created_at, updated_at')
           .eq('user_id', userId);
-      return (response as List)
-          .map((m) => BankAccount.fromMap(Map<String, dynamic>.from(m)))
+      return toSafeList(response)
+          .map((m) => BankAccount.fromMap(toSafeMap(m)))
           .toList();
     } catch (e, stack) {
       SupabaseManager.logError('getBankAccounts', e, stack);
@@ -281,8 +289,8 @@ class SupabaseBankGateway implements BankGateway {
           .eq('account_id', accountId)
           .order('game_date', ascending: false)
           .limit(50);
-      return (response as List)
-          .map((m) => BankTransaction.fromMap(Map<String, dynamic>.from(m)))
+      return toSafeList(response)
+          .map((m) => BankTransaction.fromMap(toSafeMap(m)))
           .toList();
     } catch (e, stack) {
       SupabaseManager.logError('getBankTransactions', e, stack);

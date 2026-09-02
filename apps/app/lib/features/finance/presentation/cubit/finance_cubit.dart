@@ -7,8 +7,10 @@ import '../../../../core/database/supabase_client.dart';
 import '../../../../core/mixins/simulation_reactive_mixin.dart';
 import '../../../../core/realtime/realtime_subscription_bag.dart';
 import '../../../../core/utils/app_error.dart';
+import '../../../../core/utils/app_formatters.dart';
 import '../../../../core/utils/dev_mode_manager.dart';
 import '../../../../core/utils/perf_debug.dart';
+import '../../../../core/utils/safe_cast.dart';
 import '../../../bank/domain/bank_transaction_model.dart';
 import '../../../simulation/presentation/cubit/simulation_cubit.dart';
 import '../../data/finance_gateway.dart';
@@ -258,30 +260,31 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
         _gateway.getFinancialSnapshots(userId),
       ]).timeout(const Duration(seconds: 30));
 
-      final txnResponse = results[0] as List<dynamic>;
-      final snapshotMap = results[1] as Map<String, dynamic>;
-      final snapshotsResponse = results[2] as List<dynamic>;
+      final txnResponse = toSafeList(results[0]);
+      final snapshotMap = toSafeMap(results[1]);
+      final snapshotsResponse = toSafeList(results[2]);
 
       final transactions = txnResponse
-          .map((m) => BankTransaction.fromMap(Map<String, dynamic>.from(m)))
+          .map((m) => BankTransaction.fromMap(toSafeMap(m)))
           .toList();
       _cachedTransactions = transactions;
       _cachedSnapshot = FinanceSnapshot.fromMap(snapshotMap);
       _cachedFinancialSnapshots = snapshotsResponse
           .map(
             (s) {
-              final rawDate = s['game_date'] ?? s['snapshot_game_time'];
+              final sMap = toSafeMap(s);
+              final rawDate = sMap['game_date'] ?? sMap['snapshot_game_time'];
               final parsedDate = rawDate is DateTime
                   ? rawDate
                   : (rawDate != null ? DateTime.tryParse(rawDate.toString()) : null) ?? DateTime(2020, 1, 1);
               return FinanceDailySnapshot(
                 gameDate: parsedDate,
-                revenue: (s['revenue_30d'] as num?)?.toDouble() ?? 0.0,
-                expense: (s['expense_30d'] as num?)?.toDouble() ?? 0.0,
-                net: ((s['revenue_30d'] as num?)?.toDouble() ?? 0.0) -
-                    ((s['expense_30d'] as num?)?.toDouble() ?? 0.0),
-                cash: (s['cash'] as num?)?.toDouble() ?? 0.0,
-                netWorth: (s['net_worth'] as num?)?.toDouble() ?? 0.0,
+                revenue: (sMap['revenue_30d'] as num?)?.toDouble() ?? 0.0,
+                expense: (sMap['expense_30d'] as num?)?.toDouble() ?? 0.0,
+                net: ((sMap['revenue_30d'] as num?)?.toDouble() ?? 0.0) -
+                    ((sMap['expense_30d'] as num?)?.toDouble() ?? 0.0),
+                cash: (sMap['cash'] as num?)?.toDouble() ?? 0.0,
+                netWorth: (sMap['net_worth'] as num?)?.toDouble() ?? 0.0,
               );
             },
           )
@@ -342,7 +345,7 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
   }) async {
     final stopwatch = PerfDebug.start('finance.snapshot_refresh');
     try {
-      final snapshotMap = await _gateway.getFinanceSnapshot(userId);
+      final snapshotMap = toSafeMap(await _gateway.getFinanceSnapshot(userId));
       _cachedSnapshot = FinanceSnapshot.fromMap(snapshotMap);
       _consecutiveSnapshotFailures = 0;
       PerfDebug.end(
@@ -404,25 +407,26 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
         _gateway.getFinancialSnapshots(userId),
       ]).timeout(const Duration(seconds: 30));
 
-      final snapshotMap = results[0] as Map<String, dynamic>;
-      final snapshotsResponse = results[1] as List<dynamic>;
+      final snapshotMap = toSafeMap(results[0]);
+      final snapshotsResponse = toSafeList(results[1]);
 
       _cachedSnapshot = FinanceSnapshot.fromMap(snapshotMap);
       _cachedFinancialSnapshots = snapshotsResponse
           .map(
             (s) {
-              final rawDate = s['game_date'] ?? s['snapshot_game_time'];
+              final sMap = toSafeMap(s);
+              final rawDate = sMap['game_date'] ?? sMap['snapshot_game_time'];
               final parsedDate = rawDate is DateTime
                   ? rawDate
                   : (rawDate != null ? DateTime.tryParse(rawDate.toString()) : null) ?? DateTime(2020, 1, 1);
               return FinanceDailySnapshot(
                 gameDate: parsedDate,
-                revenue: (s['revenue_30d'] as num?)?.toDouble() ?? 0.0,
-                expense: (s['expense_30d'] as num?)?.toDouble() ?? 0.0,
-                net: ((s['revenue_30d'] as num?)?.toDouble() ?? 0.0) -
-                    ((s['expense_30d'] as num?)?.toDouble() ?? 0.0),
-                cash: (s['cash'] as num?)?.toDouble() ?? 0.0,
-                netWorth: (s['net_worth'] as num?)?.toDouble() ?? 0.0,
+                revenue: (sMap['revenue_30d'] as num?)?.toDouble() ?? 0.0,
+                expense: (sMap['expense_30d'] as num?)?.toDouble() ?? 0.0,
+                net: ((sMap['revenue_30d'] as num?)?.toDouble() ?? 0.0) -
+                    ((sMap['expense_30d'] as num?)?.toDouble() ?? 0.0),
+                cash: (sMap['cash'] as num?)?.toDouble() ?? 0.0,
+                netWorth: (sMap['net_worth'] as num?)?.toDouble() ?? 0.0,
               );
             },
           )

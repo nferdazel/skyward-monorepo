@@ -11,6 +11,7 @@ import '../../../../core/realtime/realtime_subscription_bag.dart';
 import '../../../../core/utils/app_error.dart';
 import '../../../../core/utils/dev_mode_manager.dart';
 import '../../../../core/utils/perf_debug.dart';
+import '../../../../core/utils/safe_cast.dart';
 import '../../../simulation/presentation/cubit/simulation_cubit.dart';
 import '../../data/fleet_gateway.dart';
 import '../../domain/fleet_models.dart';
@@ -125,7 +126,7 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
         return false;
       }
 
-      final result = response[0] as Map<String, dynamic>;
+      final result = toSafeMap(response[0]);
       final success = result['success'] as bool? ?? false;
       final message = result['message'] as String?;
 
@@ -786,10 +787,10 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
   }
 
   Future<void> _reloadFleetFromBackend(String userId) async {
-    final List<dynamic> fleetResponse = await _gateway.loadFleet(userId);
+    final List<dynamic> fleetResponse = toSafeList(await _gateway.loadFleet(userId));
     _cachedFleet =
         fleetResponse
-            .map((r) => UserFleetAircraft.fromMap(r as Map<String, dynamic>))
+            .map((r) => UserFleetAircraft.fromMap(toSafeMap(r)))
             .toList();
   }
 
