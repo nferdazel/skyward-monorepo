@@ -12,8 +12,11 @@ class AppTheme {
   static const Color surface = SkywardColors.darkSurface;
   static const Color surfaceRaised = SkywardColors.darkSurface2;
   static const Color surfaceElevated = SkywardColors.darkSurface3;
+  static const Color surfaceActive = SkywardColors.darkSurfaceActive;
   static const Color border = SkywardColors.darkBorder;
   static const Color borderSubtle = SkywardColors.darkBorder2;
+  static const Color borderHighlight = SkywardColors.darkBorderHighlight;
+  static const Color borderFocus = SkywardColors.darkBorderFocus;
 
   // ── SEMANTIC COLORS ──
   static const Color success = SkywardColors.darkGreen;

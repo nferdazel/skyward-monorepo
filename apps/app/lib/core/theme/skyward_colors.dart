@@ -9,14 +9,18 @@ import 'package:flutter/material.dart';
 class SkywardColors {
   const SkywardColors._();
   // ── Backgrounds ──
-  static const darkBg        = Color(0xFF080B10); // Deep cockpit
-  static const darkSurface   = Color(0xFF0F1319); // Panel base
-  static const darkSurface2  = Color(0xFF161C25); // Raised panel
-  static const darkSurface3  = Color(0xFF1E2633); // Elevated card
+  static const darkBg            = Color(0xFF080B10); // Deep cockpit base
+  static const darkSurface       = Color(0xFF0F1319); // Panel base
+  static const darkSurface2      = Color(0xFF161C25); // Raised panel, table headers
+  static const darkSurface3      = Color(0xFF1E2633); // Elevated drawer, inspector panel
+  static const darkSurfaceActive = Color(0xFF242E3D); // Hover/active row state
 
-  // ── Borders ──
-  static const darkBorder    = Color(0x1AFFFFFF); // 10% white
-  static const darkBorder2   = Color(0x0DFFFFFF); // 5% white
+  // ── Borders (Zero-shadow architecture) ──
+  static const darkBorder          = Color(0x1AFFFFFF); // 10% white structural border
+  static const darkBorder2         = Color(0x0DFFFFFF); // 5% white internal divider
+  static const darkBorderSubtle    = Color(0x0DFFFFFF); // 5% white alias
+  static const darkBorderHighlight = Color(0x26FFFFFF); // 15% white top-edge 1px highlight
+  static const darkBorderFocus     = Color(0xFF5B9EE0); // Active focus outline
 
   // ── Primary: HUD Blue ──
   static const darkAccent       = Color(0xFF5B9EE0); // HUD Blue (PFD-inspired)

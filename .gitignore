@@ -28,3 +28,9 @@ apps/api/*.test
 .idea/
 *.swp
 *.swo
+
+# Local Audit & Design Docs
+AUDIT_TASKLIST.md
+UI_UX_DESIGN_SPEC.md
+REDESIGN_TASKLIST.md
+
