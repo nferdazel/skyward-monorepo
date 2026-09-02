@@ -10,4 +10,4 @@ RUN touch .env && \
     flutter build web --release
 
 FROM alpine:3.20
-COPY --from=build /app/build/web /out
+COPY --from=build /app/build/web /var/www/html
