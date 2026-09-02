@@ -131,7 +131,15 @@ func CORS(allowed []string) func(http.Handler) http.Handler {
 				h := w.Header()
 				h.Set("Access-Control-Allow-Origin", origin)
 				h.Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-				h.Set("Access-Control-Allow-Headers", "Content-Type, Authorization, If-Match, ETag")
+				reqHeaders := r.Header.Get("Access-Control-Request-Headers")
+				if reqHeaders != "" {
+					h.Set("Access-Control-Allow-Headers", reqHeaders)
+				} else {
+					h.Set("Access-Control-Allow-Headers", "Content-Type, Authorization, If-Match, ETag, apikey, x-client-info, prefer, range, x-request-id, accept, origin, user-agent, cache-control, pragma")
+				}
+				h.Set("Access-Control-Expose-Headers", "Content-Range, Range, ETag, X-Request-ID, Content-Length")
+				h.Set("Access-Control-Allow-Credentials", "true")
+				h.Set("Access-Control-Max-Age", "86400")
 				h.Add("Vary", "Origin")
 			}
 			if r.Method == http.MethodOptions {
