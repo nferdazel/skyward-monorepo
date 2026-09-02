@@ -40,18 +40,20 @@ class AppLineChart extends StatelessWidget {
   Widget build(BuildContext context) {
     final effectiveHeight = chartHeight ?? height;
 
-    if (data.length < 2) {
-      return SizedBox(width: width, height: effectiveHeight);
+    if (data.isEmpty) {
+      return SizedBox(height: effectiveHeight);
     }
 
+    final effectiveData = data.length == 1 ? [data.first, data.first] : data;
+
     return Semantics(
-      label: 'Line chart showing trend over ${data.length} periods',
+      label: 'Line chart showing trend over ${effectiveData.length} periods',
       child: SizedBox(
         width: width,
         height: effectiveHeight,
         child: CustomPaint(
           painter: _LineChartPainter(
-            data: data,
+            data: effectiveData,
             lineColor: lineColor ?? AppTheme.primary,
             fillColor: fillColor ?? AppTheme.primary.withValues(alpha: 0.1),
             showDots: showDots,

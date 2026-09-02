@@ -115,8 +115,12 @@ class FinanceHealthHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final snapshot = state.snapshot;
-    final cashData = state.dailySnapshots.map((s) => s.cash).toList();
-    final netWorthData = state.dailySnapshots.map((s) => s.netWorth).toList();
+    final cashData = state.financialSnapshots.isNotEmpty
+        ? state.financialSnapshots.map((s) => s.cash).toList()
+        : [snapshot.cash, snapshot.cash];
+    final netWorthData = state.financialSnapshots.isNotEmpty
+        ? state.financialSnapshots.map((s) => s.netWorth).toList()
+        : [snapshot.netWorth, snapshot.netWorth];
     final net30d = snapshot.rollingNet30d;
     final netColor = net30d >= 0 ? AppTheme.success : AppTheme.error;
     final netPrefix = net30d >= 0 ? '+' : '';

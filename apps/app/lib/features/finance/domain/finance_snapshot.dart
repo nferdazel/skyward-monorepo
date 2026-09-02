@@ -54,28 +54,44 @@ class FinanceSnapshot with Equatable {
 
   factory FinanceSnapshot.fromMap(Map<String, dynamic> map) {
     final rollingRevenue =
-        (map['rolling_revenue_30d'] as num?)?.toDouble() ?? 0.0;
+        (map['rolling_revenue_30d'] as num?)?.toDouble() ??
+        (map['revenue_30d'] as num?)?.toDouble() ??
+        0.0;
     final rollingExpenseRaw =
-        (map['rolling_expense_30d'] as num?)?.toDouble() ?? 0.0;
+        (map['rolling_expense_30d'] as num?)?.toDouble() ??
+        (map['expense_30d'] as num?)?.toDouble() ??
+        0.0;
     final rollingExpense = rollingExpenseRaw.abs();
+    final isBotRaw = map['is_bot'];
+    final isBot = isBotRaw == true || isBotRaw == 'true' || isBotRaw == 1;
+
     return FinanceSnapshot(
-      actorId: map['actor_id']?.toString() ?? '',
-      isBot: map['is_bot'] as bool? ?? false,
-      companyName: map['company_name']?.toString() ?? '',
-      cash: (map['cash'] as num?)?.toDouble() ?? 0.0,
+      actorId: (map['actor_id'] ?? map['user_id'] ?? '').toString(),
+      isBot: isBot,
+      companyName: (map['company_name'] ?? '').toString(),
+      cash: (map['cash'] as num?)?.toDouble() ??
+          (map['balance'] as num?)?.toDouble() ??
+          0.0,
       netWorth: (map['net_worth'] as num?)?.toDouble() ?? 0.0,
       ownedAircraftAssetValue:
-          (map['owned_aircraft_asset_value'] as num?)?.toDouble() ?? 0.0,
+          (map['owned_aircraft_asset_value'] as num?)?.toDouble() ??
+          (map['fleet_value'] as num?)?.toDouble() ??
+          0.0,
       leasedAircraftMonthlyExposure:
-          (map['leased_aircraft_monthly_exposure'] as num?)?.toDouble() ?? 0.0,
+          (map['leased_aircraft_monthly_exposure'] as num?)?.toDouble() ??
+          (map['monthly_lease_cost'] as num?)?.toDouble() ??
+          0.0,
       fleetCount: (map['fleet_count'] as num?)?.toInt() ?? 0,
       ownedFleetCount: (map['owned_fleet_count'] as num?)?.toInt() ?? 0,
       leasedFleetCount: (map['leased_fleet_count'] as num?)?.toInt() ?? 0,
-      activeRouteCount: (map['active_route_count'] as num?)?.toInt() ?? 0,
+      activeRouteCount: (map['active_route_count'] as num?)?.toInt() ??
+          (map['route_count'] as num?)?.toInt() ??
+          0,
       rollingRevenue30d: rollingRevenue,
       rollingExpense30d: rollingExpense,
       rollingNet30d:
           (map['rolling_net_30d'] as num?)?.toDouble() ??
+          (map['net_30d'] as num?)?.toDouble() ??
           (rollingRevenue - rollingExpense),
       ledgerWindowDays: (map['ledger_window_days'] as num?)?.toInt() ?? 30,
     );

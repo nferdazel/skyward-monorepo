@@ -14,7 +14,7 @@ class FinanceGatewayException implements Exception {
 
 abstract class FinanceGateway {
   Future<List<dynamic>> loadTransactions(String userId);
-  Future<Map<String, dynamic>> getFinanceSnapshot();
+  Future<Map<String, dynamic>> getFinanceSnapshot([String? userId]);
   Future<List<dynamic>> getFinancialSnapshots(String userId);
 }
 
@@ -48,21 +48,102 @@ class SupabaseFinanceGateway implements FinanceGateway {
   }
 
   @override
-  Future<Map<String, dynamic>> getFinanceSnapshot() async {
+  Future<Map<String, dynamic>> getFinanceSnapshot([String? userId]) async {
     try {
-      final snapshotResponse = await SupabaseManager.client.rpc(
-        'get_finance_snapshot',
-      );
+      final dynamic snapshotResponse = userId != null && userId.isNotEmpty
+          ? await SupabaseManager.client.rpc(
+              'get_finance_snapshot',
+              params: {'p_id': userId, 'p_is_bot': false},
+            )
+          : await SupabaseManager.client.rpc('get_finance_snapshot');
       if (snapshotResponse is List<dynamic> && snapshotResponse.isNotEmpty) {
         return snapshotResponse.first as Map<String, dynamic>;
       }
-      return <String, dynamic>{};
+      if (snapshotResponse is Map<String, dynamic>) {
+        return snapshotResponse;
+      }
     } on PostgrestException catch (e) {
-      SupabaseManager.logRpcFailure('get_finance_snapshot', {}, e.message);
-      throw FinanceGatewayException(e.message, 'getFinanceSnapshot');
+      SupabaseManager.logRpcFailure('get_finance_snapshot', {'p_id': userId}, e.message);
     } catch (e, stack) {
       SupabaseManager.logError('getFinanceSnapshot', e, stack);
-      throw FinanceGatewayException(e.toString(), 'getFinanceSnapshot');
+    }
+
+    if (userId != null && userId.isNotEmpty) {
+      return _fallbackFinanceSnapshot(userId);
+    }
+    return <String, dynamic>{};
+  }
+
+  Future<Map<String, dynamic>> _fallbackFinanceSnapshot(String userId) async {
+    try {
+      final user = await SupabaseManager.client
+          .from('users')
+          .select('company_name, net_worth, game_current_time')
+          .eq('id', userId)
+          .maybeSingle();
+
+      final account = await SupabaseManager.client
+          .from('bank_accounts')
+          .select('balance')
+          .eq('user_id', userId)
+          .eq('account_type', 'operating')
+          .maybeSingle();
+
+      final fleet = await SupabaseManager.client
+          .from('fleet_aircraft')
+          .select('id, acquisition_type, condition, aircraft_models(purchase_price, lease_price_per_month)')
+          .eq('user_id', userId);
+
+      final routes = await SupabaseManager.client
+          .from('route_assignments')
+          .select('id, status')
+          .eq('user_id', userId);
+
+      double ownedAssetValue = 0.0;
+      double leasedMonthlyExposure = 0.0;
+      int ownedCount = 0;
+      int leasedCount = 0;
+
+      for (final f in fleet) {
+        final acq = f['acquisition_type']?.toString();
+        final model = f['aircraft_models'] as Map<String, dynamic>?;
+        final condition = (f['condition'] as num?)?.toDouble() ?? 100.0;
+        if (acq == 'lease') {
+          leasedCount++;
+          leasedMonthlyExposure += (model?['lease_price_per_month'] as num?)?.toDouble() ?? 0.0;
+        } else {
+          ownedCount++;
+          final purchasePrice = (model?['purchase_price'] as num?)?.toDouble() ?? 0.0;
+          ownedAssetValue += purchasePrice * (condition / 100.0);
+        }
+      }
+
+      final activeRoutes = routes
+          .where((r) => r['status'] == null || r['status'] == 'active')
+          .length;
+
+      final cash = (account?['balance'] as num?)?.toDouble() ?? 0.0;
+      final netWorth = (user?['net_worth'] as num?)?.toDouble() ?? (cash + ownedAssetValue);
+
+      return {
+        'actor_id': userId,
+        'is_bot': false,
+        'company_name': user?['company_name'] ?? '',
+        'cash': cash,
+        'net_worth': netWorth,
+        'owned_aircraft_asset_value': ownedAssetValue,
+        'leased_aircraft_monthly_exposure': leasedMonthlyExposure,
+        'fleet_count': ownedCount + leasedCount,
+        'owned_fleet_count': ownedCount,
+        'leased_fleet_count': leasedCount,
+        'active_route_count': activeRoutes,
+        'rolling_revenue_30d': 0.0,
+        'rolling_expense_30d': 0.0,
+        'rolling_net_30d': 0.0,
+        'ledger_window_days': 30,
+      };
+    } catch (_) {
+      return {};
     }
   }
 

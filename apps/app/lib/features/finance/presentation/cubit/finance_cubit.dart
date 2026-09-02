@@ -254,7 +254,7 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
 
       final results = await Future.wait<dynamic>([
         _gateway.loadTransactions(userId),
-        _gateway.getFinanceSnapshot(),
+        _gateway.getFinanceSnapshot(userId),
         _gateway.getFinancialSnapshots(userId),
       ]).timeout(const Duration(seconds: 30));
 
@@ -342,7 +342,7 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
   }) async {
     final stopwatch = PerfDebug.start('finance.snapshot_refresh');
     try {
-      final snapshotMap = await _gateway.getFinanceSnapshot();
+      final snapshotMap = await _gateway.getFinanceSnapshot(userId);
       _cachedSnapshot = FinanceSnapshot.fromMap(snapshotMap);
       _consecutiveSnapshotFailures = 0;
       PerfDebug.end(
@@ -400,7 +400,7 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
       if (DevModeManager.isDevMode) return;
 
       final results = await Future.wait<dynamic>([
-        _gateway.getFinanceSnapshot(),
+        _gateway.getFinanceSnapshot(userId),
         _gateway.getFinancialSnapshots(userId),
       ]).timeout(const Duration(seconds: 30));
 
