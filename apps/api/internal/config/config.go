@@ -74,7 +74,7 @@ func Load() (Config, error) {
 		Env:                       getenv("SKYWARD_ENV", "prod"),
 		Port:                      getenv("PORT", "8090"),
 		Host:                      getenv("HOST", "127.0.0.1"),
-		RateLimitPerMin:           atoiDefault(os.Getenv("SKYWARD_RATE_LIMIT_PER_MIN"), 120),
+		RateLimitPerMin:           atoiDefault(os.Getenv("SKYWARD_RATE_LIMIT_PER_MIN"), 2400),
 		LogDir:                    os.Getenv("SKYWARD_LOG_DIR"),
 		LogLevel:                  os.Getenv("SKYWARD_LOG_LEVEL"),
 		AdminToken:                os.Getenv("SKYWARD_ADMIN_TOKEN"),
