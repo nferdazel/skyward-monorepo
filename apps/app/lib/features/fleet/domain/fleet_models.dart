@@ -89,17 +89,35 @@ class UserFleetAircraft with Equatable {
   });
 
   factory UserFleetAircraft.fromMap(Map<String, dynamic> map) {
+    Map<String, dynamic> modelMap = {};
+    if (map['aircraft_models'] is Map) {
+      modelMap = Map<String, dynamic>.from(map['aircraft_models'] as Map);
+    } else {
+      modelMap = {
+        'id': map['aircraft_model_id'] ?? map['model_id'] ?? '',
+        'model_name': map['model_name'] ?? '',
+        'manufacturer': map['manufacturer'] ?? '',
+        'range_km': map['range_km'] ?? 0,
+        'capacity': map['capacity'] ?? 0,
+        'speed_kmh': map['speed_kmh'] ?? 850,
+        'fuel_burn_per_km': map['fuel_burn_per_km'] ?? 0.0,
+        'maintenance_cost_per_hour': map['maintenance_cost_per_hour'] ?? 0.0,
+        'purchase_price': map['purchase_price'] ?? 0.0,
+        'lease_price_per_month': map['lease_price_per_month'] ?? 0.0,
+      };
+    }
+
     return UserFleetAircraft(
-      id: map['id'] ?? '',
-      nickname: map['nickname'] ?? '',
-      acquisitionType: map['acquisition_type'] ?? 'purchase',
+      id: (map['id'] ?? '').toString(),
+      nickname: (map['nickname'] ?? '').toString(),
+      acquisitionType: (map['acquisition_type'] ?? 'purchase').toString(),
       condition: (map['condition'] as num?)?.toDouble() ?? 100.0,
-      status: map['status'] ?? 'grounded',
-      model: AircraftModel.fromMap(map['aircraft_models'] ?? {}),
+      status: (map['status'] ?? 'active').toString(),
+      model: AircraftModel.fromMap(modelMap),
       economySeats: (map['economy_seats'] as num?)?.toInt() ?? 0,
       businessSeats: (map['business_seats'] as num?)?.toInt() ?? 0,
       firstClassSeats: (map['first_class_seats'] as num?)?.toInt() ?? 0,
-      tailNumber: map['tail_number'] ?? '',
+      tailNumber: (map['tail_number'] ?? '').toString(),
     );
   }
 

@@ -269,14 +269,21 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
       _cachedSnapshot = FinanceSnapshot.fromMap(snapshotMap);
       _cachedFinancialSnapshots = snapshotsResponse
           .map(
-            (s) => FinanceDailySnapshot(
-              gameDate: DateTime.parse(s['game_date'] as String),
-              revenue: 0,
-              expense: 0,
-              net: 0,
-              cash: (s['cash'] as num?)?.toDouble() ?? 0.0,
-              netWorth: (s['net_worth'] as num?)?.toDouble() ?? 0.0,
-            ),
+            (s) {
+              final rawDate = s['game_date'] ?? s['snapshot_game_time'];
+              final parsedDate = rawDate is DateTime
+                  ? rawDate
+                  : (rawDate != null ? DateTime.tryParse(rawDate.toString()) : null) ?? DateTime(2020, 1, 1);
+              return FinanceDailySnapshot(
+                gameDate: parsedDate,
+                revenue: (s['revenue_30d'] as num?)?.toDouble() ?? 0.0,
+                expense: (s['expense_30d'] as num?)?.toDouble() ?? 0.0,
+                net: ((s['revenue_30d'] as num?)?.toDouble() ?? 0.0) -
+                    ((s['expense_30d'] as num?)?.toDouble() ?? 0.0),
+                cash: (s['cash'] as num?)?.toDouble() ?? 0.0,
+                netWorth: (s['net_worth'] as num?)?.toDouble() ?? 0.0,
+              );
+            },
           )
           .toList();
       PerfDebug.end(
@@ -403,14 +410,21 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
       _cachedSnapshot = FinanceSnapshot.fromMap(snapshotMap);
       _cachedFinancialSnapshots = snapshotsResponse
           .map(
-            (s) => FinanceDailySnapshot(
-              gameDate: DateTime.parse(s['game_date'] as String),
-              revenue: 0,
-              expense: 0,
-              net: 0,
-              cash: (s['cash'] as num?)?.toDouble() ?? 0.0,
-              netWorth: (s['net_worth'] as num?)?.toDouble() ?? 0.0,
-            ),
+            (s) {
+              final rawDate = s['game_date'] ?? s['snapshot_game_time'];
+              final parsedDate = rawDate is DateTime
+                  ? rawDate
+                  : (rawDate != null ? DateTime.tryParse(rawDate.toString()) : null) ?? DateTime(2020, 1, 1);
+              return FinanceDailySnapshot(
+                gameDate: parsedDate,
+                revenue: (s['revenue_30d'] as num?)?.toDouble() ?? 0.0,
+                expense: (s['expense_30d'] as num?)?.toDouble() ?? 0.0,
+                net: ((s['revenue_30d'] as num?)?.toDouble() ?? 0.0) -
+                    ((s['expense_30d'] as num?)?.toDouble() ?? 0.0),
+                cash: (s['cash'] as num?)?.toDouble() ?? 0.0,
+                netWorth: (s['net_worth'] as num?)?.toDouble() ?? 0.0,
+              );
+            },
           )
           .toList();
       _consecutiveSnapshotFailures = 0;

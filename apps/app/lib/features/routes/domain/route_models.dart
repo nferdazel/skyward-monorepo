@@ -124,10 +124,10 @@ class Airport with Equatable {
 
   factory Airport.fromMap(Map<String, dynamic> map) {
     return Airport(
-      iata: map['iata'] ?? '',
-      name: map['name'] ?? '',
-      city: map['city'] ?? '',
-      country: map['country'] ?? '',
+      iata: (map['iata'] ?? '').toString(),
+      name: (map['name'] ?? map['iata'] ?? '').toString(),
+      city: (map['city'] ?? '').toString(),
+      country: (map['country'] ?? '').toString(),
       latitude: (map['latitude'] as num?)?.toDouble() ?? 0.0,
       longitude: (map['longitude'] as num?)?.toDouble() ?? 0.0,
       demandIndex: (map['demand_index'] as num?)?.toInt() ?? 50,
@@ -191,19 +191,35 @@ class UserRoute with Equatable {
 
   factory UserRoute.fromMap(Map<String, dynamic> map) {
     return UserRoute(
-      id: map['id'] ?? '',
-      originIata: map['origin_iata'] ?? '',
-      destinationIata: map['destination_iata'] ?? '',
+      id: (map['id'] ?? '').toString(),
+      originIata: (map['origin_iata'] ?? '').toString(),
+      destinationIata: (map['destination_iata'] ?? '').toString(),
       distanceKm: (map['distance_km'] as num?)?.toDouble() ?? 0.0,
       ticketPrice: (map['ticket_price'] as num?)?.toDouble() ?? 0.0,
-      assignedAircraftId: map['assigned_aircraft_id'],
+      assignedAircraftId: map['assigned_aircraft_id']?.toString(),
       flightsPerWeek: (map['flights_per_week'] as num?)?.toInt() ?? 7,
-      origin: Airport.fromMap(map['origin'] ?? {}),
-      destination: Airport.fromMap(map['destination'] ?? {}),
+      origin: Airport.fromMap(
+        map['origin'] is Map
+            ? Map<String, dynamic>.from(map['origin'] as Map)
+            : {'iata': map['origin_iata']},
+      ),
+      destination: Airport.fromMap(
+        map['destination'] is Map
+            ? Map<String, dynamic>.from(map['destination'] as Map)
+            : {'iata': map['destination_iata']},
+      ),
       assignedAircraft: map['fleet_aircraft'] != null
-          ? UserFleetAircraft.fromMap(map['fleet_aircraft'])
-          : null,
-      status: map['status'] as String? ?? 'active',
+          ? UserFleetAircraft.fromMap(
+              Map<String, dynamic>.from(map['fleet_aircraft'] as Map),
+            )
+          : (map['tail_number'] != null
+              ? UserFleetAircraft.fromMap({
+                  'id': map['assigned_aircraft_id'],
+                  'tail_number': map['tail_number'],
+                  'model_name': map['model_name'],
+                })
+              : null),
+      status: map['status']?.toString() ?? 'active',
     );
   }
 

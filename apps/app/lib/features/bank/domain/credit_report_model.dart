@@ -50,13 +50,25 @@ class CreditReport with Equatable {
 
   factory CreditReport.fromMap(Map<String, dynamic> map) {
     return CreditReport(
-      currentScore: (map['current_score'] as num?)?.toInt() ?? 500,
-      fleetHealth: (map['fleet_health'] as num?)?.toInt() ?? 100,
-      revenueStability: (map['revenue_stability'] as num?)?.toInt() ?? 100,
-      debtRatio: (map['debt_ratio'] as num?)?.toInt() ?? 100,
-      cashReserve: (map['cash_reserve'] as num?)?.toInt() ?? 100,
-      profitHistory: (map['profit_history'] as num?)?.toInt() ?? 100,
-      creditTier: map['credit_tier'] as String? ?? 'Standard',
+      currentScore: (map['current_score'] as num?)?.toInt() ??
+          (map['credit_score'] is Map ? (map['credit_score']['score'] as num?)?.toInt() : null) ??
+          500,
+      fleetHealth: (map['fleet_health'] as num?)?.toInt() ??
+          (map['credit_score'] is Map ? (map['credit_score']['fleet_health'] as num?)?.toInt() : null) ??
+          100,
+      revenueStability: (map['revenue_stability'] as num?)?.toInt() ??
+          (map['credit_score'] is Map ? (map['credit_score']['revenue_stability'] as num?)?.toInt() : null) ??
+          100,
+      debtRatio: (map['debt_ratio'] as num?)?.toInt() ??
+          (map['credit_score'] is Map ? (map['credit_score']['debt_ratio'] as num?)?.toInt() : null) ??
+          100,
+      cashReserve: (map['cash_reserve'] as num?)?.toInt() ??
+          (map['credit_score'] is Map ? (map['credit_score']['cash_reserve'] as num?)?.toInt() : null) ??
+          100,
+      profitHistory: (map['profit_history'] as num?)?.toInt() ??
+          (map['credit_score'] is Map ? (map['credit_score']['profit_history'] as num?)?.toInt() : null) ??
+          100,
+      creditTier: (map['credit_tier'] ?? map['tier'])?.toString() ?? 'Standard',
       maxUnsecuredLoan:
           (map['max_unsecured_loan'] as num?)?.toDouble() ?? 5000000,
       maxSecuredLoan:
@@ -76,7 +88,7 @@ class CreditReport with Equatable {
       suggestions: (map['suggestions'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
-           const [],
+          const [],
     );
   }
 
@@ -122,6 +134,15 @@ class CreditScoreSnapshot with Equatable {
   });
 
   factory CreditScoreSnapshot.fromMap(Map<String, dynamic> map) {
+    DateTime? parsedDate;
+    final rawDate = map['game_date'];
+    if (rawDate != null) {
+      if (rawDate is DateTime) {
+        parsedDate = rawDate;
+      } else {
+        parsedDate = DateTime.tryParse(rawDate.toString());
+      }
+    }
     return CreditScoreSnapshot(
       score: (map['score'] as num?)?.toInt() ?? 500,
       fleetHealth: (map['fleet_health_score'] as num?)?.toInt() ?? 100,
@@ -129,9 +150,7 @@ class CreditScoreSnapshot with Equatable {
       debtRatio: (map['debt_ratio_score'] as num?)?.toInt() ?? 100,
       cashReserve: (map['cash_reserves_score'] as num?)?.toInt() ?? 100,
       profitHistory: (map['profit_history_score'] as num?)?.toInt() ?? 100,
-      gameDate: map['game_date'] != null
-          ? DateTime.parse(map['game_date'] as String)
-          : DateTime(2020, 1, 1),
+      gameDate: parsedDate ?? DateTime(2020, 1, 1),
     );
   }
 

@@ -26,19 +26,25 @@ class BankTransaction with Equatable {
   });
 
   factory BankTransaction.fromMap(Map<String, dynamic> map) {
+    DateTime? parsedDate;
+    if (map['game_date'] != null) {
+      if (map['game_date'] is DateTime) {
+        parsedDate = map['game_date'] as DateTime;
+      } else {
+        parsedDate = DateTime.tryParse(map['game_date'].toString());
+      }
+    }
     return BankTransaction(
-      id: map['id'] as String,
-      accountId: map['account_id'] as String,
-      userId: map['user_id'] as String,
-      transactionType: map['transaction_type'] as String,
+      id: (map['id'] ?? '').toString(),
+      accountId: (map['account_id'] ?? '').toString(),
+      userId: (map['user_id'] ?? '').toString(),
+      transactionType: (map['transaction_type'] ?? 'debit').toString(),
       amount: (map['amount'] as num?)?.toDouble() ?? 0.0,
       balanceAfter: (map['balance_after'] as num?)?.toDouble() ?? 0.0,
-      description: map['description'] as String?,
-      ifrsCategory: map['ifrs_category'] as String?,
-      ifrsSubcategory: map['ifrs_subcategory'] as String?,
-      gameDate: map['game_date'] != null
-          ? DateTime.parse(map['game_date'] as String)
-          : null,
+      description: map['description']?.toString(),
+      ifrsCategory: map['ifrs_category']?.toString(),
+      ifrsSubcategory: map['ifrs_subcategory']?.toString(),
+      gameDate: parsedDate,
     );
   }
 
