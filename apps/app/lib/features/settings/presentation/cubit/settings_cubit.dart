@@ -215,6 +215,7 @@ class SettingsCubit extends Cubit<SettingsState> {
   }) async {
     emit(state.copyWith(isSaving: true));
     try {
+      if (!DevModeManager.isDevMode) {
         final List<dynamic> response = toSafeList(await _gateway.saveAirlineSettings({
           'p_company_name': companyName,
           'p_auto_grounding_threshold': autoGroundingThreshold,

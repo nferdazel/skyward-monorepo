@@ -1,3 +1,5 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../../../core/database/supabase_client.dart';
 import '../../../core/utils/safe_cast.dart';
 import '../domain/bank_account_model.dart';
