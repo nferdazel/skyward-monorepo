@@ -8,27 +8,17 @@
 #   - DB skyward_dev / skyward sudah dibuat (CREATE DATABASE + migration)
 #
 # Usage:
-#   ./scripts/deploy.sh setup dev   # sekali: install quadlet unit + enable service
-#   ./scripts/deploy.sh dev         # update: pull image terbaru + restart
-#   ./scripts/deploy.sh prod        # update instance prod
+#   ./scripts/deploy.sh setup       # sekali: install quadlet unit + enable service
+#   ./scripts/deploy.sh             # update: restart service prod
 set -euo pipefail
 
 VPS="${VPS:-sachiel@43.133.148.191}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEPLOY_DIR="$(dirname "$SCRIPT_DIR")/deploy"
 
-MODE="${1:-}"
-INSTANCE="${2:-}"
-if [ -z "$INSTANCE" ]; then
-  INSTANCE="$MODE"
-  MODE="update"
-fi
-
-case "$INSTANCE" in
-  dev)  UNIT="skyward-api-dev" ;;
-  prod) UNIT="skyward-api" ;;
-  *) echo "usage: deploy.sh [setup] dev|prod" >&2; exit 1 ;;
-esac
+MODE="${1:-update}"
+UNIT="skyward-api"
+INSTANCE="prod"
 
 echo "==> instance: $INSTANCE (unit: $UNIT)"
 
