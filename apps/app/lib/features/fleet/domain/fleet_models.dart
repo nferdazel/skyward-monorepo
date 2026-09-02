@@ -103,6 +103,8 @@ class UserFleetAircraft with Equatable {
     );
   }
 
+  bool get isOwned => acquisitionType == 'purchase';
+
   double get maintenanceWearPerFlightCycle {
     return acquisitionType == 'lease'
         ? GameConstants.leasedWearPerFlightCycle

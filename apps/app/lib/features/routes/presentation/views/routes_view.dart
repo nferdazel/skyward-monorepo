@@ -12,6 +12,7 @@ import '../../../../core/utils/app_formatters.dart';
 import '../../../../core/constants/game_constants.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/pulse_dot.dart';
+import '../../../../presentation/layout/slide_over_drawer.dart';
 import '../../../../presentation/theme/app_spacing.dart';
 import '../../../../presentation/theme/app_typography.dart';
 import '../../../../presentation/widgets/app_button.dart';
@@ -24,6 +25,8 @@ import '../../../../presentation/widgets/app_table_icon_action.dart';
 import '../../../../presentation/widgets/app_stat_text.dart';
 import '../../../../presentation/widgets/help_tooltip.dart';
 import '../../../../presentation/widgets/searchable_airport_dropdown.dart';
+import '../../../../presentation/widgets/tactile_button.dart';
+import '../widgets/route_drawer.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
 import '../../../bank/presentation/cubit/bank_cubit.dart';
@@ -460,6 +463,44 @@ class _RoutesViewState extends State<RoutesView> {
                       color: AppTheme.primary,
                     ),
                   ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                TactileButton(
+                  text: '+ NEW',
+                  type: TactileButtonType.primary,
+                  height: 24,
+                  width: 58,
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  onPressed: () {
+                    final airportsState = _getAirports(context.read<RoutesCubit>().state);
+                    SlideOverDrawer.show(
+                      context: context,
+                      title: 'NEW ROUTE BLUEPRINT',
+                      subtitle: 'Dispatch commercial flight connection',
+                      child: RouteDrawerContent(
+                        airports: airportsState,
+                        availableFleet: availableFleet,
+                        onCreateRoute: ({
+                          required originIata,
+                          required destinationIata,
+                          required distanceKm,
+                          required ticketPrice,
+                          required weeklyFlights,
+                          assignedFleetId,
+                        }) {
+                          Navigator.of(context).pop();
+                          context.read<RoutesCubit>().createRoute(
+                                userId: userId,
+                                originIata: originIata,
+                                destinationIata: destinationIata,
+                                distanceKm: distanceKm,
+                                ticketPrice: ticketPrice,
+                                flightsPerWeek: weeklyFlights,
+                              );
+                        },
+                      ),
+                    );
+                  },
                 ),
               ],
             ),

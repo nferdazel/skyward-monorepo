@@ -2,16 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../presentation/theme/app_motion.dart';
 import '../../../../presentation/theme/app_spacing.dart';
 import '../../../../presentation/theme/app_typography.dart';
-import '../../../../presentation/widgets/app_button.dart';
 import '../../../../presentation/widgets/app_dialog_shell.dart';
 import '../../../../presentation/widgets/skyward_logo.dart';
+import '../../../../presentation/widgets/tactile_button.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../navigation/presentation/cubit/navigation_cubit.dart';
 
 class DashboardSidebar extends StatelessWidget {
-  const DashboardSidebar({super.key});
+  final VoidCallback? onOpenCommandPalette;
+
+  const DashboardSidebar({
+    super.key,
+    this.onOpenCommandPalette,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -34,11 +40,11 @@ class DashboardSidebar extends StatelessWidget {
     ];
 
     return Container(
-      width: 44,
+      width: 52,
       decoration: BoxDecoration(
         color: AppTheme.surface,
         border: Border(
-          right: BorderSide(color: AppTheme.border, width: 0.5),
+          right: BorderSide(color: AppTheme.border, width: 1.0),
         ),
       ),
       child: Column(
@@ -46,11 +52,11 @@ class DashboardSidebar extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
           // Logo mark
           Tooltip(
-            message: 'Skyward Ops',
-            child: SkywardLogo(size: 28, showBackground: true),
+            message: 'Skyward Command Center',
+            child: SkywardLogo(size: 32, showBackground: true),
           ),
           const SizedBox(height: AppSpacing.lg),
-          // Nav icons
+          // Nav items with sliding active pill
           Expanded(
             child: BlocBuilder<NavigationCubit, NavigationState>(
               buildWhen: (prev, cur) => prev.activeIndex != cur.activeIndex,
@@ -59,16 +65,21 @@ class DashboardSidebar extends StatelessWidget {
                   children: [
                     for (int i = 0; i < navIcons.length; i++) ...[
                       if (i == 3) ...[
-                        const SizedBox(height: AppSpacing.sm),
-                        Divider(color: AppTheme.border, height: 1, indent: AppSpacing.md, endIndent: AppSpacing.md),
-                        const SizedBox(height: AppSpacing.sm),
+                        const SizedBox(height: AppSpacing.xs),
+                        Divider(
+                          color: AppTheme.borderSubtle,
+                          height: 1,
+                          indent: AppSpacing.sm,
+                          endIndent: AppSpacing.sm,
+                        ),
+                        const SizedBox(height: AppSpacing.xs),
                       ],
-                      _buildNavIcon(
-                        context,
-                        navIcons[i],
-                        state.activeIndex == i,
-                        () => context.read<NavigationCubit>().selectTab(i),
+                      _SidebarItem(
+                        icon: navIcons[i],
                         label: navLabels[i],
+                        isActive: state.activeIndex == i,
+                        onTap: () =>
+                            context.read<NavigationCubit>().selectTab(i),
                       ),
                     ],
                   ],
@@ -76,37 +87,47 @@ class DashboardSidebar extends StatelessWidget {
               },
             ),
           ),
+          // Command Palette trigger
+          if (onOpenCommandPalette != null)
+            _SidebarItem(
+              icon: Icons.search,
+              label: 'Command Palette (⌘K)',
+              isActive: false,
+              onTap: onOpenCommandPalette,
+              color: AppTheme.textSecondary,
+            ),
           // Logout
-          _buildNavIcon(
-            context,
-            Icons.logout,
-            false,
-            () async {
+          _SidebarItem(
+            icon: Icons.logout,
+            label: 'Logout',
+            isActive: false,
+            color: AppTheme.error,
+            onTap: () async {
               final confirmed = await showDialog<bool>(
                 context: context,
                 builder: (ctx) => AppDialogShell(
-                  title: 'LOGOUT',
+                  title: 'LOGOUT COMMAND',
                   content: Text(
-                    'Are you sure you want to logout?',
+                    'Are you sure you want to exit the operations deck?',
                     style: AppTypography.bodyMedium,
                   ),
                   actions: Row(
                     children: [
                       Expanded(
-                        child: AppButton(
+                        child: TactileButton(
                           text: 'CANCEL',
                           onPressed: () => Navigator.pop(ctx, false),
-                          type: AppButtonType.secondary,
-                          height: 40,
+                          type: TactileButtonType.secondary,
+                          height: 36,
                         ),
                       ),
                       const SizedBox(width: AppSpacing.sm),
                       Expanded(
-                        child: AppButton(
+                        child: TactileButton(
                           text: 'LOGOUT',
                           onPressed: () => Navigator.pop(ctx, true),
-                          type: AppButtonType.primary,
-                          height: 40,
+                          type: TactileButtonType.destructive,
+                          height: 36,
                         ),
                       ),
                     ],
@@ -117,62 +138,102 @@ class DashboardSidebar extends StatelessWidget {
                 context.read<AuthCubit>().logout();
               }
             },
-            color: AppTheme.error,
-            label: 'Logout',
           ),
           const SizedBox(height: AppSpacing.sm),
         ],
       ),
     );
   }
+}
 
-  Widget _buildNavIcon(
-    BuildContext context,
-    IconData icon,
-    bool isActive,
-    GestureTapCallback? onTap, {
-    Color? color,
-    String label = '',
-  }) {
+class _SidebarItem extends StatefulWidget {
+  final IconData icon;
+  final String label;
+  final bool isActive;
+  final VoidCallback? onTap;
+  final Color? color;
+
+  const _SidebarItem({
+    required this.icon,
+    required this.label,
+    required this.isActive,
+    required this.onTap,
+    this.color,
+  });
+
+  @override
+  State<_SidebarItem> createState() => _SidebarItemState();
+}
+
+class _SidebarItemState extends State<_SidebarItem> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: AppSpacing.xs,
+        horizontal: 4,
+        vertical: 2,
       ),
-      child: Semantics(
-        label: label,
-        button: true,
-        selected: isActive,
-        child: Tooltip(
-          message: label,
-          child: Material(
-            color: isActive ? AppTheme.accentSubtle : Colors.transparent,
-            borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
-            child: InkWell(
-              onTap: onTap == null
-                  ? null
-                  : () {
-                      onTap();
-                    },
-              borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
-              child: Container(
-                width: 44,
-                height: 44,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
-                  border: isActive
-                      ? Border.all(
-                          color: AppTheme.primary.withValues(alpha: 0.3),
-                          width: 1,
-                        )
-                      : null,
+      child: Tooltip(
+        message: widget.label,
+        waitDuration: const Duration(milliseconds: 200),
+        child: MouseRegion(
+          onEnter: (_) => setState(() => _isHovered = true),
+          onExit: (_) => setState(() => _isHovered = false),
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            onTap: widget.onTap,
+            child: AnimatedContainer(
+              duration: AppMotion.micro,
+              curve: AppMotion.springSnappy,
+              width: 44,
+              height: 40,
+              decoration: BoxDecoration(
+                color: widget.isActive
+                    ? AppTheme.surfaceActive
+                    : (_isHovered
+                        ? AppTheme.surfaceRaised
+                        : Colors.transparent),
+                borderRadius: BorderRadius.circular(AppSpacing.radiusTight),
+                border: Border(
+                  left: BorderSide(
+                    color: widget.isActive
+                        ? AppTheme.primary
+                        : Colors.transparent,
+                    width: 3.0,
+                  ),
+                  top: BorderSide(
+                    color: widget.isActive
+                        ? AppTheme.borderHighlight
+                        : (_isHovered
+                            ? AppTheme.borderSubtle
+                            : Colors.transparent),
+                    width: 1.0,
+                  ),
+                  right: BorderSide(
+                    color: widget.isActive || _isHovered
+                        ? AppTheme.borderSubtle
+                        : Colors.transparent,
+                    width: 1.0,
+                  ),
+                  bottom: BorderSide(
+                    color: widget.isActive || _isHovered
+                        ? AppTheme.borderSubtle
+                        : Colors.transparent,
+                    width: 1.0,
+                  ),
                 ),
-                child: Icon(
-                  icon,
-                  color: color ?? (isActive ? AppTheme.primary : AppTheme.textSecondary),
-                  size: 18,
-                ),
+              ),
+              child: Icon(
+                widget.icon,
+                color: widget.color ??
+                    (widget.isActive
+                        ? AppTheme.primary
+                        : (_isHovered
+                            ? AppTheme.textPrimary
+                            : AppTheme.textSecondary)),
+                size: 18,
               ),
             ),
           ),

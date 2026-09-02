@@ -7,11 +7,12 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/condition_colors.dart';
 import '../../../../presentation/theme/app_spacing.dart';
 import '../../../../presentation/theme/app_typography.dart';
-import '../../../../presentation/widgets/app_card.dart';
 import '../../../../presentation/widgets/app_section_header.dart';
 import '../../../../presentation/widgets/app_sparkline.dart';
+import '../../../../presentation/widgets/craft_card.dart';
 import '../../../../presentation/widgets/help_tooltip.dart';
 import '../../../../presentation/widgets/segmented_progress_bar.dart';
+import '../../../../presentation/widgets/tactile_button.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
 import '../../../finance/presentation/cubit/finance_cubit.dart';
@@ -22,7 +23,8 @@ import '../../../simulation/presentation/cubit/simulation_cubit.dart';
 import '../../domain/overview_snapshot.dart';
 
 class OverviewTab extends StatelessWidget {
-  static final _currencyFormat = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
+  static final _currencyFormat =
+      NumberFormat.currency(symbol: '\$', decimalDigits: 0);
 
   final VoidCallback onNavigateToFleet;
   final VoidCallback onNavigateToRoutes;
@@ -50,7 +52,10 @@ class OverviewTab extends StatelessWidget {
 
   // ── DESKTOP: Content-only (DashboardScreen provides sidebar + TopHud) ──
 
-  Widget _buildDesktopLayout(BuildContext context, AuthAuthenticated authState) {
+  Widget _buildDesktopLayout(
+    BuildContext context,
+    AuthAuthenticated authState,
+  ) {
     final user = authState.user;
     final overview = _selectOverviewSnapshot(context, user);
 
@@ -64,13 +69,15 @@ class OverviewTab extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Left Zone (65% width) - Telemetry & Trends
               Expanded(
-                flex: 3,
+                flex: 65,
                 child: _buildSignalsSection(context, overview, _currencyFormat),
               ),
-              const SizedBox(width: AppSpacing.xl),
+              const SizedBox(width: AppSpacing.lg),
+              // Right Zone (35% width) - Actions & Priority Queue
               Expanded(
-                flex: 2,
+                flex: 35,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -98,12 +105,9 @@ class OverviewTab extends StatelessWidget {
             title: AppStrings.fleetReadyLabel,
             icon: Icons.check_circle_outline,
             value: '${overview.readyFleetCount}/${overview.totalFleetCount}',
-            filledSegments: overview.totalFleetCount > 0
-                ? 10
-                : 0,
+            filledSegments: overview.totalFleetCount > 0 ? 10 : 0,
             activeColor: AppTheme.success,
             helpMessage: AppStrings.helpKpiFleetReady,
-            sparkData: null, // 7-day trend pipeline pending
           ),
         ),
         const SizedBox(width: AppSpacing.md),
@@ -116,7 +120,6 @@ class OverviewTab extends StatelessWidget {
             filledSegments: overview.activeRoutes.clamp(0, 10),
             activeColor: AppTheme.primary,
             helpMessage: AppStrings.helpKpiNetworkHealth,
-            sparkData: null, // 7-day trend pipeline pending
           ),
         ),
         const SizedBox(width: AppSpacing.md),
@@ -129,7 +132,6 @@ class OverviewTab extends StatelessWidget {
             filledSegments: overview.averageCondition ~/ 10,
             activeColor: ConditionColors.colorFor(overview.averageCondition),
             helpMessage: AppStrings.helpKpiCondition,
-            sparkData: null, // 7-day trend pipeline pending
           ),
         ),
         const SizedBox(width: AppSpacing.md),
@@ -151,9 +153,9 @@ class OverviewTab extends StatelessWidget {
     List<double>? sparkData,
     Color? trendColor,
   }) {
-    final inactiveColor = AppTheme.textMuted.withValues(alpha: 0.25);
+    final inactiveColor = AppTheme.textMuted.withValues(alpha: 0.15);
 
-    return AppCard(
+    return CraftCard(
       padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -181,7 +183,9 @@ class OverviewTab extends StatelessWidget {
           // Large value
           Text(
             value,
-            style: AppTypography.largeKpi.copyWith(color: AppTheme.textPrimary),
+            style: AppTypography.largeKpi.copyWith(
+              color: AppTheme.textPrimary,
+            ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -209,7 +213,7 @@ class OverviewTab extends StatelessWidget {
   }
 
   Widget _buildRunwayCard(OverviewSnapshot snapshot) {
-    return AppCard(
+    return CraftCard(
       padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -250,7 +254,6 @@ class OverviewTab extends StatelessWidget {
   }
 
   Widget _buildRunwayHealthBar(OverviewSnapshot snapshot) {
-    // Extract numeric days from the runway label (format: "123.4d")
     final rawDays = snapshot.runwayDays;
     if (rawDays == null) {
       return const SizedBox.shrink();
@@ -282,7 +285,7 @@ class OverviewTab extends StatelessWidget {
     );
   }
 
-  // ── Risk Signals Section ──
+  // ── Risk & Telemetry Signals Section ──
 
   Widget _buildSignalsSection(
     BuildContext context,
@@ -294,63 +297,86 @@ class OverviewTab extends StatelessWidget {
       children: [
         const AppSectionHeader(title: 'RISK & COMPETITIVE SIGNALS'),
         const SizedBox(height: AppSpacing.md),
-        _buildSignalItem(
-          AppStrings.competitiveGapLabel,
-          overview.leaderGapLabel,
-          overview.leaderGapColor,
+        Row(
+          children: [
+            Expanded(
+              child: _buildSignalItem(
+                AppStrings.competitiveGapLabel,
+                overview.leaderGapLabel,
+                overview.leaderGapColor,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: _buildSignalItem(
+                AppStrings.topRouteRiskLabel,
+                overview.topRouteRiskLabel,
+                AppTheme.warning,
+              ),
+            ),
+          ],
         ),
-        _buildSignalItem(
-          AppStrings.topRouteRiskLabel,
-          overview.topRouteRiskLabel,
-          AppTheme.warning,
-        ),
-        _buildSignalItem(
-          AppStrings.netYieldLabel,
-          currencyFormat.format(overview.netYield),
-          overview.netYield >= 0 ? AppTheme.success : AppTheme.error,
-        ),
-        _buildSignalItem(
-          AppStrings.idleFleetLabel,
-          '${overview.idleReadyFleetCount} airframes',
-          overview.idleReadyFleetCount > 0 ? AppTheme.warning : AppTheme.success,
+        const SizedBox(height: AppSpacing.sm),
+        Row(
+          children: [
+            Expanded(
+              child: _buildSignalItem(
+                AppStrings.netYieldLabel,
+                currencyFormat.format(overview.netYield),
+                overview.netYield >= 0 ? AppTheme.success : AppTheme.error,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: _buildSignalItem(
+                AppStrings.idleFleetLabel,
+                '${overview.idleReadyFleetCount} airframes',
+                overview.idleReadyFleetCount > 0
+                    ? AppTheme.warning
+                    : AppTheme.success,
+              ),
+            ),
+          ],
         ),
       ],
     );
   }
 
   Widget _buildSignalItem(String label, String value, Color color) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.md),
-      child: AppCard(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: AppTypography.microLabel.copyWith(color: AppTheme.textMuted),
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    value,
-                    style: AppTypography.monoValue.copyWith(color: color),
-                  ),
-                ],
-              ),
+    return CraftCard(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: AppTypography.microLabel
+                      .copyWith(color: AppTheme.textMuted),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  value,
+                  style: AppTypography.monoValue.copyWith(color: color),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
-            Container(
-              width: AppSpacing.xs,
-              height: AppSpacing.xxxl,
-              decoration: BoxDecoration(
-                color: color,
-                borderRadius: BorderRadius.circular(AppSpacing.radiusTight),
-              ),
+          ),
+          Container(
+            width: AppSpacing.xs,
+            height: AppSpacing.xxl,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(AppSpacing.radiusTight),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -363,74 +389,46 @@ class OverviewTab extends StatelessWidget {
       children: [
         const AppSectionHeader(title: 'QUICK ACTIONS'),
         const SizedBox(height: AppSpacing.md),
-        _buildActionButton(
-          context,
-          'Manage Fleet',
-          'View and manage your aircraft',
-          onNavigateToFleet,
-        ),
-        const SizedBox(height: AppSpacing.md),
-        _buildActionButton(
-          context,
-          'Manage Routes',
-          'Plan and optimize your network',
-          onNavigateToRoutes,
+        Row(
+          children: [
+            Expanded(
+              child: TactileButton(
+                text: 'FLEET DECK',
+                icon: Icons.flight,
+                type: TactileButtonType.secondary,
+                height: 40,
+                onPressed: onNavigateToFleet,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: TactileButton(
+                text: 'ROUTES DECK',
+                icon: Icons.route,
+                type: TactileButtonType.secondary,
+                height: 40,
+                onPressed: onNavigateToRoutes,
+              ),
+            ),
+          ],
         ),
       ],
     );
   }
 
-  Widget _buildActionButton(
-    BuildContext context,
-    String label,
-    String description,
-    VoidCallback onTap,
-  ) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
-      child: AppCard(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: AppTypography.bodyLarge.copyWith(
-                      color: AppTheme.primary,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    description,
-                    style: AppTypography.captionRegular.copyWith(
-                      color: AppTheme.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(Icons.arrow_right_alt, color: AppTheme.primary, size: 20),
-          ],
-        ),
-      ),
-    );
-  }
-
   // ── Action Queue / Priorities ──
 
-  Widget _buildPrioritiesSection(BuildContext context, OverviewSnapshot overview) {
+  Widget _buildPrioritiesSection(
+    BuildContext context,
+    OverviewSnapshot overview,
+  ) {
     if (overview.priorities.isEmpty) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const AppSectionHeader(title: AppStrings.actionQueueTitle),
+          const AppSectionHeader(title: 'ACTION QUEUE'),
           const SizedBox(height: AppSpacing.md),
-          AppCard(
+          CraftCard(
             padding: const EdgeInsets.all(AppSpacing.md),
             child: Text(
               AppStrings.noUrgentFailures,
@@ -451,11 +449,16 @@ class OverviewTab extends StatelessWidget {
         ...overview.priorities.map((p) {
           return Padding(
             padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-            child: AppCard(
+            child: CraftCard(
               padding: const EdgeInsets.all(AppSpacing.md),
+              borderColor: AppTheme.warning.withValues(alpha: 0.3),
               child: Row(
                 children: [
-                  Icon(Icons.warning_amber, color: AppTheme.warning, size: 16),
+                  Icon(
+                    Icons.warning_amber,
+                    color: AppTheme.warning,
+                    size: 16,
+                  ),
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: Column(
@@ -467,7 +470,7 @@ class OverviewTab extends StatelessWidget {
                             color: AppTheme.warning,
                           ),
                         ),
-                        const SizedBox(height: AppSpacing.xs),
+                        const SizedBox(height: 2),
                         Text(
                           p.description,
                           style: AppTypography.captionRegular.copyWith(

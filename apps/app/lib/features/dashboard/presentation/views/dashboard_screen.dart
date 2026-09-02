@@ -7,11 +7,13 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/app_formatters.dart';
 import '../../../../core/utils/lazy_tab_cubit.dart';
 import '../../../../core/utils/perf_debug.dart';
+import '../../../../presentation/layout/command_palette.dart';
 import '../../../../presentation/theme/app_spacing.dart';
 import '../../../../presentation/theme/app_typography.dart';
 import '../../../../presentation/widgets/app_button.dart';
 import '../../../../presentation/widgets/notification_panel.dart';
 import '../../../../presentation/widgets/onboarding_overlay.dart';
+import '../../../../presentation/widgets/skyward_sonner.dart';
 import '../../../auth/domain/user_model.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
@@ -631,6 +633,68 @@ class _AuthenticatedDashboardShellState
     );
   }
 
+  void _openCommandPalette() {
+    final commands = [
+      CommandItem(
+        id: 'nav_overview',
+        title: 'Go to Command Deck (Overview)',
+        category: 'Navigation',
+        icon: Icons.dashboard_outlined,
+        shortcut: '1',
+        onSelected: () => _navigationCubit.selectTab(0),
+      ),
+      CommandItem(
+        id: 'nav_fleet',
+        title: 'Go to Fleet Management',
+        category: 'Navigation',
+        icon: Icons.flight_outlined,
+        shortcut: '2',
+        onSelected: () => _navigationCubit.selectTab(1),
+      ),
+      CommandItem(
+        id: 'nav_routes',
+        title: 'Go to Flight Routes Network',
+        category: 'Navigation',
+        icon: Icons.route_outlined,
+        shortcut: '3',
+        onSelected: () => _navigationCubit.selectTab(2),
+      ),
+      CommandItem(
+        id: 'nav_finance',
+        title: 'Go to Financial Statements & Ledger',
+        category: 'Navigation',
+        icon: Icons.receipt_long_outlined,
+        shortcut: '4',
+        onSelected: () => _navigationCubit.selectTab(3),
+      ),
+      CommandItem(
+        id: 'nav_rankings',
+        title: 'Go to Global Leaderboard',
+        category: 'Navigation',
+        icon: Icons.leaderboard_outlined,
+        shortcut: '5',
+        onSelected: () => _navigationCubit.selectTab(4),
+      ),
+      CommandItem(
+        id: 'nav_settings',
+        title: 'Go to Airline Settings',
+        category: 'Navigation',
+        icon: Icons.settings_outlined,
+        shortcut: '6',
+        onSelected: () => _navigationCubit.selectTab(5),
+      ),
+      CommandItem(
+        id: 'op_sync',
+        title: 'Sync Simulation with Database',
+        category: 'Operations',
+        icon: Icons.sync,
+        onSelected: () => _simulationCubit.syncWithDatabase(),
+      ),
+    ];
+
+    CommandPalette.show(context: context, commands: commands);
+  }
+
   Widget _buildDesktopLayout(
     BuildContext context,
     AuthAuthenticated authState,
@@ -645,7 +709,9 @@ class _AuthenticatedDashboardShellState
         children: [
           Row(
             children: [
-              const DashboardSidebar(),
+              DashboardSidebar(
+                onOpenCommandPalette: _openCommandPalette,
+              ),
               Expanded(
                 child: Column(
                   children: [
@@ -663,6 +729,7 @@ class _AuthenticatedDashboardShellState
                           dateFormat: dateFormat,
                           unreadCount: _unreadCount,
                           onNotificationTap: _toggleNotificationPanel,
+                          onOpenSearch: _openCommandPalette,
                         );
                       },
                     ),
@@ -711,11 +778,23 @@ class _AuthenticatedDashboardShellState
                         ),
                       ),
                     ),
-                    // Ticker removed — redundant with Overview tab
                   ],
                 ),
               ),
             ],
+          ),
+          // Dynamic Sonner Toast Stack
+          SkywardSonner(
+            notifications: _notifications,
+            onDismiss: (n) => setState(() => _notifications.remove(n)),
+            onTap: (n) {
+              setState(() {
+                final idx = _notifications.indexOf(n);
+                if (idx != -1) {
+                  _notifications[idx] = n.copyWith(isRead: true);
+                }
+              });
+            },
           ),
           // Onboarding overlay for first-time users
           if (_showOnboarding)
