@@ -114,17 +114,19 @@ class AppTypography {
     letterSpacing: spacingNormal,
   );
 
-  // ── DATA / MONO STYLES (IBM Plex Mono — numbers only) ──
+  // ── DATA / MONO STYLES (IBM Plex Mono — Tabular numbers only) ──
   static final TextStyle hudValue = GoogleFonts.ibmPlexMono(
     fontSize: 13,
     fontWeight: FontWeight.w600,
     color: textPrimary,
+    fontFeatures: const [FontFeature.tabularFigures()],
   );
 
   static final TextStyle dataEmphasis = GoogleFonts.ibmPlexMono(
     fontSize: 15,
     fontWeight: FontWeight.w700,
     color: textPrimary,
+    fontFeatures: const [FontFeature.tabularFigures()],
   );
 
   static final TextStyle largeKpi = GoogleFonts.ibmPlexMono(
@@ -132,6 +134,7 @@ class AppTypography {
     fontWeight: FontWeight.w700,
     color: textPrimary,
     letterSpacing: -0.02,
+    fontFeatures: const [FontFeature.tabularFigures()],
   );
 
   static final TextStyle telemetry = GoogleFonts.ibmPlexSans(
@@ -145,5 +148,25 @@ class AppTypography {
     fontSize: 13,
     fontWeight: FontWeight.w600,
     color: textPrimary,
+    fontFeatures: const [FontFeature.tabularFigures()],
+  );
+
+  // ── TABULAR HELPERS ──
+  static TextStyle get tabularMonoValue => monoValue;
+  static TextStyle get tabularLargeKpi => largeKpi;
+  static TextStyle get tabularHud => hudValue;
+
+  static final TextStyle tabularDeltaPositive = GoogleFonts.ibmPlexMono(
+    fontSize: 11,
+    fontWeight: FontWeight.w600,
+    color: AppTheme.success,
+    fontFeatures: const [FontFeature.tabularFigures()],
+  );
+
+  static final TextStyle tabularDeltaNegative = GoogleFonts.ibmPlexMono(
+    fontSize: 11,
+    fontWeight: FontWeight.w600,
+    color: AppTheme.error,
+    fontFeatures: const [FontFeature.tabularFigures()],
   );
 }
