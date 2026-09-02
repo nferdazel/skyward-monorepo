@@ -135,6 +135,8 @@ class Airport with Equatable {
   }
 
   // Calculate distance between two airports using Haversine formula in Dart
+  double distanceTo(Airport other) => calculateDistance(this, other);
+
   static double calculateDistance(Airport a, Airport b) {
     const double earthRadiusKm = 6371.0;
 

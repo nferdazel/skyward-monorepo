@@ -12,6 +12,7 @@ import '../../../../core/utils/lazy_tab_cubit.dart';
 import '../../../../core/utils/perf_debug.dart';
 import '../../../../presentation/theme/app_spacing.dart';
 import '../../../../presentation/theme/app_typography.dart';
+import '../../../../presentation/layout/master_detail_shell.dart';
 import '../../../../presentation/widgets/app_badge.dart';
 import '../../../../presentation/widgets/app_button.dart';
 import '../../../../presentation/widgets/app_card.dart';
@@ -22,11 +23,13 @@ import '../../../../presentation/widgets/app_info_strip.dart';
 import '../../../../presentation/widgets/app_labeled_value.dart';
 import '../../../../presentation/widgets/app_multi_select_field.dart';
 import '../../../../presentation/widgets/app_snackbar.dart';
-import '../../../../presentation/widgets/app_tab_item.dart';
 import '../../../../presentation/widgets/app_table_cells.dart';
 import '../../../../presentation/widgets/app_table_icon_action.dart';
 import '../../../../presentation/widgets/app_table_shell.dart';
+import '../../../../presentation/widgets/craft_card.dart';
+import '../../../../presentation/widgets/segmented_pill_control.dart';
 import '../../../../presentation/widgets/segmented_progress_bar.dart';
+import '../widgets/fleet_drawer.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
 import '../../../bank/presentation/cubit/bank_cubit.dart';
@@ -57,6 +60,7 @@ class _FleetViewState extends State<FleetView>
   List<String>? _cachedCategories;
   List<String>? _cachedRanges;
   String? _cachedSortBy;
+  String? _selectedAircraftId;
 
   static const _fleetColumnWidths = <int, TableColumnWidth>{
     0: FlexColumnWidth(2.8), // AIRCRAFT (merged TAIL + AIRCRAFT)
@@ -159,22 +163,22 @@ class _FleetViewState extends State<FleetView>
               ListenableBuilder(
                 listenable: _tabController,
                 builder: (context, _) {
-                  return Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      AppTabItem(
+                  return SegmentedPillControl<int>(
+                    height: 34,
+                    items: const [
+                      SegmentedPillItem(
+                        value: 0,
                         label: AppStrings.activeFleetTab,
-                        isActive: _tabController.index == 0,
-                        onTap: () => _onTabTap(0),
+                        icon: Icons.flight_takeoff,
                       ),
-                      const SizedBox(width: AppSpacing.xxl),
-                      AppTabItem(
+                      SegmentedPillItem(
+                        value: 1,
                         label: AppStrings.acquireAircraftTab,
-                        isActive: _tabController.index == 1,
-                        onTap: () => _onTabTap(1),
+                        icon: Icons.add_circle_outline,
                       ),
                     ],
+                    selectedValue: _tabController.index,
+                    onSelectionChanged: _onTabTap,
                   );
                 },
               ),
@@ -285,6 +289,11 @@ class _FleetViewState extends State<FleetView>
           return _buildEmptyFleetView();
         }
 
+        final selectedAircraft = fleetList.firstWhere(
+          (a) => a.id == _selectedAircraftId,
+          orElse: () => fleetList.first,
+        );
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -295,15 +304,42 @@ class _FleetViewState extends State<FleetView>
             ),
             const SizedBox(height: AppSpacing.md),
             Expanded(
-              child: RepaintBoundary(
-                child: _buildActiveFleetTable(
-                  context,
-                  fleetList,
-                  userId,
-                  currencyFormat,
-                  isActionLoading,
-                  autoGroundingThreshold,
-                  assignedFleetIds,
+              child: MasterDetailShell(
+                masterFlex: 68,
+                detailFlex: 32,
+                master: RepaintBoundary(
+                  child: _buildActiveFleetTable(
+                    context,
+                    fleetList,
+                    userId,
+                    currencyFormat,
+                    isActionLoading,
+                    autoGroundingThreshold,
+                    assignedFleetIds,
+                  ),
+                ),
+                detail: SingleChildScrollView(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: FleetDrawerContent(
+                    aircraft: selectedAircraft,
+                    autoGroundingThreshold: autoGroundingThreshold,
+                    isActionLoading: isActionLoading,
+                    onRepair: () => _confirmRepair(
+                      context,
+                      selectedAircraft,
+                      userId,
+                      currencyFormat,
+                    ),
+                    onSaveCabinConfig: (eco, bus, first) {
+                      context.read<FleetCubit>().configureSeats(
+                            userId: userId,
+                            aircraftId: selectedAircraft.id,
+                            economy: eco,
+                            business: bus,
+                            firstClass: first,
+                          );
+                    },
+                  ),
                 ),
               ),
             ),
@@ -328,7 +364,7 @@ class _FleetViewState extends State<FleetView>
     final repairAll =
         fleet.fold<double>(0, (s, a) => s + a.repairCost);
 
-    return AppCard(
+    return CraftCard(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.md,
         vertical: AppSpacing.sm,
@@ -430,14 +466,18 @@ class _FleetViewState extends State<FleetView>
                 final aircraft = fleetList[index];
                 return KeyedSubtree(
                   key: ValueKey(aircraft.id),
-                  child: _buildFleetRow(
-                    context,
-                    aircraft,
-                    userId,
-                    currencyFormat,
-                    isActionLoading,
-                    autoGroundingThreshold,
-                    assignedFleetIds,
+                  child: GestureDetector(
+                    onTap: () =>
+                        setState(() => _selectedAircraftId = aircraft.id),
+                    child: _buildFleetRow(
+                      context,
+                      aircraft,
+                      userId,
+                      currencyFormat,
+                      isActionLoading,
+                      autoGroundingThreshold,
+                      assignedFleetIds,
+                    ),
                   ),
                 );
               },
@@ -459,12 +499,15 @@ class _FleetViewState extends State<FleetView>
   ) {
     final isGrounded = aircraft.isMaintenanceGrounded(autoGroundingThreshold);
     final isAssigned = assignedFleetIds.contains(aircraft.id);
+    final isSelected = aircraft.id == _selectedAircraftId;
+
     return Table(
       columnWidths: _fleetColumnWidths,
       defaultVerticalAlignment: TableCellVerticalAlignment.middle,
       children: [
         TableRow(
           decoration: BoxDecoration(
+            color: isSelected ? AppTheme.surfaceActive : Colors.transparent,
             border: Border(
               bottom: BorderSide(color: AppTheme.border, width: 1.0),
             ),

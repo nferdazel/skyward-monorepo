@@ -13,7 +13,7 @@ import '../../../../presentation/widgets/app_badge.dart';
 import '../../../../presentation/widgets/app_button.dart';
 import '../../../../presentation/widgets/app_empty_state.dart';
 import '../../../../presentation/widgets/app_section_header.dart';
-import '../../../../presentation/widgets/app_tab_item.dart';
+import '../../../../presentation/widgets/segmented_pill_control.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
 import '../../../bank/domain/bank_transaction_model.dart';
@@ -100,28 +100,27 @@ class _FinanceViewState extends State<FinanceView>
             ListenableBuilder(
               listenable: _tabController,
               builder: (context, _) {
-                return Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    AppTabItem(
+                return SegmentedPillControl<int>(
+                  height: 34,
+                  items: const [
+                    SegmentedPillItem(
+                      value: 0,
                       label: AppStrings.financeOverviewTab,
-                      isActive: _tabController.index == 0,
-                      onTap: () => _onTabTap(0),
+                      icon: Icons.analytics_outlined,
                     ),
-                    const SizedBox(width: AppSpacing.xxl),
-                    AppTabItem(
+                    SegmentedPillItem(
+                      value: 1,
                       label: AppStrings.financeTransactionsTab,
-                      isActive: _tabController.index == 1,
-                      onTap: () => _onTabTap(1),
+                      icon: Icons.receipt_long_outlined,
                     ),
-                    const SizedBox(width: AppSpacing.xxl),
-                    AppTabItem(
+                    SegmentedPillItem(
+                      value: 2,
                       label: AppStrings.bankTab,
-                      isActive: _tabController.index == 2,
-                      onTap: () => _onTabTap(2),
+                      icon: Icons.account_balance_outlined,
                     ),
                   ],
+                  selectedValue: _tabController.index,
+                  onSelectionChanged: _onTabTap,
                 );
               },
             ),
