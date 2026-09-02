@@ -318,7 +318,9 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
       emit(
         FinanceError(
           message: AppError.extractMessage(e, AppStrings.ledgerLoadFailed),
-          hasData: snapshot.transactions.isNotEmpty,
+          hasData: state is FinanceLoaded ||
+              _cachedTransactions.isNotEmpty ||
+              _cachedSnapshot != const FinanceSnapshot.empty(),
           metrics: snapshot.metrics,
         ),
       );
@@ -372,7 +374,9 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
               e,
               AppStrings.snapshotRefreshFailed,
             ),
-            hasData: snapshot.transactions.isNotEmpty,
+            hasData: state is FinanceLoaded ||
+                _cachedTransactions.isNotEmpty ||
+                _cachedSnapshot != const FinanceSnapshot.empty(),
             metrics: snapshot.metrics,
           ),
         );
@@ -460,7 +464,9 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
               e,
               AppStrings.snapshotRefreshFailed,
             ),
-            hasData: snapshot.transactions.isNotEmpty,
+            hasData: state is FinanceLoaded ||
+                _cachedTransactions.isNotEmpty ||
+                _cachedSnapshot != const FinanceSnapshot.empty(),
             metrics: snapshot.metrics,
           ),
         );

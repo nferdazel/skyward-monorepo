@@ -40,10 +40,10 @@ class SupabaseFinanceGateway implements FinanceGateway {
       SupabaseManager.logRpcFailure('loadTransactions', {
         'user_id': userId,
       }, e.message);
-      throw FinanceGatewayException(e.message, 'loadTransactions');
+      return const [];
     } catch (e, stack) {
       SupabaseManager.logError('loadTransactions', e, stack);
-      throw FinanceGatewayException(e.toString(), 'loadTransactions');
+      return const [];
     }
   }
 
@@ -181,10 +181,10 @@ class SupabaseFinanceGateway implements FinanceGateway {
       SupabaseManager.logRpcFailure('getFinancialSnapshots', {
         'user_id': userId,
       }, e.message);
-      throw FinanceGatewayException(e.message, 'getFinancialSnapshots');
+      return const [];
     } catch (e, stack) {
       SupabaseManager.logError('getFinancialSnapshots', e, stack);
-      throw FinanceGatewayException(e.toString(), 'getFinancialSnapshots');
+      return const [];
     }
   }
 
