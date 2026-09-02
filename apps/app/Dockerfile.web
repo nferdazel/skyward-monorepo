@@ -1,0 +1,13 @@
+FROM ghcr.io/cirruslabs/flutter:stable AS build
+WORKDIR /app
+
+COPY pubspec.yaml pubspec.lock ./
+RUN git config --global --add safe.directory /app && flutter pub get
+
+COPY . .
+RUN touch .env && \
+    dart run build_runner build --delete-conflicting-outputs && \
+    flutter build web --release
+
+FROM alpine:3.20
+COPY --from=build /app/build/web /out
