@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # NOTE (2026-09-03): DEPRECATED untuk update — skyward-api berjalan sebagai
-# BINARY NATIVE (systemd user unit, ExecStart=/srv/qouver/skyward/bin/skyward-api),
+# BINARY NATIVE (systemd user unit, ExecStart=/srv/qouver/apps/skyward/bin/skyward-api),
 # bukan container. Deploy otomatis via webhook -> deploy/deploy-vps.sh (disalin ke
 # server). deploy/skyward-api.container masih aspirational (belum dipakai).
 #
@@ -9,7 +9,7 @@
 # Prasyarat sekali:
 #   - DNS api.qouver.com → A → <vps-ip> (sudah ada)
 #   - Caddy site (deploy/Caddyfile.api.qouver.com) sudah di-apply (butuh sudo)
-#   - Env file ada di VPS: /srv/qouver/skyward/env/skyward-{dev,prod}.env (chmod 600)
+#   - Env file ada di VPS: /srv/qouver/apps/skyward/env/skyward-{dev,prod}.env (chmod 600)
 #   - DB skyward_dev / skyward sudah dibuat (CREATE DATABASE + migration)
 #
 # Usage:
@@ -33,7 +33,7 @@ if [ "$MODE" = "setup" ]; then
   scp -q "$DEPLOY_DIR/$UNIT.container" "$VPS:~/.config/containers/systemd/"
   ssh "$VPS" "loginctl enable-linger \$(whoami) 2>/dev/null || true; systemctl --user daemon-reload; systemctl --user enable --now $UNIT"
   echo "==> setup selesai. Env file harus ada di VPS:"
-  echo "    /srv/qouver/skyward/env/skyward-${INSTANCE}.env (chmod 600)"
+  echo "    /srv/qouver/apps/skyward/env/skyward-${INSTANCE}.env (chmod 600)"
 else
   echo "==> [update] restart (Pull=always mengambil image terbaru)"
   ssh "$VPS" "systemctl --user restart $UNIT; sleep 2; systemctl --user --no-pager status $UNIT | head -8"
