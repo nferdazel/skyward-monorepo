@@ -1,12 +1,12 @@
 #!/bin/bash
 set -euo pipefail
 REPO="${1:-skyward-monorepo}"
-LOG="/srv/qouver/skyward/logs/deploy.log"
-mkdir -p /srv/qouver/skyward/logs
+LOG="/srv/qouver/apps/skyward/logs/deploy.log"
+mkdir -p /srv/qouver/apps/skyward/logs
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] deploy trigger: $REPO" | tee -a "$LOG"
 
 if [ "$REPO" = "skyward-monorepo" ] || [ "$REPO" = "skyward" ]; then
-  MONO_DIR="/srv/qouver/skyward/monorepo"
+  MONO_DIR="/srv/qouver/apps/skyward/monorepo"
   IS_FIRST=0
   if [ -d "$MONO_DIR/.git" ]; then
     cd "$MONO_DIR"
@@ -35,9 +35,9 @@ apps/app/"
     if [ -f "$MONO_DIR/apps/api/Dockerfile" ]; then
       cd "$MONO_DIR/apps/api"
       podman build -t localhost/skyward-api:local . 2>&1 | tail -20 | tee -a "$LOG"
-      mkdir -p /srv/qouver/skyward/bin
+      mkdir -p /srv/qouver/apps/skyward/bin
       CONTAINER_ID=$(podman create localhost/skyward-api:local)
-      podman cp "$CONTAINER_ID:/usr/local/bin/skyward-api" /srv/qouver/skyward/bin/skyward-api
+      podman cp "$CONTAINER_ID:/usr/local/bin/skyward-api" /srv/qouver/apps/skyward/bin/skyward-api
       podman rm "$CONTAINER_ID" >/dev/null
     fi
     systemctl --user daemon-reload 2>&1 | tee -a "$LOG"
@@ -51,12 +51,12 @@ apps/app/"
     echo "==> [skyward-monorepo] deploying Flutter Web (apps/app)" | tee -a "$LOG"
     cd "$MONO_DIR/apps/app"
     podman build -t localhost/skyward-web:local -f Dockerfile.web . 2>&1 | tail -20 | tee -a "$LOG"
-    mkdir -p /srv/qouver/skyward/web
-    rm -rf /srv/qouver/skyward/web/*
+    mkdir -p /srv/qouver/apps/skyward/web
+    rm -rf /srv/qouver/apps/skyward/web/*
     CONTAINER_ID=$(podman create localhost/skyward-web:local)
-    podman cp "$CONTAINER_ID:/var/www/html/." /srv/qouver/skyward/web/
+    podman cp "$CONTAINER_ID:/var/www/html/." /srv/qouver/apps/skyward/web/
     podman rm "$CONTAINER_ID" >/dev/null
-    restorecon -RF /srv/qouver/skyward/web/ 2>&1 | tee -a "$LOG" || true
+    restorecon -RF /srv/qouver/apps/skyward/web/ 2>&1 | tee -a "$LOG" || true
     echo "==> [skyward-monorepo] Flutter Web deploy complete" | tee -a "$LOG"
   fi
 fi

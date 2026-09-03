@@ -19,7 +19,7 @@ ContainerName=skyward-api
 Network=qouver
 PublishPort=127.0.0.1:8090:8090
 Pull=always
-EnvironmentFile=/srv/qouver/skyward/env/skyward-prod.env
+EnvironmentFile=/srv/qouver/apps/skyward/env/skyward-prod.env
 AutoUpdate=registry
 
 [Service]

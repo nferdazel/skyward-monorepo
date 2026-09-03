@@ -75,7 +75,7 @@ prod → https://api.qouver.com/skyward      → 127.0.0.1:8090 (DB skyward)
 
 Langkah sekali (setup): `./scripts/deploy.sh setup dev` (lihat `scripts/deploy.sh`).
 
-Migrations DB disimpan di VPS: `/srv/qouver/skyward/migrations/` (pola majadu —
+Migrations DB disimpan di VPS: `/srv/qouver/apps/skyward/migrations/` (pola majadu —
 tidak di repo GitHub). Baseline sumber ada di repo skyward: `migrations/00_baseline.sql`.
 
 ## License
