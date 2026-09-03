@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# NOTE (2026-09-03): DEPRECATED untuk update — skyward-api berjalan sebagai
+# BINARY NATIVE (systemd user unit, ExecStart=/srv/qouver/skyward/bin/skyward-api),
+# bukan container. Deploy otomatis via webhook -> deploy/deploy-vps.sh (disalin ke
+# server). deploy/skyward-api.container masih aspirational (belum dipakai).
+#
 # Deploy skyward-api ke VPS — pull image ghcr.io + restart systemd user unit.
 #
 # Prasyarat sekali:

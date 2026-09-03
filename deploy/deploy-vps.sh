@@ -1,0 +1,64 @@
+#!/bin/bash
+set -euo pipefail
+REPO="${1:-skyward-monorepo}"
+LOG="/srv/qouver/skyward/logs/deploy.log"
+mkdir -p /srv/qouver/skyward/logs
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] deploy trigger: $REPO" | tee -a "$LOG"
+
+if [ "$REPO" = "skyward-monorepo" ] || [ "$REPO" = "skyward" ]; then
+  MONO_DIR="/srv/qouver/skyward/monorepo"
+  IS_FIRST=0
+  if [ -d "$MONO_DIR/.git" ]; then
+    cd "$MONO_DIR"
+    git remote set-url origin github-skyward-monorepo:nferdazel/skyward-monorepo.git 2>&1 | tee -a "$LOG" || true
+    OLD_REV=$(git rev-parse HEAD 2>/dev/null || echo "")
+    git fetch origin main && git reset --hard origin/main 2>&1 | tee -a "$LOG"
+    NEW_REV=$(git rev-parse HEAD 2>/dev/null || echo "")
+    if [ "$OLD_REV" != "$NEW_REV" ] && [ -n "$OLD_REV" ]; then
+      CHANGED_FILES=$(git diff --name-only "$OLD_REV" "$NEW_REV" 2>/dev/null || echo "apps/api/
+apps/app/")
+    else
+      CHANGED_FILES="apps/api/
+apps/app/"
+    fi
+  else
+    echo "cloning skyward-monorepo -> $MONO_DIR" | tee -a "$LOG"
+    git clone github-skyward-monorepo:nferdazel/skyward-monorepo.git "$MONO_DIR" 2>&1 | tee -a "$LOG"
+    CHANGED_FILES="apps/api/
+apps/app/"
+    IS_FIRST=1
+  fi
+
+  # Deploy API jika folder apps/api/ berubah atau first run
+  if echo "$CHANGED_FILES" | grep -q "^apps/api/" || [ "$IS_FIRST" -eq 1 ]; then
+    echo "==> [skyward-monorepo] deploying API (apps/api)" | tee -a "$LOG"
+    if [ -f "$MONO_DIR/apps/api/Dockerfile" ]; then
+      cd "$MONO_DIR/apps/api"
+      podman build -t localhost/skyward-api:local . 2>&1 | tail -20 | tee -a "$LOG"
+      mkdir -p /srv/qouver/skyward/bin
+      CONTAINER_ID=$(podman create localhost/skyward-api:local)
+      podman cp "$CONTAINER_ID:/usr/local/bin/skyward-api" /srv/qouver/skyward/bin/skyward-api
+      podman rm "$CONTAINER_ID" >/dev/null
+    fi
+    systemctl --user daemon-reload 2>&1 | tee -a "$LOG"
+    systemctl --user restart skyward-api 2>&1 | tee -a "$LOG"
+    sleep 2
+    systemctl --user is-active skyward-api 2>&1 | tee -a "$LOG"
+  fi
+
+  # Deploy Web jika folder apps/app/ berubah atau first run
+  if echo "$CHANGED_FILES" | grep -q "^apps/app/" || [ "$IS_FIRST" -eq 1 ]; then
+    echo "==> [skyward-monorepo] deploying Flutter Web (apps/app)" | tee -a "$LOG"
+    cd "$MONO_DIR/apps/app"
+    podman build -t localhost/skyward-web:local -f Dockerfile.web . 2>&1 | tail -20 | tee -a "$LOG"
+    mkdir -p /srv/qouver/skyward/web
+    rm -rf /srv/qouver/skyward/web/*
+    CONTAINER_ID=$(podman create localhost/skyward-web:local)
+    podman cp "$CONTAINER_ID:/var/www/html/." /srv/qouver/skyward/web/
+    podman rm "$CONTAINER_ID" >/dev/null
+    restorecon -RF /srv/qouver/skyward/web/ 2>&1 | tee -a "$LOG" || true
+    echo "==> [skyward-monorepo] Flutter Web deploy complete" | tee -a "$LOG"
+  fi
+fi
+
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] done $REPO" | tee -a "$LOG"
