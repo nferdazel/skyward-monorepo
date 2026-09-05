@@ -277,7 +277,7 @@ class SettingsCubit extends Cubit<SettingsState> {
     emit(state.copyWith(isSaving: true));
     try {
       if (!DevModeManager.isDevMode) {
-        final List<dynamic> response = toSafeList(await _gateway.resetUserAirline());
+        final List<dynamic> response = toSafeList(await _gateway.resetUserAirline(userId));
         if (response.isNotEmpty) {
           final result = toSafeMap(response[0]);
           final success = result['success'] as bool? ?? false;

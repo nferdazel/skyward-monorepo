@@ -15,7 +15,7 @@ class SettingsGatewayException implements Exception {
 abstract class SettingsGateway {
   Future<List<dynamic>> loadAirports();
   Future<List<dynamic>> saveAirlineSettings(Map<String, dynamic> params);
-  Future<List<dynamic>> resetUserAirline();
+  Future<List<dynamic>> resetUserAirline(String userId);
   Future<Map<String, dynamic>> deleteAccount();
   Future<Map<String, dynamic>> loadUserProfile(String userId);
 }
@@ -62,11 +62,15 @@ class SupabaseSettingsGateway implements SettingsGateway {
   }
 
   @override
-  Future<List<dynamic>> resetUserAirline() async {
+  Future<List<dynamic>> resetUserAirline(String userId) async {
+    final params = {'p_user_id': userId};
     try {
-      return await SupabaseManager.client.rpc('reset_user_airline');
+      return await SupabaseManager.client.rpc(
+        'reset_user_airline',
+        params: params,
+      );
     } on PostgrestException catch (e) {
-      SupabaseManager.logRpcFailure('reset_user_airline', {}, e.message);
+      SupabaseManager.logRpcFailure('reset_user_airline', params, e.message);
       throw SettingsGatewayException(e.message, 'resetUserAirline');
     } catch (e, stack) {
       SupabaseManager.logError('resetUserAirline', e, stack);

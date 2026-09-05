@@ -28,7 +28,7 @@ class MockSettingsGateway implements SettingsGateway {
   }
 
   @override
-  Future<List<dynamic>> resetUserAirline() async {
+  Future<List<dynamic>> resetUserAirline(String userId) async {
     if (shouldThrow) throw Exception(throwMessage ?? 'Test reset error');
     return rpcToReturn;
   }

@@ -13,7 +13,7 @@ class SimulationGatewayException implements Exception {
 }
 
 abstract class SimulationGateway {
-  Future<List<dynamic>> processSimulationDelta();
+  Future<List<dynamic>> processSimulationDelta(String userId);
   Future<Map<String, dynamic>> loadUserProfile(String userId);
   Future<List<dynamic>> loadGameSettings();
   Future<double> getUserBalance(String userId);
@@ -24,13 +24,17 @@ class SupabaseSimulationGateway implements SimulationGateway {
   const SupabaseSimulationGateway();
 
   @override
-  Future<List<dynamic>> processSimulationDelta() async {
+  Future<List<dynamic>> processSimulationDelta(String userId) async {
+    final params = {'p_user_id': userId};
     try {
-      return await SupabaseManager.client.rpc('process_simulation_delta');
+      return await SupabaseManager.client.rpc(
+        'process_simulation_delta',
+        params: params,
+      );
     } on PostgrestException catch (e) {
       SupabaseManager.logRpcFailure(
         'process_simulation_delta',
-        {},
+        params,
         e.message,
       );
       throw SimulationGatewayException(e.message, 'processSimulationDelta');
