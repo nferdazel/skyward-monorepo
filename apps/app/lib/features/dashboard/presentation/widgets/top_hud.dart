@@ -34,8 +34,9 @@ class TopHud extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = authState.user;
 
-    return Container(
-      height: 42,
+    return RepaintBoundary(
+      child: Container(
+        height: 42,
       decoration: BoxDecoration(
         color: AppTheme.surface,
         border: Border(
@@ -217,8 +218,9 @@ class TopHud extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildLiveStatus(SimulationState simState) {
     final isLive = !simState.isSyncing;
