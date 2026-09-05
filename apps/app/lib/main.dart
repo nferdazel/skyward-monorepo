@@ -25,8 +25,14 @@ void main() async {
   // Flutter web does not provide a direct API to enforce minimum window size;
   // responsive breakpoints handle narrower viewports gracefully.
 
-  // Initialize Supabase Connection
-  await SupabaseManager.initialize();
+  // Initialize Supabase Connection. Tidak fatal kalau gagal — auth & feature
+  // data sudah/akan lewat Go API (ApiClient); Supabase tinggal dipakai
+  // gateway yang belum migrasi (Phase 3+). Lihat plan koneksi.
+  try {
+    await SupabaseManager.initialize();
+  } catch (e, stack) {
+    SupabaseManager.logError('supabase_initialize', e, stack);
+  }
 
   runApp(const MyApp());
 }

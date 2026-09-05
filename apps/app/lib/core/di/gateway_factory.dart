@@ -1,4 +1,10 @@
+import 'package:flutter/foundation.dart' show visibleForTesting;
+
+import '../api/api_client.dart';
+import '../api/auth_token_store.dart';
+import '../config/app_env.dart';
 import '../../features/auth/data/auth_gateway.dart';
+import '../../features/auth/data/go_auth_gateway.dart';
 import '../../features/auth/data/mock_auth_gateway.dart';
 import '../../features/bank/data/bank_gateway.dart';
 import '../../features/bank/data/mock_bank_gateway.dart';
@@ -19,6 +25,22 @@ import '../utils/dev_mode_manager.dart';
 
 class GatewayFactory {
   static bool get _useMock => DevModeManager.isDevMode || SupabaseManager.isDevMode;
+
+  /// ApiClient bersama untuk semua Go*Gateway (auth → feature). Token JWT
+  /// disimpan via [SharedPrefsAuthTokenStore]; ApiClient menyuntikkannya ke
+  /// header Authorization tiap request.
+  static ApiClient? _sharedApiClient;
+  static ApiClient get apiClient => _sharedApiClient ??= ApiClient(
+    baseUrl: AppEnv.apiBaseUrl,
+    tokenStore: const SharedPrefsAuthTokenStore(),
+  );
+
+  /// Kredensial dari [apiClient] bisa dioverride untuk test/integrasi.
+  @visibleForTesting
+  static void overrideApiClient(ApiClient client) => _sharedApiClient = client;
+
+  @visibleForTesting
+  static void resetApiClient() => _sharedApiClient = null;
 
   static FleetGateway createFleetGateway() =>
       _useMock ? MockFleetGateway() : SupabaseFleetGateway();
@@ -42,5 +64,5 @@ class GatewayFactory {
       _useMock ? const MockSimulationGateway() : const SupabaseSimulationGateway();
 
   static AuthGateway createAuthGateway() =>
-      _useMock ? MockAuthGateway() : SupabaseAuthGateway();
+      _useMock ? MockAuthGateway() : GoAuthGateway(apiClient: apiClient);
 }

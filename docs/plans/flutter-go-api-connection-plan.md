@@ -109,8 +109,20 @@ Catatan:
 ### Phase 2 — Migrasi auth
 - `SupabaseAuthGateway` → `GoAuthGateway`: `POST /auth/register`, `POST /auth/login`,
   `GET /auth/me`; auto-login dengan JWT tersimpan; logout = hapus token.
-- Hapus ketergantungan `SupabaseManager.initialize()` dari `main.dart`.
+- `main.dart`: `SupabaseManager.initialize()` dibungkus try/catch (tidak fatal kalau
+  Supabase gagal) — tapi init belum dihapus karena gateway feature lain masih
+  pakai Supabase sampai Phase 3 selesai.
+- Login Go exact-match (case-sensitive) sedangkan register menormalisasi —
+  `GoAuthGateway` menormalisasi username client-side (mirror SQL
+  `normalize_username`) sebelum login.
+- Reset password user-facing belum ada di Go API (hanya `/admin/account/{id}`) →
+  `resetPassword` melempar pesan jelas sampai endpoint tersedia.
 - **Kriteria selesai:** register → login → auto-login → me jalan penuh tanpa Supabase.
+
+> ✅ Selesai 2026-09-05. 10 unit test baru (`go_auth_gateway_test.dart`) hijau,
+> 273 test total lolos, `flutter analyze` bersih. Kontrak diverifikasi LIVE ke
+> `api.qouver.com/skyward`: register → 201 `{token,user}`; `GET /auth/me` → 200
+> (user langsung); login → 200; cleanup `DELETE /account` → sukses.
 
 ### Phase 3 — Migrasi feature gateway (satu per satu, urut ketergantungan)
 Urutan: `SettingsGateway` → `SimulationGateway` → `FleetGateway` → `RoutesGateway` →
