@@ -93,11 +93,18 @@ Catatan:
    `web_socket_channel` sudah ada di lockfile via supabase — jadikan direct dep saat Phase 4.
 2. `lib/core/config/app_env.dart`: tambah `apiBaseUrl` (env `SKYWARD_API_URL`, default
    `http://localhost:8090` dev) + regenerate `app_env.g.dart` via build_runner.
-   Hapus ketergantungan `SUPABASE_URL` dari path runtime utama.
 3. `lib/core/api/api_client.dart` (baru): base URL, timeout, header `Authorization: Bearer`,
-   parse error envelope → `ApiException`, retry sederhana (pola `AppGateway` yang ada).
+   parse error envelope → `ApiException`.
 4. `lib/core/api/auth_token_store.dart` (baru): simpan JWT via `shared_preferences`
    (sudah dependency) — menggantikan sesi Supabase.
+5. Deploy plumbing: `Dockerfile.web` + `deploy-vps.sh` wajib kirim `SKYWARD_API_URL`
+   (baca dari env VPS mode 600).
+
+> ✅ Selesai 2026-09-05. 13 unit test baru (`test/layer1_unit/api/`) hijau, `flutter analyze` bersih.
+> Catatan build_runner: output `.g.dart` di-cache — ubah `.env` butuh
+> `dart run build_runner clean` dulu baru rebuild, kalau tidak envied tidak jalan ulang.
+> Committed `app_env.g.dart` sengaja berisi placeholder (bukan kredensial asli) —
+> Dockerfile prod regenerate dari env asli saat build.
 
 ### Phase 2 — Migrasi auth
 - `SupabaseAuthGateway` → `GoAuthGateway`: `POST /auth/register`, `POST /auth/login`,

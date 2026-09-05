@@ -108,6 +108,8 @@ Required variables:
 
 - `SUPABASE_URL`
 - `SUPABASE_KEY`
+- `SKYWARD_API_URL` (base URL skyward-api Go; lokal `http://localhost:8090`, prod
+  `https://api.qouver.com/skyward` via build arg dari env VPS)
 
 If placeholder values remain, the app falls back to dev mode with mock data.
 
