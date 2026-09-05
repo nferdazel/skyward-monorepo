@@ -79,6 +79,7 @@ class RoutesCubit extends Cubit<RoutesState>
     required Future<List<dynamic>> Function() rpcCall,
     required String userId,
     Map<String, dynamic> rpcParams = const {},
+    void Function(Map<String, dynamic> result)? onSuccess,
   }) async {
     final snapshot = _snapshotState();
     return runCubitAction<List<dynamic>>(
@@ -101,6 +102,7 @@ class RoutesCubit extends Cubit<RoutesState>
         final message = result['message'] as String? ?? failureMessage;
 
         if (success) {
+          onSuccess?.call(result);
           SyncCoordinator.instance.publish(
             RouteUpdatedEvent(userId: userId, action: actionName),
           );
@@ -108,11 +110,13 @@ class RoutesCubit extends Cubit<RoutesState>
           emit(
             RoutesActionSuccess(
               message: message,
-              routes: snapshot.routes,
-              airports: snapshot.airports,
-              availableAircraft: snapshot.availableAircraft,
-              plannerMaintenancePreview: snapshot.plannerMaintenancePreview,
-              adjustmentMaintenancePreview: snapshot.adjustmentMaintenancePreview,
+              routes: List<UserRoute>.from(_cachedRoutes),
+              airports: List<Airport>.from(_cachedAirports),
+              availableAircraft: List<UserFleetAircraft>.from(
+                _cachedAvailableAircraft,
+              ),
+              plannerMaintenancePreview: _plannerMaintenancePreview,
+              adjustmentMaintenancePreview: _adjustmentMaintenancePreview,
             ),
           );
           await loadRoutesAndData(userId, silent: true);
@@ -441,6 +445,7 @@ class RoutesCubit extends Cubit<RoutesState>
         'p_destination_iata': destinationIata,
       },
       rpcCall: () => _gateway.createRoute(
+        userId: userId,
         originIata: originIata,
         destinationIata: destinationIata,
         distanceKm: distanceKm,
@@ -513,8 +518,11 @@ class RoutesCubit extends Cubit<RoutesState>
         'p_route_id': routeId,
         'p_aircraft_id': aircraftId,
       },
-      rpcCall: () =>
-          _gateway.assignAircraft(routeId: routeId, aircraftId: aircraftId),
+      rpcCall: () => _gateway.assignAircraft(
+        userId: userId,
+        routeId: routeId,
+        aircraftId: aircraftId,
+      ),
     );
   }
 
@@ -564,10 +572,29 @@ class RoutesCubit extends Cubit<RoutesState>
       userId: userId,
       rpcParams: {'p_user_id': userId, 'p_route_id': routeId},
       rpcCall: () => _gateway.updateRouteFrequencyAndPrice(
+        userId: userId,
         routeId: routeId,
         ticketPrice: ticketPrice,
         flightsPerWeek: flightsPerWeek,
       ),
+      onSuccess: (_) {
+        final idx = _cachedRoutes.indexWhere((r) => r.id == routeId);
+        if (idx != -1) {
+          final target = _cachedRoutes[idx];
+          _cachedRoutes[idx] = UserRoute(
+            id: target.id,
+            originIata: target.originIata,
+            destinationIata: target.destinationIata,
+            distanceKm: target.distanceKm,
+            ticketPrice: ticketPrice,
+            flightsPerWeek: flightsPerWeek,
+            origin: target.origin,
+            destination: target.destination,
+            assignedAircraftId: target.assignedAircraftId,
+            assignedAircraft: target.assignedAircraft,
+          );
+        }
+      },
     );
   }
 
@@ -606,7 +633,17 @@ class RoutesCubit extends Cubit<RoutesState>
       failureMessage: AppStrings.routeDeleteFailed,
       userId: userId,
       rpcParams: {'p_user_id': userId, 'p_route_id': routeId},
-      rpcCall: () => _gateway.deleteRoute(routeId: routeId),
+      rpcCall: () => _gateway.deleteRoute(userId: userId, routeId: routeId),
+      onSuccess: (_) {
+        final idx = _cachedRoutes.indexWhere((r) => r.id == routeId);
+        if (idx != -1) {
+          final target = _cachedRoutes[idx];
+          if (target.assignedAircraft != null) {
+            _cachedAvailableAircraft.add(target.assignedAircraft!);
+          }
+          _cachedRoutes.removeAt(idx);
+        }
+      },
     );
   }
 

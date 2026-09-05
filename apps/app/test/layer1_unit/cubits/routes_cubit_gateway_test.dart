@@ -45,6 +45,7 @@ class MockRoutesGateway implements RoutesGateway {
 
   @override
   Future<List<dynamic>> createRoute({
+    required String userId,
     required String originIata,
     required String destinationIata,
     required double distanceKm,
@@ -57,6 +58,7 @@ class MockRoutesGateway implements RoutesGateway {
 
   @override
   Future<List<dynamic>> assignAircraft({
+    required String userId,
     required String routeId,
     required String? aircraftId,
   }) async {
@@ -66,6 +68,7 @@ class MockRoutesGateway implements RoutesGateway {
 
   @override
   Future<List<dynamic>> updateRouteFrequencyAndPrice({
+    required String userId,
     required String routeId,
     required double ticketPrice,
     required int flightsPerWeek,
@@ -75,7 +78,10 @@ class MockRoutesGateway implements RoutesGateway {
   }
 
   @override
-  Future<List<dynamic>> deleteRoute({required String routeId}) async {
+  Future<List<dynamic>> deleteRoute({
+    required String userId,
+    required String routeId,
+  }) async {
     if (shouldThrow) throw Exception('Test delete error');
     return rpcToReturn;
   }
@@ -92,6 +98,7 @@ class MockRoutesGateway implements RoutesGateway {
 class ThrowingCreateRouteGateway extends MockRoutesGateway {
   @override
   Future<List<dynamic>> createRoute({
+    required String userId,
     required String originIata,
     required String destinationIata,
     required double distanceKm,
@@ -107,6 +114,7 @@ class ThrowingCreateRouteGateway extends MockRoutesGateway {
 class ThrowingAssignAircraftGateway extends MockRoutesGateway {
   @override
   Future<List<dynamic>> assignAircraft({
+    required String userId,
     required String routeId,
     required String? aircraftId,
   }) async {
@@ -118,7 +126,10 @@ class ThrowingAssignAircraftGateway extends MockRoutesGateway {
 /// the base mock so loadRoutesAndData can succeed first.
 class ThrowingDeleteRouteGateway extends MockRoutesGateway {
   @override
-  Future<List<dynamic>> deleteRoute({required String routeId}) async {
+  Future<List<dynamic>> deleteRoute({
+    required String userId,
+    required String routeId,
+  }) async {
     throw Exception('Delete route service unavailable');
   }
 }
@@ -128,6 +139,7 @@ class ThrowingDeleteRouteGateway extends MockRoutesGateway {
 class ThrowingUpdateRouteGateway extends MockRoutesGateway {
   @override
   Future<List<dynamic>> updateRouteFrequencyAndPrice({
+    required String userId,
     required String routeId,
     required double ticketPrice,
     required int flightsPerWeek,

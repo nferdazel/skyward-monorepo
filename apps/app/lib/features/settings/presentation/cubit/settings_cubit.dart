@@ -218,6 +218,7 @@ class SettingsCubit extends Cubit<SettingsState> {
     try {
       if (!DevModeManager.isDevMode) {
         final List<dynamic> response = toSafeList(await _gateway.saveAirlineSettings({
+          'p_user_id': userId,
           'p_company_name': companyName,
           'p_auto_grounding_threshold': autoGroundingThreshold,
           'p_hq_airport_iata': hqAirportIata,
