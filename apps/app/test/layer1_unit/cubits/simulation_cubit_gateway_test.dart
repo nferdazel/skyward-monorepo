@@ -32,7 +32,7 @@ class MockSimulationGateway implements SimulationGateway {
   int loadGameSettingsCallCount = 0;
 
   @override
-  Future<List<dynamic>> processSimulationDelta() async {
+  Future<List<dynamic>> processSimulationDelta(String userId) async {
     if (shouldThrowOnDelta) throw Exception('Test delta error');
     return deltaToReturn;
   }
@@ -74,7 +74,7 @@ class DelayedSimulationGateway implements SimulationGateway {
   int loadGameSettingsCallCount = 0;
 
   @override
-  Future<List<dynamic>> processSimulationDelta() => deltaCompleter.future;
+  Future<List<dynamic>> processSimulationDelta(String userId) => deltaCompleter.future;
 
   @override
   Future<Map<String, dynamic>> loadUserProfile(String userId) =>

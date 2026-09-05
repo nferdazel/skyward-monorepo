@@ -4,7 +4,7 @@ class MockSimulationGateway implements SimulationGateway {
   const MockSimulationGateway();
 
   @override
-  Future<List<dynamic>> processSimulationDelta() async {
+  Future<List<dynamic>> processSimulationDelta(String userId) async {
     return [
       {
         'success': true,

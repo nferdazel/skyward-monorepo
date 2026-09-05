@@ -32,7 +32,7 @@ class MockSettingsGateway implements SettingsGateway {
   }
 
   @override
-  Future<List<dynamic>> resetUserAirline() async {
+  Future<List<dynamic>> resetUserAirline(String userId) async {
     return [
       {
         'success': true,

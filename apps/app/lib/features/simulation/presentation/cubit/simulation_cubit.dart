@@ -210,7 +210,7 @@ class SimulationCubit extends Cubit<SimulationState>
       // 1. Reconcile actor to shared world clock & fetch user profile in parallel.
       //    loadUserProfile does not depend on the delta result.
       final results = await Future.wait([
-        _gateway.processSimulationDelta(),
+        _gateway.processSimulationDelta(userId),
         _gateway.loadUserProfile(userId),
         _gateway.getUserBalance(userId),
       ]).timeout(const Duration(seconds: 30));
