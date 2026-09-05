@@ -17,4 +17,14 @@ abstract final class AppEnv {
     obfuscate: true,
   )
   static final String supabaseAnonKey = _AppEnv.supabaseAnonKey;
+
+  /// Base URL skyward-api (Go). Phase 1 koneksi Flutter↔Go API — lihat
+  /// docs/plans/flutter-go-api-connection-plan.md. Prod: dikirim via
+  /// --dart-define/build arg dari env VPS (mis. https://api.qouver.com/skyward).
+  @EnviedField(
+    varName: 'SKYWARD_API_URL',
+    defaultValue: 'http://localhost:8090',
+    obfuscate: true,
+  )
+  static final String apiBaseUrl = _AppEnv.apiBaseUrl;
 }
