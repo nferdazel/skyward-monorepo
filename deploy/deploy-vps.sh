@@ -62,8 +62,9 @@ apps/app/"
     WEB_ENV="/srv/qouver/apps/skyward/env/skyward-prod.env"
     SUPABASE_URL=$(grep -E '^SUPABASE_URL=' "$WEB_ENV" 2>/dev/null | tail -1 | cut -d= -f2- || true)
     SUPABASE_KEY=$(grep -E '^SUPABASE_KEY=' "$WEB_ENV" 2>/dev/null | tail -1 | cut -d= -f2- || true)
-    if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_KEY" ]; then
-      echo "==> ERROR: SUPABASE_URL/SUPABASE_KEY tidak ditemukan di $WEB_ENV — build web dibatalkan." | tee -a "$LOG"
+    SKYWARD_API_URL=$(grep -E '^SKYWARD_API_URL=' "$WEB_ENV" 2>/dev/null | tail -1 | cut -d= -f2- || true)
+    if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_KEY" ] || [ -z "$SKYWARD_API_URL" ]; then
+      echo "==> ERROR: SUPABASE_URL/SUPABASE_KEY/SKYWARD_API_URL tidak ditemukan di $WEB_ENV — build web dibatalkan." | tee -a "$LOG"
       exit 1
     fi
     cd "$MONO_DIR/apps/app"
@@ -71,6 +72,7 @@ apps/app/"
       --no-cache \
       --build-arg SUPABASE_URL="$SUPABASE_URL" \
       --build-arg SUPABASE_KEY="$SUPABASE_KEY" \
+      --build-arg SKYWARD_API_URL="$SKYWARD_API_URL" \
       -t localhost/skyward-web:local -f Dockerfile.web . 2>&1 | tail -20 | tee -a "$LOG"
     mkdir -p /srv/qouver/apps/skyward/web
     rm -rf /srv/qouver/apps/skyward/web/*

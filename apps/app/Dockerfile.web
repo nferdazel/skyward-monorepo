@@ -9,10 +9,12 @@ COPY . .
 # Sumber nilai asli: /srv/qouver/apps/skyward/env/skyward-prod.env (mode 600) via deploy/deploy-vps.sh.
 ARG SUPABASE_URL
 ARG SUPABASE_KEY
-RUN test -n "$SUPABASE_URL" && test -n "$SUPABASE_KEY" \
-  || { echo "ERROR: SUPABASE_URL/SUPABASE_KEY build-arg wajib diisi (lihat deploy-vps.sh)"; exit 1; }
+ARG SKYWARD_API_URL
+RUN test -n "$SUPABASE_URL" && test -n "$SUPABASE_KEY" && test -n "$SKYWARD_API_URL" \
+  || { echo "ERROR: SUPABASE_URL/SUPABASE_KEY/SKYWARD_API_URL build-arg wajib diisi (lihat deploy-vps.sh)"; exit 1; }
 
-RUN printf "SUPABASE_URL=%s\nSUPABASE_KEY=%s\n" "$SUPABASE_URL" "$SUPABASE_KEY" > .env && \
+RUN printf "SUPABASE_URL=%s\nSUPABASE_KEY=%s\nSKYWARD_API_URL=%s\n" \
+    "$SUPABASE_URL" "$SUPABASE_KEY" "$SKYWARD_API_URL" > .env && \
     dart run build_runner build --delete-conflicting-outputs && \
     flutter build web --release
 
