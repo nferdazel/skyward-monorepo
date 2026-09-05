@@ -629,7 +629,7 @@ void main() {
           cubit.state.gameSpeedMultiplier,
           60.0,
         ); // dev mode default multiplier
-        expect(cubit.state.operationalStatus, 'Active');
+        expect(cubit.state.operationalStatus.toLowerCase(), 'active');
         expect(cubit.state.consecutiveNegativeDays, 0);
         expect(cubit.state.recoveryStreakDays, 0);
 

@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:skyward/core/database/supabase_client.dart';
+import 'package:skyward/core/utils/dev_mode_manager.dart';
 import 'package:skyward/features/settings/data/settings_gateway.dart';
 import 'package:skyward/features/settings/presentation/cubit/settings_cubit.dart';
 
@@ -71,13 +72,11 @@ final _mockAirports = [
 
 void main() {
   group('SettingsCubit Gateway Tests', () {
-    setUp(() {
-      SupabaseManager.supabaseUrl = 'https://test-project.supabase.co';
-      SupabaseManager.supabaseAnonKey = 'test-anon-key-not-dev-mode';
-    });
+    setUp(() {});
 
     tearDown(() {
       SupabaseManager.resetCredentialsToEnv();
+      DevModeManager.resetDevMode();
     });
 
     // =========================================================================
@@ -417,7 +416,7 @@ void main() {
         'loadAirports: loads mock data in dev mode',
         build: () {
           SupabaseManager.enableDevMode();
-          final gateway = MockSettingsGateway(); // gateway should not be called
+          final gateway = MockSettingsGateway()..airportsToReturn = _mockAirports;
           return SettingsCubit(gateway: gateway);
         },
         act: (cubit) => cubit.loadAirports('CGK'),
@@ -432,7 +431,10 @@ void main() {
         'saveSettings: succeeds without gateway call in dev mode',
         build: () {
           SupabaseManager.enableDevMode();
-          final gateway = MockSettingsGateway()..shouldThrow = true;
+          final gateway = MockSettingsGateway()
+            ..rpcToReturn = [
+              <String, dynamic>{'success': true, 'message': 'OK'},
+            ];
           return SettingsCubit(gateway: gateway);
         },
         act: (cubit) => cubit.saveSettings(

@@ -55,7 +55,7 @@ class SimulationCubit extends Cubit<SimulationState>
   SimulationCubit({SimulationGateway? gateway})
     : _gateway = gateway ?? GatewayFactory.createSimulationGateway(),
       super(
-        SimulationState.initial(DateTime.parse('2020-01-01T00:00:00Z'), 0.00),
+        SimulationState.initial(DateTime.now().toUtc(), 0.00),
       );
 
   // Helper to safely emit state if the cubit is not closed
@@ -191,22 +191,6 @@ class SimulationCubit extends Cubit<SimulationState>
     _safeEmit(state.copyWith(isSyncing: true));
 
     try {
-      if (DevModeManager.isDevMode) {
-        // Dev Fallback Mode
-        _safeEmit(
-          state.copyWith(
-            isSyncing: false,
-            gameSpeedMultiplier: GameConstants.defaultGameSpeedMultiplier,
-            lastElapsedDays: GameConstants.devElapsedDaysPerSync, // ~1 game hour
-            lastFlightsRun: 0,
-            operationalStatus: AppStrings.statusActive,
-            consecutiveNegativeDays: 0,
-            recoveryStreakDays: 0,
-          ),
-        );
-        return null;
-      }
-
       // 1. Reconcile actor to shared world clock & fetch user profile in parallel.
       //    loadUserProfile does not depend on the delta result.
       final results = await Future.wait([
@@ -369,7 +353,7 @@ class SimulationCubit extends Cubit<SimulationState>
   }
 
   void _setupRealtime(String userId) {
-    if (DevModeManager.isDevMode || SupabaseManager.hasMockClient) return;
+    if (SupabaseManager.hasMockClient || SupabaseManager.maybeClient == null) return;
 
     // Subscribe to users table for game-time and operational status changes.
     final userChannel = SupabaseManager.client

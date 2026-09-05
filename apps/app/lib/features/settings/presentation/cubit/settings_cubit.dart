@@ -6,7 +6,6 @@ import '../../../../core/constants/game_constants.dart';
 import '../../../../core/database/supabase_client.dart';
 import '../../../../core/di/gateway_factory.dart';
 import '../../../../core/utils/app_error.dart';
-import '../../../../core/utils/dev_mode_manager.dart';
 import '../../../../core/utils/safe_cast.dart';
 import '../../data/settings_gateway.dart';
 
@@ -136,47 +135,10 @@ class SettingsCubit extends Cubit<SettingsState> {
   Future<void> loadAirports(String currentHq) async {
     emit(state.copyWith(isLoadingAirports: true, selectedHq: currentHq));
     try {
-      if (!DevModeManager.isDevMode) {
-        final List<dynamic> response = await _gateway.loadAirports();
-        final list = response.map((e) => Map<String, dynamic>.from(e)).toList();
-        if (isClosed) return;
-        emit(state.copyWith(airports: list, isLoadingAirports: false));
-      } else {
-        final mockList = [
-          {
-            'iata': 'CGK',
-            'name': 'Soekarno-Hatta International',
-            'city': 'Jakarta',
-            'country': 'Indonesia',
-          },
-          {
-            'iata': 'SIN',
-            'name': 'Changi International',
-            'city': 'Singapore',
-            'country': 'Singapore',
-          },
-          {
-            'iata': 'KUL',
-            'name': 'Kuala Lumpur International',
-            'city': 'Kuala Lumpur',
-            'country': 'Malaysia',
-          },
-          {
-            'iata': 'BKK',
-            'name': 'Suvarnabhumi Airport',
-            'city': 'Bangkok',
-            'country': 'Thailand',
-          },
-          {
-            'iata': 'HND',
-            'name': 'Haneda Airport',
-            'city': 'Tokyo',
-            'country': 'Japan',
-          },
-        ];
-        if (isClosed) return;
-        emit(state.copyWith(airports: mockList, isLoadingAirports: false));
-      }
+      final List<dynamic> response = await _gateway.loadAirports();
+      final list = response.map((e) => Map<String, dynamic>.from(e)).toList();
+      if (isClosed) return;
+      emit(state.copyWith(airports: list, isLoadingAirports: false));
     } catch (e, stack) {
       AppError.log('loadAirports', e, stack);
       if (isClosed) return;
@@ -216,33 +178,31 @@ class SettingsCubit extends Cubit<SettingsState> {
   }) async {
     emit(state.copyWith(isSaving: true));
     try {
-      if (!DevModeManager.isDevMode) {
-        final List<dynamic> response = toSafeList(await _gateway.saveAirlineSettings({
+      final List<dynamic> response = toSafeList(await _gateway.saveAirlineSettings({
+        'p_user_id': userId,
+        'p_company_name': companyName,
+        'p_auto_grounding_threshold': autoGroundingThreshold,
+        'p_hq_airport_iata': hqAirportIata,
+      }));
+
+      final result = response.isNotEmpty
+          ? toSafeMap(response[0])
+          : <String, dynamic>{};
+      final success = result['success'] as bool? ?? false;
+      final message = result['message'] as String? ?? AppStrings.settingsSaveFailed;
+      if (!success) {
+        SupabaseManager.logRpcFailure('save_airline_settings', {
           'p_user_id': userId,
           'p_company_name': companyName,
           'p_auto_grounding_threshold': autoGroundingThreshold,
           'p_hq_airport_iata': hqAirportIata,
-        }));
-
-        final result = response.isNotEmpty
-            ? toSafeMap(response[0])
-            : <String, dynamic>{};
-        final success = result['success'] as bool? ?? false;
-        final message = result['message'] as String? ?? AppStrings.settingsSaveFailed;
-        if (!success) {
-          SupabaseManager.logRpcFailure('save_airline_settings', {
-            'p_user_id': userId,
-            'p_company_name': companyName,
-            'p_auto_grounding_threshold': autoGroundingThreshold,
-            'p_hq_airport_iata': hqAirportIata,
-          }, message);
-          if (isClosed) return;
-          emit(state.copyWith(isSaving: false, errorMessage: message));
-          return;
-        }
-
-        await onSyncBalance();
+        }, message);
+        if (isClosed) return;
+        emit(state.copyWith(isSaving: false, errorMessage: message));
+        return;
       }
+
+      await onSyncBalance();
       if (isClosed) return;
       emit(state.copyWith(isSaving: false, isSaveSuccess: true));
     } catch (e, stack) {
@@ -276,20 +236,18 @@ class SettingsCubit extends Cubit<SettingsState> {
   }) async {
     emit(state.copyWith(isSaving: true));
     try {
-      if (!DevModeManager.isDevMode) {
-        final List<dynamic> response = toSafeList(await _gateway.resetUserAirline(userId));
-        if (response.isNotEmpty) {
-          final result = toSafeMap(response[0]);
-          final success = result['success'] as bool? ?? false;
-          final message = result['message'] as String? ?? AppStrings.airlineWipeFailed;
-          if (!success) {
-            SupabaseManager.logRpcFailure('reset_user_airline', {
-              'p_user_id': userId,
-            }, message);
-            if (isClosed) return false;
-            emit(state.copyWith(isSaving: false, errorMessage: message));
-            return false;
-          }
+      final List<dynamic> response = toSafeList(await _gateway.resetUserAirline(userId));
+      if (response.isNotEmpty) {
+        final result = toSafeMap(response[0]);
+        final success = result['success'] as bool? ?? false;
+        final message = result['message'] as String? ?? AppStrings.airlineWipeFailed;
+        if (!success) {
+          SupabaseManager.logRpcFailure('reset_user_airline', {
+            'p_user_id': userId,
+          }, message);
+          if (isClosed) return false;
+          emit(state.copyWith(isSaving: false, errorMessage: message));
+          return false;
         }
       }
 
@@ -320,9 +278,7 @@ class SettingsCubit extends Cubit<SettingsState> {
   Future<bool> deleteAccount() async {
     emit(state.copyWith(isSaving: true));
     try {
-      if (!DevModeManager.isDevMode) {
-        await _gateway.deleteAccount();
-      }
+      await _gateway.deleteAccount();
       if (isClosed) return false;
       emit(state.copyWith(isSaving: false, isSaveSuccess: true));
       return true;

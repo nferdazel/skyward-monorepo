@@ -8,7 +8,6 @@ import '../../../../core/di/gateway_factory.dart';
 import '../../../../core/mixins/simulation_reactive_mixin.dart';
 import '../../../../core/realtime/realtime_subscription_bag.dart';
 import '../../../../core/utils/app_error.dart';
-import '../../../../core/utils/dev_mode_manager.dart';
 import '../../../../core/utils/perf_debug.dart';
 import '../../../../core/utils/safe_cast.dart';
 import '../../../bank/domain/bank_transaction_model.dart';
@@ -249,11 +248,6 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
       emit(FinanceLoading(metrics: snapshot.metrics));
     }
     try {
-      if (DevModeManager.isDevMode) {
-        _devLoadMockTransactions();
-        return;
-      }
-
       final results = await Future.wait<dynamic>([
         _gateway.loadTransactions(userId),
         _gateway.getFinanceSnapshot(userId),
@@ -404,8 +398,6 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
   Future<void> _refreshSnapshotOnlyInternal(String userId) async {
     final stopwatch = PerfDebug.start('finance.snapshot_only_refresh');
     try {
-      if (DevModeManager.isDevMode) return;
-
       final results = await Future.wait<dynamic>([
         _gateway.getFinanceSnapshot(userId),
         _gateway.getFinancialSnapshots(userId),
@@ -475,98 +467,8 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
     }
   }
 
-
-  /// Seed detailed mock bank transactions for local development visual fidelity.
-  void _devLoadMockTransactions() {
-    final mockTransactions = [
-      BankTransaction(
-        id: 'mock-txn-1',
-        accountId: 'mock-account',
-        userId: 'dev-user-uuid',
-        transactionType: 'debit',
-        amount: -130000.00,
-        balanceAfter: 9870000.00,
-        description: 'Leasing fees for active fleet over 1.50 game days',
-        ifrsCategory: 'opex',
-        ifrsSubcategory: 'aircraft_lease',
-        gameDate: DateTime.parse('2020-01-02T12:00:00Z'),
-      ),
-      BankTransaction(
-        id: 'mock-txn-2',
-        accountId: 'mock-account',
-        userId: 'dev-user-uuid',
-        transactionType: 'credit',
-        amount: 390660.00,
-        balanceAfter: 10260660.00,
-        description: 'Ticket sales for 14 flight cycles: CGK -> SIN',
-        ifrsCategory: 'revenue',
-        ifrsSubcategory: 'route_revenue',
-        gameDate: DateTime.parse('2020-01-02T10:00:00Z'),
-      ),
-      BankTransaction(
-        id: 'mock-txn-3',
-        accountId: 'mock-account',
-        userId: 'dev-user-uuid',
-        transactionType: 'debit',
-        amount: -124134.36,
-        balanceAfter: 10136525.64,
-        description:
-            'Fuel, crew maintenance, & airport landing fees for 14 flights: CGK -> SIN',
-        ifrsCategory: 'cogs',
-        ifrsSubcategory: 'fuel_cost',
-        gameDate: DateTime.parse('2020-01-02T10:00:00Z'),
-      ),
-      BankTransaction(
-        id: 'mock-txn-4',
-        accountId: 'mock-account',
-        userId: 'dev-user-uuid',
-        transactionType: 'debit',
-        amount: -130000.00,
-        balanceAfter: 10000000.00,
-        description:
-            'Leased aircraft ATR 72-600 (Short-Haul Hopper) - Initial month deposit',
-        ifrsCategory: 'investing',
-        ifrsSubcategory: 'aircraft_lease_init',
-        gameDate: DateTime.parse('2020-01-01T04:00:00Z'),
-      ),
-      BankTransaction(
-        id: 'mock-txn-5',
-        accountId: 'mock-account',
-        userId: 'dev-user-uuid',
-        transactionType: 'debit',
-        amount: -111000000.00,
-        balanceAfter: -101000000.00,
-        description:
-            'Purchased aircraft Airbus A320neo with Call Sign: Primary Eagle',
-        ifrsCategory: 'investing',
-        ifrsSubcategory: 'aircraft_purchase',
-        gameDate: DateTime.parse('2020-01-01T00:30:00Z'),
-      ),
-    ];
-
-    _cachedSnapshot = const FinanceSnapshot(
-      actorId: 'dev-user-uuid',
-      isBot: false,
-      companyName: 'Skyward Star Airlines',
-      cash: 10000000.0,
-      netWorth: 123500000.0,
-      ownedAircraftAssetValue: 111000000.0,
-      leasedAircraftMonthlyExposure: 130000.0,
-      fleetCount: 2,
-      ownedFleetCount: 1,
-      leasedFleetCount: 1,
-      activeRouteCount: 3,
-      rollingRevenue30d: 390660.0,
-      rollingExpense30d: 254134.36,
-      rollingNet30d: 136525.64,
-      ledgerWindowDays: 30,
-    );
-    _cachedTransactions = mockTransactions;
-    emit(_buildFinanceState(mockTransactions, snapshot: _cachedSnapshot));
-  }
-
   void _setupRealtime(String userId) {
-    if (DevModeManager.isDevMode || SupabaseManager.hasMockClient) return;
+    if (SupabaseManager.hasMockClient || SupabaseManager.maybeClient == null) return;
     unawaited(_realtimeSubscriptions.clear());
     // bank_transactions realtime is handled by BankCubit; FinanceCubit
     // refreshes via SimulationReactiveMixin when simulation syncs.

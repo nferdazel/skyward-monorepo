@@ -4,7 +4,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/constants/app_strings.dart';
-import '../../../../core/constants/game_constants.dart';
 import '../../../../core/database/supabase_client.dart';
 import '../../../../core/di/gateway_factory.dart';
 import '../../../../core/mixins/simulation_reactive_mixin.dart';
@@ -13,7 +12,6 @@ import '../../../../core/sync/domain_events.dart';
 import '../../../../core/sync/sync_coordinator.dart';
 import '../../../../core/utils/app_error.dart';
 import '../../../../core/utils/cubit_action_runner.dart';
-import '../../../../core/utils/dev_mode_manager.dart';
 import '../../../../core/utils/perf_debug.dart';
 import '../../../../core/utils/safe_cast.dart';
 import '../../../simulation/presentation/cubit/simulation_cubit.dart';
@@ -186,11 +184,6 @@ class FleetCubit extends Cubit<FleetState>
       emit(const FleetLoading());
     }
     try {
-      if (DevModeManager.isDevMode) {
-        _devLoadMockData();
-        return;
-      }
-
       // 1. Fetch available aircraft catalog models (cached — rarely changes)
       List<AircraftModel> catalog;
       if (_catalogLoaded && _cachedCatalog.isNotEmpty) {
@@ -278,35 +271,6 @@ class FleetCubit extends Cubit<FleetState>
     required int firstClass,
     required FleetBalanceCallback onBalanceChanged,
   }) async {
-    if (DevModeManager.isDevMode) {
-      final model = _cachedCatalog.firstWhere((m) => m.id == modelId);
-      final newAircraft = UserFleetAircraft(
-        id: 'mock-aircraft-${DateTime.now().millisecondsSinceEpoch}',
-        nickname: nickname,
-        acquisitionType: 'purchase',
-        condition: GameConstants.maxCondition,
-        status: 'active',
-        model: model,
-        economySeats: economy,
-        businessSeats: business,
-        firstClassSeats: firstClass,
-      );
-      _cachedFleet.insert(0, newAircraft);
-      emit(
-        FleetActionSuccess(
-          message: AppStrings.purchaseSuccess,
-          fleet: List<UserFleetAircraft>.from(_cachedFleet),
-          catalog: List<AircraftModel>.from(_cachedCatalog),
-          selectedManufacturers: _selectedManufacturers,
-          selectedCategories: _selectedCategories,
-          selectedRangeBrackets: _selectedRangeBrackets,
-          sortBy: _sortBy,
-        ),
-      );
-      _emitLoaded();
-      return true;
-    }
-
     return _executeFleetAction(
       actionName: 'purchase_aircraft',
       failureMessage: AppStrings.purchaseFailed,
@@ -366,35 +330,6 @@ class FleetCubit extends Cubit<FleetState>
     required int firstClass,
     required FleetBalanceCallback onBalanceChanged,
   }) async {
-    if (DevModeManager.isDevMode) {
-      final model = _cachedCatalog.firstWhere((m) => m.id == modelId);
-      final newAircraft = UserFleetAircraft(
-        id: 'mock-aircraft-${DateTime.now().millisecondsSinceEpoch}',
-        nickname: nickname,
-        acquisitionType: 'lease',
-        condition: GameConstants.maxCondition,
-        status: 'active',
-        model: model,
-        economySeats: economy,
-        businessSeats: business,
-        firstClassSeats: firstClass,
-      );
-      _cachedFleet.insert(0, newAircraft);
-      emit(
-        FleetActionSuccess(
-          message: AppStrings.leaseSuccess,
-          fleet: List<UserFleetAircraft>.from(_cachedFleet),
-          catalog: List<AircraftModel>.from(_cachedCatalog),
-          selectedManufacturers: _selectedManufacturers,
-          selectedCategories: _selectedCategories,
-          selectedRangeBrackets: _selectedRangeBrackets,
-          sortBy: _sortBy,
-        ),
-      );
-      _emitLoaded();
-      return true;
-    }
-
     return _executeFleetAction(
       actionName: 'lease_aircraft',
       failureMessage: AppStrings.leaseFailed,
@@ -449,38 +384,6 @@ class FleetCubit extends Cubit<FleetState>
     required String fleetId,
     required FleetBalanceCallback onBalanceChanged,
   }) async {
-    if (DevModeManager.isDevMode) {
-      final idx = _cachedFleet.indexWhere((f) => f.id == fleetId);
-      if (idx != -1) {
-        final target = _cachedFleet[idx];
-        _cachedFleet[idx] = UserFleetAircraft(
-          id: target.id,
-          nickname: target.nickname,
-          acquisitionType: target.acquisitionType,
-          condition: GameConstants.maxCondition,
-          status: 'active',
-          model: target.model,
-          economySeats: target.economySeats,
-          businessSeats: target.businessSeats,
-          firstClassSeats: target.firstClassSeats,
-          tailNumber: target.tailNumber,
-        );
-      }
-      emit(
-        FleetActionSuccess(
-          message: AppStrings.repairSuccess,
-          fleet: List<UserFleetAircraft>.from(_cachedFleet),
-          catalog: List<AircraftModel>.from(_cachedCatalog),
-          selectedManufacturers: _selectedManufacturers,
-          selectedCategories: _selectedCategories,
-          selectedRangeBrackets: _selectedRangeBrackets,
-          sortBy: _sortBy,
-        ),
-      );
-      _emitLoaded();
-      return true;
-    }
-
     return _executeFleetAction(
       actionName: 'repair_aircraft',
       failureMessage: AppStrings.repairFailed,
@@ -525,43 +428,6 @@ class FleetCubit extends Cubit<FleetState>
     required String fleetId,
     required FleetBalanceCallback onBalanceChanged,
   }) async {
-    if (DevModeManager.isDevMode) {
-      final index = _cachedFleet.indexWhere(
-        (aircraft) => aircraft.id == fleetId,
-      );
-      if (index == -1) {
-        emit(
-          FleetError(
-            message: AppStrings.aircraftNotFound,
-            hasData: true,
-            fleet: List<UserFleetAircraft>.from(_cachedFleet),
-            catalog: List<AircraftModel>.from(_cachedCatalog),
-            selectedManufacturers: _selectedManufacturers,
-            selectedCategories: _selectedCategories,
-            selectedRangeBrackets: _selectedRangeBrackets,
-            sortBy: _sortBy,
-          ),
-        );
-        _emitLoaded();
-        return false;
-      }
-
-      _cachedFleet.removeAt(index);
-      emit(
-        FleetActionSuccess(
-          message: AppStrings.saleSuccess,
-          fleet: List<UserFleetAircraft>.from(_cachedFleet),
-          catalog: List<AircraftModel>.from(_cachedCatalog),
-          selectedManufacturers: _selectedManufacturers,
-          selectedCategories: _selectedCategories,
-          selectedRangeBrackets: _selectedRangeBrackets,
-          sortBy: _sortBy,
-        ),
-      );
-      _emitLoaded();
-      return true;
-    }
-
     return _executeFleetAction(
       actionName: 'sell_aircraft',
       failureMessage: AppStrings.saleFailed,
@@ -609,43 +475,6 @@ class FleetCubit extends Cubit<FleetState>
     required String fleetId,
     required FleetBalanceCallback onBalanceChanged,
   }) async {
-    if (DevModeManager.isDevMode) {
-      final index = _cachedFleet.indexWhere(
-        (aircraft) => aircraft.id == fleetId,
-      );
-      if (index == -1) {
-        emit(
-          FleetError(
-            message: AppStrings.aircraftNotFound,
-            hasData: true,
-            fleet: List<UserFleetAircraft>.from(_cachedFleet),
-            catalog: List<AircraftModel>.from(_cachedCatalog),
-            selectedManufacturers: _selectedManufacturers,
-            selectedCategories: _selectedCategories,
-            selectedRangeBrackets: _selectedRangeBrackets,
-            sortBy: _sortBy,
-          ),
-        );
-        _emitLoaded();
-        return false;
-      }
-
-      _cachedFleet.removeAt(index);
-      emit(
-        FleetActionSuccess(
-          message: AppStrings.leaseTerminationSuccess,
-          fleet: List<UserFleetAircraft>.from(_cachedFleet),
-          catalog: List<AircraftModel>.from(_cachedCatalog),
-          selectedManufacturers: _selectedManufacturers,
-          selectedCategories: _selectedCategories,
-          selectedRangeBrackets: _selectedRangeBrackets,
-          sortBy: _sortBy,
-        ),
-      );
-      _emitLoaded();
-      return true;
-    }
-
     return _executeFleetAction(
       actionName: 'terminate_aircraft_lease',
       failureMessage: AppStrings.leaseTerminationFailed,
@@ -697,38 +526,6 @@ class FleetCubit extends Cubit<FleetState>
     required int business,
     required int firstClass,
   }) async {
-    if (DevModeManager.isDevMode) {
-      final index = _cachedFleet.indexWhere((a) => a.id == aircraftId);
-      if (index != -1) {
-        final old = _cachedFleet[index];
-        _cachedFleet[index] = UserFleetAircraft(
-          id: old.id,
-          nickname: old.nickname,
-          acquisitionType: old.acquisitionType,
-          condition: old.condition,
-          status: old.status,
-          model: old.model,
-          economySeats: economy,
-          businessSeats: business,
-          firstClassSeats: firstClass,
-          tailNumber: old.tailNumber,
-        );
-      }
-      emit(
-        FleetActionSuccess(
-          message: AppStrings.seatConfigSuccess,
-          fleet: List<UserFleetAircraft>.from(_cachedFleet),
-          catalog: List<AircraftModel>.from(_cachedCatalog),
-          selectedManufacturers: _selectedManufacturers,
-          selectedCategories: _selectedCategories,
-          selectedRangeBrackets: _selectedRangeBrackets,
-          sortBy: _sortBy,
-        ),
-      );
-      _emitLoaded();
-      return true;
-    }
-
     return _executeFleetAction(
       actionName: 'configure_seats',
       failureMessage: AppStrings.seatConfigFailed,
@@ -819,74 +616,8 @@ class FleetCubit extends Cubit<FleetState>
     }
   }
 
-  // Seed Mock Data in Dev Mode
-  void _devLoadMockData() {
-    _cachedCatalog = [
-      AircraftModel(
-        id: 'mock-atr72',
-        manufacturer: 'ATR',
-        modelName: 'ATR 72-600',
-        type: 'regional_turboprop',
-        rangeKm: 1500,
-        capacity: 72,
-        speedKmh: 510,
-        fuelBurnPerKm: 2.5,
-        maintenanceCostPerHour: 400.00,
-        purchasePrice: 26000000.00,
-        leasePricePerMonth: 130000.00,
-      ),
-      AircraftModel(
-        id: 'mock-a320neo',
-        manufacturer: 'Airbus',
-        modelName: 'A320neo',
-        type: 'narrow_body_jet',
-        rangeKm: 6500,
-        capacity: 186,
-        speedKmh: 833,
-        fuelBurnPerKm: 4.16,
-        maintenanceCostPerHour: 820.00,
-        purchasePrice: 111000000.00,
-        leasePricePerMonth: 550000.00,
-      ),
-      AircraftModel(
-        id: 'mock-b787',
-        manufacturer: 'Boeing',
-        modelName: '787-9 Dreamliner',
-        type: 'wide_body_jet',
-        rangeKm: 14140,
-        capacity: 290,
-        speedKmh: 903,
-        fuelBurnPerKm: 7.8,
-        maintenanceCostPerHour: 1850.00,
-        purchasePrice: 292000000.00,
-        leasePricePerMonth: 1460000.00,
-      ),
-    ];
-
-    _cachedFleet = [
-      UserFleetAircraft(
-        id: 'mock-owned-1',
-        nickname: 'Primary Eagle',
-        acquisitionType: 'purchase',
-        condition: 82.50,
-        status: 'active',
-        model: _cachedCatalog[1], // A320neo
-      ),
-      UserFleetAircraft(
-        id: 'mock-owned-2',
-        nickname: 'Short-Haul Hopper',
-        acquisitionType: 'lease',
-        condition: 45.00,
-        status: 'active',
-        model: _cachedCatalog[0], // ATR 72
-      ),
-    ];
-
-    _emitLoaded();
-  }
-
   void _setupRealtime(String userId) {
-    if (DevModeManager.isDevMode || SupabaseManager.hasMockClient) return;
+    if (SupabaseManager.hasMockClient || SupabaseManager.maybeClient == null) return;
     unawaited(_realtimeSubscriptions.clear());
 
     final fleetChannel = SupabaseManager.client
