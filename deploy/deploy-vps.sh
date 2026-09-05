@@ -34,7 +34,15 @@ apps/app/"
     echo "==> [skyward-monorepo] deploying API (apps/api)" | tee -a "$LOG"
     if [ -f "$MONO_DIR/apps/api/Dockerfile" ]; then
       cd "$MONO_DIR/apps/api"
-      podman build -t localhost/skyward-api:local . 2>&1 | tail -20 | tee -a "$LOG"
+      # Inject versi git ke binary via ldflags (lihat apps/api/Dockerfile ARG VERSION/COMMIT/DATE)
+      GIT_VERSION=$(git describe --tags --always 2>/dev/null || echo dev)
+      GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo none)
+      GIT_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+      podman build \
+        --build-arg VERSION="$GIT_VERSION" \
+        --build-arg COMMIT="$GIT_COMMIT" \
+        --build-arg DATE="$GIT_DATE" \
+        -t localhost/skyward-api:local . 2>&1 | tail -20 | tee -a "$LOG"
       mkdir -p /srv/qouver/apps/skyward/bin
       CONTAINER_ID=$(podman create localhost/skyward-api:local)
       podman cp "$CONTAINER_ID:/usr/local/bin/skyward-api" /srv/qouver/apps/skyward/bin/skyward-api
