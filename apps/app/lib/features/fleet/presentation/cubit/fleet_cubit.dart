@@ -9,6 +9,8 @@ import '../../../../core/database/supabase_client.dart';
 import '../../../../core/di/gateway_factory.dart';
 import '../../../../core/mixins/simulation_reactive_mixin.dart';
 import '../../../../core/realtime/realtime_subscription_bag.dart';
+import '../../../../core/sync/domain_events.dart';
+import '../../../../core/sync/sync_coordinator.dart';
 import '../../../../core/utils/app_error.dart';
 import '../../../../core/utils/cubit_action_runner.dart';
 import '../../../../core/utils/dev_mode_manager.dart';
@@ -33,7 +35,6 @@ class FleetCubit extends Cubit<FleetState>
   String _sortBy = 'price_asc';
   final RealtimeSubscriptionBag _realtimeSubscriptions =
       RealtimeSubscriptionBag();
-  bool _suppressNextFleetRealtimeReload = false;
   Timer? _realtimeRefreshDebounce;
   Future<void>? _activeLoad;
   final FleetGateway _gateway;
@@ -331,7 +332,9 @@ class FleetCubit extends Cubit<FleetState>
           await onBalanceChanged(newCash);
         }
 
-        _suppressNextFleetRealtimeReload = true;
+        SyncCoordinator.instance.publish(
+          FleetUpdatedEvent(userId: userId, action: 'purchase'),
+        );
         await _appendLatestAircraftToCache(userId: userId, modelId: modelId);
 
         if (isClosed) return false;
@@ -415,7 +418,9 @@ class FleetCubit extends Cubit<FleetState>
           await onBalanceChanged(newCash);
         }
 
-        _suppressNextFleetRealtimeReload = true;
+        SyncCoordinator.instance.publish(
+          FleetUpdatedEvent(userId: userId, action: 'lease'),
+        );
         await _appendLatestAircraftToCache(userId: userId, modelId: modelId);
 
         if (isClosed) return false;
@@ -500,7 +505,9 @@ class FleetCubit extends Cubit<FleetState>
             sortBy: snapshot.sortBy,
           ),
         );
-        _suppressNextFleetRealtimeReload = true;
+        SyncCoordinator.instance.publish(
+          FleetUpdatedEvent(userId: userId, action: 'repair'),
+        );
         await _reloadSingleAircraftIntoCache(fleetId);
         _emitLoaded();
         return true;
@@ -564,7 +571,9 @@ class FleetCubit extends Cubit<FleetState>
           await onBalanceChanged(newCash);
         }
 
-        _suppressNextFleetRealtimeReload = true;
+        SyncCoordinator.instance.publish(
+          FleetUpdatedEvent(userId: userId, action: 'sell'),
+        );
         await _reloadFleetFromBackend(userId);
 
         if (isClosed) return false;
@@ -642,7 +651,9 @@ class FleetCubit extends Cubit<FleetState>
           await onBalanceChanged(newCash);
         }
 
-        _suppressNextFleetRealtimeReload = true;
+        SyncCoordinator.instance.publish(
+          FleetUpdatedEvent(userId: userId, action: 'terminateLease'),
+        );
         await _reloadFleetFromBackend(userId);
 
         if (isClosed) return false;
@@ -726,7 +737,9 @@ class FleetCubit extends Cubit<FleetState>
             sortBy: snapshot.sortBy,
           ),
         );
-        _suppressNextFleetRealtimeReload = true;
+        SyncCoordinator.instance.publish(
+          FleetUpdatedEvent(userId: userId, action: 'configureSeats'),
+        );
         await _reloadSingleAircraftIntoCache(aircraftId);
         _emitLoaded();
         return true;
@@ -872,10 +885,6 @@ class FleetCubit extends Cubit<FleetState>
             value: userId,
           ),
           callback: (_) {
-            if (_suppressNextFleetRealtimeReload) {
-              _suppressNextFleetRealtimeReload = false;
-              return;
-            }
             _scheduleRealtimeRefresh(userId);
           },
         )

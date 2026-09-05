@@ -11,6 +11,8 @@ import '../../../../core/constants/game_constants.dart';
 import '../../../../core/database/supabase_client.dart';
 import '../../../../core/di/gateway_factory.dart';
 import '../../../../core/realtime/realtime_subscription_bag.dart';
+import '../../../../core/sync/domain_events.dart';
+import '../../../../core/sync/sync_coordinator.dart';
 import '../../../../core/utils/app_error.dart';
 import '../../../../core/utils/dev_mode_manager.dart';
 import '../../../../core/utils/safe_cast.dart';
@@ -274,6 +276,12 @@ class SimulationCubit extends Cubit<SimulationState>
           operationalStatus: authoritativeUser.operationalStatus,
           consecutiveNegativeDays: authoritativeUser.consecutiveNegativeDays,
           recoveryStreakDays: authoritativeUser.recoveryStreakDays,
+        ),
+      );
+
+      SyncCoordinator.instance.publish(
+        SeasonClockTickEvent(
+          currentTick: authoritativeUser.gameCurrentTime.millisecondsSinceEpoch,
         ),
       );
 
