@@ -288,9 +288,12 @@ class _SettingsViewState extends State<SettingsView> {
         hqAirportIata: hqAirportIata,
       ),
     );
-    _lastAuthCompanyName = companyName;
+    final authoritativeUser = await simulationCubit.syncWithDatabase();
+    if (authoritativeUser != null) {
+      authCubit.updateActiveUser(authoritativeUser);
+      _lastAuthCompanyName = authoritativeUser.companyName;
+    }
 
-    await simulationCubit.syncWithDatabase();
     await Future.wait([
       fleetCubit.loadFleetAndCatalog(user.id, silent: true),
       routesCubit.loadRoutesAndData(user.id, silent: true),

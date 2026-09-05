@@ -317,6 +317,7 @@ class FleetCubit extends Cubit<FleetState>
         'p_nickname': nickname,
       },
       rpcCall: () => _gateway.purchaseAircraft({
+        'p_user_id': userId,
         'p_model_id': modelId,
         'p_nickname': nickname,
         'p_economy_seats': economy,
@@ -404,6 +405,7 @@ class FleetCubit extends Cubit<FleetState>
         'p_nickname': nickname,
       },
       rpcCall: () => _gateway.leaseAircraft({
+        'p_user_id': userId,
         'p_model_id': modelId,
         'p_nickname': nickname,
         'p_economy_seats': economy,
@@ -484,7 +486,10 @@ class FleetCubit extends Cubit<FleetState>
       failureMessage: AppStrings.repairFailed,
       errorPrefix: AppStrings.dbConnectionFailed,
       rpcParams: {'p_user_id': userId, 'p_fleet_id': fleetId},
-      rpcCall: () => _gateway.repairAircraft({'p_fleet_id': fleetId}),
+      rpcCall: () => _gateway.repairAircraft({
+        'p_user_id': userId,
+        'p_fleet_id': fleetId,
+      }),
       onSuccess: (result, snapshot) async {
         final message = result['message'] as String? ?? AppStrings.repairFailed;
         final newCash = (result['new_cash'] as num?)?.toDouble();
@@ -562,7 +567,10 @@ class FleetCubit extends Cubit<FleetState>
       failureMessage: AppStrings.saleFailed,
       errorPrefix: AppStrings.saleFailedPrefix,
       rpcParams: {'p_user_id': userId, 'p_fleet_id': fleetId},
-      rpcCall: () => _gateway.sellAircraft({'p_fleet_id': fleetId}),
+      rpcCall: () => _gateway.sellAircraft({
+        'p_user_id': userId,
+        'p_fleet_id': fleetId,
+      }),
       onSuccess: (result, snapshot) async {
         final message = result['message'] as String? ?? AppStrings.saleFailed;
         final newCash = (result['new_cash'] as num?)?.toDouble();
@@ -570,6 +578,8 @@ class FleetCubit extends Cubit<FleetState>
         if (newCash != null) {
           await onBalanceChanged(newCash);
         }
+
+        _cachedFleet.removeWhere((aircraft) => aircraft.id == fleetId);
 
         SyncCoordinator.instance.publish(
           FleetUpdatedEvent(userId: userId, action: 'sell'),
@@ -641,7 +651,10 @@ class FleetCubit extends Cubit<FleetState>
       failureMessage: AppStrings.leaseTerminationFailed,
       errorPrefix: AppStrings.leaseTerminationFailedPrefix,
       rpcParams: {'p_user_id': userId, 'p_fleet_id': fleetId},
-      rpcCall: () => _gateway.terminateLease({'p_fleet_id': fleetId}),
+      rpcCall: () => _gateway.terminateLease({
+        'p_user_id': userId,
+        'p_fleet_id': fleetId,
+      }),
       onSuccess: (result, snapshot) async {
         final message =
             result['message'] as String? ?? AppStrings.leaseTerminationFailed;
@@ -650,6 +663,8 @@ class FleetCubit extends Cubit<FleetState>
         if (newCash != null) {
           await onBalanceChanged(newCash);
         }
+
+        _cachedFleet.removeWhere((aircraft) => aircraft.id == fleetId);
 
         SyncCoordinator.instance.publish(
           FleetUpdatedEvent(userId: userId, action: 'terminateLease'),
@@ -719,6 +734,7 @@ class FleetCubit extends Cubit<FleetState>
       failureMessage: AppStrings.seatConfigFailed,
       errorPrefix: AppStrings.seatConfigUpdateFailedPrefix,
       rpcCall: () => _gateway.configureSeats({
+        'p_user_id': userId,
         'p_fleet_id': aircraftId,
         'p_economy_seats': economy,
         'p_business_seats': business,
