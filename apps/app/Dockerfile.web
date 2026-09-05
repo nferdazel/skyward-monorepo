@@ -5,8 +5,12 @@ COPY pubspec.yaml pubspec.lock ./
 RUN git config --global --add safe.directory /app && flutter pub get
 
 COPY . .
-ARG SUPABASE_URL=https://api.qouver.com/skyward
-ARG SUPABASE_KEY=REDACTED
+# Kredensial build web WAJIB lewat --build-arg (repo ini publik — dilarang hardcode).
+# Sumber nilai asli: /srv/qouver/apps/skyward/env/skyward-prod.env (mode 600) via deploy/deploy-vps.sh.
+ARG SUPABASE_URL
+ARG SUPABASE_KEY
+RUN test -n "$SUPABASE_URL" && test -n "$SUPABASE_KEY" \
+  || { echo "ERROR: SUPABASE_URL/SUPABASE_KEY build-arg wajib diisi (lihat deploy-vps.sh)"; exit 1; }
 
 RUN printf "SUPABASE_URL=%s\nSUPABASE_KEY=%s\n" "$SUPABASE_URL" "$SUPABASE_KEY" > .env && \
     dart run build_runner build --delete-conflicting-outputs && \

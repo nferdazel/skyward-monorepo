@@ -49,11 +49,20 @@ apps/app/"
   # Deploy Web jika folder apps/app/ berubah atau first run
   if echo "$CHANGED_FILES" | grep -q "^apps/app/" || [ "$IS_FIRST" -eq 1 ]; then
     echo "==> [skyward-monorepo] deploying Flutter Web (apps/app)" | tee -a "$LOG"
+    # Kredensial build diambil dari env VPS (mode 600) — JANGAN hardcode di script
+    # karena repo ini publik. Lihat deploy/env/skyward-prod.env.example.
+    WEB_ENV="/srv/qouver/apps/skyward/env/skyward-prod.env"
+    SUPABASE_URL=$(grep -E '^SUPABASE_URL=' "$WEB_ENV" 2>/dev/null | tail -1 | cut -d= -f2- || true)
+    SUPABASE_KEY=$(grep -E '^SUPABASE_KEY=' "$WEB_ENV" 2>/dev/null | tail -1 | cut -d= -f2- || true)
+    if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_KEY" ]; then
+      echo "==> ERROR: SUPABASE_URL/SUPABASE_KEY tidak ditemukan di $WEB_ENV — build web dibatalkan." | tee -a "$LOG"
+      exit 1
+    fi
     cd "$MONO_DIR/apps/app"
     podman build \
       --no-cache \
-      --build-arg SUPABASE_URL="https://api.qouver.com/skyward" \
-      --build-arg SUPABASE_KEY="REDACTED" \
+      --build-arg SUPABASE_URL="$SUPABASE_URL" \
+      --build-arg SUPABASE_KEY="$SUPABASE_KEY" \
       -t localhost/skyward-web:local -f Dockerfile.web . 2>&1 | tail -20 | tee -a "$LOG"
     mkdir -p /srv/qouver/apps/skyward/web
     rm -rf /srv/qouver/apps/skyward/web/*
@@ -61,6 +70,9 @@ apps/app/"
     podman cp "$CONTAINER_ID:/var/www/html/." /srv/qouver/apps/skyward/web/
     podman rm "$CONTAINER_ID" >/dev/null
     restorecon -RF /srv/qouver/apps/skyward/web/ 2>&1 | tee -a "$LOG" || true
+    # Catatan: Caddy file_server membaca direktori per-request — file baru langsung
+    # ke-serve tanpa reload. Perubahan /etc/caddy/Caddyfile = manual via sudo
+    # (caddy validate && systemctl reload caddy), bukan bagian deploy ini.
     echo "==> [skyward-monorepo] Flutter Web deploy complete" | tee -a "$LOG"
   fi
 fi
