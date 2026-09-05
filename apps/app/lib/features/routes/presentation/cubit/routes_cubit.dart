@@ -9,6 +9,8 @@ import '../../../../core/database/supabase_client.dart';
 import '../../../../core/di/gateway_factory.dart';
 import '../../../../core/mixins/simulation_reactive_mixin.dart';
 import '../../../../core/realtime/realtime_subscription_bag.dart';
+import '../../../../core/sync/domain_events.dart';
+import '../../../../core/sync/sync_coordinator.dart';
 import '../../../../core/utils/app_error.dart';
 import '../../../../core/utils/cubit_action_runner.dart';
 import '../../../../core/utils/dev_mode_manager.dart';
@@ -99,6 +101,9 @@ class RoutesCubit extends Cubit<RoutesState>
         final message = result['message'] as String? ?? failureMessage;
 
         if (success) {
+          SyncCoordinator.instance.publish(
+            RouteUpdatedEvent(userId: userId, action: actionName),
+          );
           if (isClosed) return false;
           emit(
             RoutesActionSuccess(
