@@ -9,8 +9,8 @@
 # Prasyarat sekali:
 #   - DNS api.qouver.com → A → <vps-ip> (sudah ada)
 #   - Caddy site (deploy/Caddyfile.api.qouver.com) sudah di-apply (butuh sudo)
-#   - Env file ada di VPS: /srv/qouver/apps/skyward/env/skyward-{dev,prod}.env (chmod 600)
-#   - DB skyward_dev / skyward sudah dibuat (CREATE DATABASE + migration)
+#   - Env file ada di VPS: /srv/qouver/apps/skyward/env/skyward-prod.env (chmod 600)
+#   - DB skyward sudah dibuat (CREATE DATABASE + migration). Instansi dev dihapus (2026-09-05).
 #
 # Usage:
 #   ./scripts/deploy.sh setup       # sekali: install quadlet unit + enable service
