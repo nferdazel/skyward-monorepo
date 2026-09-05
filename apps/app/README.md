@@ -10,7 +10,9 @@ Skyward is a Flutter airline-tycoon simulation with a Supabase/Postgres backend.
 The app handles UI, local session flow, and command dispatch. The backend owns
 authoritative simulation, economy, world time, and operational validation.
 
-Last verified against code, docs, and linked live audit state on `2026-07-22`.
+Last verified against code, docs, and linked live audit state on `2026-07-22`
+(re-checked live 2026-09-05: Go API `apps/api` live, web served at `https://skyward.qouver.com`,
+migrasi Flutter↔Go API direncanakan di `docs/plans/flutter-go-api-connection-plan.md`).
 
 ## Current shape
 
@@ -145,15 +147,21 @@ test/layer4_database/native_audit/delete_account_e2e_audit.sh
 
 ## Deployment
 
-Production web deployment is prepared for Vercel.
+Production web (Flutter web release) diserve dari VPS di **`https://skyward.qouver.com`**
+(static build, lihat `deploy/Caddyfile.skyward.qouver.com`). Deploy otomatis lewat
+`deploy/deploy-vps.sh` → build `Dockerfile.web` → copy ke `/srv/qouver/apps/skyward/web/`
+→ `systemctl reload caddy`.
 
-Required GitHub secrets:
+Kredensial build (`SUPABASE_URL` / `SUPABASE_KEY`) diambil dari env VPS
+`/srv/qouver/apps/skyward/env/skyward-prod.env` (mode 600) — **tidak pernah di-commit**
+(repo ini publik). Template: `deploy/env/skyward-prod.env.example`.
 
-- `VERCEL_TOKEN`
-- `VERCEL_ORG_ID`
-- `VERCEL_PROJECT_ID`
-- `SUPABASE_URL`
-- `SUPABASE_KEY`
+> Catatan: `skyward.vercel.app` bukan app Skyward (itu template Next.js + MUI) dan
+> tidak dipakai sebagai origin lagi.
+>
+> Status backend: Flutter masih memakai Supabase SDK, sedangkan `apps/api` (Go REST+WS)
+> sudah implemented dan live. Koneksi frontend↔Go API direncanakan di
+> `docs/plans/flutter-go-api-connection-plan.md`.
 
 ## Repo guide
 

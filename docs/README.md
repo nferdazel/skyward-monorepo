@@ -1,6 +1,11 @@
 # Skyward Docs
 
-Last verified on 2026-07-22.
+Last verified on 2026-09-05 (live HTTP checks + repo audit).
+
+> ⚠️ **Migrasi backend berjalan**: `apps/api` (Go REST+WS) sudah implemented & live di
+> `https://api.qouver.com/skyward`, tapi Flutter (`apps/app`) masih 100% Supabase SDK dan
+> BELUM memanggil kontrak Go tersebut. Detail & fase koneksi:
+> `docs/plans/flutter-go-api-connection-plan.md`.
 
 This folder is the current maintenance record for Skyward's live runtime.
 It is intentionally organized by operational question, not by historical phase.
@@ -18,7 +23,9 @@ If you only open four files, open these:
 
 Live runtime characteristics:
 - Flutter frontend with Cubit-only app state
-- Supabase/Postgres authoritative backend
+- web diserve di `https://skyward.qouver.com` (static build dari deploy-vps.sh)
+- API Go live di `https://api.qouver.com/skyward` (healthz 200; semua handler implemented)
+- Supabase/Postgres masih authoritative untuk runtime Flutter saat ini (sebelum migrasi selesai)
 - bank-centric cash model:
   - `bank_accounts` is canonical cash
   - `bank_transactions` is canonical money movement
