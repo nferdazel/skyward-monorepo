@@ -1,9 +1,9 @@
 // Package config — konfigurasi runtime dari environment; `.env` di-load
-// untuk dev lokal, prod memakai systemd/podman env (file 600).
+// untuk dev lokal, prod memakai systemd env (file 600).
 //
 // Pola mengikuti majadu-api: fail-closed (default prod), secret hanya di VPS.
-// Skyward memakai DB-per-branch (skyward_dev / skyward) — path database ada di
-// DATABASE_URL, search_path default `public` (baseline skyward ada di public).
+// Path database ada di DATABASE_URL, search_path default `public`
+// (baseline skyward ada di public). Instansi VPS dev sudah dihapus (2026-09-05).
 package config
 
 import (
@@ -20,22 +20,21 @@ type Config struct {
 	// Env — "dev" | "prod". Dev = lenient (default fallback), prod = strict.
 	Env string
 
-	// Port HTTP server. Default 8090 (prod) / 8091 (dev — via env).
+	// Port HTTP server. Default 8090.
 	Port string
 
 	// Host HTTP server binding address. Default "127.0.0.1".
 	Host string
 
 	// DatabaseURL — postgres://... WAJIB (fail-fast).
-	// Dev: postgres://skyward_app:...@qouver-postgres:5432/skyward_dev
 	// Prod: postgres://skyward_app:...@qouver-postgres:5432/skyward
 	DatabaseURL string
 
-	// AllowedOrigins — origin CORS frontend (Vercel / Caddy static).
+	// AllowedOrigins — origin CORS frontend (Caddy static / localhost dev).
 	AllowedOrigins []string
 
 	// BaseURL — URL publik API (header Location), mis.
-	// https://api.qouver.com/skyward-dev. Kosong = relative path.
+	// https://api.qouver.com/skyward. Kosong = relative path.
 	BaseURL string
 
 	// RateLimitPerMin — batas request per menit per IP. 0 = disabled.

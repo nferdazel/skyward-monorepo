@@ -6,18 +6,8 @@
 # oleh handler /* yang response 404.
 
 api.qouver.com {
-	# ── Skyward (dev) ──
-	# WS upgrade harus di-path /skyward-dev/ws (Flutter WS client)
-	handle /skyward-dev/ws/* {
-		uri strip_prefix /skyward-dev
-		reverse_proxy 127.0.0.1:8091
-	}
-	handle /skyward-dev/* {
-		uri strip_prefix /skyward-dev
-		reverse_proxy 127.0.0.1:8091
-	}
-
 	# ── Skyward (prod) ──
+	# Instansi skyward-dev sudah dihapus (2026-09-05) — hanya prod (8090).
 	handle /skyward/ws/* {
 		uri strip_prefix /skyward
 		reverse_proxy 127.0.0.1:8090
