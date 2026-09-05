@@ -90,12 +90,9 @@ Security migration note:
   `p_user_id` from the client.
 - Security Phase 5 enables RLS on the app-facing read surface, converts the
   auth-bound wrappers to security-definer execution, and retires client access
-  to the legacy custom-session RPCs.
+  to the legacy custom-session RPCs (declared in `migrations/01_security_phase5_rls.sql`).
 - Security Phase 6 removes the legacy custom-session database functions and the
-  `sessions` table entirely.
-
-> **Note:** Phase 5 and Phase 6 changes are not declared by repo-local migrations.
-> RLS state and sessions-table removal should be verified against the linked live database.
+  `sessions` table entirely (declared in `migrations/02_security_phase6_legacy_cleanup.sql`).
 
 ## Current time authority
 
