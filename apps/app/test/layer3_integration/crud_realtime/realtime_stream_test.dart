@@ -279,7 +279,7 @@ void main() {
       expect(routesCubit.state, const RoutesInitial());
 
       final expectedFleetStates = [
-        isA<FleetLoaded>().having((f) => f.fleet.length, 'fleet count', 2),
+        isA<FleetLoaded>().having((f) => f.fleet.length, 'fleet count', 1),
       ];
       final expectedRoutesStates = [
         isA<RoutesLoaded>().having((r) => r.routes.length, 'routes count', 1),

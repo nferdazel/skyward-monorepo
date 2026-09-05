@@ -47,7 +47,7 @@ class AppUser with Equatable {
       netWorth: (map['net_worth'] as num?)?.toDouble() ?? 0.0,
       gameCurrentTime: map['game_current_time'] != null
           ? DateTime.parse(map['game_current_time'])
-          : DateTime.parse('2020-01-01T00:00:00Z'),
+          : DateTime.now().toUtc(),
       autoGroundingThreshold:
           (map['auto_grounding_threshold'] as num?)?.toDouble() ?? 30.0,
       hqAirportIata: map['hq_airport_iata'] ?? 'SIN',

@@ -10,7 +10,7 @@ class MockFinanceGateway implements FinanceGateway {
         'id': 'mock-tx-1',
         'account_id': 'mock-acc-1',
         'user_id': userId,
-        'transaction_type': 'revenue',
+        'transaction_type': 'credit',
         'amount': 25000.0,
         'balance_after': 10025000.0,
         'description': 'Flight ticket sales (DEV)',
@@ -24,6 +24,7 @@ class MockFinanceGateway implements FinanceGateway {
   @override
   Future<Map<String, dynamic>> getFinanceSnapshot([String? userId]) async {
     return {
+      'company_name': 'Skyward Star Airlines',
       'net_worth': 15000000.0,
       'cash_balance': 10000000.0,
       'fleet_value': 8000000.0,

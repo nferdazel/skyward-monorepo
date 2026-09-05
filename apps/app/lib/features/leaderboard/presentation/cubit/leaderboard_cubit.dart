@@ -113,19 +113,6 @@ class LeaderboardCubit extends Cubit<LeaderboardState>
     }
 
     try {
-      if (DevModeManager.isDevMode) {
-        _loadMockRankings(
-          humanUserId: humanUserId,
-          companyName: humanCompanyName,
-          ceoName: humanCeoName,
-          cash: humanCash,
-          netWorth: humanNetWorth,
-          fleetSize: humanFleetSize,
-          monthlyRevenue: humanMonthlyRevenue,
-        );
-        return;
-      }
-
       // Call RPC via gateway
       final List<dynamic> response = await _gateway.getGlobalLeaderboard();
 
@@ -352,8 +339,7 @@ class LeaderboardCubit extends Cubit<LeaderboardState>
         : null;
 
     try {
-      if (DevModeManager.isDevMode ||
-          DevModeManager.isMockId(id) ||
+      if (DevModeManager.isMockId(id) ||
           !DevModeManager.isValidUuid(id)) {
         final mockIns = isBot && liveEntry != null
             ? _generateDynamicBotInsights(liveEntry)

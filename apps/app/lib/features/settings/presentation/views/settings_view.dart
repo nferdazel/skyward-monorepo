@@ -4,7 +4,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/game_constants.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/utils/dev_mode_manager.dart';
 import '../../../../presentation/theme/app_spacing.dart';
 import '../../../../presentation/theme/app_typography.dart';
 import '../../../../presentation/widgets/app_button.dart';
@@ -731,45 +730,31 @@ class _SettingsViewState extends State<SettingsView> {
                       userId: userId,
                       onResetComplete: () async {
                         double freshCash = GameConstants.startingCash;
-                        DateTime freshTime = DateTime.parse(
-                          '2020-01-01T00:00:00Z',
-                        );
-                        if (!DevModeManager.isDevMode &&
-                            authCubit.state is AuthAuthenticated) {
-                          freshTime = (authCubit.state as AuthAuthenticated)
-                              .user
-                              .gameCurrentTime;
-                        }
+                        DateTime freshTime = authCubit.state is AuthAuthenticated
+                            ? (authCubit.state as AuthAuthenticated)
+                                .user
+                                .gameCurrentTime
+                            : DateTime.now().toUtc();
 
                         simulationCubit.stopLoop();
 
-                        if (!DevModeManager.isDevMode) {
-                          try {
-                            final response =
-                                await settingsCubit.loadUserProfile(userId);
-                            final freshUser = AppUser.fromMap(response);
-                            freshCash = GameConstants.startingCash;
-                            freshTime = freshUser.gameCurrentTime;
-                            authCubit.updateActiveUser(freshUser);
-                          } catch (_) {
-                            if (authCubit.state is AuthAuthenticated) {
-                              final currentUser =
-                                  (authCubit.state as AuthAuthenticated).user;
-                              final updatedUser = currentUser.copyWith(
-                                gameCurrentTime: freshTime,
-                                hqAirportIata: 'SIN',
-                              );
-                              authCubit.updateActiveUser(updatedUser);
-                            }
+                        try {
+                          final response =
+                              await settingsCubit.loadUserProfile(userId);
+                          final freshUser = AppUser.fromMap(response);
+                          freshCash = GameConstants.startingCash;
+                          freshTime = freshUser.gameCurrentTime;
+                          authCubit.updateActiveUser(freshUser);
+                        } catch (_) {
+                          if (authCubit.state is AuthAuthenticated) {
+                            final currentUser =
+                                (authCubit.state as AuthAuthenticated).user;
+                            final updatedUser = currentUser.copyWith(
+                              gameCurrentTime: freshTime,
+                              hqAirportIata: 'SIN',
+                            );
+                            authCubit.updateActiveUser(updatedUser);
                           }
-                        } else if (authCubit.state is AuthAuthenticated) {
-                          final currentUser =
-                              (authCubit.state as AuthAuthenticated).user;
-                          final updatedUser = currentUser.copyWith(
-                            gameCurrentTime: freshTime,
-                            hqAirportIata: 'SIN',
-                          );
-                          authCubit.updateActiveUser(updatedUser);
                         }
 
                         await simulationCubit.startLoop(

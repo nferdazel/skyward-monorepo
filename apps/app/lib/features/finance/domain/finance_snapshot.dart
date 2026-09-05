@@ -70,6 +70,7 @@ class FinanceSnapshot with Equatable {
       isBot: isBot,
       companyName: (map['company_name'] ?? '').toString(),
       cash: (map['cash'] as num?)?.toDouble() ??
+          (map['cash_balance'] as num?)?.toDouble() ??
           (map['balance'] as num?)?.toDouble() ??
           0.0,
       netWorth: (map['net_worth'] as num?)?.toDouble() ?? 0.0,

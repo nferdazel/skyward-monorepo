@@ -14,30 +14,33 @@ import '../../features/settings/data/mock_settings_gateway.dart';
 import '../../features/settings/data/settings_gateway.dart';
 import '../../features/simulation/data/mock_simulation_gateway.dart';
 import '../../features/simulation/data/simulation_gateway.dart';
+import '../database/supabase_client.dart';
 import '../utils/dev_mode_manager.dart';
 
 class GatewayFactory {
+  static bool get _useMock => DevModeManager.isDevMode || SupabaseManager.isDevMode;
+
   static FleetGateway createFleetGateway() =>
-      DevModeManager.isDevMode ? MockFleetGateway() : SupabaseFleetGateway();
+      _useMock ? MockFleetGateway() : SupabaseFleetGateway();
 
   static RoutesGateway createRoutesGateway() =>
-      DevModeManager.isDevMode ? const MockRoutesGateway() : const SupabaseRoutesGateway();
+      _useMock ? const MockRoutesGateway() : const SupabaseRoutesGateway();
 
   static BankGateway createBankGateway() =>
-      DevModeManager.isDevMode ? const MockBankGateway() : const SupabaseBankGateway();
+      _useMock ? const MockBankGateway() : const SupabaseBankGateway();
 
   static FinanceGateway createFinanceGateway() =>
-      DevModeManager.isDevMode ? const MockFinanceGateway() : const SupabaseFinanceGateway();
+      _useMock ? const MockFinanceGateway() : const SupabaseFinanceGateway();
 
   static LeaderboardGateway createLeaderboardGateway() =>
-      DevModeManager.isDevMode ? const MockLeaderboardGateway() : const SupabaseLeaderboardGateway();
+      _useMock ? const MockLeaderboardGateway() : const SupabaseLeaderboardGateway();
 
   static SettingsGateway createSettingsGateway() =>
-      DevModeManager.isDevMode ? const MockSettingsGateway() : const SupabaseSettingsGateway();
+      _useMock ? const MockSettingsGateway() : const SupabaseSettingsGateway();
 
   static SimulationGateway createSimulationGateway() =>
-      DevModeManager.isDevMode ? const MockSimulationGateway() : const SupabaseSimulationGateway();
+      _useMock ? const MockSimulationGateway() : const SupabaseSimulationGateway();
 
   static AuthGateway createAuthGateway() =>
-      DevModeManager.isDevMode ? MockAuthGateway() : SupabaseAuthGateway();
+      _useMock ? MockAuthGateway() : SupabaseAuthGateway();
 }

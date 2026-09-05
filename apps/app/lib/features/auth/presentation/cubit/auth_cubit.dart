@@ -4,7 +4,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/database/supabase_client.dart';
 import '../../../../core/di/gateway_factory.dart';
-import '../../../../core/utils/dev_mode_manager.dart';
 import '../../data/auth_gateway.dart';
 import '../../domain/user_model.dart';
 import 'auth_state.dart';
@@ -31,11 +30,6 @@ class AuthCubit extends Cubit<AuthState> {
     await _executeAuthAction(() async {
       emit(const AuthLoading());
       try {
-        if (DevModeManager.isDevMode) {
-          _devFallbackLogin('mock-dev-token');
-          return;
-        }
-
         final session = await _authGateway.restoreSession();
         if (session == null) {
           if (isClosed) return;
@@ -62,21 +56,6 @@ class AuthCubit extends Cubit<AuthState> {
     await _executeAuthAction(() async {
       emit(const AuthLoading());
       try {
-        if (DevModeManager.isDevMode) {
-          // Dev Fallback Mode
-          await Future.delayed(const Duration(milliseconds: 800));
-          final mockUser = AppUser(
-            id: 'dev-user-uuid',
-            username: username,
-            companyName: companyName,
-            ceoName: ceoName,
-            gameCurrentTime: DateTime.parse('2020-01-01T00:00:00Z'),
-          );
-          if (isClosed) return;
-          emit(AuthAuthenticated(user: mockUser, token: 'mock-dev-token'));
-          return;
-        }
-
         final session = await _authGateway.register(
           username: username,
           password: password,
@@ -100,20 +79,6 @@ class AuthCubit extends Cubit<AuthState> {
     await _executeAuthAction(() async {
       emit(const AuthLoading());
       try {
-        if (DevModeManager.isDevMode) {
-          await Future.delayed(const Duration(milliseconds: 800));
-          final mockUser = AppUser(
-            id: 'dev-user-uuid',
-            username: username,
-            companyName: '$username Airlines',
-            ceoName: 'CEO $username',
-            gameCurrentTime: DateTime.parse('2020-01-01T00:00:00Z'),
-          );
-          if (isClosed) return;
-          emit(AuthAuthenticated(user: mockUser, token: 'mock-dev-token'));
-          return;
-        }
-
         final session = await _authGateway.login(
           username: username,
           password: password,
@@ -131,9 +96,7 @@ class AuthCubit extends Cubit<AuthState> {
   Future<void> logout() async {
     await _executeAuthAction(() async {
       try {
-        if (!DevModeManager.isDevMode) {
-          await _authGateway.logout();
-        }
+        await _authGateway.logout();
       } catch (e, stack) {
         SupabaseManager.logError('supabase_sign_out', e, stack);
       }
@@ -153,17 +116,6 @@ class AuthCubit extends Cubit<AuthState> {
       final currentToken = (state as AuthAuthenticated).token;
       emit(AuthAuthenticated(user: updatedUser, token: currentToken));
     }
-  }
-
-  void _devFallbackLogin(String token) {
-    final mockUser = AppUser(
-      id: 'dev-user-uuid',
-      username: 'devmode',
-      companyName: 'Skyward Star Airlines',
-      ceoName: 'Fredianto',
-      gameCurrentTime: DateTime.parse('2020-01-01T00:00:00Z'),
-    );
-    emit(AuthAuthenticated(user: mockUser, token: token));
   }
 
   Future<void> resetPassword({

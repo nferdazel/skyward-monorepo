@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:skyward/core/database/supabase_client.dart';
+import 'package:skyward/core/utils/dev_mode_manager.dart';
 import 'package:skyward/features/finance/data/finance_gateway.dart';
 import 'package:skyward/features/finance/presentation/cubit/finance_cubit.dart';
 import 'package:skyward/features/finance/presentation/cubit/finance_state.dart';
@@ -134,15 +135,11 @@ final _updatedSnapshotMap = <String, dynamic>{
 
 void main() {
   group('FinanceCubit Gateway Tests', () {
-    setUp(() {
-      // Set non-dev credentials so DevModeManager.isDevMode returns false
-      // and the cubit actually exercises the injected gateway.
-      SupabaseManager.supabaseUrl = 'https://test-project.supabase.co';
-      SupabaseManager.supabaseAnonKey = 'test-anon-key-not-dev-mode';
-    });
+    setUp(() {});
 
     tearDown(() {
       SupabaseManager.resetCredentialsToEnv();
+      DevModeManager.resetDevMode();
     });
 
     // =========================================================================

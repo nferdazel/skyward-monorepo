@@ -13,7 +13,6 @@ import '../../../../core/sync/domain_events.dart';
 import '../../../../core/sync/sync_coordinator.dart';
 import '../../../../core/utils/app_error.dart';
 import '../../../../core/utils/cubit_action_runner.dart';
-import '../../../../core/utils/dev_mode_manager.dart';
 import '../../../../core/utils/perf_debug.dart';
 import '../../../../core/utils/safe_cast.dart';
 import '../../../fleet/domain/fleet_models.dart';
@@ -283,11 +282,6 @@ class RoutesCubit extends Cubit<RoutesState>
       emit(const RoutesLoading());
     }
     try {
-      if (DevModeManager.isDevMode) {
-        _devLoadMockData();
-        return;
-      }
-
       // 1. Fetch all airports (cached — rarely changes)
       List<Airport> airports;
       if (_airportsLoaded && _cachedAirports.isNotEmpty) {
@@ -405,36 +399,6 @@ class RoutesCubit extends Cubit<RoutesState>
     required double ticketPrice,
     required int flightsPerWeek,
   }) async {
-    if (DevModeManager.isDevMode) {
-      final origin = _cachedAirports.firstWhere((a) => a.iata == originIata);
-      final dest = _cachedAirports.firstWhere((a) => a.iata == destinationIata);
-      final newRoute = UserRoute(
-        id: 'mock-route-${DateTime.now().millisecondsSinceEpoch}',
-        originIata: originIata,
-        destinationIata: destinationIata,
-        distanceKm: distanceKm,
-        ticketPrice: ticketPrice,
-        flightsPerWeek: flightsPerWeek,
-        origin: origin,
-        destination: dest,
-      );
-      _cachedRoutes.insert(0, newRoute);
-      emit(
-        RoutesActionSuccess(
-          message: AppStrings.routeCreatedSuccess,
-          routes: List<UserRoute>.from(_cachedRoutes),
-          airports: List<Airport>.from(_cachedAirports),
-          availableAircraft: List<UserFleetAircraft>.from(
-            _cachedAvailableAircraft,
-          ),
-          plannerMaintenancePreview: _plannerMaintenancePreview,
-          adjustmentMaintenancePreview: _adjustmentMaintenancePreview,
-        ),
-      );
-      _emitLoaded();
-      return true;
-    }
-
     return _executeRouteAction(
       actionName: 'create_route',
       failureMessage: AppStrings.routeCreateFailed,
@@ -461,54 +425,6 @@ class RoutesCubit extends Cubit<RoutesState>
     required String? aircraftId,
     required String userId,
   }) async {
-    if (DevModeManager.isDevMode) {
-      final routeIdx = _cachedRoutes.indexWhere((r) => r.id == routeId);
-      if (routeIdx != -1) {
-        final target = _cachedRoutes[routeIdx];
-        UserFleetAircraft? assigned;
-        if (aircraftId != null) {
-          final fleetIdx = _cachedAvailableAircraft.indexWhere(
-            (f) => f.id == aircraftId,
-          );
-          if (fleetIdx != -1) {
-            assigned = _cachedAvailableAircraft.removeAt(fleetIdx);
-          }
-        }
-
-        // If unassigning, add back to available
-        if (aircraftId == null && target.assignedAircraft != null) {
-          _cachedAvailableAircraft.add(target.assignedAircraft!);
-        }
-
-        _cachedRoutes[routeIdx] = UserRoute(
-          id: target.id,
-          originIata: target.originIata,
-          destinationIata: target.destinationIata,
-          distanceKm: target.distanceKm,
-          ticketPrice: target.ticketPrice,
-          flightsPerWeek: target.flightsPerWeek,
-          origin: target.origin,
-          destination: target.destination,
-          assignedAircraftId: aircraftId,
-          assignedAircraft: assigned,
-        );
-      }
-      emit(
-        RoutesActionSuccess(
-          message: AppStrings.routeAssignmentSuccess,
-          routes: List<UserRoute>.from(_cachedRoutes),
-          airports: List<Airport>.from(_cachedAirports),
-          availableAircraft: List<UserFleetAircraft>.from(
-            _cachedAvailableAircraft,
-          ),
-          plannerMaintenancePreview: _plannerMaintenancePreview,
-          adjustmentMaintenancePreview: _adjustmentMaintenancePreview,
-        ),
-      );
-      _emitLoaded();
-      return true;
-    }
-
     return _executeRouteAction(
       actionName: 'assign_aircraft_to_route',
       failureMessage: AppStrings.routeAssignFailed,
@@ -533,39 +449,6 @@ class RoutesCubit extends Cubit<RoutesState>
     required int flightsPerWeek,
     required String userId,
   }) async {
-    if (DevModeManager.isDevMode) {
-      final idx = _cachedRoutes.indexWhere((r) => r.id == routeId);
-      if (idx != -1) {
-        final target = _cachedRoutes[idx];
-        _cachedRoutes[idx] = UserRoute(
-          id: target.id,
-          originIata: target.originIata,
-          destinationIata: target.destinationIata,
-          distanceKm: target.distanceKm,
-          ticketPrice: ticketPrice,
-          flightsPerWeek: flightsPerWeek,
-          origin: target.origin,
-          destination: target.destination,
-          assignedAircraftId: target.assignedAircraftId,
-          assignedAircraft: target.assignedAircraft,
-        );
-      }
-      emit(
-        RoutesActionSuccess(
-          message: AppStrings.routeFrequencyUpdateSuccess,
-          routes: List<UserRoute>.from(_cachedRoutes),
-          airports: List<Airport>.from(_cachedAirports),
-          availableAircraft: List<UserFleetAircraft>.from(
-            _cachedAvailableAircraft,
-          ),
-          plannerMaintenancePreview: _plannerMaintenancePreview,
-          adjustmentMaintenancePreview: _adjustmentMaintenancePreview,
-        ),
-      );
-      _emitLoaded();
-      return true;
-    }
-
     return _executeRouteAction(
       actionName: 'update_route_frequency_and_price',
       failureMessage: AppStrings.routeFrequencyUpdateFailed,
@@ -603,31 +486,6 @@ class RoutesCubit extends Cubit<RoutesState>
     required String routeId,
     required String userId,
   }) async {
-    if (DevModeManager.isDevMode) {
-      final idx = _cachedRoutes.indexWhere((r) => r.id == routeId);
-      if (idx != -1) {
-        final target = _cachedRoutes[idx];
-        if (target.assignedAircraft != null) {
-          _cachedAvailableAircraft.add(target.assignedAircraft!);
-        }
-        _cachedRoutes.removeAt(idx);
-      }
-      emit(
-        RoutesActionSuccess(
-          message: AppStrings.routeDeletedSuccess,
-          routes: List<UserRoute>.from(_cachedRoutes),
-          airports: List<Airport>.from(_cachedAirports),
-          availableAircraft: List<UserFleetAircraft>.from(
-            _cachedAvailableAircraft,
-          ),
-          plannerMaintenancePreview: _plannerMaintenancePreview,
-          adjustmentMaintenancePreview: _adjustmentMaintenancePreview,
-        ),
-      );
-      _emitLoaded();
-      return true;
-    }
-
     return _executeRouteAction(
       actionName: 'delete_route',
       failureMessage: AppStrings.routeDeleteFailed,
@@ -647,129 +505,8 @@ class RoutesCubit extends Cubit<RoutesState>
     );
   }
 
-  // Seed Mock Data in Dev Mode
-  void _devLoadMockData() {
-    _cachedAirports = [
-      Airport(
-        iata: 'CGK',
-        name: 'Soekarno-Hatta International',
-        city: 'Jakarta',
-        country: 'Indonesia',
-        latitude: -6.1256,
-        longitude: 106.6558,
-        demandIndex: 95,
-      ),
-      Airport(
-        iata: 'SIN',
-        name: 'Changi International',
-        city: 'Singapore',
-        country: 'Singapore',
-        latitude: 1.3644,
-        longitude: 103.9915,
-        demandIndex: 98,
-      ),
-      Airport(
-        iata: 'KUL',
-        name: 'Kuala Lumpur International',
-        city: 'Kuala Lumpur',
-        country: 'Malaysia',
-        latitude: 2.7456,
-        longitude: 101.7099,
-        demandIndex: 90,
-      ),
-      Airport(
-        iata: 'BKK',
-        name: 'Suvarnabhumi Airport',
-        city: 'Bangkok',
-        country: 'Thailand',
-        latitude: 13.6900,
-        longitude: 100.7501,
-        demandIndex: 95,
-      ),
-      Airport(
-        iata: 'HND',
-        name: 'Haneda Airport',
-        city: 'Tokyo',
-        country: 'Japan',
-        latitude: 35.5494,
-        longitude: 139.7798,
-        demandIndex: 98,
-      ),
-    ];
-
-    final mockFleet = [
-      UserFleetAircraft(
-        id: 'mock-fleet-active-a320',
-        nickname: 'Primary Eagle',
-        acquisitionType: 'purchase',
-        condition: 82.50,
-        status: 'active',
-        model: AircraftModel(
-          id: 'mock-a320',
-          manufacturer: 'Airbus',
-          modelName: 'A320neo',
-          type: 'narrow_body_jet',
-          rangeKm: 6500,
-          capacity: 186,
-          speedKmh: 833,
-          fuelBurnPerKm: 4.16,
-          maintenanceCostPerHour: 820.00,
-          purchasePrice: 111000000.00,
-          leasePricePerMonth: 550000.00,
-        ),
-      ),
-      UserFleetAircraft(
-        id: 'mock-fleet-active-atr72',
-        nickname: 'Short-Haul Hopper',
-        acquisitionType: 'lease',
-        condition: 45.00,
-        status: 'active',
-        model: AircraftModel(
-          id: 'mock-atr72',
-          manufacturer: 'ATR',
-          modelName: 'ATR 72-600',
-          type: 'regional_turboprop',
-          rangeKm: 1500,
-          capacity: 72,
-          speedKmh: 510,
-          fuelBurnPerKm: 2.5,
-          maintenanceCostPerHour: 400.00,
-          purchasePrice: 26000000.00,
-          leasePricePerMonth: 130000.00,
-        ),
-      ),
-    ];
-
-    _cachedRoutes = [
-      UserRoute(
-        id: 'mock-route-1',
-        originIata: 'CGK',
-        destinationIata: 'SIN',
-        distanceKm: 895.34,
-        ticketPrice: 150.00,
-        flightsPerWeek: 14,
-        origin: _cachedAirports[0],
-        destination: _cachedAirports[1],
-        assignedAircraftId: 'mock-fleet-active-a320',
-        assignedAircraft: mockFleet[0],
-      ),
-    ];
-
-    _cachedAvailableAircraft = [mockFleet[1]];
-
-    emit(
-      RoutesLoaded(
-        routes: _cachedRoutes,
-        airports: _cachedAirports,
-        availableAircraft: _cachedAvailableAircraft,
-        plannerMaintenancePreview: _plannerMaintenancePreview,
-        adjustmentMaintenancePreview: _adjustmentMaintenancePreview,
-      ),
-    );
-  }
-
   void _setupRealtime(String userId) {
-    if (DevModeManager.isDevMode || SupabaseManager.hasMockClient) return;
+    if (SupabaseManager.hasMockClient || SupabaseManager.maybeClient == null) return;
     unawaited(_realtimeSubscriptions.clear());
 
     // Only subscribe to route_assignments — fleet_aircraft is already handled by FleetCubit.

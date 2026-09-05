@@ -5,6 +5,7 @@ import 'package:skyward/core/widgets/terminal_loader.dart';
 
 void main() {
   testWidgets('Skyward boots into CEO restore splash state', (WidgetTester tester) async {
+    addTearDown(DevModeManager.resetDevMode);
     DevModeManager.isDevMode = false;
     // Build our app and trigger a frame.
     await tester.pumpWidget(const MyApp());

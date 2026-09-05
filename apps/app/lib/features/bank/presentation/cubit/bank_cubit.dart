@@ -11,7 +11,6 @@ import '../../../../core/mixins/simulation_reactive_mixin.dart';
 import '../../../../core/realtime/realtime_subscription_bag.dart';
 import '../../../../core/utils/app_error.dart';
 import '../../../../core/utils/cubit_action_runner.dart';
-import '../../../../core/utils/dev_mode_manager.dart';
 import '../../../../core/utils/safe_cast.dart';
 import '../../../simulation/presentation/cubit/simulation_cubit.dart';
 import '../../data/bank_gateway.dart';
@@ -92,11 +91,6 @@ class BankCubit extends Cubit<BankState>
     }
 
     try {
-      if (DevModeManager.isDevMode) {
-        _loadMockData();
-        return;
-      }
-
       // Load loans, credit report, and bank accounts in parallel
       final results = await Future.wait([
         _gateway.getLoans(userId),
@@ -163,11 +157,6 @@ class BankCubit extends Cubit<BankState>
       emit(const BankLoading());
 
       try {
-        if (DevModeManager.isDevMode) {
-          _mockTakeLoan(principal, termWeeks);
-          return;
-        }
-
         final response = await _gateway.takeLoan(
           principal,
           termWeeks,
@@ -569,7 +558,7 @@ class BankCubit extends Cubit<BankState>
   }
 
   void _setupRealtime(String userId) {
-    if (DevModeManager.isDevMode || SupabaseManager.hasMockClient) return;
+    if (SupabaseManager.hasMockClient || SupabaseManager.maybeClient == null) return;
 
     final loansChannel = SupabaseManager.client
         .channel('public:loans:user=eq.$userId')
@@ -681,80 +670,6 @@ class BankCubit extends Cubit<BankState>
       // On error, do a full reload as fallback
       await loadBankData(userId, silent: true);
     }
-  }
-
-  void _loadMockData() {
-    final now = DateTime.now();
-    _cachedLoans = [
-      Loan(
-        id: 'mock-loan-1',
-        principal: 5000000,
-        interestRate: 0.05,
-        remainingBalance: 3200000,
-        weeklyPayment: 101923.08,
-        status: 'active',
-        loanType: 'unsecured',
-        takenAt: now.subtract(const Duration(days: 30)),
-      ),
-      Loan(
-        id: 'mock-loan-2',
-        principal: 1000000,
-        interestRate: 0.05,
-        remainingBalance: 0,
-        weeklyPayment: 20384.62,
-        status: 'paid_off',
-        loanType: 'secured',
-        takenAt: now.subtract(const Duration(days: 120)),
-      ),
-    ];
-    _cachedCreditReport = const CreditReport(
-      currentScore: 720,
-      fleetHealth: 160,
-      revenueStability: 150,
-      debtRatio: 140,
-      cashReserve: 130,
-      profitHistory: 140,
-      creditTier: 'Gold',
-      maxUnsecuredLoan: 30000000,
-      maxSecuredLoan: 75000000,
-      maxFinancingAmount: 60000000,
-      baseInterestRate: 0.05,
-      unsecuredInterestRate: 0.05,
-      securedInterestRate: 0.04,
-      minLoanAmount: 100000,
-      maxActiveLoans: 3,
-      suggestions: ['Maintain consistent route operations.'],
-    );
-    _cachedCreditHistory = [];
-    _cachedFinancing = [];
-    _emitLoaded();
-  }
-
-  void _mockTakeLoan(double principal, int termWeeks) {
-    final now = DateTime.now();
-    final interestRate = 0.05;
-    final totalRepayable = principal * (1 + interestRate);
-    final weeklyPayment = totalRepayable / termWeeks;
-
-    final newLoan = Loan(
-      id: 'mock-loan-${DateTime.now().millisecondsSinceEpoch}',
-      principal: principal,
-      interestRate: interestRate,
-      remainingBalance: totalRepayable,
-      weeklyPayment: weeklyPayment,
-      status: 'active',
-      loanType: 'unsecured',
-      takenAt: now,
-    );
-
-    _cachedLoans = [newLoan, ..._cachedLoans];
-    emit(
-      BankLoanSuccess(
-        message: 'Loan of \$${principal.toStringAsFixed(0)} approved.',
-        newCash: 15000000 + principal, // Mock cash
-        loans: _cachedLoans,
-      ),
-    );
   }
 
   Future<void> _reloadCachedTransactions() async {
