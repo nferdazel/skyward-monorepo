@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/game_constants.dart';
 import '../../../../core/database/supabase_client.dart';
+import '../../../../core/di/gateway_factory.dart';
 import '../../../../core/utils/app_error.dart';
 import '../../../../core/utils/dev_mode_manager.dart';
 import '../../../../core/utils/safe_cast.dart';
@@ -98,7 +99,7 @@ class SettingsCubit extends Cubit<SettingsState> {
   Future<bool>? _activeReset;
 
   SettingsCubit({SettingsGateway? gateway})
-    : _gateway = gateway ?? const SupabaseSettingsGateway(),
+    : _gateway = gateway ?? GatewayFactory.createSettingsGateway(),
       super(const SettingsState());
 
   void setUiScale(double scale) {

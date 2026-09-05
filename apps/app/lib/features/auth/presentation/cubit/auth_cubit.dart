@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/database/supabase_client.dart';
+import '../../../../core/di/gateway_factory.dart';
 import '../../../../core/utils/dev_mode_manager.dart';
 import '../../data/auth_gateway.dart';
 import '../../domain/user_model.dart';
@@ -13,7 +14,7 @@ class AuthCubit extends Cubit<AuthState> {
   Future<void>? _activeAuth;
 
   AuthCubit({AuthGateway? authGateway})
-    : _authGateway = authGateway ?? SupabaseAuthGateway(),
+    : _authGateway = authGateway ?? GatewayFactory.createAuthGateway(),
       super(const AuthInitial());
 
   Future<void> _executeAuthAction(Future<void> Function() action) async {

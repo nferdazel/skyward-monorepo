@@ -9,6 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart'
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/game_constants.dart';
 import '../../../../core/database/supabase_client.dart';
+import '../../../../core/di/gateway_factory.dart';
 import '../../../../core/realtime/realtime_subscription_bag.dart';
 import '../../../../core/utils/app_error.dart';
 import '../../../../core/utils/dev_mode_manager.dart';
@@ -50,7 +51,7 @@ class SimulationCubit extends Cubit<SimulationState>
   }
 
   SimulationCubit({SimulationGateway? gateway})
-    : _gateway = gateway ?? const SupabaseSimulationGateway(),
+    : _gateway = gateway ?? GatewayFactory.createSimulationGateway(),
       super(
         SimulationState.initial(DateTime.parse('2020-01-01T00:00:00Z'), 0.00),
       );
