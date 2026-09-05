@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/game_constants.dart';
 import '../../../../core/database/supabase_client.dart';
+import '../../../../core/di/gateway_factory.dart';
 import '../../../../core/mixins/simulation_reactive_mixin.dart';
 import '../../../../core/realtime/realtime_subscription_bag.dart';
 import '../../../../core/utils/app_error.dart';
@@ -37,7 +38,7 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
   final FleetGateway _gateway;
 
   FleetCubit({FleetGateway? gateway})
-    : _gateway = gateway ?? SupabaseFleetGateway(),
+    : _gateway = gateway ?? GatewayFactory.createFleetGateway(),
       super(const FleetInitial());
 
   FleetDataState _snapshotState() {

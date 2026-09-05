@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/game_constants.dart';
 import '../../../../core/database/supabase_client.dart';
+import '../../../../core/di/gateway_factory.dart';
 import '../../../../core/mixins/simulation_reactive_mixin.dart';
 import '../../../../core/realtime/realtime_subscription_bag.dart';
 import '../../../../core/utils/app_error.dart';
@@ -35,7 +36,7 @@ class RoutesCubit extends Cubit<RoutesState> with SimulationReactiveMixin {
   Future<void>? _activeAction;
 
   RoutesCubit({RoutesGateway? gateway})
-    : _gateway = gateway ?? const SupabaseRoutesGateway(),
+    : _gateway = gateway ?? GatewayFactory.createRoutesGateway(),
       super(const RoutesInitial());
 
   RoutesDataState _snapshotState() {

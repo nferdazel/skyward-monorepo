@@ -9,6 +9,7 @@ import '../../../../core/utils/app_error.dart';
 import '../../../../core/utils/dev_mode_manager.dart';
 import '../../../../core/utils/perf_debug.dart';
 import '../../../../core/utils/safe_cast.dart';
+import '../../../../core/di/gateway_factory.dart';
 import '../../../simulation/presentation/cubit/simulation_cubit.dart';
 import '../../data/leaderboard_gateway.dart';
 import '../../domain/leaderboard_models.dart';
@@ -33,7 +34,7 @@ class LeaderboardCubit extends Cubit<LeaderboardState>
   Future<void>? _activeRankingsLoad;
 
   LeaderboardCubit({LeaderboardGateway? gateway})
-      : _gateway = gateway ?? const SupabaseLeaderboardGateway(),
+      : _gateway = gateway ?? GatewayFactory.createLeaderboardGateway(),
         super(const LeaderboardInitial());
 
   void setupReactivity(

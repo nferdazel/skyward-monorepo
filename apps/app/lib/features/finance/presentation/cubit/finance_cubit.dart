@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/database/supabase_client.dart';
+import '../../../../core/di/gateway_factory.dart';
 import '../../../../core/mixins/simulation_reactive_mixin.dart';
 import '../../../../core/realtime/realtime_subscription_bag.dart';
 import '../../../../core/utils/app_error.dart';
@@ -42,7 +43,7 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
   };
 
   FinanceCubit({FinanceGateway? gateway})
-    : _gateway = gateway ?? const SupabaseFinanceGateway(),
+    : _gateway = gateway ?? GatewayFactory.createFinanceGateway(),
       super(const FinanceInitial());
 
   FinanceDataState _buildFinanceState(
