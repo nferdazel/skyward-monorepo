@@ -51,6 +51,7 @@ apps/app/"
     echo "==> [skyward-monorepo] deploying Flutter Web (apps/app)" | tee -a "$LOG"
     cd "$MONO_DIR/apps/app"
     podman build \
+      --no-cache \
       --build-arg SUPABASE_URL="https://api.qouver.com/skyward" \
       --build-arg SUPABASE_KEY="REDACTED" \
       -t localhost/skyward-web:local -f Dockerfile.web . 2>&1 | tail -20 | tee -a "$LOG"
