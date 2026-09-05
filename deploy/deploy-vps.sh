@@ -40,17 +40,20 @@ apps/app/"
       podman cp "$CONTAINER_ID:/usr/local/bin/skyward-api" /srv/qouver/apps/skyward/bin/skyward-api
       podman rm "$CONTAINER_ID" >/dev/null
     fi
-    systemctl --user daemon-reload 2>&1 | tee -a "$LOG"
-    systemctl --user restart skyward-api 2>&1 | tee -a "$LOG"
-    sleep 2
-    systemctl --user is-active skyward-api 2>&1 | tee -a "$LOG"
   fi
+  systemctl --user daemon-reload 2>&1 | tee -a "$LOG"
+  systemctl --user restart skyward-api 2>&1 | tee -a "$LOG"
+  sleep 2
+  systemctl --user is-active skyward-api 2>&1 | tee -a "$LOG"
 
   # Deploy Web jika folder apps/app/ berubah atau first run
   if echo "$CHANGED_FILES" | grep -q "^apps/app/" || [ "$IS_FIRST" -eq 1 ]; then
     echo "==> [skyward-monorepo] deploying Flutter Web (apps/app)" | tee -a "$LOG"
     cd "$MONO_DIR/apps/app"
-    podman build -t localhost/skyward-web:local -f Dockerfile.web . 2>&1 | tail -20 | tee -a "$LOG"
+    podman build \
+      --build-arg SUPABASE_URL="https://api.qouver.com/skyward" \
+      --build-arg SUPABASE_KEY="REDACTED" \
+      -t localhost/skyward-web:local -f Dockerfile.web . 2>&1 | tail -20 | tee -a "$LOG"
     mkdir -p /srv/qouver/apps/skyward/web
     rm -rf /srv/qouver/apps/skyward/web/*
     CONTAINER_ID=$(podman create localhost/skyward-web:local)
