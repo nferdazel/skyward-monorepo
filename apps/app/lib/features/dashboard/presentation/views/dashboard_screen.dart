@@ -28,6 +28,8 @@ import '../../../fleet/presentation/views/fleet_view.dart';
 import '../../../leaderboard/presentation/cubit/leaderboard_cubit.dart';
 import '../../../leaderboard/presentation/views/leaderboard_view.dart';
 import '../../../navigation/presentation/cubit/navigation_cubit.dart';
+import '../../../notification/presentation/cubit/notification_cubit.dart';
+import '../../../notification/presentation/cubit/notification_state.dart';
 import '../../../routes/presentation/cubit/routes_cubit.dart';
 import '../../../routes/presentation/cubit/routes_state.dart';
 import '../../../routes/presentation/views/routes_view.dart';
@@ -99,18 +101,13 @@ class _AuthenticatedDashboardShellState
   late final FinanceCubit _financeCubit;
   late final BankCubit _bankCubit;
   late final LazyTabCubit _lazyTabCubit;
+  late final NotificationCubit _notificationCubit;
 
   // ── Onboarding state ──
   bool _showOnboarding = false;
 
-  // ── Notification state ──
-  late List<GameNotification> _notifications;
+  // ── Notification Overlay ──
   OverlayEntry? _notificationOverlayEntry;
-
-  // ── Credit tier tracking for milestone notifications ──
-  String? _lastCreditTier;
-
-  int get _unreadCount => _notifications.where((n) => !n.isRead).length;
 
   @override
   void initState() {
@@ -123,7 +120,7 @@ class _AuthenticatedDashboardShellState
     _financeCubit = FinanceCubit();
     _bankCubit = BankCubit();
     _lazyTabCubit = LazyTabCubit();
-    _notifications = [];
+    _notificationCubit = NotificationCubit();
     _bootstrapForUser(widget.initialUser);
     _checkOnboarding();
   }
@@ -132,20 +129,17 @@ class _AuthenticatedDashboardShellState
     final authState = context.read<AuthCubit>().state;
     if (authState is! AuthAuthenticated) return;
 
-    // If the database says onboarding is done, skip it immediately.
     if (authState.user.onboardingCompleted) {
       if (mounted) setState(() => _showOnboarding = false);
       return;
     }
 
-    // Check local cache (SharedPreferences) as a fast-path.
     final localComplete = await isOnboardingComplete();
     if (localComplete && mounted) {
       setState(() => _showOnboarding = false);
       return;
     }
 
-    // Neither source says complete — show onboarding.
     if (mounted) {
       setState(() => _showOnboarding = true);
     }
@@ -159,7 +153,7 @@ class _AuthenticatedDashboardShellState
     _simulationCubit.startLoop(
       userId: user.id,
       initialGameTime: user.gameCurrentTime,
-      initialCash: 0.0, // Cash is now sourced from bank_accounts via sync
+      initialCash: 0.0,
       initialOperationalStatus: user.operationalStatus,
       initialConsecutiveNegativeDays: user.consecutiveNegativeDays,
       initialRecoveryStreakDays: user.recoveryStreakDays,
@@ -177,7 +171,6 @@ class _AuthenticatedDashboardShellState
       ..loadBankData(user.id)
       ..setupReactivity(_simulationCubit, user.id);
 
-    // Eagerly load finance data so Overview tab KPI cards have data on first render.
     _financeCubit
       ..loadLedger(user.id)
       ..setupReactivity(_simulationCubit, user.id);
@@ -192,7 +185,6 @@ class _AuthenticatedDashboardShellState
 
     switch (index) {
       case 3:
-        // Finance is eager-loaded in bootstrap; no-op here.
         break;
       case 4:
         final financeDataState = _financeCubit.state;
@@ -276,47 +268,50 @@ class _AuthenticatedDashboardShellState
     _financeCubit.close();
     _bankCubit.close();
     _lazyTabCubit.close();
+    _notificationCubit.close();
     super.dispose();
   }
 
-  void _toggleNotificationPanel() {
+  void _toggleNotificationPanel(BuildContext context) {
     if (_notificationOverlayEntry != null) {
       _removeNotificationOverlay();
     } else {
-      _showNotificationOverlay();
+      _showNotificationOverlay(context);
     }
   }
 
-  void _showNotificationOverlay() {
+  void _showNotificationOverlay(BuildContext context) {
     _notificationOverlayEntry = OverlayEntry(
-      builder: (context) {
-        return Stack(
-          children: [
-            // Dismiss barrier
-            GestureDetector(
-              onTap: _removeNotificationOverlay,
-              behavior: HitTestBehavior.translucent,
-              child: Container(color: Colors.transparent),
-            ),
-            // Panel anchored to the right edge, below the TopHud
-            Positioned(
-              right: AppSpacing.md,
-              top: 40 + AppSpacing.xs,
-              child: NotificationPanel(
-                notifications: _notifications,
-                onNotificationTap: (notification) {
-                  setState(() {
-                    final idx = _notifications.indexOf(notification);
-                    if (idx != -1) {
-                      _notifications[idx] = notification.copyWith(isRead: true);
-                    }
-                  });
-                },
-                onMarkAllRead: _markAllRead,
-                onClose: _removeNotificationOverlay,
-              ),
-            ),
-          ],
+      builder: (overlayContext) {
+        return BlocProvider<NotificationCubit>.value(
+          value: _notificationCubit,
+          child: BlocBuilder<NotificationCubit, NotificationState>(
+            builder: (context, notifState) {
+              return Stack(
+                children: [
+                  GestureDetector(
+                    onTap: _removeNotificationOverlay,
+                    behavior: HitTestBehavior.translucent,
+                    child: Container(color: Colors.transparent),
+                  ),
+                  Positioned(
+                    right: AppSpacing.md,
+                    top: 40 + AppSpacing.xs,
+                    child: NotificationPanel(
+                      notifications: notifState.notifications,
+                      onNotificationTap: (notification) {
+                        _notificationCubit.markAsRead(notification);
+                      },
+                      onMarkAllRead: () {
+                        _notificationCubit.markAllRead();
+                      },
+                      onClose: _removeNotificationOverlay,
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
         );
       },
     );
@@ -327,203 +322,6 @@ class _AuthenticatedDashboardShellState
   void _removeNotificationOverlay() {
     _notificationOverlayEntry?.remove();
     _notificationOverlayEntry = null;
-  }
-
-  void _markAllRead() {
-    setState(() {
-      _notifications = [
-        for (final n in _notifications) n.copyWith(isRead: true),
-      ];
-    });
-  }
-
-  void _refreshNotifications() {
-    final newNotifications = <GameNotification>[];
-    final now = DateTime.now();
-
-    // Fleet condition warnings
-    final fleetState = _fleetCubit.state;
-    if (fleetState is FleetLoaded) {
-      for (final aircraft in fleetState.fleet) {
-        if (aircraft.condition < 40) {
-          newNotifications.add(
-            GameNotification(
-              title: 'FLEET CONDITION CRITICAL',
-              message:
-                  '${aircraft.nickname} (${aircraft.model.modelName}) at ${aircraft.condition.toStringAsFixed(0)}% — immediate repair needed.',
-              type: NotificationType.error,
-              timestamp: now,
-            ),
-          );
-        } else if (aircraft.condition < 60) {
-          newNotifications.add(
-            GameNotification(
-              title: 'FLEET CONDITION WARNING',
-              message:
-                  '${aircraft.nickname} (${aircraft.model.modelName}) at ${aircraft.condition.toStringAsFixed(0)}% — schedule maintenance.',
-              type: NotificationType.warning,
-              timestamp: now,
-            ),
-          );
-        }
-      }
-    }
-
-    // Cash runway warnings
-    final simState = _simulationCubit.state;
-    if (simState.cashBalance < 0) {
-      newNotifications.add(
-        GameNotification(
-          title: 'NEGATIVE CASH BALANCE',
-          message:
-              'Cash at \$${AppFormatters.currency.format(simState.cashBalance)}. Distress status imminent.',
-          type: NotificationType.error,
-          timestamp: now,
-        ),
-      );
-    }
-
-    // Route warnings
-    final routesState = _routesCubit.state;
-    if (routesState is RoutesLoaded) {
-      final unassigned = routesState.routes
-          .where((r) => r.assignedAircraftId == null)
-          .length;
-      if (unassigned > 0) {
-        newNotifications.add(
-          GameNotification(
-            title: 'UNASSIGNED ROUTES',
-            message: '$unassigned route(s) have no aircraft assigned.',
-            type: NotificationType.warning,
-            timestamp: now,
-          ),
-        );
-      }
-    }
-
-    // Credit tier milestone notifications
-    final bankState = _bankCubit.state;
-    final creditReport =
-        bankState is BankLoaded ? bankState.creditReport : null;
-    if (creditReport != null) {
-      final currentTier = creditReport.creditTier;
-
-      if (_lastCreditTier != null && currentTier != _lastCreditTier) {
-        const tierOrder = [
-          'Subprime',
-          'Standard',
-          'Silver',
-          'Gold',
-          'Platinum',
-        ];
-        final tierIndex = tierOrder.indexOf(currentTier);
-        final lastTierIndex = tierOrder.indexOf(_lastCreditTier!);
-
-        if (tierIndex > lastTierIndex) {
-          final messages = {
-            'Platinum': (
-              'CREDIT UPGRADE',
-              'You reached Platinum tier! Lowest interest rates unlocked.',
-              NotificationType.success,
-            ),
-            'Gold': (
-              'CREDIT UPGRADE',
-              'You reached Gold tier! Improved loan terms available.',
-              NotificationType.success,
-            ),
-            'Silver': (
-              'CREDIT UPGRADE',
-              'You reached Silver tier! Better financing options unlocked.',
-              NotificationType.success,
-            ),
-            'Standard': (
-              'CREDIT UPGRADE',
-              'You reached Standard tier. Keep building your credit.',
-              NotificationType.info,
-            ),
-          };
-          final msg = messages[currentTier];
-          if (msg != null) {
-            newNotifications.add(
-              GameNotification(
-                title: msg.$1,
-                message: msg.$2,
-                type: msg.$3,
-                timestamp: now,
-              ),
-            );
-          }
-        } else if (tierIndex < lastTierIndex) {
-          newNotifications.add(
-            GameNotification(
-              title: 'CREDIT DOWNGRADE',
-              message:
-                  'Credit tier dropped to $currentTier. Review financial health.',
-              type: NotificationType.warning,
-              timestamp: now,
-            ),
-          );
-        }
-      }
-      _lastCreditTier = currentTier;
-    }
-
-    // Loan default warnings
-    if (bankState is BankLoaded) {
-      for (final loan in bankState.loans.where(
-        (l) => l.isActive && l.missedPayments > 0,
-      )) {
-        newNotifications.add(
-          GameNotification(
-            title: loan.missedPayments >= 3
-                ? 'LOAN DEFAULT RISK'
-                : 'LOAN PAYMENT MISSED',
-            message:
-                'Loan of \$${AppFormatters.currency.format(loan.principal)} has ${loan.missedPayments} missed payment(s). Late fees accumulating.',
-            type: loan.missedPayments >= 3
-                ? NotificationType.error
-                : NotificationType.warning,
-            timestamp: now,
-          ),
-        );
-      }
-    }
-
-    // Sort by severity (error first, then warning, then info)
-    newNotifications.sort((a, b) => a.type.index.compareTo(b.type.index));
-
-    // Play notification sound if new notifications arrived
-    if (newNotifications.isNotEmpty &&
-        (newNotifications.length != _notifications.length ||
-            !_notificationsAreIdentical(_notifications, newNotifications))) {}
-
-    // Defer setState to after the current frame to avoid
-    // "setState() or markNeedsBuild() called during build" when
-    // multiple BlocListeners trigger _refreshNotifications in the
-    // same frame as a BlocBuilder rebuild.
-    if (mounted &&
-        !_notificationsAreIdentical(_notifications, newNotifications)) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          setState(() {
-            _notifications = newNotifications;
-          });
-        }
-      });
-    }
-  }
-
-  bool _notificationsAreIdentical(
-    List<GameNotification> a,
-    List<GameNotification> b,
-  ) {
-    if (a.length != b.length) return false;
-    for (var i = 0; i < a.length; i++) {
-      if (a[i].title != b[i].title || a[i].message != b[i].message) {
-        return false;
-      }
-    }
-    return true;
   }
 
   @override
@@ -550,12 +348,12 @@ class _AuthenticatedDashboardShellState
         BlocProvider<FinanceCubit>.value(value: _financeCubit),
         BlocProvider<BankCubit>.value(value: _bankCubit),
         BlocProvider<LazyTabCubit>.value(value: _lazyTabCubit),
+        BlocProvider<NotificationCubit>.value(value: _notificationCubit),
       ],
       child: MultiBlocListener(
         listeners: [
           BlocListener<NavigationCubit, NavigationState>(
-            listenWhen: (prev, cur) =>
-                prev.activeIndex != cur.activeIndex,
+            listenWhen: (prev, cur) => prev.activeIndex != cur.activeIndex,
             listener: (context, navState) {
               _ensureTabReady(
                 navState.activeIndex,
@@ -567,13 +365,23 @@ class _AuthenticatedDashboardShellState
           BlocListener<FleetCubit, FleetState>(
             listenWhen: (prev, cur) => cur is FleetLoaded,
             listener: (context, state) {
-              if (state is FleetLoaded) _refreshNotifications();
+              _notificationCubit.refreshNotifications(
+                fleetState: state,
+                simState: _simulationCubit.state,
+                routesState: _routesCubit.state,
+                bankState: _bankCubit.state,
+              );
             },
           ),
           BlocListener<RoutesCubit, RoutesState>(
             listenWhen: (prev, cur) => cur is RoutesLoaded,
             listener: (context, state) {
-              if (state is RoutesLoaded) _refreshNotifications();
+              _notificationCubit.refreshNotifications(
+                fleetState: _fleetCubit.state,
+                simState: _simulationCubit.state,
+                routesState: state,
+                bankState: _bankCubit.state,
+              );
             },
           ),
           BlocListener<BankCubit, BankState>(
@@ -582,7 +390,25 @@ class _AuthenticatedDashboardShellState
                 cur is BankLoanSuccess ||
                 cur is BankRefinanceSuccess,
             listener: (context, state) {
-              _refreshNotifications();
+              _notificationCubit.refreshNotifications(
+                fleetState: _fleetCubit.state,
+                simState: _simulationCubit.state,
+                routesState: _routesCubit.state,
+                bankState: state,
+              );
+            },
+          ),
+          BlocListener<SimulationCubit, SimulationState>(
+            listenWhen: (prev, cur) =>
+                prev.cashBalance != cur.cashBalance ||
+                prev.gameTime != cur.gameTime,
+            listener: (context, state) {
+              _notificationCubit.refreshNotifications(
+                fleetState: _fleetCubit.state,
+                simState: state,
+                routesState: _routesCubit.state,
+                bankState: _bankCubit.state,
+              );
             },
           ),
         ],
@@ -715,32 +541,34 @@ class _AuthenticatedDashboardShellState
               Expanded(
                 child: Column(
                   children: [
-                    // Status bar
                     BlocBuilder<SimulationCubit, SimulationState>(
                       buildWhen: (previous, current) =>
                           previous.gameTime != current.gameTime ||
                           previous.cashBalance != current.cashBalance ||
                           previous.isSyncing != current.isSyncing,
                       builder: (context, simState) {
-                        return TopHud(
-                          authState: authState,
-                          simState: simState,
-                          currencyFormat: currencyFormat,
-                          dateFormat: dateFormat,
-                          unreadCount: _unreadCount,
-                          onNotificationTap: _toggleNotificationPanel,
-                          onOpenSearch: _openCommandPalette,
+                        return BlocBuilder<NotificationCubit, NotificationState>(
+                          builder: (context, notifState) {
+                            return TopHud(
+                              authState: authState,
+                              simState: simState,
+                              currencyFormat: currencyFormat,
+                              dateFormat: dateFormat,
+                              unreadCount: notifState.unreadCount,
+                              onNotificationTap: () =>
+                                  _toggleNotificationPanel(context),
+                              onOpenSearch: _openCommandPalette,
+                            );
+                          },
                         );
                       },
                     ),
-                    // Network error status bar
                     BlocBuilder<SimulationCubit, SimulationState>(
                       buildWhen: (previous, current) =>
                           previous.errorMessage != current.errorMessage,
                       builder: (context, simState) =>
                           _buildNetworkStatusBar(simState),
                     ),
-                    // Content area
                     Expanded(
                       child: Container(
                         padding: EdgeInsets.all(AppSpacing.pagePadding * scale),
@@ -783,20 +611,16 @@ class _AuthenticatedDashboardShellState
               ),
             ],
           ),
-          // Dynamic Sonner Toast Stack
-          SkywardSonner(
-            notifications: _notifications,
-            onDismiss: (n) => setState(() => _notifications.remove(n)),
-            onTap: (n) {
-              setState(() {
-                final idx = _notifications.indexOf(n);
-                if (idx != -1) {
-                  _notifications[idx] = n.copyWith(isRead: true);
-                }
-              });
+          BlocBuilder<NotificationCubit, NotificationState>(
+            builder: (context, notifState) {
+              return SkywardSonner(
+                notifications: notifState.notifications,
+                onDismiss: (n) =>
+                    context.read<NotificationCubit>().dismissNotification(n),
+                onTap: (n) => context.read<NotificationCubit>().markAsRead(n),
+              );
             },
           ),
-          // Onboarding overlay for first-time users
           if (_showOnboarding)
             OnboardingOverlay(
               onComplete: () => setState(() => _showOnboarding = false),
