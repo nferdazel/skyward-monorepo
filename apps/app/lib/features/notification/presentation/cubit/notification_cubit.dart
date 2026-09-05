@@ -220,8 +220,25 @@ class NotificationCubit extends Cubit<NotificationState> {
       }
     }
 
-    // Sort by severity (error first, then warning, then info)
-    newNotifications.sort((a, b) => a.type.index.compareTo(b.type.index));
+    // Sort by severity (error first, then warning, then event, success, info)
+    int severityRank(NotificationType type) {
+      switch (type) {
+        case NotificationType.error:
+          return 0;
+        case NotificationType.warning:
+          return 1;
+        case NotificationType.event:
+          return 2;
+        case NotificationType.success:
+          return 3;
+        case NotificationType.info:
+          return 4;
+      }
+    }
+
+    newNotifications.sort(
+      (a, b) => severityRank(a.type).compareTo(severityRank(b.type)),
+    );
 
     if (!_areNotificationsIdentical(state.notifications, newNotifications) ||
         state.lastCreditTier != currentLastCreditTier) {
