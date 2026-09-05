@@ -10,6 +10,7 @@ import '../../../../core/di/gateway_factory.dart';
 import '../../../../core/mixins/simulation_reactive_mixin.dart';
 import '../../../../core/realtime/realtime_subscription_bag.dart';
 import '../../../../core/utils/app_error.dart';
+import '../../../../core/utils/cubit_action_runner.dart';
 import '../../../../core/utils/dev_mode_manager.dart';
 import '../../../../core/utils/perf_debug.dart';
 import '../../../../core/utils/safe_cast.dart';
@@ -19,7 +20,8 @@ import '../../data/routes_gateway.dart';
 import '../../domain/route_models.dart';
 import 'routes_state.dart';
 
-class RoutesCubit extends Cubit<RoutesState> with SimulationReactiveMixin {
+class RoutesCubit extends Cubit<RoutesState>
+    with SimulationReactiveMixin, CubitActionRunner<RoutesState> {
   final RoutesGateway _gateway;
   List<UserRoute> _cachedRoutes = [];
   List<Airport> _cachedAirports = [];
@@ -33,7 +35,6 @@ class RoutesCubit extends Cubit<RoutesState> with SimulationReactiveMixin {
       RealtimeSubscriptionBag();
   Timer? _realtimeRefreshDebounce;
   Future<void>? _activeLoad;
-  Future<void>? _activeAction;
 
   RoutesCubit({RoutesGateway? gateway})
     : _gateway = gateway ?? GatewayFactory.createRoutesGateway(),
@@ -77,80 +78,70 @@ class RoutesCubit extends Cubit<RoutesState> with SimulationReactiveMixin {
     required String userId,
     Map<String, dynamic> rpcParams = const {},
   }) async {
-    if (_activeAction != null) return false;
-    final completer = Completer<void>();
-    _activeAction = completer.future;
     final snapshot = _snapshotState();
-    try {
-      emit(
-        RoutesActionLoading(
-          routes: snapshot.routes,
-          airports: snapshot.airports,
-          availableAircraft: snapshot.availableAircraft,
-          plannerMaintenancePreview: snapshot.plannerMaintenancePreview,
-          adjustmentMaintenancePreview: snapshot.adjustmentMaintenancePreview,
-        ),
-      );
+    return runCubitAction<List<dynamic>>(
+      actionName: actionName,
+      rpcParams: rpcParams,
+      fallbackMessage: failureMessage,
+      loadingState: RoutesActionLoading(
+        routes: snapshot.routes,
+        airports: snapshot.airports,
+        availableAircraft: snapshot.availableAircraft,
+        plannerMaintenancePreview: snapshot.plannerMaintenancePreview,
+        adjustmentMaintenancePreview: snapshot.adjustmentMaintenancePreview,
+      ),
+      action: rpcCall,
+      onSuccess: (response) async {
+        final result = response.isNotEmpty
+            ? toSafeMap(response[0])
+            : <String, dynamic>{};
+        final success = result['success'] as bool? ?? false;
+        final message = result['message'] as String? ?? failureMessage;
 
-      final List<dynamic> response = toSafeList(await rpcCall());
-
-      final result = response.isNotEmpty
-          ? toSafeMap(response[0])
-          : <String, dynamic>{};
-      final success = result['success'] as bool? ?? false;
-      final message = result['message'] as String? ?? failureMessage;
-
-      if (success) {
-        if (isClosed) return false;
-        emit(
-          RoutesActionSuccess(
-            message: message,
-            routes: snapshot.routes,
-            airports: snapshot.airports,
-            availableAircraft: snapshot.availableAircraft,
-            plannerMaintenancePreview: snapshot.plannerMaintenancePreview,
-            adjustmentMaintenancePreview: snapshot.adjustmentMaintenancePreview,
-          ),
-        );
-        await loadRoutesAndData(userId, silent: true);
-        return true;
-      } else {
-        SupabaseManager.logRpcFailure(actionName, rpcParams, message);
-        if (isClosed) return false;
-        emit(
-          RoutesError(
-            message: message,
-            hasData: true,
-            routes: snapshot.routes,
-            airports: snapshot.airports,
-            availableAircraft: snapshot.availableAircraft,
-            plannerMaintenancePreview: snapshot.plannerMaintenancePreview,
-            adjustmentMaintenancePreview: snapshot.adjustmentMaintenancePreview,
-          ),
-        );
-        _emitLoaded();
-        return false;
-      }
-    } catch (e, stack) {
-      SupabaseManager.logError(actionName, e, stack);
-      if (isClosed) return false;
-      emit(
-        RoutesError(
-          message: AppError.extractMessage(e, failureMessage),
-          hasData: true,
-          routes: snapshot.routes,
-          airports: snapshot.airports,
-          availableAircraft: snapshot.availableAircraft,
-          plannerMaintenancePreview: snapshot.plannerMaintenancePreview,
-          adjustmentMaintenancePreview: snapshot.adjustmentMaintenancePreview,
-        ),
-      );
-      _emitLoaded();
-      return false;
-    } finally {
-      completer.complete();
-      _activeAction = null;
-    }
+        if (success) {
+          if (isClosed) return false;
+          emit(
+            RoutesActionSuccess(
+              message: message,
+              routes: snapshot.routes,
+              airports: snapshot.airports,
+              availableAircraft: snapshot.availableAircraft,
+              plannerMaintenancePreview: snapshot.plannerMaintenancePreview,
+              adjustmentMaintenancePreview: snapshot.adjustmentMaintenancePreview,
+            ),
+          );
+          await loadRoutesAndData(userId, silent: true);
+          return true;
+        } else {
+          SupabaseManager.logRpcFailure(actionName, rpcParams, message);
+          if (!isClosed) {
+            emit(
+              RoutesError(
+                message: message,
+                hasData: true,
+                routes: snapshot.routes,
+                airports: snapshot.airports,
+                availableAircraft: snapshot.availableAircraft,
+                plannerMaintenancePreview: snapshot.plannerMaintenancePreview,
+                adjustmentMaintenancePreview: snapshot.adjustmentMaintenancePreview,
+              ),
+            );
+            _emitLoaded();
+          }
+          return false;
+        }
+      },
+      onErrorState: (errorMessage) => RoutesError(
+        message: errorMessage,
+        hasData: true,
+        routes: snapshot.routes,
+        airports: snapshot.airports,
+        availableAircraft: snapshot.availableAircraft,
+        plannerMaintenancePreview: snapshot.plannerMaintenancePreview,
+        adjustmentMaintenancePreview: snapshot.adjustmentMaintenancePreview,
+      ),
+      onAfterError: _emitLoaded,
+    );
   }
 
   void updatePlannerMaintenancePreview({

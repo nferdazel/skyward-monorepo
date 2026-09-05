@@ -10,6 +10,7 @@ import '../../../../core/di/gateway_factory.dart';
 import '../../../../core/mixins/simulation_reactive_mixin.dart';
 import '../../../../core/realtime/realtime_subscription_bag.dart';
 import '../../../../core/utils/app_error.dart';
+import '../../../../core/utils/cubit_action_runner.dart';
 import '../../../../core/utils/dev_mode_manager.dart';
 import '../../../../core/utils/perf_debug.dart';
 import '../../../../core/utils/safe_cast.dart';
@@ -20,7 +21,8 @@ import 'fleet_state.dart';
 
 typedef FleetBalanceCallback = FutureOr<void> Function(double newCashBalance);
 
-class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
+class FleetCubit extends Cubit<FleetState>
+    with SimulationReactiveMixin, CubitActionRunner<FleetState> {
   // Local cache to maintain state during action loads
   List<UserFleetAircraft> _cachedFleet = [];
   List<AircraftModel> _cachedCatalog = [];
@@ -34,7 +36,6 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
   bool _suppressNextFleetRealtimeReload = false;
   Timer? _realtimeRefreshDebounce;
   Future<void>? _activeLoad;
-  Future<void>? _activeAction;
   final FleetGateway _gateway;
 
   FleetCubit({FleetGateway? gateway})
@@ -81,101 +82,67 @@ class FleetCubit extends Cubit<FleetState> with SimulationReactiveMixin {
     required Future<bool> Function(
       Map<String, dynamic> result,
       FleetDataState snapshot,
-    )
-    onSuccess,
+    ) onSuccess,
     String errorPrefix = '',
     Map<String, dynamic> rpcParams = const {},
   }) async {
-    if (_activeAction != null) return false;
-    final completer = Completer<void>();
-    _activeAction = completer.future;
     final snapshot = _snapshotState();
-    try {
-      emit(
-        FleetActionLoading(
-          fleet: snapshot.fleet,
-          catalog: snapshot.catalog,
-          selectedManufacturers: snapshot.selectedManufacturers,
-          selectedCategories: snapshot.selectedCategories,
-          selectedRangeBrackets: snapshot.selectedRangeBrackets,
-          sortBy: snapshot.sortBy,
-        ),
-      );
+    return runCubitAction<List<dynamic>>(
+      actionName: actionName,
+      rpcParams: rpcParams,
+      fallbackMessage: errorPrefix,
+      loadingState: FleetActionLoading(
+        fleet: snapshot.fleet,
+        catalog: snapshot.catalog,
+        selectedManufacturers: snapshot.selectedManufacturers,
+        selectedCategories: snapshot.selectedCategories,
+        selectedRangeBrackets: snapshot.selectedRangeBrackets,
+        sortBy: snapshot.sortBy,
+      ),
+      action: rpcCall,
+      onSuccess: (response) async {
+        final result = toSafeMap(response[0]);
+        final success = result['success'] as bool? ?? false;
+        final message = result['message'] as String?;
 
-      final List<dynamic> response = await rpcCall();
-
-      if (response.isEmpty) {
-        SupabaseManager.logRpcFailure(
-          actionName,
-          rpcParams,
-          AppStrings.dbEmptyResponse,
-        );
-        if (isClosed) return false;
-        emit(
-          FleetError(
-            message: AppStrings.dbEmptyResponse,
-            hasData: true,
-            fleet: snapshot.fleet,
-            catalog: snapshot.catalog,
-            selectedManufacturers: snapshot.selectedManufacturers,
-            selectedCategories: snapshot.selectedCategories,
-            selectedRangeBrackets: snapshot.selectedRangeBrackets,
-            sortBy: snapshot.sortBy,
-          ),
-        );
-        _emitLoaded();
-        return false;
-      }
-
-      final result = toSafeMap(response[0]);
-      final success = result['success'] as bool? ?? false;
-      final message = result['message'] as String?;
-
-      if (success) {
-        return await onSuccess(result, snapshot);
-      } else {
-        SupabaseManager.logRpcFailure(
-          actionName,
-          rpcParams,
-          message ?? failureMessage,
-        );
-        if (isClosed) return false;
-        emit(
-          FleetError(
-            message: message ?? failureMessage,
-            hasData: true,
-            fleet: snapshot.fleet,
-            catalog: snapshot.catalog,
-            selectedManufacturers: snapshot.selectedManufacturers,
-            selectedCategories: snapshot.selectedCategories,
-            selectedRangeBrackets: snapshot.selectedRangeBrackets,
-            sortBy: snapshot.sortBy,
-          ),
-        );
-        _emitLoaded();
-        return false;
-      }
-    } catch (e, stack) {
-      SupabaseManager.logError(actionName, e, stack);
-      if (isClosed) return false;
-      emit(
-        FleetError(
-          message: AppError.extractMessage(e, errorPrefix),
-          hasData: true,
-          fleet: snapshot.fleet,
-          catalog: snapshot.catalog,
-          selectedManufacturers: snapshot.selectedManufacturers,
-          selectedCategories: snapshot.selectedCategories,
-          selectedRangeBrackets: snapshot.selectedRangeBrackets,
-          sortBy: snapshot.sortBy,
-        ),
-      );
-      _emitLoaded();
-      return false;
-    } finally {
-      completer.complete();
-      _activeAction = null;
-    }
+        if (success) {
+          return await onSuccess(result, snapshot);
+        } else {
+          SupabaseManager.logRpcFailure(
+            actionName,
+            rpcParams,
+            message ?? failureMessage,
+          );
+          if (!isClosed) {
+            emit(
+              FleetError(
+                message: message ?? failureMessage,
+                hasData: true,
+                fleet: snapshot.fleet,
+                catalog: snapshot.catalog,
+                selectedManufacturers: snapshot.selectedManufacturers,
+                selectedCategories: snapshot.selectedCategories,
+                selectedRangeBrackets: snapshot.selectedRangeBrackets,
+                sortBy: snapshot.sortBy,
+              ),
+            );
+            _emitLoaded();
+          }
+          return false;
+        }
+      },
+      onErrorState: (errorMessage) => FleetError(
+        message: errorMessage,
+        hasData: true,
+        fleet: snapshot.fleet,
+        catalog: snapshot.catalog,
+        selectedManufacturers: snapshot.selectedManufacturers,
+        selectedCategories: snapshot.selectedCategories,
+        selectedRangeBrackets: snapshot.selectedRangeBrackets,
+        sortBy: snapshot.sortBy,
+      ),
+      onAfterError: _emitLoaded,
+    );
   }
 
   void setupReactivity(SimulationCubit simCubit, String userId) {

@@ -10,6 +10,7 @@ import '../../../../core/di/gateway_factory.dart';
 import '../../../../core/mixins/simulation_reactive_mixin.dart';
 import '../../../../core/realtime/realtime_subscription_bag.dart';
 import '../../../../core/utils/app_error.dart';
+import '../../../../core/utils/cubit_action_runner.dart';
 import '../../../../core/utils/dev_mode_manager.dart';
 import '../../../../core/utils/safe_cast.dart';
 import '../../../simulation/presentation/cubit/simulation_cubit.dart';
@@ -20,7 +21,8 @@ import '../../domain/credit_report_model.dart';
 import '../../domain/loan_model.dart';
 import 'bank_state.dart';
 
-class BankCubit extends Cubit<BankState> with SimulationReactiveMixin {
+class BankCubit extends Cubit<BankState>
+    with SimulationReactiveMixin, CubitActionRunner<BankState> {
   final BankGateway _gateway;
   final RealtimeSubscriptionBag _realtimeSubscriptions =
       RealtimeSubscriptionBag();
