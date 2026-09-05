@@ -19,7 +19,7 @@ satu-satunya backend. Lihat keputusan arsitektur & tasklist di repo `skyward`:
 - Go 1.26, stdlib `net/http` (Go 1.22+ routing) — tanpa framework HTTP
 - `pgx/v5` untuk Postgres
 - JWT HS256 diimplementasikan dengan stdlib (`internal/auth`), tanpa dependency eksternal
-- Password: **argon2id** (direncanakan Fase 3 — butuh `golang.org/x/crypto`)
+- Password: **argon2id** (implemented di `internal/auth`)
 
 ## Struktur
 
@@ -45,13 +45,20 @@ scripts/deploy.sh        # setup/update ke VPS
 
 ## Endpoint (status)
 
+Terakhir diverifikasi langsung (HTTP checks) pada 2026-09-05. Semua grup di bawah
+**implemented** di `cmd/server/main.go` — bukan stub.
+
 | Group | Status |
 |---|---|
 | `/healthz` `/readyz` `/version` | ✅ implemented |
-| `/auth/*` (register/login/me) | ⏳ stub — Fase 3 |
-| resource game (`/fleet`, `/routes`, `/finance`, `/bank`, ...) | ⏳ stub 501 — Fase 4-5 |
-| `/admin/worker/status` | ✅ implemented (worker status) |
-| WS `/ws` | ⏳ Fase 7 |
+| `/auth/*` (`register`, `login`, `me`) | ✅ implemented — argon2id + JWT HS256 stdlib |
+| read resource (`/fleet`, `/routes`, `/finance/*`, `/bank/*`, `/leaderboard`, `/airports`, `/game-config`, `/simulation/state`) | ✅ implemented — semua di balik `AuthGuard` |
+| mutation resource (`/fleet/*`, `/routes/*`, `/settings`, `/bank/*`, `/simulation/sync`, `/simulation/onboarding`, `/account`) | ✅ implemented — semua di balik `AuthGuard` |
+| `/admin/*` (worker status, world tick, reset password) | ✅ implemented — di balik `AdminGuard` |
+| WS `/ws` | ✅ implemented — JWT via query param `?token=` |
+
+> ⚠️ Status frontend: Flutter (`apps/app`) masih 100% pakai Supabase SDK dan BELUM
+> memanggil kontrak REST/WS ini. Rencana koneksi ada di `docs/plans/flutter-go-api-connection-plan.md`.
 
 ## Menjalankan
 
@@ -65,18 +72,27 @@ Prod: env dari podman `EnvironmentFile` (mode 600), bukan `.env`.
 
 ## Deploy
 
-Pola identik majadu-api: CI build → push `ghcr.io/nferdazel/skyward-api:{dev,main}`
-→ VPS rootless podman + quadlet pull & run → Caddy `api.qouver.com` path routing:
+Instansi **dev sudah dihapus** (2026-09-05) — hanya prod yang ada.
+
+Pipeline aktual (bukan GitHub Actions — tidak ada `.github/workflows` di repo ini):
 
 ```
-dev  → https://api.qouver.com/skyward-dev  → 127.0.0.1:8091 (DB skyward_dev)
-prod → https://api.qouver.com/skyward      → 127.0.0.1:8090 (DB skyward)
+push origin/main → GitHub webhook `skyward-monorepo` (HMAC) → VPS webhook service (:9000)
+→ /srv/qouver/apps/skyward/scripts/deploy-vps.sh
+  → git fetch origin main && git reset --hard origin/main
+  → apps/api/ berubah?  podman build → native binary → restart skyward-api (user unit)
+  → apps/app/ berubah?  podman build (Dockerfile.web, args dari env VPS mode 600)
+                        → copy ke /srv/qouver/apps/skyward/web/ + restorecon
+prod → https://api.qouver.com/skyward  → 127.0.0.1:8090 (DB skyward)
+web  → https://skyward.qouver.com       → file_server /srv/qouver/apps/skyward/web
 ```
 
-Langkah sekali (setup): `./scripts/deploy.sh setup dev` (lihat `scripts/deploy.sh`).
-
-Migrations DB disimpan di VPS: `/srv/qouver/apps/skyward/migrations/` (pola majadu —
-tidak di repo GitHub). Baseline sumber ada di repo skyward: `migrations/00_baseline.sql`.
+Catatan:
+- `skyward-api` berjalan sebagai **native binary** (systemd user unit `skyward-api.service`),
+  bukan container. `deploy/skyward-api.container` (GHCR) masih **aspirational** — belum dipakai.
+- `scripts/deploy.sh` deprecated (2026-09-03) — deploy otomatis via webhook saja.
+- Migrations DB disimpan di VPS: `/srv/qouver/apps/skyward/migrations/` (pola majadu —
+  tidak di repo GitHub). Baseline sumber ada di repo skyward: `migrations/00_baseline.sql`.
 
 ## License
 
