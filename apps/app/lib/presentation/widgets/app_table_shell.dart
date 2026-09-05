@@ -15,14 +15,16 @@ class AppTableShell extends StatelessWidget {
     return Semantics(
       container: true,
       label: label ?? 'Data table',
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppTheme.surface,
-          borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
-          border: Border.all(color: AppTheme.border, width: 0.5),
+      child: RepaintBoundary(
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppTheme.surface,
+            borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
+            border: Border.all(color: AppTheme.border, width: 0.5),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: child,
         ),
-        clipBehavior: Clip.antiAlias,
-        child: child,
       ),
     );
   }
