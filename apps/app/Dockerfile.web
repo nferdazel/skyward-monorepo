@@ -5,7 +5,10 @@ COPY pubspec.yaml pubspec.lock ./
 RUN git config --global --add safe.directory /app && flutter pub get
 
 COPY . .
-RUN touch .env && \
+ARG SUPABASE_URL=https://api.qouver.com/skyward
+ARG SUPABASE_KEY=REDACTED
+
+RUN printf "SUPABASE_URL=%s\nSUPABASE_KEY=%s\n" "$SUPABASE_URL" "$SUPABASE_KEY" > .env && \
     dart run build_runner build --delete-conflicting-outputs && \
     flutter build web --release
 
