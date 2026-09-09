@@ -39,6 +39,7 @@ apps/app/"
       GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo none)
       GIT_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
       podman build \
+        --no-cache \
         --build-arg VERSION="$GIT_VERSION" \
         --build-arg COMMIT="$GIT_COMMIT" \
         --build-arg DATE="$GIT_DATE" \
