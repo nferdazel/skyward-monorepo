@@ -6,7 +6,6 @@ import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/game_constants.dart';
 import '../../../../core/mixins/simulation_reactive_mixin.dart';
 import '../../../../core/utils/app_error.dart';
-import '../../../../core/utils/dev_mode_manager.dart';
 import '../../../../core/utils/perf_debug.dart';
 import '../../../../core/utils/safe_cast.dart';
 import '../../../../core/di/gateway_factory.dart';
@@ -339,8 +338,8 @@ class LeaderboardCubit extends Cubit<LeaderboardState>
         : null;
 
     try {
-      if (DevModeManager.isMockId(id) ||
-          !DevModeManager.isValidUuid(id)) {
+      // Bot / non-UUID competitor ids fall back to locally generated insights.
+      if (id.startsWith('mock') || !_isValidUuid(id)) {
         final mockIns = isBot && liveEntry != null
             ? _generateDynamicBotInsights(liveEntry)
             : _getMockInsights(
@@ -651,5 +650,14 @@ class LeaderboardCubit extends Cubit<LeaderboardState>
       fleetBreakdown: {'Airbus A320neo (lease)': 1},
       networkRoutes: ['CGK-SIN'],
     );
+  }
+
+  static bool _isValidUuid(String id) {
+    if (id.isEmpty) return false;
+    final uuidRegex = RegExp(
+      r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+      caseSensitive: false,
+    );
+    return uuidRegex.hasMatch(id);
   }
 }
