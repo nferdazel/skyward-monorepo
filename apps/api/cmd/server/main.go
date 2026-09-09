@@ -135,6 +135,7 @@ func registerRoutes(ctx context.Context, mux *http.ServeMux, logger *slog.Logger
 	authHandler := &handler.AuthHandler{Store: st, JWTSecret: []byte(cfg.JWTSecret)}
 	mux.Handle("POST /auth/register", http.HandlerFunc(authHandler.Register))
 	mux.Handle("POST /auth/login", http.HandlerFunc(authHandler.Login))
+	mux.Handle("POST /auth/reset-password", http.HandlerFunc(authHandler.ResetPassword))
 	mux.Handle("GET /auth/me", middleware.AuthGuard([]byte(cfg.JWTSecret), authHandler.Me))
 
 	// Read surface (Fase 4) — semua di balik AuthGuard.

@@ -215,23 +215,25 @@ void main() {
       expect(await store.read(), isNull);
     });
 
-    test('resetPassword melempar pesan belum tersedia', () async {
+    test('resetPassword mengirim POST /auth/reset-password dengan payload valid', () async {
       final gateway = GoAuthGateway(
         apiClient: ApiClient(
           baseUrl: 'https://api.example.com/skyward',
           tokenStore: _FakeTokenStore(),
-          httpClient: MockClient((request) async => _json({}, 200)),
+          httpClient: MockClient((request) async {
+            expect(request.method, 'POST');
+            expect(request.url.path, '/skyward/auth/reset-password');
+            final body = jsonDecode(request.body) as Map<String, dynamic>;
+            expect(body['username'], 'adi');
+            expect(body['newPassword'], 'new-pass-123');
+            return _json({'success': true}, 200);
+          }),
         ),
       );
-      await expectLater(
-        gateway.resetPassword(username: 'adi', newPassword: 'x'),
-        throwsA(
-          isA<AuthGatewayException>().having(
-            (e) => e.message,
-            'message',
-            contains('not available'),
-          ),
-        ),
+      await gateway.resetPassword(
+        username: 'Adi',
+        newPassword: 'new-pass-123',
+        companyName: 'Adi Air',
       );
     });
   });

@@ -142,3 +142,15 @@ func (s *Store) NormalizeUsername(ctx context.Context, username string) (string,
 	}
 	return *out, nil
 }
+
+// UpdatePasswordHash — update password_hash user.
+func (s *Store) UpdatePasswordHash(ctx context.Context, userID, hash string) error {
+	tag, err := s.pool.Exec(ctx, `UPDATE users SET password_hash = $1 WHERE id = $2`, hash, userID)
+	if err != nil {
+		return fmt.Errorf("store: update password hash: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrUserNotFound
+	}
+	return nil
+}
