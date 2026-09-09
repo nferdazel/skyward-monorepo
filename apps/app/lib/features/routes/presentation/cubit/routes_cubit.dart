@@ -295,8 +295,26 @@ class RoutesCubit extends Cubit<RoutesState>
 
       // 2. Fetch user's active routes, joining origin & destination airports plus assigned aircraft
       final List<dynamic> routesResponse = await _gateway.loadRoutes(userId);
-
-      final routes = routesResponse.map((r) => UserRoute.fromMap(r)).toList();
+      final airportsMap = {for (final a in airports) a.iata: a};
+      final rawRoutes = routesResponse.map((r) => UserRoute.fromMap(r)).toList();
+      final routes = rawRoutes.map((r) {
+        final origin = airportsMap[r.originIata] ?? r.origin;
+        final dest = airportsMap[r.destinationIata] ?? r.destination;
+        final dist = r.distanceKm > 0 ? r.distanceKm : origin.distanceTo(dest);
+        return UserRoute(
+          id: r.id,
+          originIata: r.originIata,
+          destinationIata: r.destinationIata,
+          distanceKm: dist,
+          ticketPrice: r.ticketPrice,
+          assignedAircraftId: r.assignedAircraftId,
+          flightsPerWeek: r.flightsPerWeek,
+          origin: origin,
+          destination: dest,
+          assignedAircraft: r.assignedAircraft,
+          status: r.status,
+        );
+      }).toList();
 
       final userThresholdRecord = await _gateway.loadUserThreshold(userId);
       final userThreshold =
