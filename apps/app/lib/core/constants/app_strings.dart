@@ -61,7 +61,7 @@ class AppStrings {
   static const String resetPasswordSent = 'Password updated successfully! You can now log in.';
   static const String resetPasswordFailed = 'Failed to send reset link. Please try again.';
   static const String verifyIdentity = 'VERIFY IDENTITY';
-  static const String verifyIdentityMessage = 'Provide at least 2 of the following to verify your account:';
+  static const String verifyIdentityMessage = 'Provide at least 1 of the following to verify your account:';
   static const String resetCompanyNameLabel = 'COMPANY NAME';
   static const String resetCeoNameLabel = 'CEO NAME';
   static const String resetHqAirportLabel = 'HQ AIRPORT CODE';
