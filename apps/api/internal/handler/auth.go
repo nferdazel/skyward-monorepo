@@ -184,3 +184,63 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	}
 	httperr.WriteJSON(w, http.StatusOK, toUserJSON(u))
 }
+
+// ResetPassword — POST /auth/reset-password {username, newPassword, companyName, ceoName, hqAirportIata}.
+func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Username      string `json:"username"`
+		NewPassword   string `json:"newPassword"`
+		CompanyName   string `json:"companyName"`
+		CeoName       string `json:"ceoName"`
+		HQAirportIATA string `json:"hqAirportIata"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		httperr.WriteError(w, nil, httperr.Validation("invalid request body"))
+		return
+	}
+	if strings.TrimSpace(body.Username) == "" || len(body.NewPassword) < 6 {
+		httperr.WriteError(w, nil, httperr.Validation("username and newPassword (min 6 chars) required"))
+		return
+	}
+
+	username, err := h.Store.NormalizeUsername(r.Context(), body.Username)
+	if err != nil || username == "" {
+		httperr.WriteError(w, nil, httperr.Validation("invalid username"))
+		return
+	}
+
+	u, err := h.Store.GetUserByUsername(r.Context(), username)
+	if err != nil {
+		httperr.WriteError(w, nil, httperr.Unauthorized("invalid recovery credentials"))
+		return
+	}
+
+	valid := false
+	if body.CompanyName != "" && strings.EqualFold(strings.TrimSpace(body.CompanyName), u.CompanyName) {
+		valid = true
+	}
+	if body.CeoName != "" && strings.EqualFold(strings.TrimSpace(body.CeoName), u.CeoName) {
+		valid = true
+	}
+	if body.HQAirportIATA != "" && u.HQAirportIATA != nil && strings.EqualFold(strings.TrimSpace(body.HQAirportIATA), *u.HQAirportIATA) {
+		valid = true
+	}
+
+	if !valid {
+		httperr.WriteError(w, nil, httperr.Unauthorized("invalid recovery credentials"))
+		return
+	}
+
+	hash, err := auth.HashPassword(body.NewPassword)
+	if err != nil {
+		httperr.WriteError(w, nil, httperr.Internal("password hashing failed"))
+		return
+	}
+
+	if err := h.Store.UpdatePasswordHash(r.Context(), u.ID, hash); err != nil {
+		httperr.WriteError(w, nil, httperr.Internal("reset password failed"))
+		return
+	}
+
+	httperr.WriteJSON(w, http.StatusOK, map[string]bool{"success": true})
+}

@@ -103,11 +103,19 @@ class GoAuthGateway implements AuthGateway {
     String ceoName = '',
     String hqAirportIata = '',
   }) async {
-    // Go API belum punya reset password user-facing (hanya /admin/account/{id}
-    // yang butuh admin token). Lempar pesan jelas sampai endpoint ada.
-    throw const AuthGatewayException(
-      'Password reset is not available yet. Please contact support.',
-    );
+    try {
+      await _api.post('/auth/reset-password', body: {
+        'username': normalizeUsername(username),
+        'newPassword': newPassword,
+        'companyName': companyName,
+        'ceoName': ceoName,
+        'hqAirportIata': hqAirportIata,
+      });
+    } on ApiException catch (e) {
+      throw AuthGatewayException(e.message);
+    } catch (e, stack) {
+      throw AuthGatewayException(e.toString(), stack);
+    }
   }
 
   /// Parse `{token, user}` dan simpan token ke store.
