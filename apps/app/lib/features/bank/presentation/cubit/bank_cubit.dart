@@ -1,15 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:supabase_flutter/supabase_flutter.dart'
-    show PostgresChangeEvent, PostgresChangeFilter, PostgresChangeFilterType;
 
 import '../../../../core/constants/app_strings.dart';
-import '../../../../core/database/supabase_client.dart';
 import '../../../../core/di/gateway_factory.dart';
 import '../../../../core/mixins/simulation_reactive_mixin.dart';
-import '../../../../core/realtime/realtime_subscription_bag.dart';
+import '../../../../core/realtime/go_realtime_mixin.dart';
 import '../../../../core/utils/app_error.dart';
+import '../../../../core/utils/app_logger.dart';
 import '../../../../core/utils/cubit_action_runner.dart';
 import '../../../../core/utils/safe_cast.dart';
 import '../../../simulation/presentation/cubit/simulation_cubit.dart';
@@ -21,10 +19,8 @@ import '../../domain/loan_model.dart';
 import 'bank_state.dart';
 
 class BankCubit extends Cubit<BankState>
-    with SimulationReactiveMixin, CubitActionRunner<BankState> {
+    with SimulationReactiveMixin, CubitActionRunner<BankState>, GoRealtimeMixin {
   final BankGateway _gateway;
-  final RealtimeSubscriptionBag _realtimeSubscriptions =
-      RealtimeSubscriptionBag();
   List<Loan> _cachedLoans = [];
   CreditReport? _cachedCreditReport;
   List<CreditScoreSnapshot> _cachedCreditHistory = [];
@@ -67,7 +63,7 @@ class BankCubit extends Cubit<BankState>
   Future<void> close() async {
     disposeReactivity();
     _realtimeRefreshDebounce?.cancel();
-    await _realtimeSubscriptions.clear();
+    disposeRealtime();
     return super.close();
   }
 
@@ -203,7 +199,7 @@ class BankCubit extends Cubit<BankState>
             );
           } else {
             // Log server-side validation failure
-            SupabaseManager.logRpcFailure('take_loan', {
+            AppLogger.logOperationFailure('take_loan', {
               'principal': principal,
               'term_weeks': termWeeks,
             }, message);
@@ -558,56 +554,14 @@ class BankCubit extends Cubit<BankState>
   }
 
   void _setupRealtime(String userId) {
-    if (SupabaseManager.hasMockClient || SupabaseManager.maybeClient == null) return;
-
-    final loansChannel = SupabaseManager.client
-        .channel('public:loans:user=eq.$userId')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'loans',
-          filter: PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq,
-            column: 'user_id',
-            value: userId,
-          ),
-          callback: (_) => _scheduleTargetedRefresh(userId, 'loans'),
-        )
-        .subscribe();
-
-    final accountsChannel = SupabaseManager.client
-        .channel('public:bank_accounts:user=eq.$userId')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'bank_accounts',
-          filter: PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq,
-            column: 'user_id',
-            value: userId,
-          ),
-          callback: (_) => _scheduleTargetedRefresh(userId, 'bank_accounts'),
-        )
-        .subscribe();
-
-    final transactionsChannel = SupabaseManager.client
-        .channel('public:bank_transactions:user=eq.$userId')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'bank_transactions',
-          filter: PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq,
-            column: 'user_id',
-            value: userId,
-          ),
-          callback: (_) => _scheduleTargetedRefresh(userId, 'bank_transactions'),
-        )
-        .subscribe();
-
-    _realtimeSubscriptions.add(loansChannel);
-    _realtimeSubscriptions.add(accountsChannel);
-    _realtimeSubscriptions.add(transactionsChannel);
+    subscribeToRealtime(
+      ['loans', 'bank_accounts', 'bank_transactions'],
+      (event) {
+        final table = event.channel;
+        if (table == null) return;
+        _scheduleTargetedRefresh(userId, table);
+      },
+    );
   }
 
   void _scheduleTargetedRefresh(String userId, String tableName) {

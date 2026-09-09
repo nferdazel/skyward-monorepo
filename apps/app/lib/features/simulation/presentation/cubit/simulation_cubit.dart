@@ -3,14 +3,11 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:supabase_flutter/supabase_flutter.dart'
-    show PostgresChangeEvent, PostgresChangeFilter, PostgresChangeFilterType, PostgrestException, RealtimeSubscribeStatus;
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/game_constants.dart';
-import '../../../../core/database/supabase_client.dart';
 import '../../../../core/di/gateway_factory.dart';
-import '../../../../core/realtime/realtime_subscription_bag.dart';
+import '../../../../core/realtime/go_realtime_mixin.dart';
 import '../../../../core/sync/domain_events.dart';
 import '../../../../core/sync/sync_coordinator.dart';
 import '../../../../core/utils/app_error.dart';
@@ -21,13 +18,11 @@ import '../../data/simulation_gateway.dart';
 import 'simulation_state.dart';
 
 class SimulationCubit extends Cubit<SimulationState>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, GoRealtimeMixin {
   Timer? _uiTimer;
   Timer? _syncTimer;
   Timer? _retryTimer;
   String? _currentUserId;
-  final RealtimeSubscriptionBag _realtimeSubscriptions =
-      RealtimeSubscriptionBag();
   bool _loopRunning = false;
   bool _lifecycleObserverRegistered = false;
   Future<AppUser?>? _activeSync;
@@ -78,7 +73,6 @@ class SimulationCubit extends Cubit<SimulationState>
 
     // Stop any active loops
     stopLoop();
-    await _realtimeSubscriptions.clear();
     _registerLifecycleObserver();
     _loopRunning = true;
 
@@ -273,7 +267,8 @@ class SimulationCubit extends Cubit<SimulationState>
       return authoritativeUser;
     } catch (e, stack) {
       // Detect 401 Unauthorized — token expired, don't retry
-      if (e is PostgrestException && e.code == '401') {
+      if (e is SimulationGatewayException &&
+          e.message.toLowerCase().contains('unauthorized')) {
         AppError.log('simulation_delta_sync_401', e, stack);
         _safeEmit(
           state.copyWith(
@@ -348,54 +343,24 @@ class SimulationCubit extends Cubit<SimulationState>
       _maybeBinding()?.removeObserver(this);
       _lifecycleObserverRegistered = false;
     }
-    await _realtimeSubscriptions.clear();
+    disposeRealtime();
     return super.close();
   }
 
   void _setupRealtime(String userId) {
-    if (SupabaseManager.hasMockClient || SupabaseManager.maybeClient == null) return;
-
-    // Subscribe to users table for game-time and operational status changes.
-    final userChannel = SupabaseManager.client
-        .channel('public:users:id=eq.$userId')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.update,
-          schema: 'public',
-          table: 'users',
-          filter: PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq,
-            column: 'id',
-            value: userId,
-          ),
-          callback: (payload) {
-            final updatedUser = AppUser.fromMap(payload.newRecord);
-            applyBackendUserUpdate(updatedUser);
-          },
-        )
-        .subscribe();
-
-    // Subscribe to bank_transactions for cash balance updates.
-    final bankChannel = SupabaseManager.client
-        .channel('public:bank_transactions:user=eq.$userId')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'bank_transactions',
-          filter: PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq,
-            column: 'user_id',
-            value: userId,
-          ),
-          callback: (_) => _scheduleRealtimeBalanceRefresh(userId),
-        )
-        .subscribe((status, [error]) {
-          if (status == RealtimeSubscribeStatus.subscribed) {
-            _scheduleRealtimeBalanceRefresh(userId);
-          }
-        });
-
-    _realtimeSubscriptions.add(userChannel);
-    _realtimeSubscriptions.add(bankChannel);
+    // Subscribe ke channel users (game-time / operational status) dan
+    // bank_transactions (cash balance). Event hanya notification — refresh
+    // via REST auth-guarded.
+    subscribeToRealtime(
+      ['users', 'bank_transactions'],
+      (event) {
+        if (event.channel == 'users') {
+          unawaited(syncWithDatabase());
+        } else if (event.channel == 'bank_transactions') {
+          _scheduleRealtimeBalanceRefresh(userId);
+        }
+      },
+    );
   }
 
   Timer? _balanceRefreshDebounce;

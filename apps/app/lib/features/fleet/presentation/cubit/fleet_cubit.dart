@@ -1,16 +1,15 @@
 import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/constants/app_strings.dart';
-import '../../../../core/database/supabase_client.dart';
 import '../../../../core/di/gateway_factory.dart';
 import '../../../../core/mixins/simulation_reactive_mixin.dart';
-import '../../../../core/realtime/realtime_subscription_bag.dart';
+import '../../../../core/realtime/go_realtime_mixin.dart';
 import '../../../../core/sync/domain_events.dart';
 import '../../../../core/sync/sync_coordinator.dart';
 import '../../../../core/utils/app_error.dart';
+import '../../../../core/utils/app_logger.dart';
 import '../../../../core/utils/cubit_action_runner.dart';
 import '../../../../core/utils/perf_debug.dart';
 import '../../../../core/utils/safe_cast.dart';
@@ -22,7 +21,7 @@ import 'fleet_state.dart';
 typedef FleetBalanceCallback = FutureOr<void> Function(double newCashBalance);
 
 class FleetCubit extends Cubit<FleetState>
-    with SimulationReactiveMixin, CubitActionRunner<FleetState> {
+    with SimulationReactiveMixin, CubitActionRunner<FleetState>, GoRealtimeMixin {
   // Local cache to maintain state during action loads
   List<UserFleetAircraft> _cachedFleet = [];
   List<AircraftModel> _cachedCatalog = [];
@@ -31,8 +30,6 @@ class FleetCubit extends Cubit<FleetState>
   List<String> _selectedCategories = [];
   List<String> _selectedRangeBrackets = [];
   String _sortBy = 'price_asc';
-  final RealtimeSubscriptionBag _realtimeSubscriptions =
-      RealtimeSubscriptionBag();
   Timer? _realtimeRefreshDebounce;
   Future<void>? _activeLoad;
   final FleetGateway _gateway;
@@ -107,12 +104,11 @@ class FleetCubit extends Cubit<FleetState>
         if (success) {
           return await onSuccess(result, snapshot);
         } else {
-          SupabaseManager.logRpcFailure(
+          AppLogger.logOperationFailure(
             actionName,
             rpcParams,
             message ?? failureMessage,
-          );
-          if (!isClosed) {
+          );          if (!isClosed) {
             emit(
               FleetError(
                 message: message ?? failureMessage,
@@ -157,7 +153,7 @@ class FleetCubit extends Cubit<FleetState>
   Future<void> close() async {
     disposeReactivity();
     _realtimeRefreshDebounce?.cancel();
-    await _realtimeSubscriptions.clear();
+    disposeRealtime();
     return super.close();
   }
 
@@ -233,7 +229,7 @@ class FleetCubit extends Cubit<FleetState>
         stopwatch,
         fields: {'silent': silent, 'error': true},
       );
-      SupabaseManager.logError('loadFleetAndCatalog', e, stack);
+      AppLogger.logError('loadFleetAndCatalog', e, stack);
       if (isClosed) return;
       emit(
         FleetError(
@@ -617,26 +613,9 @@ class FleetCubit extends Cubit<FleetState>
   }
 
   void _setupRealtime(String userId) {
-    if (SupabaseManager.hasMockClient || SupabaseManager.maybeClient == null) return;
-    unawaited(_realtimeSubscriptions.clear());
-
-    final fleetChannel = SupabaseManager.client
-        .channel('public:fleet_aircraft:user_id=eq.$userId')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'fleet_aircraft',
-          filter: PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq,
-            column: 'user_id',
-            value: userId,
-          ),
-          callback: (_) {
-            _scheduleRealtimeRefresh(userId);
-          },
-        )
-        .subscribe();
-
-    _realtimeSubscriptions.add(fleetChannel);
+    subscribeToRealtime(
+      ['fleet_aircraft'],
+      (_) => _scheduleRealtimeRefresh(userId),
+    );
   }
 }

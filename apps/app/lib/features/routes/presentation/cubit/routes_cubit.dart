@@ -1,17 +1,16 @@
 import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/game_constants.dart';
-import '../../../../core/database/supabase_client.dart';
 import '../../../../core/di/gateway_factory.dart';
 import '../../../../core/mixins/simulation_reactive_mixin.dart';
-import '../../../../core/realtime/realtime_subscription_bag.dart';
+import '../../../../core/realtime/go_realtime_mixin.dart';
 import '../../../../core/sync/domain_events.dart';
 import '../../../../core/sync/sync_coordinator.dart';
 import '../../../../core/utils/app_error.dart';
+import '../../../../core/utils/app_logger.dart';
 import '../../../../core/utils/cubit_action_runner.dart';
 import '../../../../core/utils/perf_debug.dart';
 import '../../../../core/utils/safe_cast.dart';
@@ -22,7 +21,7 @@ import '../../domain/route_models.dart';
 import 'routes_state.dart';
 
 class RoutesCubit extends Cubit<RoutesState>
-    with SimulationReactiveMixin, CubitActionRunner<RoutesState> {
+    with SimulationReactiveMixin, CubitActionRunner<RoutesState>, GoRealtimeMixin {
   final RoutesGateway _gateway;
   List<UserRoute> _cachedRoutes = [];
   List<Airport> _cachedAirports = [];
@@ -32,8 +31,6 @@ class RoutesCubit extends Cubit<RoutesState>
   RouteMaintenancePreview? _adjustmentMaintenancePreview;
   double _effectiveGroundingThreshold =
       GameConstants.defaultAutoGroundingThreshold;
-  final RealtimeSubscriptionBag _realtimeSubscriptions =
-      RealtimeSubscriptionBag();
   Timer? _realtimeRefreshDebounce;
   Future<void>? _activeLoad;
 
@@ -121,7 +118,7 @@ class RoutesCubit extends Cubit<RoutesState>
           await loadRoutesAndData(userId, silent: true);
           return true;
         } else {
-          SupabaseManager.logRpcFailure(actionName, rpcParams, message);
+          AppLogger.logOperationFailure(actionName, rpcParams, message);
           if (!isClosed) {
             emit(
               RoutesError(
@@ -255,7 +252,7 @@ class RoutesCubit extends Cubit<RoutesState>
   Future<void> close() async {
     disposeReactivity();
     _realtimeRefreshDebounce?.cancel();
-    await _realtimeSubscriptions.clear();
+    disposeRealtime();
     return super.close();
   }
 
@@ -379,7 +376,7 @@ class RoutesCubit extends Cubit<RoutesState>
         stopwatch,
         fields: {'silent': silent, 'error': true},
       );
-      SupabaseManager.logError('loadRoutesAndData', e, stack);
+      AppLogger.logError('loadRoutesAndData', e, stack);
       if (isClosed) return;
       emit(
         RoutesError(
@@ -524,26 +521,11 @@ class RoutesCubit extends Cubit<RoutesState>
   }
 
   void _setupRealtime(String userId) {
-    if (SupabaseManager.hasMockClient || SupabaseManager.maybeClient == null) return;
-    unawaited(_realtimeSubscriptions.clear());
-
-    // Only subscribe to route_assignments — fleet_aircraft is already handled by FleetCubit.
-    // Fleet updates reach this cubit via SimulationReactiveMixin.
-    final routesChannel = SupabaseManager.client
-        .channel('public:route_assignments:user_id=eq.$userId')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'route_assignments',
-          filter: PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq,
-            column: 'user_id',
-            value: userId,
-          ),
-          callback: (_) => _scheduleRealtimeRefresh(userId),
-        )
-        .subscribe();
-
-    _realtimeSubscriptions.add(routesChannel);
+    // Only subscribe to route_assignments — fleet_aircraft is already handled
+    // by FleetCubit. Fleet updates reach this cubit via SimulationReactiveMixin.
+    subscribeToRealtime(
+      ['route_assignments'],
+      (_) => _scheduleRealtimeRefresh(userId),
+    );
   }
 }
