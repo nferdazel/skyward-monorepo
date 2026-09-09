@@ -1,11 +1,11 @@
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skyward/core/database/supabase_client.dart';
 import 'package:skyward/features/bank/data/bank_gateway.dart';
 import 'package:skyward/features/bank/domain/bank_account_model.dart';
 import 'package:skyward/features/bank/domain/bank_transaction_model.dart';
 import 'package:skyward/features/bank/presentation/cubit/bank_cubit.dart';
 import 'package:skyward/features/bank/presentation/cubit/bank_state.dart';
+import 'package:skyward/core/utils/dev_mode_manager.dart';
 
 class MockBankGateway implements BankGateway {
   List<dynamic> loansToReturn = [];
@@ -188,12 +188,11 @@ final _bankTransaction = BankTransaction(
 void main() {
   group('BankCubit', () {
     setUp(() {
-      SupabaseManager.supabaseUrl = 'https://test-project.supabase.co';
-      SupabaseManager.supabaseAnonKey = 'test-anon-key-not-dev-mode';
+      DevModeManager.isDevMode = false;
     });
 
     tearDown(() {
-      SupabaseManager.resetCredentialsToEnv();
+      DevModeManager.resetDevMode();
     });
 
     blocTest<BankCubit, BankState>(

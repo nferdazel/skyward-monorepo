@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bloc_test/bloc_test.dart';
-import 'package:skyward/core/database/supabase_client.dart';
 import 'package:skyward/core/utils/dev_mode_manager.dart';
 import 'package:skyward/features/fleet/data/fleet_gateway.dart';
 import 'package:skyward/features/fleet/presentation/cubit/fleet_cubit.dart';
@@ -144,7 +143,7 @@ void main() {
     setUp(() {});
 
     tearDown(() {
-      SupabaseManager.resetCredentialsToEnv();
+      DevModeManager.resetDevMode();
       DevModeManager.resetDevMode();
     });
 
@@ -468,7 +467,7 @@ void main() {
 
     group('dev mode fallback', () {
       test('dev mode works when no gateway is provided', () async {
-        SupabaseManager.enableDevMode();
+        DevModeManager.isDevMode = true;
         final cubit = FleetCubit(); // No gateway → uses MockFleetGateway in dev mode
 
         expect(cubit.state, const FleetInitial());
@@ -484,7 +483,7 @@ void main() {
       });
 
       test('dev mode purchase still works without gateway', () async {
-        SupabaseManager.enableDevMode();
+        DevModeManager.isDevMode = true;
         final cubit = FleetCubit();
 
         await cubit.loadFleetAndCatalog('dev-user');

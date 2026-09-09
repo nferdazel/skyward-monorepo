@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bloc_test/bloc_test.dart';
-import 'package:skyward/core/database/supabase_client.dart';
 import 'package:skyward/core/utils/dev_mode_manager.dart';
 import 'package:skyward/features/routes/data/routes_gateway.dart';
 import 'package:skyward/features/routes/presentation/cubit/routes_cubit.dart';
@@ -241,7 +240,7 @@ void main() {
     });
 
     tearDown(() {
-      SupabaseManager.resetCredentialsToEnv();
+      DevModeManager.resetDevMode();
       DevModeManager.resetDevMode();
     });
 
@@ -800,7 +799,7 @@ void main() {
 
     group('dev mode fallback', () {
       test('dev mode loads mock data when no gateway is provided', () async {
-        SupabaseManager.enableDevMode();
+        DevModeManager.isDevMode = true;
         final cubit = RoutesCubit(); // No gateway → uses SupabaseRoutesGateway
 
         expect(cubit.state, const RoutesInitial());
@@ -820,7 +819,7 @@ void main() {
       });
 
       test('dev mode create route works without gateway', () async {
-        SupabaseManager.enableDevMode();
+        DevModeManager.isDevMode = true;
         final cubit = RoutesCubit();
 
         await cubit.loadRoutesAndData('dev-user');
@@ -841,7 +840,7 @@ void main() {
       });
 
       test('dev mode assignAircraft works without gateway', () async {
-        SupabaseManager.enableDevMode();
+        DevModeManager.isDevMode = true;
         final cubit = RoutesCubit();
 
         await cubit.loadRoutesAndData('dev-user');
@@ -863,7 +862,7 @@ void main() {
 
       test('dev mode updateRouteFrequencyAndPrice works without gateway',
           () async {
-        SupabaseManager.enableDevMode();
+        DevModeManager.isDevMode = true;
         final cubit = RoutesCubit();
 
         await cubit.loadRoutesAndData('dev-user');
@@ -884,7 +883,7 @@ void main() {
       });
 
       test('dev mode deleteRoute works without gateway', () async {
-        SupabaseManager.enableDevMode();
+        DevModeManager.isDevMode = true;
         final cubit = RoutesCubit();
 
         await cubit.loadRoutesAndData('dev-user');

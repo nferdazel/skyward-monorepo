@@ -17,14 +17,14 @@ import 'package:skyward/features/fleet/domain/fleet_models.dart';
 import 'package:skyward/features/leaderboard/domain/leaderboard_models.dart';
 import 'package:skyward/features/leaderboard/presentation/cubit/leaderboard_state.dart';
 import 'package:skyward/features/routes/domain/route_models.dart';
+import 'package:skyward/core/utils/dev_mode_manager.dart';
 
-import 'package:skyward/core/database/supabase_client.dart';
 
 void main() {
   group('Cubit State Flow Tests', () {
     setUpAll(() {
       SharedPreferences.setMockInitialValues({});
-      SupabaseManager.supabaseUrl = 'YOUR_SUPABASE_URL';
+      DevModeManager.isDevMode = true;
     });
 
     group('AuthCubit State Transitions', () {
