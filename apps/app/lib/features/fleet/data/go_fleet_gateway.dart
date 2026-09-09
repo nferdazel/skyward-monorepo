@@ -63,7 +63,7 @@ class GoFleetGateway implements FleetGateway {
 
   @override
   Future<List<dynamic>> repairAircraft(Map<String, dynamic> params) async {
-    final aircraftId = params['p_aircraft_id'] ?? params['aircraft_id'] ?? params['id'];
+    final aircraftId = _aircraftId(params);
     try {
       final res = await _api.post('/fleet/$aircraftId/repair');
       if (res is List) return res;
@@ -78,7 +78,7 @@ class GoFleetGateway implements FleetGateway {
 
   @override
   Future<List<dynamic>> sellAircraft(Map<String, dynamic> params) async {
-    final aircraftId = params['p_aircraft_id'] ?? params['aircraft_id'] ?? params['id'];
+    final aircraftId = _aircraftId(params);
     try {
       final res = await _api.post('/fleet/$aircraftId/sell');
       if (res is List) return res;
@@ -93,7 +93,7 @@ class GoFleetGateway implements FleetGateway {
 
   @override
   Future<List<dynamic>> terminateLease(Map<String, dynamic> params) async {
-    final aircraftId = params['p_aircraft_id'] ?? params['aircraft_id'] ?? params['id'];
+    final aircraftId = _aircraftId(params);
     try {
       final res = await _api.post('/fleet/$aircraftId/terminate-lease');
       if (res is List) return res;
@@ -108,7 +108,7 @@ class GoFleetGateway implements FleetGateway {
 
   @override
   Future<List<dynamic>> configureSeats(Map<String, dynamic> params) async {
-    final aircraftId = params['p_aircraft_id'] ?? params['aircraft_id'] ?? params['id'];
+    final aircraftId = _aircraftId(params);
     final body = {
       'economy_seats': params['p_economy_seats'] ?? params['economy_seats'] ?? 0,
       'business_seats': params['p_business_seats'] ?? params['business_seats'] ?? 0,
@@ -155,5 +155,15 @@ class GoFleetGateway implements FleetGateway {
     } catch (e) {
       throw FleetGatewayException(e.toString(), 'fetchSingleAircraft');
     }
+  }
+
+  /// Ekstrak ID pesawat dari params. Cubit mengirim `p_fleet_id` (parity dengan
+  /// RPC Supabase lama); gateway lain mungkin kirim `p_aircraft_id`/`aircraft_id`/`id`.
+  String _aircraftId(Map<String, dynamic> params) {
+    return (params['p_fleet_id'] ??
+            params['p_aircraft_id'] ??
+            params['aircraft_id'] ??
+            params['id'])
+        .toString();
   }
 }
