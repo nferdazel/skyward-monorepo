@@ -22,5 +22,9 @@ skyward.qouver.com {
 	}
 	@static path /assets/* /favicon.* /icons/* /manifest.json
 	header @static Cache-Control "public, max-age=31536000, immutable"
+	# Flutter web: main.dart.js / flutter_bootstrap.js / *.css bukan hashed —
+	# wajib no-cache supaya browser tidak menyimpan build lama (stale).
+	@js path *.js *.css
+	header @js Cache-Control "no-cache"
 	header / Cache-Control "no-cache"
 }
