@@ -111,7 +111,7 @@ class CompetitorInsights with Equatable {
       ceoName: map['ceo_name'] ?? '',
       cash: (map['cash'] as num?)?.toDouble() ?? 0.0,
       netWorth: (map['net_worth'] as num?)?.toDouble() ?? 0.0,
-      status: map['status'] ?? 'Active',
+      status: map['status'] ?? map['operational_status'] ?? 'Active',
       fleetBreakdown: parsedFleet,
       networkRoutes: parsedRoutes,
       fleetSize: (map['fleet_size'] as num?)?.toInt() ?? 0,
