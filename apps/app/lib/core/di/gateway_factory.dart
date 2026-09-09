@@ -10,6 +10,7 @@ import '../../features/bank/data/bank_gateway.dart';
 import '../../features/bank/data/go_bank_gateway.dart';
 import '../../features/bank/data/mock_bank_gateway.dart';
 import '../../features/finance/data/finance_gateway.dart';
+import '../../features/finance/data/go_finance_gateway.dart';
 import '../../features/finance/data/mock_finance_gateway.dart';
 import '../../features/fleet/data/fleet_gateway.dart';
 import '../../features/fleet/data/go_fleet_gateway.dart';
@@ -57,7 +58,7 @@ class GatewayFactory {
       _useMock ? const MockBankGateway() : GoBankGateway(apiClient: apiClient);
 
   static FinanceGateway createFinanceGateway() =>
-      _useMock ? const MockFinanceGateway() : const SupabaseFinanceGateway();
+      _useMock ? const MockFinanceGateway() : GoFinanceGateway(apiClient: apiClient);
 
   static LeaderboardGateway createLeaderboardGateway() =>
       _useMock ? const MockLeaderboardGateway() : const SupabaseLeaderboardGateway();
