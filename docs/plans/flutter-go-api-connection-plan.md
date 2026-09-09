@@ -132,7 +132,7 @@ Per feature:
 2. Ikuti pola resync pasca-mutasi yang sudah ada (simulation sync + reload silang cubit).
 3. Jalankan test layer 1 (gateway test) + widget test feature tsb.
 4. **Parity check:** bandingkan hasil vs RPC Supabase lama / fungsi SQL oracle sebelum cutover.
-5. Cutover impl `*Gateway` di composition root, simpan impl lama untuk rollback.
+> ✅ Selesai 2026-09-09. Seluruh 7 feature gateway (`GoSettingsGateway`, `GoSimulationGateway`, `GoFleetGateway`, `GoRoutesGateway`, `GoBankGateway`, `GoFinanceGateway`, `GoLeaderboardGateway`) diimplementasikan & di-wire di composition root `GatewayFactory`. Total 310 unit/widget test lolos, `make analyze` bersih.
 
 ### Phase 4 — Realtime via WS `/ws`
 - Ganti subscription Postgres Changes dengan WS `GET /ws?token=...` (`internal/realtime.Hub`).
