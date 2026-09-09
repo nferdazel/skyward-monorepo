@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:skyward/core/constants/app_strings.dart';
-import 'package:skyward/core/database/supabase_client.dart';
 import 'package:skyward/core/theme/app_theme.dart';
+import 'package:skyward/core/utils/dev_mode_manager.dart';
 import 'package:skyward/features/auth/domain/user_model.dart';
 import 'package:skyward/features/auth/presentation/cubit/auth_cubit.dart';
 import 'package:skyward/features/auth/presentation/cubit/auth_state.dart';
@@ -227,11 +227,11 @@ AppUser _testUser({
 
 void main() {
   setUp(() {
-    SupabaseManager.enableDevMode();
+    DevModeManager.isDevMode = true;
   });
 
   tearDown(() {
-    SupabaseManager.resetCredentialsToEnv();
+    DevModeManager.resetDevMode();
   });
 
   testWidgets(

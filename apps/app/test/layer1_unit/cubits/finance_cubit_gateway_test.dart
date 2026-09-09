@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bloc_test/bloc_test.dart';
-import 'package:skyward/core/database/supabase_client.dart';
 import 'package:skyward/core/utils/dev_mode_manager.dart';
 import 'package:skyward/features/finance/data/finance_gateway.dart';
 import 'package:skyward/features/finance/presentation/cubit/finance_cubit.dart';
@@ -138,7 +137,7 @@ void main() {
     setUp(() {});
 
     tearDown(() {
-      SupabaseManager.resetCredentialsToEnv();
+      DevModeManager.resetDevMode();
       DevModeManager.resetDevMode();
     });
 
@@ -393,7 +392,7 @@ void main() {
 
     group('dev mode fallback', () {
       test('dev mode works when no gateway is provided', () async {
-        SupabaseManager.enableDevMode();
+        DevModeManager.isDevMode = true;
         final cubit =
             FinanceCubit(); // No gateway → uses SupabaseFinanceGateway
 

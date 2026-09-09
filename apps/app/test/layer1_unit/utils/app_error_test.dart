@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:postgrest/postgrest.dart';
 import 'package:skyward/core/utils/app_error.dart';
 
 void main() {
@@ -14,26 +13,6 @@ void main() {
       final error = Exception('TimeoutException: Request timed out after 30s');
       final result = AppError.extractMessage(error, 'fallback');
       expect(result, 'Request timed out. Please try again.');
-    });
-
-    test('PostgrestException extracts message field', () {
-      final error = PostgrestException(
-        message: 'Duplicate key value violates unique constraint',
-        code: '23505',
-        details: 'Key (iata)=(SIN) already exists.',
-      );
-      final result = AppError.extractMessage(error, 'fallback');
-      expect(result, 'Duplicate key value violates unique constraint');
-    });
-
-    test('PostgrestException with empty message returns fallback', () {
-      final error = PostgrestException(
-        message: '',
-        code: 'PGRST000',
-      );
-      final result = AppError.extractMessage(error, 'custom fallback');
-      expect(result, isA<String>());
-      expect(result.isNotEmpty, isTrue);
     });
 
     test('generic exception returns fallback', () {
@@ -62,14 +41,6 @@ void main() {
         'fallback',
       );
       expect(result, 'Request timed out. Please try again.');
-    });
-
-    test('string containing PostgrestException with message is extracted', () {
-      final result = AppError.extractMessage(
-        'PostgrestException(message: row not found, code: PGRST116)',
-        'fallback',
-      );
-      expect(result, 'row not found');
     });
   });
 }
