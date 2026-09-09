@@ -16,6 +16,7 @@ import '../../features/leaderboard/data/leaderboard_gateway.dart';
 import '../../features/leaderboard/data/mock_leaderboard_gateway.dart';
 import '../../features/routes/data/mock_routes_gateway.dart';
 import '../../features/routes/data/routes_gateway.dart';
+import '../../features/settings/data/go_settings_gateway.dart';
 import '../../features/settings/data/mock_settings_gateway.dart';
 import '../../features/settings/data/settings_gateway.dart';
 import '../../features/simulation/data/mock_simulation_gateway.dart';
@@ -58,7 +59,7 @@ class GatewayFactory {
       _useMock ? const MockLeaderboardGateway() : const SupabaseLeaderboardGateway();
 
   static SettingsGateway createSettingsGateway() =>
-      _useMock ? const MockSettingsGateway() : const SupabaseSettingsGateway();
+      _useMock ? const MockSettingsGateway() : GoSettingsGateway(apiClient: apiClient);
 
   static SimulationGateway createSimulationGateway() =>
       _useMock ? const MockSimulationGateway() : const SupabaseSimulationGateway();
