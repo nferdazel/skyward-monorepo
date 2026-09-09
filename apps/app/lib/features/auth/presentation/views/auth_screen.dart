@@ -273,7 +273,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                 ceoController.text.trim(),
                                 hqController.text.trim(),
                               ].where((v) => v.isNotEmpty).length;
-                              if (filled < 2) {
+                              if (filled < 1) {
                                 AppSnackBar.showError(
                                   context,
                                   AppStrings.verificationFailed,
