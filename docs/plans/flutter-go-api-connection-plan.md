@@ -115,8 +115,9 @@ Catatan:
 - Login Go exact-match (case-sensitive) sedangkan register menormalisasi —
   `GoAuthGateway` menormalisasi username client-side (mirror SQL
   `normalize_username`) sebelum login.
-- Reset password user-facing belum ada di Go API (hanya `/admin/account/{id}`) →
-  `resetPassword` melempar pesan jelas sampai endpoint tersedia.
+- Reset password user-facing `POST /auth/reset-password` (verifikasi identitas
+  companyName/ceoName/hqAirportIata, minimal 1 cocok) — `resetPassword` di
+  `GoAuthGateway`; `/admin/account/{id}/reset-password` tetap untuk admin.
 - **Kriteria selesai:** register → login → auto-login → me jalan penuh tanpa Supabase.
 
 > ✅ Selesai 2026-09-05. 10 unit test baru (`go_auth_gateway_test.dart`) hijau,
