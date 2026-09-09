@@ -11,7 +11,6 @@ import '../../../../core/realtime/go_realtime_mixin.dart';
 import '../../../../core/sync/domain_events.dart';
 import '../../../../core/sync/sync_coordinator.dart';
 import '../../../../core/utils/app_error.dart';
-import '../../../../core/utils/dev_mode_manager.dart';
 import '../../../../core/utils/safe_cast.dart';
 import '../../../auth/domain/user_model.dart';
 import '../../data/simulation_gateway.dart';
@@ -19,7 +18,6 @@ import 'simulation_state.dart';
 
 class SimulationCubit extends Cubit<SimulationState>
     with WidgetsBindingObserver, GoRealtimeMixin {
-  Timer? _uiTimer;
   Timer? _syncTimer;
   Timer? _retryTimer;
   String? _currentUserId;
@@ -93,26 +91,8 @@ class SimulationCubit extends Cubit<SimulationState>
     _startTimers();
   }
 
-  // Local ticking is only for mock/dev mode. Production game time is supplied by
-  // Supabase realtime updates and periodic reconciliation.
-  void _tickLocalTime() {
-    if (!DevModeManager.isDevMode) return;
-
-    final newTime = state.gameTime.add(
-      Duration(milliseconds: (state.gameSpeedMultiplier * 1000).round()),
-    );
-    final mockCash = state.cashBalance + 2.50;
-    _safeEmit(state.copyWith(gameTime: newTime, cashBalance: mockCash));
-  }
-
   void _startTimers() {
     _stopTimers();
-    if (DevModeManager.isDevMode) {
-      _uiTimer = Timer.periodic(
-        GameConstants.uiTickerInterval,
-        (_) => _tickLocalTime(),
-      );
-    }
     _syncTimer = Timer.periodic(
       GameConstants.dbSyncInterval,
       (_) => syncWithDatabase(),
@@ -120,9 +100,7 @@ class SimulationCubit extends Cubit<SimulationState>
   }
 
   void _stopTimers() {
-    _uiTimer?.cancel();
     _syncTimer?.cancel();
-    _uiTimer = null;
     _syncTimer = null;
   }
 

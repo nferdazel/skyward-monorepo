@@ -6,33 +6,22 @@ import '../config/app_env.dart';
 import '../realtime/go_realtime_client.dart';
 import '../../features/auth/data/auth_gateway.dart';
 import '../../features/auth/data/go_auth_gateway.dart';
-import '../../features/auth/data/mock_auth_gateway.dart';
 import '../../features/bank/data/bank_gateway.dart';
 import '../../features/bank/data/go_bank_gateway.dart';
-import '../../features/bank/data/mock_bank_gateway.dart';
 import '../../features/finance/data/finance_gateway.dart';
 import '../../features/finance/data/go_finance_gateway.dart';
-import '../../features/finance/data/mock_finance_gateway.dart';
 import '../../features/fleet/data/fleet_gateway.dart';
 import '../../features/fleet/data/go_fleet_gateway.dart';
-import '../../features/fleet/data/mock_fleet_gateway.dart';
 import '../../features/leaderboard/data/go_leaderboard_gateway.dart';
 import '../../features/leaderboard/data/leaderboard_gateway.dart';
-import '../../features/leaderboard/data/mock_leaderboard_gateway.dart';
 import '../../features/routes/data/go_routes_gateway.dart';
-import '../../features/routes/data/mock_routes_gateway.dart';
 import '../../features/routes/data/routes_gateway.dart';
 import '../../features/settings/data/go_settings_gateway.dart';
-import '../../features/settings/data/mock_settings_gateway.dart';
 import '../../features/settings/data/settings_gateway.dart';
 import '../../features/simulation/data/go_simulation_gateway.dart';
-import '../../features/simulation/data/mock_simulation_gateway.dart';
 import '../../features/simulation/data/simulation_gateway.dart';
-import '../utils/dev_mode_manager.dart';
 
 class GatewayFactory {
-  static bool get _useMock => DevModeManager.isDevMode;
-
   /// ApiClient bersama untuk semua Go*Gateway (auth → feature). Token JWT
   /// disimpan via [SharedPrefsAuthTokenStore]; ApiClient menyuntikkannya ke
   /// header Authorization tiap request.
@@ -66,26 +55,25 @@ class GatewayFactory {
   static void resetRealtimeClient() => _sharedRealtime = null;
 
   static FleetGateway createFleetGateway() =>
-      _useMock ? MockFleetGateway() : GoFleetGateway(apiClient: apiClient);
+      GoFleetGateway(apiClient: apiClient);
 
   static RoutesGateway createRoutesGateway() =>
-      _useMock ? const MockRoutesGateway() : GoRoutesGateway(apiClient: apiClient);
+      GoRoutesGateway(apiClient: apiClient);
 
   static BankGateway createBankGateway() =>
-      _useMock ? const MockBankGateway() : GoBankGateway(apiClient: apiClient);
+      GoBankGateway(apiClient: apiClient);
 
   static FinanceGateway createFinanceGateway() =>
-      _useMock ? const MockFinanceGateway() : GoFinanceGateway(apiClient: apiClient);
+      GoFinanceGateway(apiClient: apiClient);
 
   static LeaderboardGateway createLeaderboardGateway() =>
-      _useMock ? const MockLeaderboardGateway() : GoLeaderboardGateway(apiClient: apiClient);
+      GoLeaderboardGateway(apiClient: apiClient);
 
   static SettingsGateway createSettingsGateway() =>
-      _useMock ? const MockSettingsGateway() : GoSettingsGateway(apiClient: apiClient);
+      GoSettingsGateway(apiClient: apiClient);
 
   static SimulationGateway createSimulationGateway() =>
-      _useMock ? const MockSimulationGateway() : GoSimulationGateway(apiClient: apiClient);
+      GoSimulationGateway(apiClient: apiClient);
 
-  static AuthGateway createAuthGateway() =>
-      _useMock ? MockAuthGateway() : GoAuthGateway(apiClient: apiClient);
+  static AuthGateway createAuthGateway() => GoAuthGateway(apiClient: apiClient);
 }
