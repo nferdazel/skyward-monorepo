@@ -4,8 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../constants/app_strings.dart';
-import '../database/supabase_client.dart';
 import 'app_error.dart';
+import 'app_logger.dart';
 
 /// Mixin for Cubits to execute RPC mutations safely with standard loading,
 /// concurrency locking, error logging, and error state emission.
@@ -37,7 +37,7 @@ mixin CubitActionRunner<S> on Cubit<S> {
       final result = await action();
 
       if (result is List && result.isEmpty) {
-        SupabaseManager.logRpcFailure(
+        AppLogger.logOperationFailure(
           actionName,
           rpcParams,
           AppStrings.dbEmptyResponse,
@@ -51,7 +51,7 @@ mixin CubitActionRunner<S> on Cubit<S> {
 
       return await onSuccess(result);
     } catch (e, stack) {
-      SupabaseManager.logError(actionName, e, stack);
+      AppLogger.logError(actionName, e, stack);
       if (!isClosed) {
         emit(onErrorState(AppError.extractMessage(e, fallbackMessage)));
         onAfterError?.call();

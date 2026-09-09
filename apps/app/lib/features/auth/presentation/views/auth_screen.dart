@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants/app_strings.dart';
-import '../../../../core/database/supabase_client.dart';
+import '../../../../core/utils/app_logger.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../presentation/theme/app_spacing.dart';
 import '../../../../presentation/theme/app_typography.dart';
@@ -323,7 +323,7 @@ class _AuthScreenState extends State<AuthScreen> {
                             );
                           }
                         } catch (e) {
-                          SupabaseManager.logError('reset_password', e);
+                          AppLogger.logError('reset_password', e);
                           setDialogState(() => isLoading = false);
                           if (context.mounted) {
                             AppSnackBar.showError(

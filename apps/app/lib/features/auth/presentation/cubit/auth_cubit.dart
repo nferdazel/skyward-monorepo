@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../core/database/supabase_client.dart';
+import '../../../../core/utils/app_logger.dart';
 import '../../../../core/di/gateway_factory.dart';
 import '../../data/auth_gateway.dart';
 import '../../domain/user_model.dart';
@@ -40,7 +40,7 @@ class AuthCubit extends Cubit<AuthState> {
         if (isClosed) return;
         emit(AuthAuthenticated(user: session.user, token: session.token));
       } catch (e, stack) {
-        SupabaseManager.logError('restore_supabase_session', e, stack);
+        AppLogger.logError('restore_supabase_session', e, stack);
         if (isClosed) return;
         emit(const AuthUnauthenticated());
       }
@@ -65,7 +65,7 @@ class AuthCubit extends Cubit<AuthState> {
         if (isClosed) return;
         emit(AuthAuthenticated(user: session.user, token: session.token));
       } catch (e, stack) {
-        SupabaseManager.logError('register_with_username', e, stack);
+        AppLogger.logError('register_with_username', e, stack);
         if (isClosed) return;
         emit(AuthError(message: _extractErrorMessage(e)));
       }
@@ -86,7 +86,7 @@ class AuthCubit extends Cubit<AuthState> {
         if (isClosed) return;
         emit(AuthAuthenticated(user: session.user, token: session.token));
       } catch (e, stack) {
-        SupabaseManager.logError('sign_in_with_password', e, stack);
+        AppLogger.logError('sign_in_with_password', e, stack);
         if (isClosed) return;
         emit(AuthError(message: _extractErrorMessage(e)));
       }
@@ -98,7 +98,7 @@ class AuthCubit extends Cubit<AuthState> {
       try {
         await _authGateway.logout();
       } catch (e, stack) {
-        SupabaseManager.logError('supabase_sign_out', e, stack);
+        AppLogger.logError('supabase_sign_out', e, stack);
       }
       if (isClosed) return;
       emit(const AuthUnauthenticated());
@@ -134,7 +134,7 @@ class AuthCubit extends Cubit<AuthState> {
         hqAirportIata: hqAirportIata,
       );
     } catch (e, stack) {
-      SupabaseManager.logError('reset_password', e, stack);
+      AppLogger.logError('reset_password', e, stack);
       rethrow;
     }
   }

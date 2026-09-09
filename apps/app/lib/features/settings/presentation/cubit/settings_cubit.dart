@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/game_constants.dart';
-import '../../../../core/database/supabase_client.dart';
+import '../../../../core/utils/app_logger.dart';
 import '../../../../core/di/gateway_factory.dart';
 import '../../../../core/utils/app_error.dart';
 import '../../../../core/utils/safe_cast.dart';
@@ -191,7 +191,7 @@ class SettingsCubit extends Cubit<SettingsState> {
       final success = result['success'] as bool? ?? false;
       final message = result['message'] as String? ?? AppStrings.settingsSaveFailed;
       if (!success) {
-        SupabaseManager.logRpcFailure('save_airline_settings', {
+        AppLogger.logOperationFailure('save_airline_settings', {
           'p_user_id': userId,
           'p_company_name': companyName,
           'p_auto_grounding_threshold': autoGroundingThreshold,
@@ -242,7 +242,7 @@ class SettingsCubit extends Cubit<SettingsState> {
         final success = result['success'] as bool? ?? false;
         final message = result['message'] as String? ?? AppStrings.airlineWipeFailed;
         if (!success) {
-          SupabaseManager.logRpcFailure('reset_user_airline', {
+          AppLogger.logOperationFailure('reset_user_airline', {
             'p_user_id': userId,
           }, message);
           if (isClosed) return false;
