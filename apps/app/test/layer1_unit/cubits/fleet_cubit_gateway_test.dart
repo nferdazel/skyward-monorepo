@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bloc_test/bloc_test.dart';
-import 'package:skyward/core/utils/dev_mode_manager.dart';
 import 'package:skyward/features/fleet/data/fleet_gateway.dart';
 import 'package:skyward/features/fleet/presentation/cubit/fleet_cubit.dart';
 import 'package:skyward/features/fleet/presentation/cubit/fleet_state.dart';
@@ -142,10 +141,7 @@ void main() {
   group('FleetCubit Gateway Tests', () {
     setUp(() {});
 
-    tearDown(() {
-      DevModeManager.resetDevMode();
-      DevModeManager.resetDevMode();
-    });
+    tearDown(() {});
 
     // =========================================================================
     // loadFleetAndCatalog
@@ -462,17 +458,20 @@ void main() {
     });
 
     // =========================================================================
-    // Dev mode fallback
+    // Mock gateway injection
     // =========================================================================
 
-    group('dev mode fallback', () {
-      test('dev mode works when no gateway is provided', () async {
-        DevModeManager.isDevMode = true;
-        final cubit = FleetCubit(); // No gateway → uses MockFleetGateway in dev mode
+    group('mock gateway', () {
+      test('works when mock gateway is injected', () async {
+        final cubit = FleetCubit(
+          gateway: MockFleetGateway()
+            ..catalogToReturn = [_mockModelMap]
+            ..fleetToReturn = [_mockFleetMap],
+        );
 
         expect(cubit.state, const FleetInitial());
 
-        await cubit.loadFleetAndCatalog('dev-user');
+        await cubit.loadFleetAndCatalog('user-1');
 
         expect(cubit.state, isA<FleetLoaded>());
         final loaded = cubit.state as FleetLoaded;
@@ -482,15 +481,26 @@ void main() {
         await cubit.close();
       });
 
-      test('dev mode purchase still works without gateway', () async {
-        DevModeManager.isDevMode = true;
-        final cubit = FleetCubit();
+      test('purchase still works with mock gateway', () async {
+        final cubit = FleetCubit(
+          gateway: MockFleetGateway()
+            ..catalogToReturn = [_mockModelMap]
+            ..fleetToReturn = [_mockFleetMap]
+            ..rpcToReturn = [
+              <String, dynamic>{
+                'success': true,
+                'message': 'Aircraft purchased!',
+                'new_cash': 9500000.0,
+              },
+            ]
+            ..latestAircraftToReturn = [_mockNewAircraftMap],
+        );
 
-        await cubit.loadFleetAndCatalog('dev-user');
+        await cubit.loadFleetAndCatalog('user-1');
 
         final result = await cubit.purchaseAircraft(
-          userId: 'dev-user',
-          modelId: 'mock-atr72',
+          userId: 'user-1',
+          modelId: 'model-1',
           nickname: 'Dev Bird',
           economy: 60,
           business: 10,

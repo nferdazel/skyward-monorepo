@@ -7,7 +7,6 @@ import 'package:skyward/features/auth/domain/user_model.dart';
 import 'package:skyward/features/simulation/data/simulation_gateway.dart';
 import 'package:skyward/features/simulation/presentation/cubit/simulation_cubit.dart';
 import 'package:skyward/features/simulation/presentation/cubit/simulation_state.dart';
-import 'package:skyward/core/utils/dev_mode_manager.dart';
 
 // =============================================================================
 // Mock Gateway
@@ -119,16 +118,10 @@ void main() {
     late MockSimulationGateway gateway;
 
     setUp(() {
-      // Set non-dev credentials so DevModeManager.isDevMode returns false
-      // and the cubit actually exercises the injected gateway.
-      DevModeManager.isDevMode = false;
-
       gateway = MockSimulationGateway()..profileToReturn = _mockUserProfile;
     });
 
-    tearDown(() {
-      DevModeManager.resetDevMode();
-    });
+    tearDown(() {});
 
     // =========================================================================
     // syncWithDatabase — success
@@ -400,9 +393,6 @@ void main() {
         final cubit = SimulationCubit(gateway: gateway);
         cubit.setTestUserId('user-1');
 
-        // Simulate calling startLoop to set _loopRunning = true.
-        // We use the dev mode path to avoid needing real Supabase.
-        DevModeManager.isDevMode = true;
         await cubit.startLoop(
           userId: 'user-1',
           initialGameTime: DateTime.parse('2026-06-22T00:00:00.000Z'),
@@ -427,7 +417,6 @@ void main() {
         final cubit = SimulationCubit(gateway: gateway);
         cubit.setTestUserId('user-1');
 
-        DevModeManager.isDevMode = true;
         await cubit.startLoop(
           userId: 'user-1',
           initialGameTime: DateTime.parse('2026-06-22T00:00:00.000Z'),
@@ -470,7 +459,6 @@ void main() {
       test(
         'startLoop sets initial state and triggers sync',
         () async {
-          DevModeManager.isDevMode = true;
           final cubit = SimulationCubit(gateway: gateway);
 
           await cubit.startLoop(
@@ -492,7 +480,6 @@ void main() {
       );
 
       test('stopLoop prevents further syncs', () async {
-        DevModeManager.isDevMode = true;
         final cubit = SimulationCubit(gateway: gateway);
 
         await cubit.startLoop(
@@ -513,7 +500,6 @@ void main() {
       test(
         'calling startLoop twice resets the loop cleanly',
         () async {
-          DevModeManager.isDevMode = true;
           final cubit = SimulationCubit(gateway: gateway);
 
           await cubit.startLoop(
@@ -609,31 +595,5 @@ void main() {
       );
     });
 
-    // =========================================================================
-    // Dev mode fallback
-    // =========================================================================
-
-    group('dev mode fallback', () {
-      test('dev mode sync works without gateway', () async {
-        DevModeManager.isDevMode = true;
-        final cubit = SimulationCubit(); // No gateway → uses SupabaseSimulationGateway
-
-        // Give the cubit a user ID so syncWithDatabase doesn't bail out.
-        cubit.setTestUserId('dev-user');
-
-        await cubit.syncWithDatabase();
-
-        expect(cubit.state.isSyncing, isFalse);
-        expect(
-          cubit.state.gameSpeedMultiplier,
-          60.0,
-        ); // dev mode default multiplier
-        expect(cubit.state.operationalStatus.toLowerCase(), 'active');
-        expect(cubit.state.consecutiveNegativeDays, 0);
-        expect(cubit.state.recoveryStreakDays, 0);
-
-        await cubit.close();
-      });
-    });
   });
 }

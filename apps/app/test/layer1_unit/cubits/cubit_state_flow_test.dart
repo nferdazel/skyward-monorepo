@@ -4,9 +4,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:skyward/features/auth/presentation/cubit/auth_cubit.dart';
 import 'package:skyward/features/auth/presentation/cubit/auth_state.dart';
 import 'package:skyward/features/auth/domain/user_model.dart';
+import 'package:skyward/features/fleet/data/fleet_gateway.dart';
 import 'package:skyward/features/fleet/presentation/cubit/fleet_cubit.dart';
 import 'package:skyward/features/fleet/presentation/cubit/fleet_state.dart';
 import 'package:skyward/features/finance/domain/finance_snapshot.dart';
+import 'package:skyward/features/routes/data/routes_gateway.dart';
 import 'package:skyward/features/routes/presentation/cubit/routes_cubit.dart';
 import 'package:skyward/features/routes/presentation/cubit/routes_state.dart';
 import 'package:skyward/features/finance/presentation/cubit/finance_state.dart';
@@ -17,14 +19,90 @@ import 'package:skyward/features/fleet/domain/fleet_models.dart';
 import 'package:skyward/features/leaderboard/domain/leaderboard_models.dart';
 import 'package:skyward/features/leaderboard/presentation/cubit/leaderboard_state.dart';
 import 'package:skyward/features/routes/domain/route_models.dart';
-import 'package:skyward/core/utils/dev_mode_manager.dart';
+
+/// Minimal no-network gateway stub for fleet state-flow tests.
+class _StubFleetGateway implements FleetGateway {
+  @override
+  Future<List<dynamic>> loadFleet(String userId) async => const [];
+  @override
+  Future<List<dynamic>> loadCatalog() async => const [];
+  @override
+  Future<List<dynamic>> purchaseAircraft(Map<String, dynamic> params) async =>
+      const [];
+  @override
+  Future<List<dynamic>> leaseAircraft(Map<String, dynamic> params) async =>
+      const [];
+  @override
+  Future<List<dynamic>> repairAircraft(Map<String, dynamic> params) async =>
+      const [];
+  @override
+  Future<List<dynamic>> sellAircraft(Map<String, dynamic> params) async =>
+      const [];
+  @override
+  Future<List<dynamic>> terminateLease(Map<String, dynamic> params) async =>
+      const [];
+  @override
+  Future<List<dynamic>> configureSeats(Map<String, dynamic> params) async =>
+      const [];
+  @override
+  Future<List<dynamic>> fetchLatestAircraftForModel(
+    String userId,
+    String modelId,
+  ) async => const [];
+  @override
+  Future<Map<String, dynamic>> fetchSingleAircraft(String aircraftId) async =>
+      const <String, dynamic>{};
+}
+
+/// Minimal no-network gateway stub for routes state-flow tests.
+class _StubRoutesGateway implements RoutesGateway {
+  @override
+  Future<List<dynamic>> loadAirports() async => const [];
+  @override
+  Future<List<dynamic>> loadRoutes(String userId) async => const [];
+  @override
+  Future<Map<String, dynamic>> loadUserThreshold(String userId) async => const {
+        'auto_grounding_threshold': 40.0,
+      };
+  @override
+  Future<List<dynamic>> loadAvailableFleet(String userId) async => const [];
+  @override
+  Future<List<dynamic>> createRoute({
+    required String userId,
+    required String originIata,
+    required String destinationIata,
+    required double distanceKm,
+    required double ticketPrice,
+    required int flightsPerWeek,
+  }) async => const [];
+  @override
+  Future<List<dynamic>> assignAircraft({
+    required String userId,
+    required String routeId,
+    required String? aircraftId,
+  }) async => const [];
+  @override
+  Future<List<dynamic>> updateRouteFrequencyAndPrice({
+    required String userId,
+    required String routeId,
+    required double ticketPrice,
+    required int flightsPerWeek,
+  }) async => const [];
+  @override
+  Future<List<dynamic>> deleteRoute({
+    required String userId,
+    required String routeId,
+  }) async => const [];
+  @override
+  Future<List<dynamic>> getOwnerRouteOptimizer(String userId) async =>
+      const [];
+}
 
 
 void main() {
   group('Cubit State Flow Tests', () {
     setUpAll(() {
       SharedPreferences.setMockInitialValues({});
-      DevModeManager.isDevMode = true;
     });
 
     group('AuthCubit State Transitions', () {
@@ -151,7 +229,7 @@ void main() {
       late FleetCubit fleetCubit;
 
       setUp(() {
-        fleetCubit = FleetCubit();
+        fleetCubit = FleetCubit(gateway: _StubFleetGateway());
       });
 
       tearDown(() {
@@ -210,7 +288,7 @@ void main() {
       late RoutesCubit routesCubit;
 
       setUp(() {
-        routesCubit = RoutesCubit();
+        routesCubit = RoutesCubit(gateway: _StubRoutesGateway());
       });
 
       tearDown(() {
