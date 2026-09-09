@@ -19,6 +19,7 @@ import '../../features/routes/data/routes_gateway.dart';
 import '../../features/settings/data/go_settings_gateway.dart';
 import '../../features/settings/data/mock_settings_gateway.dart';
 import '../../features/settings/data/settings_gateway.dart';
+import '../../features/simulation/data/go_simulation_gateway.dart';
 import '../../features/simulation/data/mock_simulation_gateway.dart';
 import '../../features/simulation/data/simulation_gateway.dart';
 import '../database/supabase_client.dart';
@@ -62,7 +63,7 @@ class GatewayFactory {
       _useMock ? const MockSettingsGateway() : GoSettingsGateway(apiClient: apiClient);
 
   static SimulationGateway createSimulationGateway() =>
-      _useMock ? const MockSimulationGateway() : const SupabaseSimulationGateway();
+      _useMock ? const MockSimulationGateway() : GoSimulationGateway(apiClient: apiClient);
 
   static AuthGateway createAuthGateway() =>
       _useMock ? MockAuthGateway() : GoAuthGateway(apiClient: apiClient);
