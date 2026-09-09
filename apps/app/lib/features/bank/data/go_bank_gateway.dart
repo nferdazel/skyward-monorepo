@@ -34,7 +34,7 @@ class GoBankGateway implements BankGateway {
       'principal': principal,
       'term_weeks': termWeeks,
       'loan_type': loanType,
-      if (collateralAircraftId != null) 'collateral_aircraft_id': collateralAircraftId,
+      'collateral_aircraft_id': ?collateralAircraftId,
     };
     try {
       final res = await _api.post('/bank/loans', body: body);
