@@ -83,6 +83,88 @@ void main() {
       expect(res.isNotEmpty, true);
     });
 
+    test('repairAircraft resolves p_fleet_id (cubit payload) to path id', () async {
+      final gateway = GoFleetGateway(
+        apiClient: ApiClient(
+          baseUrl: 'https://api.example.com/skyward',
+          httpClient: MockClient((request) async {
+            expect(request.method, 'POST');
+            expect(request.url.path, '/skyward/fleet/ac-1/repair');
+            return _json({'success': true}, 200);
+          }),
+        ),
+      );
+
+      // FleetCubit mengirim p_fleet_id (parity RPC Supabase lama).
+      final res = await gateway.repairAircraft({
+        'p_user_id': 'u-1',
+        'p_fleet_id': 'ac-1',
+      });
+      expect(res.isNotEmpty, true);
+    });
+
+    test('sellAircraft resolves p_fleet_id (cubit payload) to path id', () async {
+      final gateway = GoFleetGateway(
+        apiClient: ApiClient(
+          baseUrl: 'https://api.example.com/skyward',
+          httpClient: MockClient((request) async {
+            expect(request.method, 'POST');
+            expect(request.url.path, '/skyward/fleet/ac-1/sell');
+            return _json({'success': true}, 200);
+          }),
+        ),
+      );
+
+      final res = await gateway.sellAircraft({
+        'p_user_id': 'u-1',
+        'p_fleet_id': 'ac-1',
+      });
+      expect(res.isNotEmpty, true);
+    });
+
+    test('terminateLease resolves p_fleet_id (cubit payload) to path id', () async {
+      final gateway = GoFleetGateway(
+        apiClient: ApiClient(
+          baseUrl: 'https://api.example.com/skyward',
+          httpClient: MockClient((request) async {
+            expect(request.method, 'POST');
+            expect(request.url.path, '/skyward/fleet/ac-1/terminate-lease');
+            return _json({'success': true}, 200);
+          }),
+        ),
+      );
+
+      final res = await gateway.terminateLease({
+        'p_user_id': 'u-1',
+        'p_fleet_id': 'ac-1',
+      });
+      expect(res.isNotEmpty, true);
+    });
+
+    test('configureSeats resolves p_fleet_id (cubit payload) to path id', () async {
+      final gateway = GoFleetGateway(
+        apiClient: ApiClient(
+          baseUrl: 'https://api.example.com/skyward',
+          httpClient: MockClient((request) async {
+            expect(request.method, 'PATCH');
+            expect(request.url.path, '/skyward/fleet/ac-1/seats');
+            final body = jsonDecode(request.body) as Map<String, dynamic>;
+            expect(body['economy_seats'], 150);
+            return _json({'success': true}, 200);
+          }),
+        ),
+      );
+
+      final res = await gateway.configureSeats({
+        'p_user_id': 'u-1',
+        'p_fleet_id': 'ac-1',
+        'p_economy_seats': 150,
+        'p_business_seats': 12,
+        'p_first_class_seats': 0,
+      });
+      expect(res.isNotEmpty, true);
+    });
+
     test('configureSeats calls PATCH /fleet/{id}/seats', () async {
       final gateway = GoFleetGateway(
         apiClient: ApiClient(
