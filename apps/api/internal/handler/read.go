@@ -26,16 +26,6 @@ func userID(w http.ResponseWriter, r *http.Request) (string, bool) {
 	return uid, true
 }
 
-// userID — helper: user_id dari AuthGuard context, 401 bila tidak ada.
-func (h *ReadHandler) userID(w http.ResponseWriter, r *http.Request) (string, bool) {
-	uid, ok := middleware.UserIDFromContext(r.Context())
-	if !ok || uid == "" {
-		httperr.WriteError(w, nil, httperr.Unauthorized("not authenticated"))
-		return "", false
-	}
-	return uid, true
-}
-
 // ── Simulation ────────────────────────────────────────────────────────
 
 func (h *ReadHandler) SimulationState(w http.ResponseWriter, r *http.Request) {
@@ -195,7 +185,7 @@ func (h *ReadHandler) BankCredit(w http.ResponseWriter, r *http.Request) {
 // ── Extra reads (Fase 9 pendukung gateway) ────────────────────────────
 
 func (h *ReadHandler) FleetAvailable(w http.ResponseWriter, r *http.Request) {
-	uid, ok := h.userID(w, r)
+	uid, ok := userID(w, r)
 	if !ok {
 		return
 	}
@@ -208,7 +198,7 @@ func (h *ReadHandler) FleetAvailable(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ReadHandler) FleetByID(w http.ResponseWriter, r *http.Request) {
-	uid, ok := h.userID(w, r)
+	uid, ok := userID(w, r)
 	if !ok {
 		return
 	}
@@ -221,7 +211,7 @@ func (h *ReadHandler) FleetByID(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ReadHandler) FleetLatestForModel(w http.ResponseWriter, r *http.Request) {
-	uid, ok := h.userID(w, r)
+	uid, ok := userID(w, r)
 	if !ok {
 		return
 	}
@@ -234,7 +224,7 @@ func (h *ReadHandler) FleetLatestForModel(w http.ResponseWriter, r *http.Request
 }
 
 func (h *ReadHandler) GroundingThreshold(w http.ResponseWriter, r *http.Request) {
-	uid, ok := h.userID(w, r)
+	uid, ok := userID(w, r)
 	if !ok {
 		return
 	}
@@ -247,7 +237,7 @@ func (h *ReadHandler) GroundingThreshold(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *ReadHandler) FinanceHistory(w http.ResponseWriter, r *http.Request) {
-	uid, ok := h.userID(w, r)
+	uid, ok := userID(w, r)
 	if !ok {
 		return
 	}
@@ -260,7 +250,7 @@ func (h *ReadHandler) FinanceHistory(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ReadHandler) BankCreditHistory(w http.ResponseWriter, r *http.Request) {
-	uid, ok := h.userID(w, r)
+	uid, ok := userID(w, r)
 	if !ok {
 		return
 	}
@@ -273,7 +263,7 @@ func (h *ReadHandler) BankCreditHistory(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *ReadHandler) BankAccounts(w http.ResponseWriter, r *http.Request) {
-	uid, ok := h.userID(w, r)
+	uid, ok := userID(w, r)
 	if !ok {
 		return
 	}
