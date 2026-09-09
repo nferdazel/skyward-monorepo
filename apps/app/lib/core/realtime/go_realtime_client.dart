@@ -60,7 +60,13 @@ class GoRealtimeClient {
   Future<void> connect() async {
     if (_channel != null) return;
 
-    final token = await _tokenStore.read();
+    String? token;
+    try {
+      token = await _tokenStore.read();
+    } catch (e) {
+      debugPrint('[GoRealtimeClient] Token read failed: $e');
+      return;
+    }
     if (token == null || token.isEmpty) return;
 
     final wsScheme = _baseUrl.startsWith('https') ? 'wss' : 'ws';

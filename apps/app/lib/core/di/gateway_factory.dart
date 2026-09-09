@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 import '../api/api_client.dart';
 import '../api/auth_token_store.dart';
 import '../config/app_env.dart';
+import '../realtime/go_realtime_client.dart';
 import '../../features/auth/data/auth_gateway.dart';
 import '../../features/auth/data/go_auth_gateway.dart';
 import '../../features/auth/data/mock_auth_gateway.dart';
@@ -27,11 +28,10 @@ import '../../features/settings/data/settings_gateway.dart';
 import '../../features/simulation/data/go_simulation_gateway.dart';
 import '../../features/simulation/data/mock_simulation_gateway.dart';
 import '../../features/simulation/data/simulation_gateway.dart';
-import '../database/supabase_client.dart';
 import '../utils/dev_mode_manager.dart';
 
 class GatewayFactory {
-  static bool get _useMock => DevModeManager.isDevMode || SupabaseManager.isDevMode;
+  static bool get _useMock => DevModeManager.isDevMode;
 
   /// ApiClient bersama untuk semua Go*Gateway (auth → feature). Token JWT
   /// disimpan via [SharedPrefsAuthTokenStore]; ApiClient menyuntikkannya ke
@@ -48,6 +48,22 @@ class GatewayFactory {
 
   @visibleForTesting
   static void resetApiClient() => _sharedApiClient = null;
+
+  /// Shared WebSocket client ke skyward-api (Go realtime hub). Satu koneksi
+  /// dipakai semua cubit; tiap cubit subscribe channel-nya sendiri.
+  static GoRealtimeClient? _sharedRealtime;
+  static GoRealtimeClient get realtimeClient =>
+      _sharedRealtime ??= GoRealtimeClient(
+        tokenStore: const SharedPrefsAuthTokenStore(),
+        baseUrl: AppEnv.apiBaseUrl,
+      );
+
+  @visibleForTesting
+  static void overrideRealtimeClient(GoRealtimeClient client) =>
+      _sharedRealtime = client;
+
+  @visibleForTesting
+  static void resetRealtimeClient() => _sharedRealtime = null;
 
   static FleetGateway createFleetGateway() =>
       _useMock ? MockFleetGateway() : GoFleetGateway(apiClient: apiClient);

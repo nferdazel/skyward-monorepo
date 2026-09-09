@@ -3,10 +3,9 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants/app_strings.dart';
-import '../../../../core/database/supabase_client.dart';
 import '../../../../core/di/gateway_factory.dart';
 import '../../../../core/mixins/simulation_reactive_mixin.dart';
-import '../../../../core/realtime/realtime_subscription_bag.dart';
+import '../../../../core/realtime/go_realtime_mixin.dart';
 import '../../../../core/utils/app_error.dart';
 import '../../../../core/utils/perf_debug.dart';
 import '../../../../core/utils/safe_cast.dart';
@@ -16,10 +15,9 @@ import '../../data/finance_gateway.dart';
 import '../../domain/finance_snapshot.dart';
 import 'finance_state.dart';
 
-class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
+class FinanceCubit extends Cubit<FinanceState>
+    with SimulationReactiveMixin, GoRealtimeMixin {
   final FinanceGateway _gateway;
-  final RealtimeSubscriptionBag _realtimeSubscriptions =
-      RealtimeSubscriptionBag();
   FinanceSnapshot _cachedSnapshot = const FinanceSnapshot.empty();
   List<BankTransaction> _cachedTransactions = [];
   List<FinanceDailySnapshot> _cachedFinancialSnapshots = [];
@@ -220,7 +218,7 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
   @override
   Future<void> close() async {
     disposeReactivity();
-    await _realtimeSubscriptions.clear();
+    disposeRealtime();
     return super.close();
   }
 
@@ -468,8 +466,6 @@ class FinanceCubit extends Cubit<FinanceState> with SimulationReactiveMixin {
   }
 
   void _setupRealtime(String userId) {
-    if (SupabaseManager.hasMockClient || SupabaseManager.maybeClient == null) return;
-    unawaited(_realtimeSubscriptions.clear());
     // bank_transactions realtime is handled by BankCubit; FinanceCubit
     // refreshes via SimulationReactiveMixin when simulation syncs.
   }
