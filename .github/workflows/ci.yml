@@ -35,6 +35,12 @@ jobs:
           cd apps/app
           flutter pub get
 
+      - name: Generate Flutter Code (build_runner)
+        run: |
+          cd apps/app
+          cp ../../.env.example .env 2>/dev/null || touch .env
+          dart run build_runner build --delete-conflicting-outputs
+
       - name: Run Flutter Static Analysis
         run: |
           cd apps/app
