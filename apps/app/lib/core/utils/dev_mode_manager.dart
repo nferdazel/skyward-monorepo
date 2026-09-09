@@ -1,17 +1,20 @@
-import '../database/supabase_client.dart';
+import '../config/app_env.dart';
 
 class DevModeManager {
-  static const _devModeUrl = 'YOUR_SUPABASE_URL';
-  static const _devModeKey = 'YOUR_SUPABASE_KEY';
+  static const _devModeHost = 'localhost';
   static bool? _override;
 
   static set isDevMode(bool value) => _override = value;
-  static bool get isDevMode => _override ?? SupabaseManager.isDevMode;
+  static bool get isDevMode => _override ?? _isDevModeByApiUrl();
   static void resetDevMode() => _override = null;
 
-  static bool get isMockEnvironment {
-    return SupabaseManager.supabaseUrl == _devModeUrl || SupabaseManager.supabaseAnonKey == _devModeKey;
+  /// Deteksi dev mode dari base URL skyward-api: localhost = dev.
+  static bool _isDevModeByApiUrl() {
+    final base = AppEnv.apiBaseUrl.toLowerCase();
+    return base.contains(_devModeHost) || base.contains('127.0.0.1');
   }
+
+  static bool get isMockEnvironment => isDevMode;
 
   static bool isMockId(String id) {
     return id.startsWith('mock');

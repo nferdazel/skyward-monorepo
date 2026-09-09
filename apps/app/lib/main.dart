@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'core/database/supabase_client.dart';
 import 'core/theme/app_theme.dart';
 import 'core/widgets/terminal_loader.dart';
 import 'features/auth/presentation/cubit/auth_cubit.dart';
@@ -24,15 +23,6 @@ void main() async {
   // Minimum recommended window size: 920×600 for desktop/web layouts.
   // Flutter web does not provide a direct API to enforce minimum window size;
   // responsive breakpoints handle narrower viewports gracefully.
-
-  // Initialize Supabase Connection. Tidak fatal kalau gagal — auth & feature
-  // data sudah/akan lewat Go API (ApiClient); Supabase tinggal dipakai
-  // gateway yang belum migrasi (Phase 3+). Lihat plan koneksi.
-  try {
-    await SupabaseManager.initialize();
-  } catch (e, stack) {
-    SupabaseManager.logError('supabase_initialize', e, stack);
-  }
 
   runApp(const MyApp());
 }

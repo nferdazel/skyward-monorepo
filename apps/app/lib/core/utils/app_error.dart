@@ -1,5 +1,3 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
-
 import '../../features/auth/data/auth_gateway.dart';
 import '../../features/bank/data/bank_gateway.dart';
 import '../../features/finance/data/finance_gateway.dart';
@@ -8,7 +6,7 @@ import '../../features/leaderboard/data/leaderboard_gateway.dart';
 import '../../features/routes/data/routes_gateway.dart';
 import '../../features/settings/data/settings_gateway.dart';
 import '../../features/simulation/data/simulation_gateway.dart';
-import '../database/supabase_client.dart';
+import 'app_logger.dart';
 
 /// Standardized error handling utility for all cubits.
 class AppError {
@@ -16,7 +14,7 @@ class AppError {
 
   /// Extract a user-friendly message from any exception.
   ///
-  /// Inspects common Supabase / Postgres / Dart error types and returns
+  /// Inspects common gateway / network / Dart error types and returns
   /// a cleaned-up human-readable string. Falls back to [fallback] when no
   /// specific pattern is matched.
   static String extractMessage(dynamic error, String fallback) {
@@ -40,18 +38,11 @@ class AppError {
       return 'Request timed out. Please try again.';
     }
 
-    // Postgrest / Supabase errors — pull the message field
-    if (raw.contains('PostgrestException')) {
-      final match = RegExp(r'message: (.+?)(?:,|\})').firstMatch(raw);
-      return match?.group(1)?.trim() ?? fallback;
-    }
-
     return fallback;
   }
 
   /// Returns `true` when [error] represents a 401 Unauthorized response.
   static bool isUnauthorizedError(Object error) {
-    if (error is PostgrestException) return error.code == '401';
     if (error is AuthGatewayException) {
       return error.message.contains('401');
     }
@@ -60,9 +51,9 @@ class AppError {
 
   /// Log error with a consistent, searchable format.
   ///
-  /// Delegates to [SupabaseManager.logError] so all cubit errors appear
+  /// Delegates to [AppLogger.logError] so all cubit errors appear
   /// in the same log pipeline.
   static void log(String action, dynamic error, [StackTrace? stack]) {
-    SupabaseManager.logError(action, error, stack);
+    AppLogger.logError(action, error, stack);
   }
 }
