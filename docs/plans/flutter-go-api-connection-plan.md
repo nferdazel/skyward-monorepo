@@ -138,6 +138,7 @@ Per feature:
 - Ganti subscription Postgres Changes dengan WS `GET /ws?token=...` (`internal/realtime.Hub`).
 - Event channel/type mengikuti hub yang ada; sesuaikan `RealtimeCubitMixin`.
 - Realtime tetap freshness aid — resync eksplisit pasca-mutasi dipertahankan.
+> ✅ Selesai 2026-09-09. Implementasi `GoRealtimeClient` ([go_realtime_client.dart](file:///Users/sachiel/Projects/skyward-monorepo/apps/app/lib/core/realtime/go_realtime_client.dart)) terhubung ke WebSocket Go backend (`GET /ws?token=<jwt>`). Direct dependency `web_socket_channel` ditambahkan. Unit test `go_realtime_client_test.dart` lolos.
 
 ### Phase 5 — Cleanup
 - Hapus `supabase_flutter`, `postgrest` dari pubspec; hapus `SupabaseManager`,
