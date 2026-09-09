@@ -5,7 +5,6 @@ import 'package:skyward/features/bank/domain/bank_account_model.dart';
 import 'package:skyward/features/bank/domain/bank_transaction_model.dart';
 import 'package:skyward/features/bank/presentation/cubit/bank_cubit.dart';
 import 'package:skyward/features/bank/presentation/cubit/bank_state.dart';
-import 'package:skyward/core/utils/dev_mode_manager.dart';
 
 class MockBankGateway implements BankGateway {
   List<dynamic> loansToReturn = [];
@@ -187,13 +186,9 @@ final _bankTransaction = BankTransaction(
 
 void main() {
   group('BankCubit', () {
-    setUp(() {
-      DevModeManager.isDevMode = false;
-    });
+    setUp(() {});
 
-    tearDown(() {
-      DevModeManager.resetDevMode();
-    });
+    tearDown(() {});
 
     blocTest<BankCubit, BankState>(
       'loadBankData emits BankLoading then BankLoaded with parsed bank state',

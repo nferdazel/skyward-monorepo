@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bloc_test/bloc_test.dart';
-import 'package:skyward/core/utils/dev_mode_manager.dart';
 import 'package:skyward/features/finance/data/finance_gateway.dart';
 import 'package:skyward/features/finance/presentation/cubit/finance_cubit.dart';
 import 'package:skyward/features/finance/presentation/cubit/finance_state.dart';
@@ -136,10 +135,7 @@ void main() {
   group('FinanceCubit Gateway Tests', () {
     setUp(() {});
 
-    tearDown(() {
-      DevModeManager.resetDevMode();
-      DevModeManager.resetDevMode();
-    });
+    tearDown(() {});
 
     // =========================================================================
     // loadLedger (now loads transactions)
@@ -390,21 +386,22 @@ void main() {
     // Dev mode fallback
     // =========================================================================
 
-    group('dev mode fallback', () {
-      test('dev mode works when no gateway is provided', () async {
-        DevModeManager.isDevMode = true;
-        final cubit =
-            FinanceCubit(); // No gateway → uses SupabaseFinanceGateway
+    group('mock gateway', () {
+      test('works when mock gateway is injected', () async {
+        final gateway = MockFinanceGateway()
+          ..transactionsToReturn = [_mockTxnCredit]
+          ..snapshotToReturn = _mockSnapshotMap;
+        final cubit = FinanceCubit(gateway: gateway);
 
         expect(cubit.state, const FinanceInitial());
 
-        await cubit.loadLedger('dev-user');
+        await cubit.loadLedger('user-1');
 
         expect(cubit.state, isA<FinanceLoaded>());
         final loaded = cubit.state as FinanceLoaded;
         expect(loaded.transactions, isNotEmpty);
         expect(loaded.snapshot.cash, 10000000.0);
-        expect(loaded.snapshot.companyName, 'Skyward Star Airlines');
+        expect(loaded.snapshot.companyName, 'Test Airlines');
         expect(loaded.totalRevenue, greaterThan(0));
 
         await cubit.close();

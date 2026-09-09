@@ -3,7 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:skyward/core/constants/app_strings.dart';
 import 'package:skyward/core/theme/app_theme.dart';
-import 'package:skyward/core/utils/dev_mode_manager.dart';
 import 'package:skyward/features/auth/domain/user_model.dart';
 import 'package:skyward/features/auth/presentation/cubit/auth_cubit.dart';
 import 'package:skyward/features/auth/presentation/cubit/auth_state.dart';
@@ -207,6 +206,17 @@ class TestSettingsCubit extends SettingsCubit {
     await onResetComplete();
     return true;
   }
+
+  @override
+  Future<Map<String, dynamic>> loadUserProfile(String userId) async => {
+        'user_id': userId,
+        'username': 'testpilot',
+        'company_name': 'Test Airlines',
+        'ceo_name': 'CEO Test',
+        'hq_airport_iata': 'SIN',
+        'game_current_time': '2027-02-23T00:00:00Z',
+        'auto_grounding_threshold': 30.0,
+      };
 }
 
 AppUser _testUser({
@@ -226,14 +236,6 @@ AppUser _testUser({
 }
 
 void main() {
-  setUp(() {
-    DevModeManager.isDevMode = true;
-  });
-
-  tearDown(() {
-    DevModeManager.resetDevMode();
-  });
-
   testWidgets(
     'FleetView refreshes simulation, fleet, routes, bank, and finance after fleet success',
     (tester) async {

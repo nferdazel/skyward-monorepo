@@ -3,7 +3,6 @@ import 'package:bloc_test/bloc_test.dart';
 import 'package:skyward/features/fleet/data/fleet_gateway.dart';
 import 'package:skyward/features/fleet/presentation/cubit/fleet_cubit.dart';
 import 'package:skyward/features/fleet/presentation/cubit/fleet_state.dart';
-import 'package:skyward/core/utils/dev_mode_manager.dart';
 
 // =============================================================================
 // Mock Gateway
@@ -204,13 +203,9 @@ final _mockUpdatedFleetMap = <String, dynamic>{
 
 void main() {
   group('FleetCubit Remaining Gateway Tests', () {
-    setUp(() {
-      DevModeManager.isDevMode = false;
-    });
+    setUp(() {});
 
-    tearDown(() {
-      DevModeManager.resetDevMode();
-    });
+    tearDown(() {});
 
     // =========================================================================
     // leaseAircraft

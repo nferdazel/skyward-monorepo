@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bloc_test/bloc_test.dart';
-import 'package:skyward/core/utils/dev_mode_manager.dart';
 import 'package:skyward/features/routes/data/routes_gateway.dart';
 import 'package:skyward/features/routes/presentation/cubit/routes_cubit.dart';
 import 'package:skyward/features/routes/presentation/cubit/routes_state.dart';
@@ -239,10 +238,7 @@ void main() {
         ..fleetToReturn = [_mockFleetEntry];
     });
 
-    tearDown(() {
-      DevModeManager.resetDevMode();
-      DevModeManager.resetDevMode();
-    });
+    tearDown(() {});
 
     // =========================================================================
     // loadRoutesAndData
@@ -797,14 +793,13 @@ void main() {
     // Dev mode fallback
     // =========================================================================
 
-    group('dev mode fallback', () {
-      test('dev mode loads mock data when no gateway is provided', () async {
-        DevModeManager.isDevMode = true;
-        final cubit = RoutesCubit(); // No gateway → uses SupabaseRoutesGateway
+    group('mock gateway', () {
+      test('loads mock data when mock gateway is injected', () async {
+        final cubit = RoutesCubit(gateway: gateway);
 
         expect(cubit.state, const RoutesInitial());
 
-        await cubit.loadRoutesAndData('dev-user');
+        await cubit.loadRoutesAndData('user-1');
 
         expect(cubit.state, isA<RoutesLoaded>());
         final loaded = cubit.state as RoutesLoaded;
@@ -813,19 +808,21 @@ void main() {
         expect(loaded.availableAircraft, isA<List>());
         expect(loaded.airports.first.iata, 'CGK');
         expect(loaded.routes.first.originIata, 'CGK');
-        expect(loaded.routes.first.destinationIata, 'DPS');
+        expect(loaded.routes.first.destinationIata, 'SIN');
 
         await cubit.close();
       });
 
-      test('dev mode create route works without gateway', () async {
-        DevModeManager.isDevMode = true;
-        final cubit = RoutesCubit();
+      test('create route works with mock gateway', () async {
+        gateway.rpcToReturn = [
+          <String, dynamic>{'success': true, 'message': 'Route created'},
+        ];
+        final cubit = RoutesCubit(gateway: gateway);
 
-        await cubit.loadRoutesAndData('dev-user');
+        await cubit.loadRoutesAndData('user-1');
 
         final result = await cubit.createRoute(
-          userId: 'dev-user',
+          userId: 'user-1',
           originIata: 'CGK',
           destinationIata: 'KUL',
           distanceKm: 1180.0,
@@ -839,11 +836,13 @@ void main() {
         await cubit.close();
       });
 
-      test('dev mode assignAircraft works without gateway', () async {
-        DevModeManager.isDevMode = true;
-        final cubit = RoutesCubit();
+      test('assignAircraft works with mock gateway', () async {
+        gateway.rpcToReturn = [
+          <String, dynamic>{'success': true, 'message': 'Aircraft assigned'},
+        ];
+        final cubit = RoutesCubit(gateway: gateway);
 
-        await cubit.loadRoutesAndData('dev-user');
+        await cubit.loadRoutesAndData('user-1');
         final loadedBefore = cubit.state as RoutesLoaded;
         final routeId = loadedBefore.routes.first.id;
 
@@ -851,7 +850,7 @@ void main() {
         final result = await cubit.assignAircraft(
           routeId: routeId,
           aircraftId: aircraftId,
-          userId: 'dev-user',
+          userId: 'user-1',
         );
 
         expect(result, isTrue);
@@ -860,12 +859,13 @@ void main() {
         await cubit.close();
       });
 
-      test('dev mode updateRouteFrequencyAndPrice works without gateway',
-          () async {
-        DevModeManager.isDevMode = true;
-        final cubit = RoutesCubit();
+      test('updateRouteFrequencyAndPrice works with mock gateway', () async {
+        gateway.rpcToReturn = [
+          <String, dynamic>{'success': true, 'message': 'Route updated'},
+        ];
+        final cubit = RoutesCubit(gateway: gateway);
 
-        await cubit.loadRoutesAndData('dev-user');
+        await cubit.loadRoutesAndData('user-1');
         final loadedBefore = cubit.state as RoutesLoaded;
         final routeId = loadedBefore.routes.first.id;
 
@@ -873,7 +873,7 @@ void main() {
           routeId: routeId,
           ticketPrice: 250.00,
           flightsPerWeek: 21,
-          userId: 'dev-user',
+          userId: 'user-1',
         );
 
         expect(result, isTrue);
@@ -882,17 +882,19 @@ void main() {
         await cubit.close();
       });
 
-      test('dev mode deleteRoute works without gateway', () async {
-        DevModeManager.isDevMode = true;
-        final cubit = RoutesCubit();
+      test('deleteRoute works with mock gateway', () async {
+        gateway.rpcToReturn = [
+          <String, dynamic>{'success': true, 'message': 'Route deleted'},
+        ];
+        final cubit = RoutesCubit(gateway: gateway);
 
-        await cubit.loadRoutesAndData('dev-user');
+        await cubit.loadRoutesAndData('user-1');
         final loadedBefore = cubit.state as RoutesLoaded;
         final routeId = loadedBefore.routes.first.id;
 
         final result = await cubit.deleteRoute(
           routeId: routeId,
-          userId: 'dev-user',
+          userId: 'user-1',
         );
 
         expect(result, isTrue);

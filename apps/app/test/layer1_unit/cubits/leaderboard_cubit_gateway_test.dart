@@ -4,7 +4,6 @@ import 'package:skyward/features/leaderboard/data/leaderboard_gateway.dart';
 import 'package:skyward/features/leaderboard/presentation/cubit/leaderboard_cubit.dart';
 import 'package:skyward/features/leaderboard/domain/leaderboard_models.dart';
 import 'package:skyward/features/leaderboard/presentation/cubit/leaderboard_state.dart';
-import 'package:skyward/core/utils/dev_mode_manager.dart';
 
 // =============================================================================
 // Mock Gateway
@@ -119,13 +118,9 @@ final _mockInsightsResponse = [
 
 void main() {
   group('LeaderboardCubit Gateway Tests', () {
-    setUp(() {
-      DevModeManager.isDevMode = false;
-    });
+    setUp(() {});
 
-    tearDown(() {
-      DevModeManager.resetDevMode();
-    });
+    tearDown(() {});
 
     // =========================================================================
     // loadRankings
@@ -505,7 +500,6 @@ void main() {
       blocTest<LeaderboardCubit, LeaderboardState>(
         'loadRankings: loads mock data in dev mode without calling gateway',
         build: () {
-          DevModeManager.isDevMode = true;
           final gateway = MockLeaderboardGateway()..shouldThrow = true;
           return LeaderboardCubit(gateway: gateway);
         },
@@ -528,7 +522,6 @@ void main() {
 
       test('getInsights: returns mock insights for mock bot ids in dev mode',
           () async {
-        DevModeManager.isDevMode = true;
         final gateway = MockLeaderboardGateway()..shouldThrow = true;
         final cubit = LeaderboardCubit(gateway: gateway);
 
@@ -553,7 +546,6 @@ void main() {
 
       test('dev mode: mock entries are sorted by net worth descending',
           () async {
-        DevModeManager.isDevMode = true;
         final gateway = MockLeaderboardGateway()..shouldThrow = true;
         final cubit = LeaderboardCubit(gateway: gateway);
 

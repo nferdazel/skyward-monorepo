@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bloc_test/bloc_test.dart';
-import 'package:skyward/core/utils/dev_mode_manager.dart';
 import 'package:skyward/features/settings/data/settings_gateway.dart';
 import 'package:skyward/features/settings/presentation/cubit/settings_cubit.dart';
 
@@ -73,10 +72,7 @@ void main() {
   group('SettingsCubit Gateway Tests', () {
     setUp(() {});
 
-    tearDown(() {
-      DevModeManager.resetDevMode();
-      DevModeManager.resetDevMode();
-    });
+    tearDown(() {});
 
     // =========================================================================
     // loadAirports
@@ -414,7 +410,6 @@ void main() {
       blocTest<SettingsCubit, SettingsState>(
         'loadAirports: loads mock data in dev mode',
         build: () {
-          DevModeManager.isDevMode = true;
           final gateway = MockSettingsGateway()..airportsToReturn = _mockAirports;
           return SettingsCubit(gateway: gateway);
         },
@@ -429,7 +424,6 @@ void main() {
       blocTest<SettingsCubit, SettingsState>(
         'saveSettings: succeeds without gateway call in dev mode',
         build: () {
-          DevModeManager.isDevMode = true;
           final gateway = MockSettingsGateway()
             ..rpcToReturn = [
               <String, dynamic>{'success': true, 'message': 'OK'},
