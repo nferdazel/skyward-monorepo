@@ -1,4 +1,6 @@
-# Skyward Supabase Contract Map
+# Skyward Supabase Contract Map (Legacy / Migration Archive)
+
+> **Status (2026-09-09)**: All Flutter gateways have been migrated to the authoritative Go backend API (`skyward-api` REST + WebSocket). This document is preserved for historical reference and parity auditing against the original SQL oracle functions.
 
 Last verified against code on 2026-07-22.
 

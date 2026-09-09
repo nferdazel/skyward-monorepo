@@ -2,10 +2,7 @@
 
 Last verified on 2026-09-05 (live HTTP checks + repo audit).
 
-> ⚠️ **Migrasi backend berjalan**: `apps/api` (Go REST+WS) sudah implemented & live di
-> `https://api.qouver.com/skyward`, tapi Flutter (`apps/app`) masih 100% Supabase SDK dan
-> BELUM memanggil kontrak Go tersebut. Detail & fase koneksi:
-> `docs/plans/flutter-go-api-connection-plan.md`.
+> ✅ **Migrasi backend selesai (2026-09-09)**: `apps/api` (Go REST+WS) adalah backend utama authoritative untuk Flutter (`apps/app`). Seluruh 8 feature gateway (`GoAuthGateway`, `GoSimulationGateway`, `GoFleetGateway`, `GoRoutesGateway`, `GoBankGateway`, `GoFinanceGateway`, `GoLeaderboardGateway`, `GoSettingsGateway`) & WebSocket `GoRealtimeClient` telah aktif di `GatewayFactory`. Detail: `docs/plans/flutter-go-api-connection-plan.md`.
 
 This folder is the current maintenance record for Skyward's live runtime.
 It is intentionally organized by operational question, not by historical phase.
@@ -24,8 +21,8 @@ If you only open four files, open these:
 Live runtime characteristics:
 - Flutter frontend with Cubit-only app state
 - web diserve di `https://skyward.qouver.com` (static build dari deploy-vps.sh)
-- API Go live di `https://api.qouver.com/skyward` (healthz 200; semua handler implemented)
-- Supabase/Postgres masih authoritative untuk runtime Flutter saat ini (sebelum migrasi selesai)
+- API Go live di `https://api.qouver.com/skyward` (healthz 200; Go REST + WS = sole engine)
+- Backend Go (`apps/api`) adalah authoritative source untuk simulation, fleet, routes, bank, finance, dan leaderboard
 - bank-centric cash model:
   - `bank_accounts` is canonical cash
   - `bank_transactions` is canonical money movement
