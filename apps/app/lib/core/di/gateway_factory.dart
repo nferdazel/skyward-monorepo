@@ -15,6 +15,7 @@ import '../../features/fleet/data/go_fleet_gateway.dart';
 import '../../features/fleet/data/mock_fleet_gateway.dart';
 import '../../features/leaderboard/data/leaderboard_gateway.dart';
 import '../../features/leaderboard/data/mock_leaderboard_gateway.dart';
+import '../../features/routes/data/go_routes_gateway.dart';
 import '../../features/routes/data/mock_routes_gateway.dart';
 import '../../features/routes/data/routes_gateway.dart';
 import '../../features/settings/data/go_settings_gateway.dart';
@@ -49,7 +50,7 @@ class GatewayFactory {
       _useMock ? MockFleetGateway() : GoFleetGateway(apiClient: apiClient);
 
   static RoutesGateway createRoutesGateway() =>
-      _useMock ? const MockRoutesGateway() : const SupabaseRoutesGateway();
+      _useMock ? const MockRoutesGateway() : GoRoutesGateway(apiClient: apiClient);
 
   static BankGateway createBankGateway() =>
       _useMock ? const MockBankGateway() : const SupabaseBankGateway();
