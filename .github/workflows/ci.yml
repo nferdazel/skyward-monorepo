@@ -1,0 +1,46 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  analyze-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Run Go Backend Tests
+        run: |
+          cd apps/api
+          go test ./...
+
+      - name: Install Flutter Dependencies
+        run: |
+          cd apps/app
+          flutter pub get
+
+      - name: Run Flutter Static Analysis
+        run: |
+          cd apps/app
+          flutter analyze
+
+      - name: Run Flutter Tests
+        run: |
+          cd apps/app
+          flutter test
