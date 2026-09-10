@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/app_formatters.dart';
 import '../../../../core/widgets/pulse_dot.dart';
 import '../../../../presentation/theme/app_spacing.dart';
 import '../../../../presentation/theme/app_typography.dart';
@@ -17,7 +18,6 @@ class TopHud extends StatelessWidget {
   final DateFormat dateFormat;
   final int unreadCount;
   final VoidCallback? onNotificationTap;
-  final VoidCallback? onOpenSearch;
 
   const TopHud({
     super.key,
@@ -27,7 +27,6 @@ class TopHud extends StatelessWidget {
     required this.dateFormat,
     this.unreadCount = 0,
     this.onNotificationTap,
-    this.onOpenSearch,
   });
 
   @override
@@ -128,6 +127,7 @@ class TopHud extends StatelessWidget {
                   TabularMetricCounter(
                     value: simState.cashBalance,
                     prefix: '\$',
+                    formatter: AppFormatters.groupedNumber,
                     style: AppTypography.tabularHud.copyWith(
                       color: simState.cashBalance >= 0
                           ? AppTheme.success
@@ -165,47 +165,10 @@ class TopHud extends StatelessWidget {
 
           const Spacer(),
 
-          // ── RIGHT: Search Trigger, Notifications & Live Status ──
+          // ── RIGHT: Notifications & Live Status ──
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Search Trigger
-              if (onOpenSearch != null)
-                GestureDetector(
-                  onTap: onOpenSearch,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppTheme.surfaceRaised,
-                      borderRadius:
-                          BorderRadius.circular(AppSpacing.radiusTight),
-                      border:
-                          Border.all(color: AppTheme.borderSubtle, width: 1.0),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.search,
-                          size: 14,
-                          color: AppTheme.textSecondary,
-                        ),
-                        const SizedBox(width: AppSpacing.xs),
-                        Text(
-                          '⌘K',
-                          style: AppTypography.nanoLabel.copyWith(
-                            color: AppTheme.primary,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
               const SizedBox(width: AppSpacing.sm),
               // Notification bell
               _buildNotificationBell(),

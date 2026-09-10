@@ -18,6 +18,10 @@ class AppFormatters {
   
   /// Percentage format
   static final NumberFormat percent = NumberFormat.percentPattern();
+
+  /// Grouped integer with thousands separators (no currency symbol), e.g.
+  /// "1,234,567". Used by animated HUD counters that render their own prefix.
+  static final NumberFormat groupedNumber = NumberFormat.decimalPattern();
   
   /// Compact number format (1.2M, 3.4K)
   static final NumberFormat compact = NumberFormat.compact();

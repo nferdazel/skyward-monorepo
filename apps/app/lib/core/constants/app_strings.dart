@@ -391,7 +391,7 @@ class AppStrings {
   static const String criticalOperationAuth =
       'CRITICAL OPERATION AUTHORIZATION REQUIRED';
   static const String resetAirlineConfirmDesc =
-      'This deletes all aircraft, routes, and transactions. Cash resets to \$15,000,000.\n\nThis cannot be undone.';
+      'This deletes all aircraft, routes, and transactions. Cash resets to the configured starting balance.\n\nThis cannot be undone.';
   static const String airlineResetSuccess =
       'AIRLINE PROFILE RESET SUCCESSFULLY!';
   static const String airlineResetFailedPrefix = 'AIRLINE RESET FAILED: ';
