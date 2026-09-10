@@ -143,6 +143,15 @@ class SimulationCubit extends Cubit<SimulationState>
         operationalStatus: updatedUser.operationalStatus,
         consecutiveNegativeDays: updatedUser.consecutiveNegativeDays,
         recoveryStreakDays: updatedUser.recoveryStreakDays,
+        // A realtime user update is not a simulation sync: clear the
+        // sync-only digest/achievement payload so changing gameTime here does
+        // not re-arm the "while you were away" digest or achievement toast
+        // with stale data.
+        lastElapsedDays: 0.0,
+        lastFlightsRun: 0,
+        lastRevenue: 0.0,
+        lastExpense: 0.0,
+        lastUnlockedAchievements: const [],
       ),
     );
   }
