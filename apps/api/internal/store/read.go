@@ -98,13 +98,27 @@ type FleetAircraft struct {
 	BusinessSeats   int     `json:"business_seats"`
 	FirstClassSeats int     `json:"first_class_seats"`
 	TurnaroundHr    float64 `json:"turnaround_hours"`
+	// Aircraft-model attributes, flattened so the client can rebuild the nested
+	// model. Without these the Flutter fleet card rendered capacity/range as 0.
+	Type            string  `json:"type"`
+	RangeKM         int     `json:"range_km"`
+	Capacity        int     `json:"capacity"`
+	SpeedKMH        int     `json:"speed_kmh"`
+	FuelBurnPerKM   float64 `json:"fuel_burn_per_km"`
+	MaintCostPerHr  float64 `json:"maintenance_cost_per_hour"`
+	PurchasePrice   float64 `json:"purchase_price"`
+	LeasePriceMonth float64 `json:"lease_price_per_month"`
+	MinCreditTier   string  `json:"min_credit_tier"`
 }
 
 func (s *Store) GetFleet(ctx context.Context, userID string) ([]FleetAircraft, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT f.id, f.user_id, f.aircraft_model_id, m.model_name, m.manufacturer,
 		       f.acquisition_type, f.condition, f.status, f.tail_number, f.nickname,
-		       f.economy_seats, f.business_seats, f.first_class_seats, m.turnaround_hours
+		       f.economy_seats, f.business_seats, f.first_class_seats, m.turnaround_hours,
+		       m.type, m.range_km, m.capacity, m.speed_kmh, m.fuel_burn_per_km,
+		       m.maintenance_cost_per_hour, m.purchase_price, m.lease_price_per_month,
+		       COALESCE(m.min_credit_tier,'')
 		FROM fleet_aircraft f
 		JOIN aircraft_models m ON m.id = f.aircraft_model_id
 		WHERE f.user_id = $1 ORDER BY f.acquired_game_date DESC NULLS LAST`, userID)
@@ -539,7 +553,10 @@ func (s *Store) GetFleetAvailable(ctx context.Context, userID string) ([]FleetAi
 	rows, err := s.pool.Query(ctx, `
 		SELECT f.id, f.user_id, f.aircraft_model_id, m.model_name, m.manufacturer,
 		       f.acquisition_type, f.condition, f.status, f.tail_number, f.nickname,
-		       f.economy_seats, f.business_seats, f.first_class_seats, m.turnaround_hours
+		       f.economy_seats, f.business_seats, f.first_class_seats, m.turnaround_hours,
+		       m.type, m.range_km, m.capacity, m.speed_kmh, m.fuel_burn_per_km,
+		       m.maintenance_cost_per_hour, m.purchase_price, m.lease_price_per_month,
+		       COALESCE(m.min_credit_tier,'')
 		FROM fleet_aircraft f
 		JOIN aircraft_models m ON m.id = f.aircraft_model_id
 		WHERE f.user_id = $1 AND f.status = 'active'
@@ -558,13 +575,18 @@ func (s *Store) GetFleetByID(ctx context.Context, userID, fleetID string) (*Flee
 	err := s.pool.QueryRow(ctx, `
 		SELECT f.id, f.user_id, f.aircraft_model_id, m.model_name, m.manufacturer,
 		       f.acquisition_type, f.condition, f.status, f.tail_number, f.nickname,
-		       f.economy_seats, f.business_seats, f.first_class_seats, m.turnaround_hours
+		       f.economy_seats, f.business_seats, f.first_class_seats, m.turnaround_hours,
+		       m.type, m.range_km, m.capacity, m.speed_kmh, m.fuel_burn_per_km,
+		       m.maintenance_cost_per_hour, m.purchase_price, m.lease_price_per_month,
+		       COALESCE(m.min_credit_tier,'')
 		FROM fleet_aircraft f
 		JOIN aircraft_models m ON m.id = f.aircraft_model_id
 		WHERE f.id = $1 AND f.user_id = $2`, fleetID, userID).Scan(
 		&f.ID, &f.UserID, &f.ModelID, &f.ModelName, &f.Manufacturer,
 		&f.AcquisitionType, &f.Condition, &f.Status, &f.TailNumber, &f.Nickname,
-		&f.EconomySeats, &f.BusinessSeats, &f.FirstClassSeats, &f.TurnaroundHr)
+		&f.EconomySeats, &f.BusinessSeats, &f.FirstClassSeats, &f.TurnaroundHr,
+		&f.Type, &f.RangeKM, &f.Capacity, &f.SpeedKMH, &f.FuelBurnPerKM,
+		&f.MaintCostPerHr, &f.PurchasePrice, &f.LeasePriceMonth, &f.MinCreditTier)
 	if err != nil {
 		return nil, err
 	}
@@ -577,7 +599,10 @@ func (s *Store) GetLatestFleetForModel(ctx context.Context, userID, modelID stri
 	err := s.pool.QueryRow(ctx, `
 		SELECT f.id, f.user_id, f.aircraft_model_id, m.model_name, m.manufacturer,
 		       f.acquisition_type, f.condition, f.status, f.tail_number, f.nickname,
-		       f.economy_seats, f.business_seats, f.first_class_seats, m.turnaround_hours
+		       f.economy_seats, f.business_seats, f.first_class_seats, m.turnaround_hours,
+		       m.type, m.range_km, m.capacity, m.speed_kmh, m.fuel_burn_per_km,
+		       m.maintenance_cost_per_hour, m.purchase_price, m.lease_price_per_month,
+		       COALESCE(m.min_credit_tier,'')
 		FROM fleet_aircraft f
 		JOIN aircraft_models m ON m.id = f.aircraft_model_id
 		WHERE f.user_id = $1 AND f.aircraft_model_id = $2
@@ -585,7 +610,9 @@ func (s *Store) GetLatestFleetForModel(ctx context.Context, userID, modelID stri
 		LIMIT 1`, userID, modelID).Scan(
 		&f.ID, &f.UserID, &f.ModelID, &f.ModelName, &f.Manufacturer,
 		&f.AcquisitionType, &f.Condition, &f.Status, &f.TailNumber, &f.Nickname,
-		&f.EconomySeats, &f.BusinessSeats, &f.FirstClassSeats, &f.TurnaroundHr)
+		&f.EconomySeats, &f.BusinessSeats, &f.FirstClassSeats, &f.TurnaroundHr,
+		&f.Type, &f.RangeKM, &f.Capacity, &f.SpeedKMH, &f.FuelBurnPerKM,
+		&f.MaintCostPerHr, &f.PurchasePrice, &f.LeasePriceMonth, &f.MinCreditTier)
 	if err != nil {
 		return nil, err
 	}

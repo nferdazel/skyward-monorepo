@@ -113,6 +113,7 @@ class UserFleetAircraft with Equatable {
         'id': map['aircraft_model_id'] ?? map['model_id'] ?? '',
         'model_name': map['model_name'] ?? '',
         'manufacturer': map['manufacturer'] ?? '',
+        'type': map['type'] ?? '',
         'range_km': map['range_km'] ?? 0,
         'capacity': map['capacity'] ?? 0,
         'speed_kmh': map['speed_kmh'] ?? 850,

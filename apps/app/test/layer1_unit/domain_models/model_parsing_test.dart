@@ -122,6 +122,45 @@ void main() {
       expect(aircraft.repairCost, closeTo(11.5 * (100000000.0 * 0.0005), 0.01));
     });
 
+    // Regression: the Go /fleet endpoint returns a FLAT aircraft map (no nested
+    // `aircraft_models`), with model attributes flattened onto the row. Capacity
+    // was being defaulted to 0, so the fleet card rendered "$seats / 0 slots".
+    test('UserFleetAircraft parses flat Go /fleet payload (capacity not 0)', () {
+      final map = {
+        'id': 'fleet-001',
+        'aircraft_model_id': 'model-a321',
+        'model_name': 'A321neo',
+        'manufacturer': 'Airbus',
+        'type': 'narrowbody',
+        'acquisition_type': 'purchase',
+        'condition': 85.76,
+        'status': 'active',
+        'tail_number': 'PK-AAA',
+        'economy_seats': 230,
+        'business_seats': 0,
+        'first_class_seats': 0,
+        'turnaround_hours': 0.75,
+        'range_km': 6850,
+        'capacity': 230,
+        'speed_kmh': 840,
+        'fuel_burn_per_km': 0.02,
+        'maintenance_cost_per_hour': 900.0,
+        'purchase_price': 110000000.00,
+        'lease_price_per_month': 700000.00,
+        'min_credit_tier': 'Silver',
+      };
+
+      final aircraft = UserFleetAircraft.fromMap(map);
+      expect(aircraft.economySeats, 230);
+      expect(aircraft.businessSeats, 0);
+      expect(aircraft.model.capacity, 230);
+      expect(aircraft.model.rangeKm, 6850);
+      expect(aircraft.model.modelName, 'A321neo');
+      expect(aircraft.model.minCreditTier, 'Silver');
+      // The fleet slot line = economy*1 + business*2 + first*3 / capacity.
+      expect(aircraft.model.capacity, isNot(0));
+    });
+
     test(
       'Owned aircraft derives disposal value from condition-adjusted residual',
       () {
