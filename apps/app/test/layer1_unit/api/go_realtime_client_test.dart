@@ -132,5 +132,117 @@ void main() {
 
       client.disconnect();
     });
+
+    test('reconnects automatically after the stream closes unexpectedly',
+        () async {
+      final channels = <_FakeWebSocketChannel>[];
+      final client = GoRealtimeClient(
+        tokenStore: _FakeTokenStore(),
+        baseUrl: 'http://localhost:8090',
+        channelFactory: (uri) {
+          final c = _FakeWebSocketChannel();
+          channels.add(c);
+          return c;
+        },
+      );
+
+      await client.connect();
+      expect(channels.length, 1);
+      expect(client.isConnected, isTrue);
+
+      // Simulasi koneksi putus tak terduga.
+      await channels.first.controller.close();
+      expect(client.isConnected, isFalse);
+
+      // Backoff pertama = 2s.
+      await Future<void>.delayed(const Duration(milliseconds: 2500));
+      expect(channels.length, greaterThanOrEqualTo(2),
+          reason: 'client harus mencoba reconnect setelah koneksi putus');
+
+      client.disconnect();
+    });
+
+    test('reconnect backoff grows while connections keep failing', () async {
+      final timestamps = <int>[];
+      final channels = <_FakeWebSocketChannel>[];
+      final sw = Stopwatch()..start();
+      final client = GoRealtimeClient(
+        tokenStore: _FakeTokenStore(),
+        baseUrl: 'http://localhost:8090',
+        channelFactory: (uri) {
+          timestamps.add(sw.elapsedMilliseconds);
+          final c = _FakeWebSocketChannel();
+          channels.add(c);
+          // Putuskan segera — koneksi tidak pernah "sehat".
+          scheduleMicrotask(() => c.controller.close());
+          return c;
+        },
+      );
+
+      await client.connect();
+      // Biarkan beberapa siklus reconnect berjalan (2s, 4s, …).
+      await Future<void>.delayed(const Duration(milliseconds: 8000));
+
+      expect(channels.length, greaterThanOrEqualTo(3),
+          reason: 'harus ada beberapa percobaan reconnect');
+      // Jarak antar percobaan harus membesar (backoff), bukan tetap ~2s.
+      final gap1 = timestamps[1] - timestamps[0];
+      final gap2 = timestamps[2] - timestamps[1];
+      expect(gap2, greaterThan(gap1),
+          reason: 'backoff harus bertambah ($gap1 -> $gap2 ms), '
+              'bukan konstan ~2s');
+
+      client.dispose();
+    });
+
+    test('disconnect during in-flight connect does not leave a live channel',
+        () async {
+      final channels = <_FakeWebSocketChannel>[];
+      final store = _FakeTokenStore();
+      final client = GoRealtimeClient(
+        tokenStore: store,
+        baseUrl: 'http://localhost:8090',
+        channelFactory: (uri) {
+          final c = _FakeWebSocketChannel();
+          channels.add(c);
+          return c;
+        },
+      );
+
+      // connect() menunggu token dibaca; disconnect() dipanggil selagi pending.
+      final connectFuture = client.connect();
+      client.disconnect();
+      await connectFuture;
+
+      expect(client.isConnected, isFalse,
+          reason: 'disconnect() saat connect in-flight tidak boleh '
+              'meninggalkan channel hidup');
+      expect(channels, isEmpty,
+          reason: 'channel tidak boleh dibuat setelah disconnect()');
+
+      client.dispose();
+    });
+
+    test('intentional disconnect does not trigger reconnect', () async {
+      final channels = <_FakeWebSocketChannel>[];
+      final client = GoRealtimeClient(
+        tokenStore: _FakeTokenStore(),
+        baseUrl: 'http://localhost:8090',
+        channelFactory: (uri) {
+          final c = _FakeWebSocketChannel();
+          channels.add(c);
+          return c;
+        },
+      );
+
+      await client.connect();
+      client.disconnect();
+
+      await Future<void>.delayed(const Duration(milliseconds: 2500));
+      expect(channels.length, 1,
+          reason: 'disconnect() sengaja tidak boleh memicu reconnect');
+
+      client.dispose();
+    });
   });
 }
