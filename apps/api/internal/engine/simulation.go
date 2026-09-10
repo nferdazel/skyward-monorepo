@@ -97,6 +97,11 @@ func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime ti
 	ticketKM := e.getConfigNum(ctx, "ticket_per_km_rate", 0.12)
 	maxWeekly := e.getConfigNum(ctx, "max_weekly_flights", 168.0)
 	demandPoolScale := e.getConfigNum(ctx, "demand_pool_scale", 290.0)
+	businessFareMult := e.getConfigNum(ctx, "business_fare_multiplier", 1.5)
+	firstFareMult := e.getConfigNum(ctx, "first_fare_multiplier", 2.5)
+	economyWilling := e.getConfigNum(ctx, "economy_willing_share", 0.80)
+	businessWilling := e.getConfigNum(ctx, "business_willing_share", 0.15)
+	firstWilling := e.getConfigNum(ctx, "first_willing_share", 0.05)
 
 	// fuel multiplier from events
 	var fuelMult, maintMult float64 = 1.0, 1.0
@@ -128,13 +133,16 @@ func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime ti
 		AcqType                      string
 		OriginDemand, DestDemand     int
 		AircraftID                   string
+		EconomySeats, BusinessSeats  int
+		FirstClassSeats              int
 	}
 	routes := []routeRow{}
 	rrows, _ := e.Pool.Query(ctx, `
 		SELECT ur.origin_iata, ur.destination_iata, ur.distance_km, ur.ticket_price, ur.flights_per_week,
 		       am.fuel_burn_per_km, am.speed_kmh, am.turnaround_hours, am.capacity,
 		       am.lease_price_per_month, am.maintenance_cost_per_hour,
-		       fa.acquisition_type, a1.demand_index, a2.demand_index, fa.id
+		       fa.acquisition_type, a1.demand_index, a2.demand_index, fa.id,
+		       COALESCE(fa.economy_seats, 0), COALESCE(fa.business_seats, 0), COALESCE(fa.first_class_seats, 0)
 		FROM route_assignments ur
 		JOIN fleet_aircraft fa ON fa.id=ur.assigned_aircraft_id
 		JOIN aircraft_models am ON am.id=fa.aircraft_model_id
@@ -146,7 +154,8 @@ func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime ti
 			var r routeRow
 			rrows.Scan(&r.OriginIATA, &r.DestIATA, &r.DistanceKM, &r.TicketPrice, &r.FlightsPerWeek,
 				&r.FuelBurnPerKM, &r.SpeedKMH, &r.TurnaroundHours, &r.Capacity,
-				&r.LeasePriceMonth, &r.MaintCostHr, &r.AcqType, &r.OriginDemand, &r.DestDemand, &r.AircraftID)
+				&r.LeasePriceMonth, &r.MaintCostHr, &r.AcqType, &r.OriginDemand, &r.DestDemand, &r.AircraftID,
+				&r.EconomySeats, &r.BusinessSeats, &r.FirstClassSeats)
 			routes = append(routes, r)
 		}
 		rrows.Close()
@@ -178,21 +187,38 @@ func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime ti
 		}
 
 		seasonalFactor := 1.0
-		effCapacity := math.Floor(r.Capacity * capacityEvent)
 
-		// GAME-02: fixed daily demand pool split across the player's flights.
-		// Raising frequency past saturation lowers per-flight load factor.
-		// Price elasticity is applied inside routeDailyDemand (GAME-04).
+		// GAME-03: allocate the daily demand pool across cabins by
+		// willingness-to-pay. `am.capacity` is a seat-slot budget (premium
+		// seats cost 2-3 slots), not a physical seat count; fall back to an
+		// all-economy configuration when the aircraft has no explicit config.
+		// capacityEvent scales seats for events (e.g. weather disruption).
+		econSeats, bizSeats, firstSeats := r.EconomySeats, r.BusinessSeats, r.FirstClassSeats
+		if econSeats+bizSeats+firstSeats <= 0 {
+			econSeats = int(math.Floor(r.Capacity))
+			bizSeats, firstSeats = 0, 0
+		}
+
+		// GAME-02: fixed daily demand pool. Raising frequency past saturation
+		// lowers per-flight load factor. Price elasticity is applied inside
+		// routeDailyDemand (GAME-04).
 		dailyDemand := routeDailyDemand(r.OriginDemand, r.DestDemand, r.DistanceKM,
 			r.TicketPrice, ticketBase, ticketKM, demandPoolScale) * demandEvent * seasonalFactor
 		flightsPerDay := float64(flights) / 7.0
-		seatsPerDay := flightsPerDay * effCapacity
-		const maxLoadFactor = 0.95
-		passengersPerDay := math.Min(dailyDemand, seatsPerDay*maxLoadFactor)
+
+		// Per-day seat capacity by cabin, then allocate the pool across them.
+		allocation := allocateCabins(
+			int(math.Round(float64(econSeats)*flightsPerDay)),
+			int(math.Round(float64(bizSeats)*flightsPerDay)),
+			int(math.Round(float64(firstSeats)*flightsPerDay)),
+			r.TicketPrice, businessFareMult, firstFareMult,
+			economyWilling, businessWilling, firstWilling,
+			dailyDemand, capacityEvent,
+		)
 		// Weekly revenue from the pool directly (not floor-then-multiply per
 		// flight), so weekly revenue is monotonic in the pool and does not
 		// oscillate with rounding at fractional frequencies.
-		weeklyRevenue := passengersPerDay * 7.0 * r.TicketPrice
+		weeklyRevenue := allocation.Revenue * 7.0
 		revenue := weeklyRevenue * timeFraction
 		fuelCost := float64(flights) * r.DistanceKM * r.FuelBurnPerKM * fuelPrice * fuelMult
 		crewCostTotal := float64(flights) * flightHours * crewCost
@@ -302,6 +328,55 @@ func (e *Engine) getConfigNum(ctx context.Context, key string, fallback float64)
 		return fallback
 	}
 	return v
+}
+
+// cabinResult is the per-day outcome of allocating a demand pool across cabins.
+type cabinResult struct {
+	Passengers float64 // total passengers carried per day
+	Revenue    float64 // total ticket revenue per day
+}
+
+// allocateCabins distributes a daily demand pool across an economy/business/
+// first configuration using willingness-to-pay tiers (GAME-03).
+//
+// Only `businessWilling` of the pool is willing to pay for business and
+// `firstWilling` for first; the remainder travels economy. Each cabin is filled
+// up to min(seats, willingDemand). Premium seats configured beyond the willing
+// share are wasted capacity — that is the trade-off against all-economy: a
+// premium-heavy cabin loses sellable economy seats without enough premium
+// demand to fill them.
+//
+// `demandPool` is the route's daily pool (passengers/day); `capacityFactor`
+// scales physical seats for events (e.g. weather disruption).
+func allocateCabins(
+	economySeats, businessSeats, firstSeats int,
+	baseFare, businessMult, firstMult,
+	economyWilling, businessWilling, firstWilling,
+	demandPool, capacityFactor float64,
+) cabinResult {
+	// Normalise willingness shares so they never exceed the pool.
+	total := economyWilling + businessWilling + firstWilling
+	if total <= 0 {
+		economyWilling, businessWilling, firstWilling, total = 1.0, 0.0, 0.0, 1.0
+	}
+	econDemand := demandPool * economyWilling / total
+	bizDemand := demandPool * businessWilling / total
+	firstDemand := demandPool * firstWilling / total
+
+	seats := func(n int) float64 { return float64(n) * capacityFactor }
+
+	// Premium cabins fill first, limited by both their seats and the willing
+	// demand. Passengers willing to pay premium but not accommodated there
+	// downgrade to economy (they still want to travel), so the economy cabin
+	// fills from its own willing share plus the premium overflow.
+	firstPax := math.Min(seats(firstSeats), firstDemand)
+	bizPax := math.Min(seats(businessSeats), bizDemand)
+	downgrades := (bizDemand - bizPax) + (firstDemand - firstPax)
+	econPax := math.Min(seats(economySeats), econDemand+downgrades)
+
+	passengers := econPax + bizPax + firstPax
+	revenue := econPax*baseFare + bizPax*baseFare*businessMult + firstPax*baseFare*firstMult
+	return cabinResult{Passengers: passengers, Revenue: revenue}
 }
 
 // demandWeight maps an airport demand_index (0..100) to a 0..1 weight.
