@@ -722,6 +722,11 @@ class AppStrings {
   static const String achievementsSectionTitle = 'ACHIEVEMENTS';
   static const String achievementsEmpty = 'No achievements unlocked yet. Keep flying!';
   static const String achievementUnlockedPrefix = 'Achievement unlocked: ';
+  static const String achievementsViewAll = 'VIEW ALL';
+  static const String achievementsLocked = 'LOCKED';
+  static const String achievementsUnlocked = 'UNLOCKED';
+  static const String achievementsDialogSubtitlePrefix = 'UNLOCKED ';
+  static const String achievementsDialogSubtitleSuffix = ' ACHIEVEMENTS';
 
   // Fleet operation messages
   static const String purchaseSuccess = 'Successfully purchased aircraft!';

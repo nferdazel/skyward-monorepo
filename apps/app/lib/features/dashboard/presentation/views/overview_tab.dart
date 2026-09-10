@@ -21,6 +21,7 @@ import '../../../events/presentation/cubit/events_state.dart';
 import '../../../achievements/domain/achievement_model.dart';
 import '../../../achievements/presentation/cubit/achievements_cubit.dart';
 import '../../../achievements/presentation/cubit/achievements_state.dart';
+import '../widgets/achievements_summary_card.dart';
 import '../../../finance/presentation/cubit/finance_cubit.dart';
 import '../../../fleet/presentation/cubit/fleet_cubit.dart';
 import '../../../leaderboard/presentation/cubit/leaderboard_cubit.dart';
@@ -616,69 +617,9 @@ class OverviewTab extends StatelessWidget {
         ? achievementsState.achievements
         : const <Achievement>[];
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const AppSectionHeader(title: AppStrings.achievementsSectionTitle),
-        const SizedBox(height: AppSpacing.md),
-        if (achievements.isEmpty)
-          CraftCard(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Text(
-              AppStrings.achievementsEmpty,
-              style: AppTypography.captionRegular.copyWith(
-                color: AppTheme.textSecondary,
-              ),
-            ),
-          )
-        else
-          Wrap(
-            spacing: AppSpacing.md,
-            runSpacing: AppSpacing.md,
-            children: achievements.map((a) {
-              return ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 360),
-                child: CraftCard(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  borderColor: AppTheme.success.withValues(alpha: 0.3),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.emoji_events_outlined,
-                        color: AppTheme.success,
-                        size: 18,
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Flexible(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              a.achievementName.toUpperCase(),
-                              style: AppTypography.microLabel.copyWith(
-                                color: AppTheme.success,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              a.description,
-                              style: AppTypography.captionRegular.copyWith(
-                                color: AppTheme.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-      ],
-    );
+    // Self-contained summary card (its own label + progress badge + view-all),
+    // so no separate section header is needed.
+    return AchievementsSummaryCard(achievements: achievements);
   }
 
   // ── Action Queue / Priorities ──
