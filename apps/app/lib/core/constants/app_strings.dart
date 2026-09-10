@@ -108,6 +108,16 @@ class AppStrings {
       'Cash is negative. Restore profitability or the airline will be shut down.';
   static const String bankruptcyCritical =
       'BANKRUPTCY IMMINENT — sell assets, cut routes, or take an emergency loan now.';
+
+  // GAME-07 — "While you were away" digest
+  static const String whileAwayTitle = 'WHILE YOU WERE AWAY';
+  static const String whileAwayFlights = 'Flights operated';
+  static const String whileAwayRevenue = 'Revenue';
+  static const String whileAwayExpense = 'Expenses';
+  static const String whileAwayNet = 'Net result';
+  static const String whileAwayDismiss = 'BACK TO THE COCKPIT';
+  static String whileAwayElapsed(String days) =>
+      '$days game days elapsed';
   static const String fleetReadyLabel = 'FLEET READY';
   static const String networkPressureLabel = 'NETWORK PRESSURE';
   static const String slackCapacityLabel = 'SCHEDULE SLACK';

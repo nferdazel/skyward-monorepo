@@ -47,8 +47,7 @@ func (e *Engine) WorldTick(ctx context.Context) (*WorldTickResult, error) {
 		var curTime time.Time
 		rows.Scan(&uid, &curTime)
 		players++
-		e.ProcessPlayer(ctx, uid, gameTimeAfter)
-	}
+		e.ProcessPlayer(ctx, uid, gameTimeAfter)	}
 
 	// 4. Process bots (Fase 7 — engine bot)
 	bots, _ := e.ProcessBots(ctx)
@@ -83,8 +82,15 @@ func (e *Engine) WorldTick(ctx context.Context) (*WorldTickResult, error) {
 	}, nil
 }
 
+// PlayerProcessResult — dampak satu kali proses simulasi player, dipakai
+// untuk laporan "while you were away" (GAME-07).
+type PlayerProcessResult struct {
+	ElapsedDays float64 `json:"elapsed_game_days"`
+	FlightsRun  int     `json:"flights_run"`
+}
+
 // ProcessPlayer — mirror of process_player_simulation_to_time inline logic.
-func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime time.Time) {
+func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime time.Time) PlayerProcessResult {
 	// load config constants
 	fuelPrice := e.getConfigNum(ctx, "fuel_price_per_liter", 0.85)
 	crewCost := e.getConfigNum(ctx, "crew_cost_per_hour", 350.0)
@@ -117,7 +123,7 @@ func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime ti
 	if elapsed <= 0 {
 		// no-op guard
 		e.Pool.Exec(ctx, `UPDATE users SET last_active_at=NOW() WHERE id=$1`, userID)
-		return
+		return PlayerProcessResult{}
 	}
 	timeFraction := math.Min(elapsed/7.0, 1.0)
 	safetyThreshold := math.Max(autoThreshold, e.getConfigNum(ctx, "absolute_minimum_safety_limit", 30.0))
@@ -165,7 +171,7 @@ func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime ti
 
 	tx, txErr := e.Pool.Begin(ctx)
 	if txErr != nil {
-		return
+		return PlayerProcessResult{}
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
 
@@ -308,6 +314,11 @@ func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime ti
 	targetDay := targetTime.Truncate(24 * time.Hour)
 	if advancedDay && curDay != targetDay {
 		e.processDayBoundary(ctx, userID, targetTime, elapsed)
+	}
+
+	return PlayerProcessResult{
+		ElapsedDays: elapsed,
+		FlightsRun:  int(math.Round(flightsRun)),
 	}
 }
 
