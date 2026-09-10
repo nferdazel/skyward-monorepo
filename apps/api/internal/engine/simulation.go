@@ -47,7 +47,8 @@ func (e *Engine) WorldTick(ctx context.Context) (*WorldTickResult, error) {
 		var curTime time.Time
 		rows.Scan(&uid, &curTime)
 		players++
-		e.ProcessPlayer(ctx, uid, gameTimeAfter)	}
+		e.ProcessPlayer(ctx, uid, gameTimeAfter)
+	}
 
 	// 4. Process bots (Fase 7 — engine bot)
 	bots, _ := e.ProcessBots(ctx)
@@ -227,7 +228,7 @@ func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime ti
 		weeklyRevenue := allocation.Revenue * 7.0
 		revenue := weeklyRevenue * timeFraction
 		fuelCost := float64(flights) * r.DistanceKM * r.FuelBurnPerKM * fuelPrice * fuelMult
-		crewCostTotal := float64(flights) * flightHours * crewCost
+		crewCostTotal := float64(flights) * flightHours * crewCostFor(crewCost, r.Capacity)
 		maintCost := float64(flights) * r.DistanceKM * r.MaintCostHr * maintMult / r.SpeedKMH
 		opsCost := fuelCost + crewCostTotal + maintCost
 		leaseCost := 0.0
@@ -375,6 +376,23 @@ func (e *Engine) getConfigNum(ctx context.Context, key string, fallback float64)
 	return v
 }
 
+// crewCostFor scales the flat crew rate by aircraft size (AVIATION-18). Real
+// crew cost rises with type: regional ~150-200/hr, narrowbody ~250-400,
+// widebody ~500-900. Anchored at the config base (350) for a 180-seat jet.
+func crewCostFor(baseRate float64, capacity float64) float64 {
+	if capacity <= 0 {
+		return baseRate
+	}
+	mult := capacity / 180.0
+	if mult < 0.5 {
+		mult = 0.5
+	}
+	if mult > 2.5 {
+		mult = 2.5
+	}
+	return baseRate * mult
+}
+
 // cabinResult is the per-day outcome of allocating a demand pool across cabins.
 type cabinResult struct {
 	Passengers float64 // total passengers carried per day
@@ -434,10 +452,10 @@ func demandWeight(demandIndex int) float64 {
 // <=500km down to 0.35 at >=12000km.
 func distanceDemandFactor(distanceKM float64) float64 {
 	const (
-		shortKM  = 500.0
-		longKM   = 12000.0
-		minFac   = 0.35
-		maxFac   = 1.0
+		shortKM = 500.0
+		longKM  = 12000.0
+		minFac  = 0.35
+		maxFac  = 1.0
 	)
 	if distanceKM <= shortKM {
 		return maxFac
@@ -466,4 +484,3 @@ func routeDailyDemand(originDemand, destDemand int, distanceKM, price, baseFare,
 	return poolScale * demandWeight(originDemand) * demandWeight(destDemand) *
 		distanceDemandFactor(distanceKM) * priceElasticity
 }
-

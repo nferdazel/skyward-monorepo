@@ -299,12 +299,15 @@ func (e *Engine) botHandleRouteCreation(ctx context.Context, botID string, gameT
 	// pilih pesawat idle
 	var fleetID, modelID string
 	var distance, price float64
+	var modelSpeed, modelTurnaround float64
 	e.Pool.QueryRow(ctx, `
-		SELECT f.id, f.aircraft_model_id, m.range_km, m.capacity FROM fleet_aircraft f
+		SELECT f.id, f.aircraft_model_id, m.range_km, m.capacity,
+		       COALESCE(m.speed_kmh, 500), COALESCE(m.turnaround_hours, 1.0)
+		FROM fleet_aircraft f
 		JOIN aircraft_models m ON m.id=f.aircraft_model_id
 		WHERE f.user_id=$1 AND f.status='active' AND f.condition >= $2
 		AND NOT EXISTS (SELECT 1 FROM route_assignments r WHERE r.assigned_aircraft_id=f.id)
-		LIMIT 1`, botID, threshold).Scan(&fleetID, &modelID, &distance, &price)
+		LIMIT 1`, botID, threshold).Scan(&fleetID, &modelID, &distance, &price, &modelSpeed, &modelTurnaround)
 	_ = modelID
 	if fleetID == "" {
 		return
@@ -330,7 +333,7 @@ func (e *Engine) botHandleRouteCreation(ctx context.Context, botID string, gameT
 	}
 	baseFare := e.getConfigNum(ctx, "ticket_base_fare", 50.0) + destDist*e.getConfigNum(ctx, "ticket_per_km_rate", 0.12)
 	ticketPrice := baseFare * d.PriceMult
-	maxFlights := calcMaxWeeklyFlights(destDist, 500, 1.0) // speed estimasi; di-refine Fase 8
+	maxFlights := calcMaxWeeklyFlights(destDist, int(modelSpeed), modelTurnaround)
 	targetFlights := int(math.Max(4, float64(maxFlights)*d.SchedRatio))
 
 	// buat rute + assign
@@ -496,6 +499,7 @@ type routePerf struct {
 type routePerfParams struct {
 	DistanceKM, TicketPrice, FlightsPerWeek        float64
 	FuelBurnPerKM, SpeedKMH, MaintCostHr, Capacity float64
+	TurnaroundHours                                float64
 	OriginDemand, DestDemand                       int
 	EconomySeats, BusinessSeats, FirstClassSeats   int
 	AcqType                                        string
@@ -515,7 +519,7 @@ type routePerfConfig struct {
 // player tick it excludes event multipliers (bots have no target time) but does
 // include cargo revenue and lease cost so the sign matches the player's model.
 func routeWeeklyProfit(p routePerfParams, c routePerfConfig) float64 {
-	flightHours := p.DistanceKM/p.SpeedKMH + 1.0
+	flightHours := p.DistanceKM/p.SpeedKMH + p.TurnaroundHours
 	if flightHours <= 0 {
 		return 0
 	}
@@ -541,7 +545,7 @@ func routeWeeklyProfit(p routePerfParams, c routePerfConfig) float64 {
 	revenue := allocation.Revenue * 7.0
 	revenue += revenue * c.CargoPct
 	fuel := flights * p.DistanceKM * p.FuelBurnPerKM * c.FuelPrice
-	crew := flights * flightHours * c.CrewCost
+	crew := flights * flightHours * crewCostFor(c.CrewCost, p.Capacity)
 	maint := flights * p.DistanceKM * p.MaintCostHr / p.SpeedKMH
 	lease := 0.0
 	if p.AcqType == "lease" {
@@ -572,7 +576,8 @@ func (e *Engine) routePerformance(ctx context.Context, userID string) []routePer
 		       m.fuel_burn_per_km, m.speed_kmh, m.maintenance_cost_per_hour, m.capacity,
 		       a1.demand_index, a2.demand_index,
 		       COALESCE(f.economy_seats, 0), COALESCE(f.business_seats, 0), COALESCE(f.first_class_seats, 0),
-		       COALESCE(f.acquisition_type, 'owned'), COALESCE(m.lease_price_per_month, 0)
+		       COALESCE(f.acquisition_type, 'owned'), COALESCE(m.lease_price_per_month, 0),
+		       COALESCE(m.turnaround_hours, 1.0)
 		FROM route_assignments r
 		JOIN fleet_aircraft f ON f.id=r.assigned_aircraft_id
 		JOIN aircraft_models m ON m.id=f.aircraft_model_id
@@ -590,7 +595,7 @@ func (e *Engine) routePerformance(ctx context.Context, userID string) []routePer
 		rows.Scan(&id, &p.DistanceKM, &p.TicketPrice, &p.FlightsPerWeek,
 			&p.FuelBurnPerKM, &p.SpeedKMH, &p.MaintCostHr, &p.Capacity,
 			&p.OriginDemand, &p.DestDemand, &p.EconomySeats, &p.BusinessSeats, &p.FirstClassSeats,
-			&p.AcqType, &p.LeasePriceMonth)
+			&p.AcqType, &p.LeasePriceMonth, &p.TurnaroundHours)
 		out = append(out, routePerf{id, routeWeeklyProfit(p, cfg)})
 	}
 	return out
