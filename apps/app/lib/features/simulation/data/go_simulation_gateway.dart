@@ -59,9 +59,17 @@ class GoSimulationGateway implements SimulationGateway {
       if (profile.containsKey('balance') && profile['balance'] is num) {
         return (profile['balance'] as num).toDouble();
       }
-      return 0.0;
-    } catch (_) {
-      return 0.0;
+      // Profile tidak memuat field saldo — anggap tidak diketahui.
+      throw const SimulationGatewayException(
+        'balance not present in profile',
+        'getUserBalance',
+      );
+    } on SimulationGatewayException {
+      rethrow;
+    } on ApiException catch (e) {
+      throw SimulationGatewayException(e.message, 'getUserBalance');
+    } catch (e) {
+      throw SimulationGatewayException(e.toString(), 'getUserBalance');
     }
   }
 
