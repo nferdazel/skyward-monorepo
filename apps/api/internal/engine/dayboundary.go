@@ -251,7 +251,7 @@ func (e *Engine) calculateCreditScore(ctx context.Context, userID string) (*cred
 		return &creditScore{500, 100, 100, 100, 100, 100}, true // fallback
 	}
 	cash, _ := e.Ledger.GetBalance(ctx, userID)
-	startingCash := e.getConfigNum(ctx, "starting_cash", 15000000.0)
+	startingCash := e.getConfigNum(ctx, "starting_cash", 25000000.0)
 
 	var fleetCount int
 	var avgCondition, groundedRatio float64

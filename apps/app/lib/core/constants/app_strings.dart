@@ -118,6 +118,11 @@ class AppStrings {
   static const String whileAwayDismiss = 'BACK TO THE COCKPIT';
   static String whileAwayElapsed(String days) =>
       '$days game days elapsed';
+
+  // GAME-08 — first-route guidance
+  static const String firstRouteSuggestionAction = 'USE ROUTE';
+  static String firstRouteSuggestion(String from, String to, String city) =>
+      'First route tip: fly $from to $to ($city) — a short, safe hop while you build up.';
   static const String fleetReadyLabel = 'FLEET READY';
   static const String networkPressureLabel = 'NETWORK PRESSURE';
   static const String slackCapacityLabel = 'SCHEDULE SLACK';

@@ -25,7 +25,7 @@ class GameConstants {
   /// The starting cash amount for all newly registered players and bot seedings.
   /// Also utilized during airline resets.
   // Fallback only — game_config 'starting_cash' is authoritative
-  static const double startingCash = 15000000.0;
+  static const double startingCash = 25000000.0;
 
   /// Hard floor for flight safety. Aircraft below this condition cannot operate.
   // Fallback only — game_config 'absolute_minimum_safety_limit' is authoritative

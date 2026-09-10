@@ -847,7 +847,7 @@ DECLARE
     v_net_worth         NUMERIC := 0.0;
     v_debt_ratio        NUMERIC := 140.0;
     v_cash              NUMERIC := 0.0;
-    v_starting_cash     NUMERIC := 15000000.0;
+    v_starting_cash     NUMERIC := 25000000.0;
     v_cash_reserve      NUMERIC := 140.0;
     v_total_revenue_30d NUMERIC := 0.0;
     v_total_expense_30d NUMERIC := 0.0;
@@ -869,7 +869,7 @@ BEGIN
 
     v_cash := get_user_balance(p_user_id);
     v_net_worth := COALESCE(v_user.net_worth, 0.0);
-    v_starting_cash := COALESCE(get_config_numeric('starting_cash'), 15000000.0);
+    v_starting_cash := COALESCE(get_config_numeric('starting_cash'), 25000000.0);
 
     SELECT COUNT(*)::INT, COALESCE(AVG(condition), 100.0),
            COALESCE(COUNT(*) FILTER (WHERE status = 'grounded')::NUMERIC / NULLIF(COUNT(*), 0), 0.0)
@@ -1579,7 +1579,7 @@ DECLARE
     v_spawned_id UUID;
 BEGIN
     -- Load global config
-    v_starting_cash := COALESCE(get_config_numeric('starting_cash'), 15000000.00);
+    v_starting_cash := COALESCE(get_config_numeric('starting_cash'), 25000000.00);
     v_bankruptcy_threshold := COALESCE(get_config_numeric('bankruptcy_cash_threshold'), -5000000.0);
     v_bot_repair_cash_reserve := COALESCE(get_config_numeric('bot_repair_cash_reserve'), 500000.00);
     v_purchase_cash_multiplier := COALESCE(get_config_numeric('bot_purchase_cash_multiplier'), 1.5);
@@ -2993,7 +2993,7 @@ BEGIN
         RAISE EXCEPTION 'Company name % is already registered.', v_company_name;
     END IF;
 
-    SELECT COALESCE(get_config_numeric('starting_cash'), 15000000.00)
+    SELECT COALESCE(get_config_numeric('starting_cash'), 25000000.00)
     INTO v_starting_cash;
 
     INSERT INTO public.users (
@@ -4723,7 +4723,7 @@ BEGIN
     DELETE FROM achievements WHERE user_id = p_user_id;
 
     UPDATE users SET
-        net_worth = 15000000.00,
+        net_worth = COALESCE(get_config_numeric('starting_cash'), 25000000.00),
         game_current_time = TIMESTAMP WITH TIME ZONE '2020-01-01 00:00:00+00',
         hq_airport_iata = 'SIN',
         auto_grounding_threshold = 40.00,
@@ -4735,7 +4735,7 @@ BEGIN
     WHERE id = p_user_id;
 
     INSERT INTO bank_accounts (user_id, account_type, balance)
-    VALUES (p_user_id, 'operating', 15000000.00);
+    VALUES (p_user_id, 'operating', COALESCE(get_config_numeric('starting_cash'), 25000000.00));
 
     RETURN QUERY SELECT TRUE, 'Airline reset successfully';
 END;
@@ -5033,7 +5033,7 @@ BEGIN
                 v_hq,
                 v_game_time,
                 'Active',
-                15000000.00,
+                25000000.00,
                 0,
                 0,
                 40.00
@@ -5346,7 +5346,7 @@ CREATE OR REPLACE FUNCTION "public"."trg_create_default_bank_account"() RETURNS 
 DECLARE
     v_starting_cash NUMERIC;
 BEGIN
-    v_starting_cash := COALESCE(get_config_numeric('starting_cash'), 15000000.00);
+    v_starting_cash := COALESCE(get_config_numeric('starting_cash'), 25000000.00);
     INSERT INTO bank_accounts (user_id, account_type, balance)
     VALUES (NEW.id, 'operating', v_starting_cash)
     ON CONFLICT (user_id, account_type) DO NOTHING;
@@ -5818,7 +5818,7 @@ CREATE TABLE IF NOT EXISTS "public"."users" (
     "ceo_name" character varying(100) NOT NULL,
     "game_current_time" timestamp with time zone DEFAULT '2020-01-01 00:00:00+00'::timestamp with time zone NOT NULL,
     "last_active_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "net_worth" numeric(20,2) DEFAULT 15000000.00,
+    "net_worth" numeric(20,2) DEFAULT 25000000.00,
     "hq_airport_iata" character varying(3),
     "auto_grounding_threshold" numeric(5,2) DEFAULT 40.00,
     "operational_status" character varying(20) DEFAULT 'Active'::character varying NOT NULL,

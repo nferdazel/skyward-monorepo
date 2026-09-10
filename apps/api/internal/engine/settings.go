@@ -55,8 +55,8 @@ func (s *SettingsService) Reset(ctx context.Context, userID string) (*MutationRe
 		`DELETE FROM route_assignments WHERE user_id=$1`,
 		`DELETE FROM loans WHERE user_id=$1`,
 		`DELETE FROM bank_transactions WHERE user_id=$1`,
-		`UPDATE bank_accounts SET balance = (SELECT COALESCE((value#>>'{}')::numeric, 15000000) FROM game_config WHERE key='starting_cash') WHERE user_id=$1 AND account_type='operating'`,
-		`UPDATE users SET game_current_time = (SELECT current_game_time FROM season_clock WHERE status='active' LIMIT 1), net_worth = (SELECT COALESCE((value#>>'{}')::numeric, 15000000) FROM game_config WHERE key='starting_cash') WHERE id=$1`,
+		`UPDATE bank_accounts SET balance = (SELECT COALESCE((value#>>'{}')::numeric, 25000000) FROM game_config WHERE key='starting_cash') WHERE user_id=$1 AND account_type='operating'`,
+		`UPDATE users SET game_current_time = (SELECT current_game_time FROM season_clock WHERE status='active' LIMIT 1), net_worth = (SELECT COALESCE((value#>>'{}')::numeric, 25000000) FROM game_config WHERE key='starting_cash') WHERE id=$1`,
 	} {
 		if _, err := tx.Exec(ctx, q, userID); err != nil {
 			return &MutationResult{Success: false, Message: "reset failed"}, nil
