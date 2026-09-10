@@ -103,6 +103,7 @@ class AppStrings {
   static const String operationsSnapshotTitle = 'OPERATIONS SNAPSHOT';
   static const String liquidityPositionLabel = 'LIQUIDITY POSITION';
   static const String runwayEstimateLabel = 'RUNWAY ESTIMATE';
+  static const String overviewDailyNetTrendLabel = 'DAILY NET';
   static const String fleetReadyLabel = 'FLEET READY';
   static const String networkPressureLabel = 'NETWORK PRESSURE';
   static const String slackCapacityLabel = 'SCHEDULE SLACK';
