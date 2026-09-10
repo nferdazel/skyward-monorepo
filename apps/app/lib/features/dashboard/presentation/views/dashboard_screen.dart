@@ -36,11 +36,11 @@ import '../../../routes/presentation/cubit/routes_cubit.dart';
 import '../../../routes/presentation/cubit/routes_state.dart';
 import '../../../routes/presentation/views/routes_view.dart';
 import '../../../settings/presentation/cubit/settings_cubit.dart';
-import '../../../settings/presentation/views/settings_view.dart';
-import '../../../simulation/presentation/cubit/simulation_cubit.dart';
+import '../../../settings/presentation/views/settings_view.dart';import '../../../simulation/presentation/cubit/simulation_cubit.dart';
 import '../../../simulation/presentation/cubit/simulation_state.dart';
 import '../widgets/dashboard_sidebar.dart';
 import '../widgets/top_hud.dart';
+import '../widgets/while_away_digest.dart';
 import 'overview_tab.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -109,6 +109,10 @@ class _AuthenticatedDashboardShellState
   // ── Onboarding state ──
   bool _showOnboarding = false;
 
+  // ── GAME-07: game time for which the last "while you were away" digest was
+  // shown, so it only appears once per return.
+  DateTime? _lastDigestShownFor;
+
   // ── Notification Overlay ──
   OverlayEntry? _notificationOverlayEntry;
 
@@ -127,6 +131,31 @@ class _AuthenticatedDashboardShellState
     _eventsCubit = EventsCubit();
     _bootstrapForUser(widget.initialUser);
     _checkOnboarding();
+  }
+
+  /// GAME-07: show the "while you were away" digest after a return that
+  /// elapsed at least one full game day. Guarded so it shows once per game
+  /// time (subsequent syncs at the same time do not re-trigger it).
+  void _maybeShowWhileAwayDigest(SimulationState state) {
+    if (state.lastElapsedDays < 1.0) return;
+    if (state.isSyncing) return;
+    if (_lastDigestShownFor == state.gameTime) return;
+    if (_showOnboarding) return; // don't stack on top of onboarding
+    if (!mounted) return;
+    final financeState = _financeCubit.state;
+    final digest = WhileAwayDigest.from(
+      elapsedDays: state.lastElapsedDays,
+      flightsRun: state.lastFlightsRun,
+      dailySnapshots: financeState is FinanceDataState
+          ? financeState.dailySnapshots
+          : const [],
+    );
+    final shownFor = state.gameTime;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _showOnboarding) return;
+      _lastDigestShownFor = shownFor;
+      showWhileAwayDigest(context, digest);
+    });
   }
 
   Future<void> _checkOnboarding() async {
@@ -425,6 +454,7 @@ class _AuthenticatedDashboardShellState
                 activeEvents: _eventsCubit.activeEvents,
                 gameTime: _simulationCubit.state.gameTime,
               );
+              _maybeShowWhileAwayDigest(state);
             },
           ),
           BlocListener<EventsCubit, EventsState>(
