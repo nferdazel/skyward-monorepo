@@ -59,6 +59,41 @@ class SimulationCubit extends Cubit<SimulationState>
     }
   }
 
+  /// Flattens the `/game-config` response into a `key -> value` map.
+  ///
+  /// The endpoint returns a list of `{key, value, category, ...}` entries, so
+  /// the first element is NOT a settings map. Values may be JSON scalars or
+  /// strings; coerce numeric-looking strings to num so downstream `as num?`
+  /// casts work. A flat map without a `key` field is merged as-is (defensive,
+  /// and keeps older/test payloads working).
+  static Map<String, dynamic> _flattenGameConfig(List<dynamic> entries) {
+    final flat = <String, dynamic>{};
+    for (final entry in entries) {
+      if (entry is! Map) continue;
+      final map = toSafeMap(entry);
+      final key = map['key']?.toString();
+      if (key == null || key.isEmpty) {
+        // Flat settings map: merge its scalar values directly.
+        map.forEach((k, v) {
+          if (k == 'category' || k == 'unit' || k == 'description') return;
+          var value = v;
+          if (value is String) {
+            value = num.tryParse(value) ?? value;
+          }
+          flat[k] = value;
+        });
+        continue;
+      }
+      var value = map['value'];
+      if (value is String) {
+        final parsed = num.tryParse(value);
+        if (parsed != null) value = parsed;
+      }
+      flat[key] = value;
+    }
+    return flat;
+  }
+
   // Initialize and boot the simulation loop
   Future<void> startLoop({
     required String userId,
@@ -229,6 +264,9 @@ class SimulationCubit extends Cubit<SimulationState>
       // Cached for 5 minutes to avoid redundant round-trips.
       double fuelPrice = GameConstants.fuelPricePerLiter;
       double gameSpeedMultiplier = GameConstants.defaultGameSpeedMultiplier;
+      double bankruptcyCashThreshold = GameConstants.bankruptcyCashThreshold;
+      int bankruptcyNegativeDaysThreshold =
+          GameConstants.bankruptcyNegativeDaysThreshold;
 
       if (_cachedGameSettings != null && _cachedSettingsTime != null &&
           DateTime.now().difference(_cachedSettingsTime!) < GameConstants.settingsCacheTtl) {
@@ -239,6 +277,14 @@ class SimulationCubit extends Cubit<SimulationState>
             (_cachedGameSettings!['time_scale_multiplier'] as num?)
                 ?.toDouble() ??
             GameConstants.defaultGameSpeedMultiplier;
+        bankruptcyCashThreshold =
+            (_cachedGameSettings!['bankruptcy_cash_threshold'] as num?)
+                ?.toDouble() ??
+            GameConstants.bankruptcyCashThreshold;
+        bankruptcyNegativeDaysThreshold =
+            (_cachedGameSettings!['bankruptcy_negative_days_threshold'] as num?)
+                ?.toInt() ??
+            GameConstants.bankruptcyNegativeDaysThreshold;
       } else {
         // Fetch settings in isolation: kegagalan /game-config tidak boleh
         // membatalkan cash & game time yang sudah berhasil diambil.
@@ -247,7 +293,9 @@ class SimulationCubit extends Cubit<SimulationState>
               toSafeList(await _gateway.loadGameSettings());
 
           if (settingsResponse.isNotEmpty) {
-            _cachedGameSettings = toSafeMap(settingsResponse[0]);
+            // /game-config returns a list of {key, value} entries; flatten it
+            // into a key -> value map (value may itself be a JSON scalar).
+            _cachedGameSettings = _flattenGameConfig(settingsResponse);
             _cachedSettingsTime = DateTime.now();
             fuelPrice =
                 (_cachedGameSettings!['fuel_price_per_liter'] as num?)
@@ -257,6 +305,15 @@ class SimulationCubit extends Cubit<SimulationState>
                 (_cachedGameSettings!['time_scale_multiplier'] as num?)
                     ?.toDouble() ??
                 GameConstants.defaultGameSpeedMultiplier;
+            bankruptcyCashThreshold =
+                (_cachedGameSettings!['bankruptcy_cash_threshold'] as num?)
+                    ?.toDouble() ??
+                GameConstants.bankruptcyCashThreshold;
+            bankruptcyNegativeDaysThreshold =
+                (_cachedGameSettings!['bankruptcy_negative_days_threshold']
+                        as num?)
+                    ?.toInt() ??
+                GameConstants.bankruptcyNegativeDaysThreshold;
           }
         } catch (e, stack) {
           AppError.log('simulation_load_settings', e, stack);
@@ -270,6 +327,15 @@ class SimulationCubit extends Cubit<SimulationState>
                 (_cachedGameSettings!['time_scale_multiplier'] as num?)
                     ?.toDouble() ??
                 GameConstants.defaultGameSpeedMultiplier;
+            bankruptcyCashThreshold =
+                (_cachedGameSettings!['bankruptcy_cash_threshold'] as num?)
+                    ?.toDouble() ??
+                GameConstants.bankruptcyCashThreshold;
+            bankruptcyNegativeDaysThreshold =
+                (_cachedGameSettings!['bankruptcy_negative_days_threshold']
+                        as num?)
+                    ?.toInt() ??
+                GameConstants.bankruptcyNegativeDaysThreshold;
           }
         }
       }
@@ -295,6 +361,8 @@ class SimulationCubit extends Cubit<SimulationState>
           operationalStatus: authoritativeUser.operationalStatus,
           consecutiveNegativeDays: authoritativeUser.consecutiveNegativeDays,
           recoveryStreakDays: authoritativeUser.recoveryStreakDays,
+          bankruptcyCashThreshold: bankruptcyCashThreshold,
+          bankruptcyNegativeDaysThreshold: bankruptcyNegativeDaysThreshold,
         ),
       );
 

@@ -28,10 +28,13 @@ var achievementCatalog = map[string]AchievementDef{
 	"comeback_story":    {"comeback_story", "Comeback Story", "Recover from 7 days of distress and sustain 30 days positive operations"},
 }
 
-// EvaluateAchievements — Go port of check_achievements. Inserts newly earned
-// achievements at the day boundary and returns the achievements newly unlocked
-// during this call (so the caller can surface a toast).
-func (e *Engine) EvaluateAchievements(ctx context.Context, userID string, gameDate time.Time) []AchievementDef {
+// EvaluateAchievements — Go port of check_achievements. Inserts every earned
+// achievement (idempotent via the unique constraint). It does NOT claim/
+// notify: delivery of un-notified achievements to the client is done by
+// ClaimUnnotifiedAchievements from the user-facing sync path only, so a
+// background world-tick that also calls this does not consume a toast it can
+// never show.
+func (e *Engine) EvaluateAchievements(ctx context.Context, userID string, gameDate time.Time) {
 	cash, _ := e.Ledger.GetBalance(ctx, userID)
 
 	var netWorth float64
@@ -89,17 +92,38 @@ func (e *Engine) EvaluateAchievements(ctx context.Context, userID string, gameDa
 		earned["comeback_story"] = true
 	}
 
-	newly := []AchievementDef{}
 	for typ := range earned {
 		def := achievementCatalog[typ]
-		tag, err := e.Pool.Exec(ctx, `
+		_, _ = e.Pool.Exec(ctx, `
 			INSERT INTO achievements (user_id, achievement_type, achievement_name, description, game_date)
 			VALUES ($1,$2,$3,$4,$5)
 			ON CONFLICT (user_id, achievement_type) DO NOTHING`,
 			userID, def.Type, def.Name, def.Description, gameDate)
-		if err == nil && tag.RowsAffected() > 0 {
-			newly = append(newly, def)
-		}
 	}
-	return newly
+}
+
+// ClaimUnnotifiedAchievements atomically claims every achievement not yet
+// reported to the client and returns them. The UPDATE ... RETURNING guarantees
+// each un-notified row is returned by exactly one caller, so concurrent syncs
+// cannot surface the same unlock twice. Call this only from the path that will
+// actually deliver the result to a client (POST /simulation/sync); the world
+// tick must not claim, or it would consume a toast it can never show.
+func (e *Engine) ClaimUnnotifiedAchievements(ctx context.Context, userID string) []AchievementDef {
+	rows, err := e.Pool.Query(ctx, `
+		UPDATE achievements SET notified_at = NOW()
+		WHERE user_id=$1 AND notified_at IS NULL
+		RETURNING achievement_type, achievement_name, COALESCE(description, '')`, userID)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+	out := []AchievementDef{}
+	for rows.Next() {
+		var def AchievementDef
+		if err := rows.Scan(&def.Type, &def.Name, &def.Description); err != nil {
+			continue
+		}
+		out = append(out, def)
+	}
+	return out
 }

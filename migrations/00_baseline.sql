@@ -5534,7 +5534,8 @@ CREATE TABLE IF NOT EXISTS "public"."achievements" (
     "achievement_name" character varying(100) NOT NULL,
     "description" "text",
     "unlocked_at" timestamp with time zone DEFAULT "now"(),
-    "game_date" timestamp with time zone
+    "game_date" timestamp with time zone,
+    "notified_at" timestamp with time zone
 );
 
 

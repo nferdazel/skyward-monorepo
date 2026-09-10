@@ -93,9 +93,6 @@ type PlayerProcessResult struct {
 	// transaction caches that may not have been reloaded (GAME-07).
 	Revenue float64 `json:"revenue"`
 	Expense float64 `json:"expense"`
-	// NewlyUnlocked — achievements unlocked during this process, surfaced to
-	// the client for a celebration toast (GAME-15).
-	NewlyUnlocked []AchievementDef `json:"newly_unlocked_achievements,omitempty"`
 }
 
 // ProcessPlayer — mirror of process_player_simulation_to_time inline logic.
@@ -335,21 +332,22 @@ func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime ti
 		e.applyBankruptcy(ctx, userID)
 	}
 
-	// day boundary
-	var newlyUnlocked []AchievementDef
+	// Insert any achievements earned since the last day roll. Claiming/delivery
+	// of un-notified achievements is done by the caller (POST /simulation/sync),
+	// not here, because the world tick also calls ProcessPlayer and must not
+	// consume a toast it cannot show.
 	curDay := userGameTime.Truncate(24 * time.Hour)
 	targetDay := targetTime.Truncate(24 * time.Hour)
 	if advancedDay && curDay != targetDay {
 		e.processDayBoundary(ctx, userID, targetTime, elapsed)
-		newlyUnlocked = e.EvaluateAchievements(ctx, userID, targetTime)
 	}
+	e.EvaluateAchievements(ctx, userID, targetTime)
 
 	return PlayerProcessResult{
-		ElapsedDays:   elapsed,
-		FlightsRun:    int(math.Round(flightsRun)),
-		Revenue:       totalRevenue,
-		Expense:       totalExpense,
-		NewlyUnlocked: newlyUnlocked,
+		ElapsedDays: elapsed,
+		FlightsRun:  int(math.Round(flightsRun)),
+		Revenue:     totalRevenue,
+		Expense:     totalExpense,
 	}
 }
 

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/constants/app_strings.dart';
-import '../../../core/constants/game_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/domain/user_model.dart';
 import '../../events/domain/game_event_model.dart';
@@ -238,15 +237,18 @@ class OverviewSnapshot {
     // warning threshold, or (only while cash is actually negative) when the
     // negative-day streak is near the server's limit; warning when cash is
     // negative at all. Gating the day-based branch on cash < 0 avoids showing
-    // "BANKRUPTCY IMMINENT" to a player who has already recovered.
+    // "BANKRUPTCY IMMINENT" to a player who has already recovered. Thresholds
+    // come from server game config (with mirrored fallbacks) so the banner can
+    // never contradict the engine.
     final cash = simState.cashBalance;
     final negDays = simState.consecutiveNegativeDays;
+    final criticalCashThreshold = simState.bankruptcyCashThreshold / 2.5;
+    final criticalNegDays =
+        (simState.bankruptcyNegativeDaysThreshold * 2 / 3).floor();
     final int bankruptcyRiskLevel;
     final String bankruptcyRiskLabel;
-    if (cash <= GameConstants.bankruptcyWarningCashThreshold ||
-        (cash < 0 &&
-            negDays >=
-                (GameConstants.bankruptcyNegativeDaysThreshold * 2 / 3))) {
+    if (cash <= criticalCashThreshold ||
+        (cash < 0 && negDays >= criticalNegDays)) {
       bankruptcyRiskLevel = 2;
       bankruptcyRiskLabel = AppStrings.bankruptcyCritical;
     } else if (cash < 0) {

@@ -153,13 +153,20 @@ void main() {
     expect(snapshot.profitTrend, isEmpty);
   });
 
-  OverviewSnapshot snapshotForCash(double cash, {int negDays = 0}) {
+  OverviewSnapshot snapshotForCash(
+    double cash, {
+    int negDays = 0,
+    double cashThreshold = -5000000.0,
+    int negDaysThreshold = 30,
+  }) {
     return OverviewSnapshot.fromStates(
       user: user,
       simState: SimulationState(
         gameTime: DateTime(2038, 1, 3),
         cashBalance: cash,
         consecutiveNegativeDays: negDays,
+        bankruptcyCashThreshold: cashThreshold,
+        bankruptcyNegativeDaysThreshold: negDaysThreshold,
       ),
       fleetState: const FleetInitial(),
       routesState: const RoutesInitial(),
@@ -176,6 +183,36 @@ void main() {
     expect(snapshotForCash(-100, negDays: 19).bankruptcyRiskLevel, 1);
     expect(snapshotForCash(-100, negDays: 20).bankruptcyRiskLevel, 2);
     expect(snapshotForCash(-100, negDays: 5).bankruptcyRiskLevel, 1);
+  });
+
+  test('bankruptcy thresholds follow server config, not a hardcoded value', () {
+    // Server -4M/21d: critical cash begins at -1.6M, critical days at 14.
+    expect(
+      snapshotForCash(-1500000, cashThreshold: -4000000, negDaysThreshold: 21)
+          .bankruptcyRiskLevel,
+      1,
+    );
+    expect(
+      snapshotForCash(-1600000, cashThreshold: -4000000, negDaysThreshold: 21)
+          .bankruptcyRiskLevel,
+      2,
+    );
+    expect(
+      snapshotForCash(-100, negDays: 14, negDaysThreshold: 21)
+          .bankruptcyRiskLevel,
+      2,
+    );
+    expect(
+      snapshotForCash(-100, negDays: 13, negDaysThreshold: 21)
+          .bankruptcyRiskLevel,
+      1,
+    );
+  });
+
+  test('recovered positive cash is never critical even with many negative days',
+      () {
+    // Cash above zero must downgrade the banner to none (no false "imminent").
+    expect(snapshotForCash(500, negDays: 25).bankruptcyRiskLevel, 0);
   });
 
   test('bankruptcy risk boundaries: cash 0 is safe, -2M is critical', () {

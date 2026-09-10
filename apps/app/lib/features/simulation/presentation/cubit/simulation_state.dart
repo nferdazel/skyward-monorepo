@@ -21,6 +21,12 @@ class SimulationState with Equatable {
   final String operationalStatus;
   final int consecutiveNegativeDays;
   final int recoveryStreakDays;
+
+  /// GAME-13: authoritative bankruptcy thresholds from server game config, so
+  /// the client warning banner can never contradict the engine. Fall back to
+  /// the mirrored constants when config has not loaded.
+  final double bankruptcyCashThreshold;
+  final int bankruptcyNegativeDaysThreshold;
   final List<Map<String, dynamic>> lastUnlockedAchievements;
   final String? errorMessage;
 
@@ -37,6 +43,9 @@ class SimulationState with Equatable {
     this.operationalStatus = AppStrings.statusActive,
     this.consecutiveNegativeDays = 0,
     this.recoveryStreakDays = 0,
+    this.bankruptcyCashThreshold = GameConstants.bankruptcyCashThreshold,
+    this.bankruptcyNegativeDaysThreshold =
+        GameConstants.bankruptcyNegativeDaysThreshold,
     this.lastUnlockedAchievements = const [],
     this.errorMessage,
   });
@@ -66,6 +75,8 @@ class SimulationState with Equatable {
     String? operationalStatus,
     int? consecutiveNegativeDays,
     int? recoveryStreakDays,
+    double? bankruptcyCashThreshold,
+    int? bankruptcyNegativeDaysThreshold,
     List<Map<String, dynamic>>? lastUnlockedAchievements,
     Object? errorMessage = _unset,
   }) {
@@ -83,6 +94,10 @@ class SimulationState with Equatable {
       consecutiveNegativeDays:
           consecutiveNegativeDays ?? this.consecutiveNegativeDays,
       recoveryStreakDays: recoveryStreakDays ?? this.recoveryStreakDays,
+      bankruptcyCashThreshold:
+          bankruptcyCashThreshold ?? this.bankruptcyCashThreshold,
+      bankruptcyNegativeDaysThreshold:
+          bankruptcyNegativeDaysThreshold ?? this.bankruptcyNegativeDaysThreshold,
       lastUnlockedAchievements:
           lastUnlockedAchievements ?? this.lastUnlockedAchievements,
       errorMessage: identical(errorMessage, _unset)
@@ -105,6 +120,8 @@ class SimulationState with Equatable {
     operationalStatus,
     consecutiveNegativeDays,
     recoveryStreakDays,
+    bankruptcyCashThreshold,
+    bankruptcyNegativeDaysThreshold,
     // List/Map use identity equality, so compare a stable value signature
     // instead of the raw list to avoid spurious "changed" emissions.
     lastUnlockedAchievements

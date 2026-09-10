@@ -240,7 +240,7 @@ class NotificationCubit extends Cubit<NotificationState> {
         final hoursLeft = remaining.inHours;
         final eta = hoursLeft >= 24
             ? '${(hoursLeft / 24).toStringAsFixed(1)}d'
-            : '${hoursLeft}h';
+            : (hoursLeft >= 1 ? '${hoursLeft}h' : 'expiring soon');
         final message = event.description.isEmpty
             ? 'Active — $eta remaining.'
             : '${event.description} — $eta remaining.';

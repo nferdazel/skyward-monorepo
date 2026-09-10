@@ -347,6 +347,10 @@ func (h *MutationHandler) SimulationSync(w http.ResponseWriter, r *http.Request)
 	h.Engine.Pool.QueryRow(r.Context(),
 		`SELECT current_game_time FROM season_clock WHERE status='active' LIMIT 1`).Scan(&seasonTime)
 	result := h.Engine.ProcessPlayer(r.Context(), uid, seasonTime)
+	// Deliver any achievements unlocked since the last sync (including those
+	// inserted by the background world tick). Claimed here, not in the engine,
+	// so the tick never consumes a toast it cannot show.
+	newlyUnlocked := h.Engine.ClaimUnnotifiedAchievements(r.Context(), uid)
 	httperr.WriteJSON(w, http.StatusOK, map[string]any{
 		"success":                     true,
 		"message":                     "simulation synced",
@@ -354,7 +358,7 @@ func (h *MutationHandler) SimulationSync(w http.ResponseWriter, r *http.Request)
 		"flights_run":                 result.FlightsRun,
 		"revenue":                     result.Revenue,
 		"expense":                     result.Expense,
-		"newly_unlocked_achievements": result.NewlyUnlocked,
+		"newly_unlocked_achievements": newlyUnlocked,
 	})
 }
 

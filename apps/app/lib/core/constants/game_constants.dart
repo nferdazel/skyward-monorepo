@@ -131,9 +131,6 @@ class GameConstants {
   // Fallback only — game_config 'bankruptcy_negative_days_threshold'
   static const int bankruptcyNegativeDaysThreshold = 30;
 
-  /// Cash at/below which the player gets a critical (pre-bankruptcy) warning.
-  static const double bankruptcyWarningCashThreshold = -2000000.0;
-
   // ==========================================
   // SIMULATION & SYSTEM PARAMETERS
   // ==========================================
