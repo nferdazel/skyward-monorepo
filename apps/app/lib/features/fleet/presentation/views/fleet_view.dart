@@ -949,19 +949,27 @@ class _FleetViewState extends State<FleetView>
 
         final isActionLoading = state is FleetActionLoading;
 
-        // Read affordability context
+        // Read affordability context. Use select on BankCubit so the catalog
+        // rebuilds when the credit report (and thus the tier) arrives.
         final cashBalance =
             context.select((SimulationCubit cubit) => cubit.state.cashBalance);
-        final bankState = context.read<BankCubit>().state;
-        final creditReport = switch (bankState) {
-          BankLoaded(:final creditReport) => creditReport,
-          BankLoanSuccess(:final creditReport) => creditReport,
-          BankRefinanceSuccess(:final creditReport) => creditReport,
-          BankError(:final creditReport) => creditReport,
-          _ => null,
-        };
-        final maxFinancingAmount =
-            creditReport?.maxFinancingAmount ?? double.infinity;
+        final creditTierAndFinancing =
+            context.select<BankCubit, (String, double)>((cubit) {
+          final bankState = cubit.state;
+          final report = switch (bankState) {
+            BankLoaded(:final creditReport) => creditReport,
+            BankLoanSuccess(:final creditReport) => creditReport,
+            BankRefinanceSuccess(:final creditReport) => creditReport,
+            BankError(:final creditReport) => creditReport,
+            _ => null,
+          };
+          return (
+            report?.creditTier ?? 'Standard',
+            report?.maxFinancingAmount ?? double.infinity,
+          );
+        });
+        final currentCreditTier = creditTierAndFinancing.$1;
+        final maxFinancingAmount = creditTierAndFinancing.$2;
 
         final cubit = context.read<FleetCubit>();
         final filters = state is FleetDataState
@@ -1059,6 +1067,7 @@ class _FleetViewState extends State<FleetView>
                       isActionLoading,
                       cashBalance,
                       maxFinancingAmount,
+                      currentCreditTier,
                     ),
             ),
           ],
@@ -1207,6 +1216,23 @@ class _FleetViewState extends State<FleetView>
     return result;
   }
 
+  /// GAME-06: rank credit tiers so the catalog can compare the player's tier
+  /// against a model's minimum requirement.
+  int _creditTierRank(String tier) {
+    switch (tier) {
+      case 'Platinum':
+        return 4;
+      case 'Gold':
+        return 3;
+      case 'Silver':
+        return 2;
+      case 'Standard':
+        return 1;
+      default:
+        return 1;
+    }
+  }
+
   String _catalogCategoryLabel(String type) {
     switch (type) {
       case 'regional_turboprop':
@@ -1240,6 +1266,7 @@ class _FleetViewState extends State<FleetView>
     bool isActionLoading,
     double cashBalance,
     double maxFinancingAmount,
+    String currentCreditTier,
   ) {
     return AppTableShell(
       child: Column(
@@ -1280,6 +1307,7 @@ class _FleetViewState extends State<FleetView>
                     isActionLoading,
                     cashBalance,
                     maxFinancingAmount,
+                    currentCreditTier,
                   ),
                 );
               },
@@ -1298,12 +1326,18 @@ class _FleetViewState extends State<FleetView>
     bool isActionLoading,
     double cashBalance,
     double maxFinancingAmount,
+    String currentCreditTier,
   ) {
     // P1 #6b: Affordability indicators
     final canBuyCash = cashBalance >= model.purchasePrice;
     final canFinance = model.purchasePrice <= maxFinancingAmount;
     final canLease = cashBalance >= model.leasePricePerMonth;
     final isAffordable = canBuyCash || canFinance || canLease;
+
+    // GAME-06: block acquisition when the player's tier is below the model's.
+    final isTierLocked =
+        _creditTierRank(currentCreditTier) <
+        _creditTierRank(model.minCreditTier);
 
     Widget row = Table(
       columnWidths: _catalogColumnWidths,
@@ -1339,6 +1373,39 @@ class _FleetViewState extends State<FleetView>
                       letterSpacing: AppTypography.spacingRelaxed,
                     ),
                   ),
+                  if (isTierLocked) ...[
+                    const SizedBox(height: AppSpacing.xs),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm,
+                        vertical: AppSpacing.xs,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppTheme.warning.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.lock_outline,
+                            size: 10,
+                            color: AppTheme.warning,
+                          ),
+                          const SizedBox(width: AppSpacing.xs),
+                          Text(
+                            AppStrings.requiresCreditTier(
+                              model.minCreditTier,
+                            ),
+                            style: AppTypography.badgeText.copyWith(
+                              color: AppTheme.warning,
+                              letterSpacing: AppTypography.spacingRelaxed,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -1452,11 +1519,13 @@ class _FleetViewState extends State<FleetView>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   AppTableIconAction(
-                    tooltip: AppStrings.leaseAircraftTooltip,
+                    tooltip: isTierLocked
+                        ? AppStrings.requiresCreditTier(model.minCreditTier)
+                        : AppStrings.leaseAircraftTooltip,
                     icon: Icons.access_time,
                     size: 32,
                     iconSize: 16,
-                    onPressed: isActionLoading
+                    onPressed: isActionLoading || isTierLocked
                         ? null
                         : () => _showAcquireSeatConfigDialog(
                             context,
@@ -1467,11 +1536,13 @@ class _FleetViewState extends State<FleetView>
                   ),
                   const SizedBox(width: AppSpacing.xs),
                   AppTableIconAction(
-                    tooltip: AppStrings.buyAircraftTooltip,
+                    tooltip: isTierLocked
+                        ? AppStrings.requiresCreditTier(model.minCreditTier)
+                        : AppStrings.buyAircraftTooltip,
                     icon: Icons.shopping_cart,
                     size: 32,
                     iconSize: 16,
-                    onPressed: isActionLoading
+                    onPressed: isActionLoading || isTierLocked
                         ? null
                         : () => _showAcquireSeatConfigDialog(
                             context,
@@ -1482,11 +1553,13 @@ class _FleetViewState extends State<FleetView>
                   ),
                   const SizedBox(width: AppSpacing.xs),
                   AppTableIconAction(
-                    tooltip: AppStrings.financeAircraft,
+                    tooltip: isTierLocked
+                        ? AppStrings.requiresCreditTier(model.minCreditTier)
+                        : AppStrings.financeAircraft,
                     icon: Icons.credit_card,
                     size: 32,
                     iconSize: 16,
-                    onPressed: isActionLoading
+                    onPressed: isActionLoading || isTierLocked
                         ? null
                         : () => _showFinanceDialog(context, model, userId),
                   ),

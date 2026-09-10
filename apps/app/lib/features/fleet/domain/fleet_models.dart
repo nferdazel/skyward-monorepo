@@ -15,6 +15,10 @@ class AircraftModel with Equatable {
   final double purchasePrice;
   final double leasePricePerMonth;
 
+  /// GAME-06: minimum credit tier required to purchase/lease this model.
+  /// One of Standard / Silver / Gold / Platinum.
+  final String minCreditTier;
+
   const AircraftModel({
     required this.id,
     required this.manufacturer,
@@ -27,6 +31,7 @@ class AircraftModel with Equatable {
     required this.maintenanceCostPerHour,
     required this.purchasePrice,
     required this.leasePricePerMonth,
+    this.minCreditTier = 'Standard',
   });
 
   factory AircraftModel.fromMap(Map<String, dynamic> map) {
@@ -44,6 +49,7 @@ class AircraftModel with Equatable {
       purchasePrice: (map['purchase_price'] as num?)?.toDouble() ?? 0.0,
       leasePricePerMonth:
           (map['lease_price_per_month'] as num?)?.toDouble() ?? 0.0,
+      minCreditTier: (map['min_credit_tier'] ?? 'Standard').toString(),
     );
   }
 
@@ -60,6 +66,7 @@ class AircraftModel with Equatable {
     maintenanceCostPerHour,
     purchasePrice,
     leasePricePerMonth,
+    minCreditTier,
   ];
 }
 

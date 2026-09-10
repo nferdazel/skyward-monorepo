@@ -348,3 +348,31 @@ func resolveCreditTier(score int) string {
 		return "Standard"
 	}
 }
+
+// creditTierRank orders the credit tiers for gating (higher = more access).
+func creditTierRank(tier string) int {
+	switch tier {
+	case "Platinum":
+		return 4
+	case "Gold":
+		return 3
+	case "Silver":
+		return 2
+	case "Standard":
+		return 1
+	default:
+		return 0
+	}
+}
+
+// CurrentCreditTier returns the user's latest credit tier, defaulting to
+// Standard when no score has been computed yet (new players).
+func (e *Engine) CurrentCreditTier(ctx context.Context, userID string) string {
+	var tier string
+	err := e.Pool.QueryRow(ctx,
+		`SELECT tier FROM credit_scores WHERE user_id=$1`, userID).Scan(&tier)
+	if err != nil || tier == "" {
+		return "Standard"
+	}
+	return tier
+}
