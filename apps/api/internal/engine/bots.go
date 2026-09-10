@@ -348,6 +348,43 @@ func (e *Engine) botHandleRouteCreation(ctx context.Context, botID string, gameT
 	e.Pool.Exec(ctx, `UPDATE bot_profiles SET last_route_change_at=$1 WHERE user_id=$2`, gameTime, botID)
 }
 
+// botRespondPrice — pure pricing decision for one bot route review (GAME-22).
+// Blends the archetype/distress target fare with a decisive response to a
+// cheaper competitor, so bots converge toward the market within 1-2 reviews.
+func botRespondPrice(price, base, avgComp float64, compCount int, priceMult,
+	compThreshold float64, archetype, distress string) float64 {
+	adj := 0.97
+	switch {
+	case distress == "desperate":
+		adj = 0.90
+	case distress == "defensive":
+		adj = 0.95
+	case distress == "cautious":
+		adj = 0.98
+	case archetype == "Aggressive":
+		adj = 1.01
+	case archetype == "Balanced":
+		adj = 1.03
+	}
+	newPrice := (price * 0.55) + (base * priceMult * adj * 0.45)
+	if compCount > 0 && avgComp > 0 {
+		switch {
+		case price > avgComp*(1+compThreshold):
+			// Undercut: undercut back, but never below the marginal base fare.
+			// Move 65% of the way toward the target so the bot converges within
+			// 1-2 reviews rather than drifting ~2% per cycle.
+			target := math.Max(avgComp*0.98, base*0.9)
+			newPrice = (price * 0.35) + (target * 0.65)
+		case price < avgComp*(1-compThreshold):
+			// We are the cheapest by a wide margin; raise toward (not past) the
+			// competitor.
+			target := avgComp * 0.99
+			newPrice = (price * 0.70) + (target * 0.30)
+		}
+	}
+	return newPrice
+}
+
 func (e *Engine) botHandlePricing(ctx context.Context, botID string, gameTime time.Time, archetype, distress string, priceMult, compThreshold float64) {
 	var allowed bool
 	e.Pool.QueryRow(ctx, `SELECT last_pricing_review_at IS NULL OR last_pricing_review_at <= $1::timestamptz - INTERVAL '6 hours' FROM bot_profiles WHERE user_id=$2`, gameTime, botID).Scan(&allowed)
@@ -372,27 +409,8 @@ func (e *Engine) botHandlePricing(ctx context.Context, botID string, gameTime ti
 
 		if compCount > 0 || rand.Float64() < 0.20 {
 			base := baseFare + distance*perKM
-			adj := 0.97
-			switch {
-			case distress == "desperate":
-				adj = 0.90
-			case distress == "defensive":
-				adj = 0.95
-			case distress == "cautious":
-				adj = 0.98
-			case archetype == "Aggressive":
-				adj = 1.01
-			case archetype == "Balanced":
-				adj = 1.03
-			}
-			if compCount > 0 && avgComp > 0 && (distress == "stable" || distress == "cautious") {
-				if price > avgComp*(1+compThreshold) {
-					adj *= 0.95
-				} else if price < avgComp*(1-compThreshold) {
-					adj *= 1.03
-				}
-			}
-			newPrice := (price * 0.55) + (base * priceMult * adj * 0.45)
+			newPrice := botRespondPrice(price, base, avgComp, compCount, priceMult,
+				compThreshold, archetype, distress)
 			e.Pool.Exec(ctx, `UPDATE route_assignments SET ticket_price=$1 WHERE id=$2`, round2(newPrice), id)
 		}
 	}
