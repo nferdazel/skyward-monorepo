@@ -51,14 +51,46 @@ func validateSeats(economy, business, first, capacity int) error {
 }
 
 // Purchase — POST /fleet/purchase. Faithful port of purchase_aircraft(p_user_id,...).
+// checkTierGate returns a non-empty message when the player's credit tier is
+// below the model's required tier (GAME-06). Empty string means allowed. Bots
+// are exempt: the gate is a player-progression mechanic, and bots do not have
+// credit scores.
+func (f *FleetService) checkTierGate(ctx context.Context, userID, minTier, modelName string) string {
+	if minTier == "" || creditTierRank(minTier) <= 1 {
+		return ""
+	}
+	var actorType string
+	f.engine.Pool.QueryRow(ctx, `SELECT COALESCE(actor_type, 'REAL') FROM users WHERE id=$1`, userID).Scan(&actorType)
+	if actorType != "REAL" {
+		return ""
+	}
+	current := f.engine.CurrentCreditTier(ctx, userID)
+	return tierGateMessage(current, minTier, modelName)
+}
+
+// tierGateMessage is the pure tier-gate decision: non-empty when the current
+// tier is below the required tier.
+func tierGateMessage(currentTier, minTier, modelName string) string {
+	if minTier == "" || creditTierRank(minTier) <= 1 {
+		return ""
+	}
+	if creditTierRank(currentTier) < creditTierRank(minTier) {
+		return fmt.Sprintf("%s requires %s credit tier (you are %s).", modelName, minTier, currentTier)
+	}
+	return ""
+}
+
 func (f *FleetService) Purchase(ctx context.Context, userID string, p PurchaseParams) (*MutationResult, error) {
 	var price, capacity float64
-	var modelName string
+	var modelName, minTier string
 	err := f.engine.Pool.QueryRow(ctx,
-		`SELECT purchase_price, capacity, model_name FROM aircraft_models WHERE id=$1`, p.ModelID).
-		Scan(&price, &capacity, &modelName)
+		`SELECT purchase_price, capacity, model_name, min_credit_tier FROM aircraft_models WHERE id=$1`, p.ModelID).
+		Scan(&price, &capacity, &modelName, &minTier)
 	if err != nil {
 		return &MutationResult{Success: false, Message: "Aircraft model not found."}, nil
+	}
+	if msg := f.checkTierGate(ctx, userID, minTier, modelName); msg != "" {
+		return &MutationResult{Success: false, Message: msg}, nil
 	}
 	econ := capacity
 	if p.EconomySeats != nil {
@@ -261,12 +293,15 @@ type LeaseParams struct {
 // Lease — POST /fleet/lease. Faithful port of lease_aircraft(p_user_id,...).
 func (f *FleetService) Lease(ctx context.Context, userID string, p LeaseParams) (*MutationResult, error) {
 	var leasePrice, purchasePrice, capacity float64
-	var modelName string
+	var modelName, minTier string
 	err := f.engine.Pool.QueryRow(ctx,
-		`SELECT lease_price_per_month, purchase_price, capacity, model_name FROM aircraft_models WHERE id=$1`, p.ModelID).
-		Scan(&leasePrice, &purchasePrice, &capacity, &modelName)
+		`SELECT lease_price_per_month, purchase_price, capacity, model_name, min_credit_tier FROM aircraft_models WHERE id=$1`, p.ModelID).
+		Scan(&leasePrice, &purchasePrice, &capacity, &modelName, &minTier)
 	if err != nil {
 		return &MutationResult{false, "Aircraft model not found.", 0}, nil
+	}
+	if msg := f.checkTierGate(ctx, userID, minTier, modelName); msg != "" {
+		return &MutationResult{false, msg, 0}, nil
 	}
 	econ := capacity
 	if p.EconomySeats != nil {

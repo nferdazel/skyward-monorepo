@@ -219,9 +219,9 @@ type FinanceAircraftParams struct {
 // FinanceAircraft — POST /bank/finance-aircraft. Faithful port of finance_aircraft.
 func (b *BankService) FinanceAircraft(ctx context.Context, userID string, p FinanceAircraftParams) (*MutationResult, error) {
 	var purchasePrice, capacity float64
-	var modelName string
-	err := b.engine.Pool.QueryRow(ctx, `SELECT purchase_price, capacity, model_name FROM aircraft_models WHERE id=$1`, p.ModelID).
-		Scan(&purchasePrice, &capacity, &modelName)
+	var modelName, minTier string
+	err := b.engine.Pool.QueryRow(ctx, `SELECT purchase_price, capacity, model_name, min_credit_tier FROM aircraft_models WHERE id=$1`, p.ModelID).
+		Scan(&purchasePrice, &capacity, &modelName, &minTier)
 	if err != nil {
 		return &MutationResult{false, "Aircraft model not found.", 0}, nil
 	}
@@ -230,6 +230,15 @@ func (b *BankService) FinanceAircraft(ctx context.Context, userID string, p Fina
 	b.engine.Pool.QueryRow(ctx, `SELECT tier FROM credit_scores WHERE user_id=$1`, userID).Scan(&tier)
 	if tier == "" {
 		tier = "Standard"
+	}
+	// GAME-06: financing an aircraft also requires its minimum credit tier.
+	// Bots are exempt (the gate is a player-progression mechanic).
+	var actorType string
+	b.engine.Pool.QueryRow(ctx, `SELECT COALESCE(actor_type, 'REAL') FROM users WHERE id=$1`, userID).Scan(&actorType)
+	if actorType == "REAL" {
+		if msg := tierGateMessage(tier, minTier, modelName); msg != "" {
+			return &MutationResult{false, msg, 0}, nil
+		}
 	}
 	maxFinancing := b.tierRate(ctx, tier, "max_secured", 25000000)
 	if purchasePrice > maxFinancing {

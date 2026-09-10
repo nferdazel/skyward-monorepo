@@ -123,6 +123,9 @@ class AppStrings {
   static const String firstRouteSuggestionAction = 'USE ROUTE';
   static String firstRouteSuggestion(String from, String to, String city) =>
       'First route tip: fly $from to $to ($city) — a short, safe hop while you build up.';
+
+  // GAME-06 — credit-tier aircraft gates
+  static String requiresCreditTier(String tier) => '$tier TIER REQUIRED';
   static const String fleetReadyLabel = 'FLEET READY';
   static const String networkPressureLabel = 'NETWORK PRESSURE';
   static const String slackCapacityLabel = 'SCHEDULE SLACK';

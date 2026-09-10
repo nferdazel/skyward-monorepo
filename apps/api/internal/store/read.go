@@ -127,10 +127,15 @@ type AircraftModel struct {
 	PurchasePrice   float64 `json:"purchase_price"`
 	LeasePriceMonth float64 `json:"lease_price_per_month"`
 	TurnaroundHr    float64 `json:"turnaround_hours"`
+	MinCreditTier   string  `json:"min_credit_tier"`
 }
 
 func (s *Store) GetAircraftModels(ctx context.Context) ([]AircraftModel, error) {
-	rows, err := s.pool.Query(ctx, `SELECT * FROM aircraft_models ORDER BY purchase_price`)
+	rows, err := s.pool.Query(ctx, `
+		SELECT id, manufacturer, model_name, type, range_km, capacity, speed_kmh,
+		       fuel_burn_per_km, maintenance_cost_per_hour, purchase_price,
+		       lease_price_per_month, turnaround_hours, min_credit_tier
+		FROM aircraft_models ORDER BY purchase_price`)
 	if err != nil {
 		return nil, fmt.Errorf("store: models: %w", err)
 	}

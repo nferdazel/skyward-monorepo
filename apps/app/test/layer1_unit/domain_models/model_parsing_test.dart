@@ -52,6 +52,7 @@ void main() {
         'maintenance_cost_per_hour': 860.00,
         'purchase_price': 121000000.00,
         'lease_price_per_month': 605000.00,
+        'min_credit_tier': 'Gold',
       };
 
       final model = AircraftModel.fromMap(map);
@@ -66,6 +67,17 @@ void main() {
       expect(model.maintenanceCostPerHour, 860.0);
       expect(model.purchasePrice, 121000000.0);
       expect(model.leasePricePerMonth, 605000.0);
+      expect(model.minCreditTier, 'Gold');
+    });
+
+    test('AircraftModel.fromMap defaults min_credit_tier to Standard', () {
+      final model = AircraftModel.fromMap({
+        'id': 'm',
+        'manufacturer': 'ATR',
+        'model_name': 'ATR 72-600',
+        'type': 'regional_turboprop',
+      });
+      expect(model.minCreditTier, 'Standard');
     });
 
     test('UserFleetAircraft parses composite map safely with null fields', () {
