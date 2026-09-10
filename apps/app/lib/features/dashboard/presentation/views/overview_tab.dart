@@ -18,6 +18,9 @@ import '../../../auth/presentation/cubit/auth_state.dart';
 import '../../../events/domain/game_event_model.dart';
 import '../../../events/presentation/cubit/events_cubit.dart';
 import '../../../events/presentation/cubit/events_state.dart';
+import '../../../achievements/domain/achievement_model.dart';
+import '../../../achievements/presentation/cubit/achievements_cubit.dart';
+import '../../../achievements/presentation/cubit/achievements_state.dart';
 import '../../../finance/presentation/cubit/finance_cubit.dart';
 import '../../../fleet/presentation/cubit/fleet_cubit.dart';
 import '../../../leaderboard/presentation/cubit/leaderboard_cubit.dart';
@@ -80,6 +83,8 @@ class OverviewTab extends StatelessWidget {
               context.read<SimulationCubit>().state.gameTime,
             ),
           ],
+          const SizedBox(height: AppSpacing.sectionGap),
+          _buildAchievementsSection(context),
           const SizedBox(height: AppSpacing.sectionGap),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -597,6 +602,81 @@ class OverviewTab extends StatelessWidget {
             );
           }).toList(),
         ),
+      ],
+    );
+  }
+
+  // ── Achievements (GAME-15) ──
+
+  Widget _buildAchievementsSection(BuildContext context) {
+    final achievementsState = context.select(
+      (AchievementsCubit c) => c.state,
+    );
+    final achievements = achievementsState is AchievementsLoaded
+        ? achievementsState.achievements
+        : const <Achievement>[];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const AppSectionHeader(title: AppStrings.achievementsSectionTitle),
+        const SizedBox(height: AppSpacing.md),
+        if (achievements.isEmpty)
+          CraftCard(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Text(
+              AppStrings.achievementsEmpty,
+              style: AppTypography.captionRegular.copyWith(
+                color: AppTheme.textSecondary,
+              ),
+            ),
+          )
+        else
+          Wrap(
+            spacing: AppSpacing.md,
+            runSpacing: AppSpacing.md,
+            children: achievements.map((a) {
+              return ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 360),
+                child: CraftCard(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  borderColor: AppTheme.success.withValues(alpha: 0.3),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.emoji_events_outlined,
+                        color: AppTheme.success,
+                        size: 18,
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Flexible(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              a.achievementName.toUpperCase(),
+                              style: AppTypography.microLabel.copyWith(
+                                color: AppTheme.success,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              a.description,
+                              style: AppTypography.captionRegular.copyWith(
+                                color: AppTheme.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
       ],
     );
   }

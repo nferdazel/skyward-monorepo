@@ -8,6 +8,8 @@ import '../../features/auth/data/auth_gateway.dart';
 import '../../features/auth/data/go_auth_gateway.dart';
 import '../../features/bank/data/bank_gateway.dart';
 import '../../features/bank/data/go_bank_gateway.dart';
+import '../../features/achievements/data/achievements_gateway.dart';
+import '../../features/achievements/data/go_achievements_gateway.dart';
 import '../../features/events/data/events_gateway.dart';
 import '../../features/events/data/go_events_gateway.dart';
 import '../../features/finance/data/finance_gateway.dart';
@@ -64,6 +66,9 @@ class GatewayFactory {
 
   static BankGateway createBankGateway() =>
       GoBankGateway(apiClient: apiClient);
+
+  static AchievementsGateway createAchievementsGateway() =>
+      GoAchievementsGateway(apiClient: apiClient);
 
   static EventsGateway createEventsGateway() =>
       GoEventsGateway(apiClient: apiClient);

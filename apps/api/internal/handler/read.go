@@ -62,6 +62,19 @@ func (h *ReadHandler) ActiveEvents(w http.ResponseWriter, r *http.Request) {
 	httperr.WriteJSON(w, http.StatusOK, events)
 }
 
+func (h *ReadHandler) Achievements(w http.ResponseWriter, r *http.Request) {
+	uid, ok := userID(w, r)
+	if !ok {
+		return
+	}
+	achievements, err := h.Store.GetAchievements(r.Context(), uid)
+	if err != nil {
+		httperr.WriteError(w, nil, httperr.Internal("load achievements failed"))
+		return
+	}
+	httperr.WriteJSON(w, http.StatusOK, achievements)
+}
+
 // ── Fleet ─────────────────────────────────────────────────────────────
 
 func (h *ReadHandler) Fleet(w http.ResponseWriter, r *http.Request) {

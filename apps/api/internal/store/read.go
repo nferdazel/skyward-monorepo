@@ -345,6 +345,30 @@ func (s *Store) GetActiveEvents(ctx context.Context) ([]GameEvent, error) {
 	return pgx.CollectRows(rows, pgx.RowToStructByPos[GameEvent])
 }
 
+// Achievement — user-earned achievement badge (GAME-15).
+type Achievement struct {
+	ID              string    `json:"id"`
+	AchievementType string    `json:"achievement_type"`
+	Name            string    `json:"achievement_name"`
+	Description     string    `json:"description"`
+	UnlockedAt      time.Time `json:"unlocked_at"`
+}
+
+// GetAchievements — all achievements earned by a user, newest first.
+func (s *Store) GetAchievements(ctx context.Context, userID string) ([]Achievement, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT id, achievement_type, achievement_name, COALESCE(description, ''),
+		       COALESCE(unlocked_at, NOW())
+		FROM achievements
+		WHERE user_id = $1
+		ORDER BY unlocked_at DESC`, userID)
+	if err != nil {
+		return nil, fmt.Errorf("store: achievements: %w", err)
+	}
+	defer rows.Close()
+	return pgx.CollectRows(rows, pgx.RowToStructByPos[Achievement])
+}
+
 type CompetitorInsight struct {
 	CompanyName    string  `json:"company_name"`
 	CeoName        string  `json:"ceo_name"`

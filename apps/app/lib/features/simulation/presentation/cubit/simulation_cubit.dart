@@ -194,12 +194,20 @@ class SimulationCubit extends Cubit<SimulationState>
 
       double elapsedGameDays = 0.0;
       int flightsRun = 0;
+      List<Map<String, dynamic>> newlyUnlockedAchievements = const [];
 
       if (response.isNotEmpty) {
         final result = toSafeMap(response[0]);
         elapsedGameDays =
             (result['elapsed_game_days'] as num?)?.toDouble() ?? 0.0;
         flightsRun = (result['flights_run'] as num?)?.toInt() ?? 0;
+        final rawAchievements = result['newly_unlocked_achievements'];
+        if (rawAchievements is List) {
+          newlyUnlockedAchievements = rawAchievements
+              .whereType<Map>()
+              .map((m) => Map<String, dynamic>.from(m))
+              .toList();
+        }
       }
 
       final authoritativeUser = AppUser.fromMap(userProfile);
@@ -268,6 +276,7 @@ class SimulationCubit extends Cubit<SimulationState>
           errorMessage: null,
           lastElapsedDays: elapsedGameDays,
           lastFlightsRun: flightsRun,
+          lastUnlockedAchievements: newlyUnlockedAchievements,
           operationalStatus: authoritativeUser.operationalStatus,
           consecutiveNegativeDays: authoritativeUser.consecutiveNegativeDays,
           recoveryStreakDays: authoritativeUser.recoveryStreakDays,

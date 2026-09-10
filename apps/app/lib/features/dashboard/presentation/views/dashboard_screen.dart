@@ -10,6 +10,7 @@ import '../../../../core/utils/perf_debug.dart';
 import '../../../../presentation/layout/command_palette.dart';
 import '../../../../presentation/theme/app_spacing.dart';
 import '../../../../presentation/theme/app_typography.dart';
+import '../../../../presentation/widgets/app_snackbar.dart';
 import '../../../../presentation/widgets/app_button.dart';
 import '../../../../presentation/widgets/notification_panel.dart';
 import '../../../../presentation/widgets/onboarding_overlay.dart';
@@ -21,6 +22,8 @@ import '../../../bank/presentation/cubit/bank_cubit.dart';
 import '../../../bank/presentation/cubit/bank_state.dart';
 import '../../../events/presentation/cubit/events_cubit.dart';
 import '../../../events/presentation/cubit/events_state.dart';
+import '../../../achievements/domain/achievement_model.dart';
+import '../../../achievements/presentation/cubit/achievements_cubit.dart';
 import '../../../finance/presentation/cubit/finance_cubit.dart';
 import '../../../finance/presentation/cubit/finance_state.dart';
 import '../../../finance/presentation/views/finance_view.dart';
@@ -105,6 +108,7 @@ class _AuthenticatedDashboardShellState
   late final LazyTabCubit _lazyTabCubit;
   late final NotificationCubit _notificationCubit;
   late final EventsCubit _eventsCubit;
+  late final AchievementsCubit _achievementsCubit;
 
   // ── Onboarding state ──
   bool _showOnboarding = false;
@@ -112,6 +116,9 @@ class _AuthenticatedDashboardShellState
   // ── GAME-07: game time for which the last "while you were away" digest was
   // shown, so it only appears once per return.
   DateTime? _lastDigestShownFor;
+
+  // ── GAME-15: achievement types already shown as toasts (dedupe).
+  final Set<String> _shownAchievementTypes = {};
 
   // ── Notification Overlay ──
   OverlayEntry? _notificationOverlayEntry;
@@ -129,6 +136,7 @@ class _AuthenticatedDashboardShellState
     _lazyTabCubit = LazyTabCubit();
     _notificationCubit = NotificationCubit();
     _eventsCubit = EventsCubit();
+    _achievementsCubit = AchievementsCubit();
     _bootstrapForUser(widget.initialUser);
     _checkOnboarding();
   }
@@ -156,6 +164,28 @@ class _AuthenticatedDashboardShellState
       _lastDigestShownFor = shownFor;
       showWhileAwayDigest(context, digest);
     });
+  }
+
+  /// GAME-15: show a success snackbar for each newly-unlocked achievement
+  /// that has not been shown yet. Deduplication is by achievementType so the
+  /// same achievement is never toasted twice.
+  void _showAchievementToasts(BuildContext context, SimulationState state) {
+    final newlyUnlocked = state.lastUnlockedAchievements;
+    if (newlyUnlocked.isEmpty) return;
+    for (final raw in newlyUnlocked) {
+      final achievement = NewAchievement.fromMap(raw);
+      final type = achievement.achievementType;
+      if (type.isEmpty || _shownAchievementTypes.contains(type)) continue;
+      _shownAchievementTypes.add(type);
+      final name = achievement.achievementName.isEmpty
+          ? type
+          : achievement.achievementName;
+      if (!mounted) return;
+      AppSnackBar.showSuccess(
+        context,
+        '${AppStrings.achievementUnlockedPrefix}$name',
+      );
+    }
   }
 
   Future<void> _checkOnboarding() async {
@@ -209,6 +239,7 @@ class _AuthenticatedDashboardShellState
       ..setupReactivity(_simulationCubit, user.id);
 
     _eventsCubit.setupReactivity(_simulationCubit);
+    _achievementsCubit.setupReactivity(_simulationCubit);
   }
 
   void _ensureTabReady(int index, AppUser user, SimulationState simulationState) {
@@ -305,6 +336,7 @@ class _AuthenticatedDashboardShellState
     _lazyTabCubit.close();
     _notificationCubit.close();
     _eventsCubit.close();
+    _achievementsCubit.close();
     super.dispose();
   }
 
@@ -386,6 +418,7 @@ class _AuthenticatedDashboardShellState
         BlocProvider<LazyTabCubit>.value(value: _lazyTabCubit),
         BlocProvider<NotificationCubit>.value(value: _notificationCubit),
         BlocProvider<EventsCubit>.value(value: _eventsCubit),
+        BlocProvider<AchievementsCubit>.value(value: _achievementsCubit),
       ],
       child: MultiBlocListener(
         listeners: [
@@ -455,6 +488,7 @@ class _AuthenticatedDashboardShellState
                 gameTime: _simulationCubit.state.gameTime,
               );
               _maybeShowWhileAwayDigest(state);
+              _showAchievementToasts(context, state);
             },
           ),
           BlocListener<EventsCubit, EventsState>(

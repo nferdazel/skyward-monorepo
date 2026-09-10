@@ -348,10 +348,11 @@ func (h *MutationHandler) SimulationSync(w http.ResponseWriter, r *http.Request)
 		`SELECT current_game_time FROM season_clock WHERE status='active' LIMIT 1`).Scan(&seasonTime)
 	result := h.Engine.ProcessPlayer(r.Context(), uid, seasonTime)
 	httperr.WriteJSON(w, http.StatusOK, map[string]any{
-		"success":           true,
-		"message":           "simulation synced",
-		"elapsed_game_days": result.ElapsedDays,
-		"flights_run":       result.FlightsRun,
+		"success":                     true,
+		"message":                     "simulation synced",
+		"elapsed_game_days":           result.ElapsedDays,
+		"flights_run":                 result.FlightsRun,
+		"newly_unlocked_achievements": result.NewlyUnlocked,
 	})
 }
 
