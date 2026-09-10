@@ -50,6 +50,18 @@ func (h *ReadHandler) GameConfig(w http.ResponseWriter, r *http.Request) {
 	httperr.WriteJSON(w, http.StatusOK, cfg)
 }
 
+// ── Game events ───────────────────────────────────────────────────────
+
+// ActiveEvents — global active world events (not user-scoped).
+func (h *ReadHandler) ActiveEvents(w http.ResponseWriter, r *http.Request) {
+	events, err := h.Store.GetActiveEvents(r.Context())
+	if err != nil {
+		httperr.WriteError(w, nil, httperr.Internal("load active events failed"))
+		return
+	}
+	httperr.WriteJSON(w, http.StatusOK, events)
+}
+
 // ── Fleet ─────────────────────────────────────────────────────────────
 
 func (h *ReadHandler) Fleet(w http.ResponseWriter, r *http.Request) {
