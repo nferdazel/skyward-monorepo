@@ -6,9 +6,10 @@ import '../../../core/constants/game_constants.dart';
 import '../../fleet/domain/fleet_models.dart';
 
 // NOTE: Client-side route economics are planning estimates for UI display.
-// The authoritative server-side calculations live in get_route_performance()
-// (SQL), which includes cargo revenue (5% of ticket revenue), fuel/crew/
-// maintenance shock event multipliers, and uses the shared simulation engine.
+// The authoritative server-side calculations live in the Go simulation engine
+// (apps/api/internal/engine/simulation.go — routeDailyDemand + allocateCabins),
+// which includes cargo revenue (5% of ticket revenue), cabin mix, and fuel/
+// crew/maintenance shock event multipliers.
 // These Dart formulas intentionally omit those factors for simpler UI preview.
 // Do not treat these as authoritative financial figures.
 

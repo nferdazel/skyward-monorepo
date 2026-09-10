@@ -484,22 +484,101 @@ func parseF(s string, def float64) float64 {
 	return v
 }
 
-// routePerformance — hitung per-rute profit (weekly_profit, mirror get_route_performance).
+// routePerformance — weekly profit per active route for a bot. Uses the same
+// demand-pool + cabin-allocation model as the player simulation (GAME-25);
+// the legacy SQL get_route_performance is deprecated and unused.
 type routePerf struct {
 	RouteID string
 	Profit  float64
 }
 
+// routePerfParams — input untuk perhitungan ekonomi satu rute bot.
+type routePerfParams struct {
+	DistanceKM, TicketPrice, FlightsPerWeek        float64
+	FuelBurnPerKM, SpeedKMH, MaintCostHr, Capacity float64
+	OriginDemand, DestDemand                       int
+	EconomySeats, BusinessSeats, FirstClassSeats   int
+	AcqType                                        string
+	LeasePriceMonth                                float64
+}
+
+// routePerfConfig — parameter ekonomi global (game_config).
+type routePerfConfig struct {
+	FuelPrice, CrewCost, TicketBase, TicketKM, MaxWeekly, DemandPoolScale float64
+	BusinessFareMult, FirstFareMult                                       float64
+	EconomyWilling, BusinessWilling, FirstWilling                         float64
+	CargoPct                                                              float64
+}
+
+// routeWeeklyProfit — pure per-route weekly profit estimate for bots. Shares
+// routeDailyDemand + allocateCabins with ProcessPlayer (GAME-25). Unlike the
+// player tick it excludes event multipliers (bots have no target time) but does
+// include cargo revenue and lease cost so the sign matches the player's model.
+func routeWeeklyProfit(p routePerfParams, c routePerfConfig) float64 {
+	flightHours := p.DistanceKM/p.SpeedKMH + 1.0
+	if flightHours <= 0 {
+		return 0
+	}
+	vMaxWeekly := c.MaxWeekly / flightHours
+	flights := math.Min(p.FlightsPerWeek, vMaxWeekly)
+
+	econSeats, bizSeats, firstSeats := p.EconomySeats, p.BusinessSeats, p.FirstClassSeats
+	if econSeats+bizSeats+firstSeats <= 0 {
+		econSeats = int(math.Floor(p.Capacity))
+		bizSeats, firstSeats = 0, 0
+	}
+	dailyDemand := routeDailyDemand(p.OriginDemand, p.DestDemand, p.DistanceKM,
+		p.TicketPrice, c.TicketBase, c.TicketKM, c.DemandPoolScale)
+	flightsPerDay := flights / 7.0
+	allocation := allocateCabins(
+		int(math.Round(float64(econSeats)*flightsPerDay)),
+		int(math.Round(float64(bizSeats)*flightsPerDay)),
+		int(math.Round(float64(firstSeats)*flightsPerDay)),
+		p.TicketPrice, c.BusinessFareMult, c.FirstFareMult,
+		c.EconomyWilling, c.BusinessWilling, c.FirstWilling,
+		dailyDemand, 1.0,
+	)
+	revenue := allocation.Revenue * 7.0
+	revenue += revenue * c.CargoPct
+	fuel := flights * p.DistanceKM * p.FuelBurnPerKM * c.FuelPrice
+	crew := flights * flightHours * c.CrewCost
+	maint := flights * p.DistanceKM * p.MaintCostHr / p.SpeedKMH
+	lease := 0.0
+	if p.AcqType == "lease" {
+		// ProcessPlayer uses lease_price_per_month * (elapsed/30); the weekly
+		// run-rate equivalent is the monthly price over ~4.345 weeks.
+		lease = p.LeasePriceMonth * 7.0 / 30.0
+	}
+	return revenue - fuel - crew - maint - lease
+}
+
 func (e *Engine) routePerformance(ctx context.Context, userID string) []routePerf {
-	fuelPrice := e.getConfigNum(ctx, "fuel_price_per_liter", 0.85)
-	crewCost := e.getConfigNum(ctx, "crew_cost_per_hour", 350.0)
+	cfg := routePerfConfig{
+		FuelPrice:        e.getConfigNum(ctx, "fuel_price_per_liter", 0.85),
+		CrewCost:         e.getConfigNum(ctx, "crew_cost_per_hour", 350.0),
+		TicketBase:       e.getConfigNum(ctx, "ticket_base_fare", 50.0),
+		TicketKM:         e.getConfigNum(ctx, "ticket_per_km_rate", 0.12),
+		MaxWeekly:        e.getConfigNum(ctx, "max_weekly_flights", 168.0),
+		DemandPoolScale:  e.getConfigNum(ctx, "demand_pool_scale", 290.0),
+		BusinessFareMult: e.getConfigNum(ctx, "business_fare_multiplier", 1.5),
+		FirstFareMult:    e.getConfigNum(ctx, "first_fare_multiplier", 2.5),
+		EconomyWilling:   e.getConfigNum(ctx, "economy_willing_share", 0.80),
+		BusinessWilling:  e.getConfigNum(ctx, "business_willing_share", 0.15),
+		FirstWilling:     e.getConfigNum(ctx, "first_willing_share", 0.05),
+		CargoPct:         e.getConfigNum(ctx, "cargo_revenue_percentage", 0.05),
+	}
 	rows, err := e.Pool.Query(ctx, `
 		SELECT r.id, r.distance_km, r.ticket_price, r.flights_per_week,
-		       m.fuel_burn_per_km, m.speed_kmh, m.maintenance_cost_per_hour, m.capacity
+		       m.fuel_burn_per_km, m.speed_kmh, m.maintenance_cost_per_hour, m.capacity,
+		       a1.demand_index, a2.demand_index,
+		       COALESCE(f.economy_seats, 0), COALESCE(f.business_seats, 0), COALESCE(f.first_class_seats, 0),
+		       COALESCE(f.acquisition_type, 'owned'), COALESCE(m.lease_price_per_month, 0)
 		FROM route_assignments r
 		JOIN fleet_aircraft f ON f.id=r.assigned_aircraft_id
 		JOIN aircraft_models m ON m.id=f.aircraft_model_id
-		WHERE r.user_id=$1 AND r.status='active'`, userID)
+		JOIN airports a1 ON a1.iata=r.origin_iata
+		JOIN airports a2 ON a2.iata=r.destination_iata
+		WHERE r.user_id=$1 AND r.status='active' AND f.status='active'`, userID)
 	if err != nil {
 		return nil
 	}
@@ -507,18 +586,12 @@ func (e *Engine) routePerformance(ctx context.Context, userID string) []routePer
 	var out []routePerf
 	for rows.Next() {
 		var id string
-		var dist, price, freq, fuelBurn, speed, maintCost, cap float64
-		rows.Scan(&id, &dist, &price, &freq, &fuelBurn, &speed, &maintCost, &cap)
-		flightHours := dist/speed + 1.0
-		maxWeekly := 168.0 / flightHours
-		flights := math.Min(freq, maxWeekly)
-		passengers := math.Min(cap, math.Floor(cap*0.95*0.85*0.85*1.0)) // estimasi demand
-		revenue := flights * price * passengers
-		fuel := flights * dist * fuelBurn * fuelPrice
-		crew := flights * flightHours * crewCost
-		maint := flights * dist * maintCost / speed
-		profit := revenue - fuel - crew - maint
-		out = append(out, routePerf{id, profit})
+		var p routePerfParams
+		rows.Scan(&id, &p.DistanceKM, &p.TicketPrice, &p.FlightsPerWeek,
+			&p.FuelBurnPerKM, &p.SpeedKMH, &p.MaintCostHr, &p.Capacity,
+			&p.OriginDemand, &p.DestDemand, &p.EconomySeats, &p.BusinessSeats, &p.FirstClassSeats,
+			&p.AcqType, &p.LeasePriceMonth)
+		out = append(out, routePerf{id, routeWeeklyProfit(p, cfg)})
 	}
 	return out
 }
