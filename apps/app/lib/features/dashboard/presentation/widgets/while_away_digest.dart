@@ -28,16 +28,31 @@ class WhileAwayDigest {
     required this.net,
   });
 
-  /// Builds a digest for the elapsed window from the daily snapshots.
+  /// Builds a digest for the elapsed window.
   ///
-  /// [dailySnapshots] is expected in the finance state's order, **newest
-  /// first** (see FinanceCubit.sort). The elapsed window is therefore the
-  /// first `floor(elapsedDays)` entries.
+  /// [authoritativeRevenue]/[authoritativeExpense] come from the authoritative
+  /// simulation sync result and take precedence. [dailySnapshots] is only used
+  /// as a fallback for older responses that do not carry totals, and is
+  /// expected in the finance state's order, **newest first** (see
+  /// FinanceCubit.sort).
   static WhileAwayDigest from({
     required double elapsedDays,
     required int flightsRun,
     required List<FinanceDailySnapshot> dailySnapshots,
+    double? authoritativeRevenue,
+    double? authoritativeExpense,
   }) {
+    if (authoritativeRevenue != null || authoritativeExpense != null) {
+      final r = authoritativeRevenue ?? 0;
+      final e = authoritativeExpense ?? 0;
+      return WhileAwayDigest(
+        elapsedDays: elapsedDays,
+        flightsRun: flightsRun,
+        revenue: r,
+        expense: e,
+        net: r - e,
+      );
+    }
     if (dailySnapshots.isEmpty) {
       return WhileAwayDigest(
         elapsedDays: elapsedDays,

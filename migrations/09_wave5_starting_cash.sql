@@ -10,8 +10,8 @@
 
 BEGIN;
 
-UPDATE game_config
-   SET value = '25000000'::jsonb
- WHERE key = 'starting_cash';
+INSERT INTO game_config (key, value, category, unit, description)
+VALUES ('starting_cash', '25000000'::jsonb, 'simulation', 'currency', 'Starting operating cash for a new airline')
+ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW();
 
 COMMIT;

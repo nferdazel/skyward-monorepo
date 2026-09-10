@@ -417,7 +417,7 @@ class UserRoute with Equatable {
     required Airport destination,
   }) {
     final flightDurationHours =
-        (distanceKm / model.speedKmh) + GameConstants.aircraftTurnaroundHours;
+        (distanceKm / model.speedKmh) + model.turnaroundHours;
     final fuelCost =
         distanceKm * model.fuelBurnPerKm * GameConstants.fuelPricePerLiter;
     final maintenanceCost = flightDurationHours * model.maintenanceCostPerHour;
@@ -550,7 +550,7 @@ class UserRoute with Equatable {
             contributionPerFlight * maintenancePreview.allocatedFlightsPerWeek,
         flightDurationHours:
             (distanceKm / aircraft.model.speedKmh) +
-            GameConstants.aircraftTurnaroundHours,
+            aircraft.model.turnaroundHours,
         maxWeeklyFlights: maintenancePreview.maxFlightsPerWeek,
         maintenanceHoursPerWeek: maintenancePreview.maintenanceHoursPerWeek,
         netWearPerWeek: maintenancePreview.netHealthImpactPercent,
@@ -635,7 +635,7 @@ class UserRoute with Equatable {
     final aircraft = assignedAircraft;
     if (aircraft == null) return 0.0;
     return (distanceKm / aircraft.model.speedKmh) +
-        GameConstants.aircraftTurnaroundHours;
+        aircraft.model.turnaroundHours;
   }
 
   // Maximum allowed weekly frequency on this route for the aircraft
@@ -643,16 +643,18 @@ class UserRoute with Equatable {
     return calculateMaximumWeeklyFlights(
       distanceKm: distanceKm,
       speedKmh: assignedAircraft?.model.speedKmh ?? 0,
+      turnaroundHours: assignedAircraft?.model.turnaroundHours ??
+          GameConstants.aircraftTurnaroundHours,
     );
   }
 
   static int calculateMaximumWeeklyFlights({
     required double distanceKm,
     required int speedKmh,
+    double turnaroundHours = GameConstants.aircraftTurnaroundHours,
   }) {
     if (distanceKm <= 0 || speedKmh <= 0) return 0;
-    final duration =
-        (distanceKm / speedKmh) + GameConstants.aircraftTurnaroundHours;
+    final duration = (distanceKm / speedKmh) + turnaroundHours;
     if (duration <= 0) return 0;
     return (GameConstants.totalWeeklyHoursCap / duration).floor();
   }
@@ -689,7 +691,7 @@ class UserRoute with Equatable {
 
     final cycleDurationHours =
         (distanceKm / aircraft.model.speedKmh) +
-        GameConstants.aircraftTurnaroundHours;
+        aircraft.model.turnaroundHours;
     final maxFlightsPerWeek = cycleDurationHours <= 0
         ? 0
         : (GameConstants.totalWeeklyHoursCap / cycleDurationHours).floor();

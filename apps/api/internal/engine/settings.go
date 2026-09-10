@@ -51,13 +51,23 @@ func (s *SettingsService) Reset(ctx context.Context, userID string) (*MutationRe
 	defer tx.Rollback(ctx) //nolint:errcheck
 
 	for _, q := range []string{
-		`DELETE FROM fleet_aircraft WHERE user_id=$1`,
-		`DELETE FROM route_assignments WHERE user_id=$1`,
-		`DELETE FROM loans WHERE user_id=$1`,
 		`DELETE FROM bank_transactions WHERE user_id=$1`,
+		`DELETE FROM loans WHERE user_id=$1`,
+		`DELETE FROM credit_scores WHERE user_id=$1`,
+		`DELETE FROM credit_score_history WHERE user_id=$1`,
+		`DELETE FROM route_assignments WHERE user_id=$1`,
+		`DELETE FROM fleet_aircraft WHERE user_id=$1`,
 		`DELETE FROM achievements WHERE user_id=$1`,
-		`UPDATE bank_accounts SET balance = (SELECT COALESCE((value#>>'{}')::numeric, 25000000) FROM game_config WHERE key='starting_cash') WHERE user_id=$1 AND account_type='operating'`,
-		`UPDATE users SET game_current_time = (SELECT current_game_time FROM season_clock WHERE status='active' LIMIT 1), net_worth = (SELECT COALESCE((value#>>'{}')::numeric, 25000000) FROM game_config WHERE key='starting_cash') WHERE id=$1`,
+		`INSERT INTO bank_accounts (user_id, account_type, balance)
+		 VALUES ($1, 'operating', COALESCE((SELECT (value#>>'{}')::numeric FROM game_config WHERE key='starting_cash'), 25000000))
+		 ON CONFLICT (user_id, account_type) DO UPDATE SET balance = EXCLUDED.balance`,
+		`UPDATE users SET game_current_time = (SELECT current_game_time FROM season_clock WHERE status='active' LIMIT 1),
+		        net_worth = COALESCE((SELECT (value#>>'{}')::numeric FROM game_config WHERE key='starting_cash'), 25000000),
+		        hq_airport_iata = 'SIN', auto_grounding_threshold = 40.00,
+		        operational_status = 'Active', consecutive_negative_days = 0,
+		        recovery_streak_days = 0, last_active_at = NOW(),
+		        onboarding_completed = false
+		 WHERE id=$1`,
 	} {
 		if _, err := tx.Exec(ctx, q, userID); err != nil {
 			return &MutationResult{Success: false, Message: "reset failed"}, nil
