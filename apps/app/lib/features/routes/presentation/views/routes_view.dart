@@ -862,6 +862,29 @@ class _RoutesViewState extends State<RoutesView> {
             ),
           ),
 
+          // ── First-route suggestion (GAME-08) ──
+          if (routes.isEmpty &&
+              _plannerOrigin == null &&
+              _plannerDestination == null)
+            Builder(
+              builder: (context) {
+                final home = _resolveHomeAirport(
+                  context.read<AuthCubit>().state is AuthAuthenticated
+                      ? (context.read<AuthCubit>().state as AuthAuthenticated)
+                            .user
+                            .hqAirportIata
+                      : '',
+                );
+                final suggested = home == null
+                    ? null
+                    : _recommendedFirstDestination(home, airports);
+                if (home == null || suggested == null) {
+                  return const SizedBox.shrink();
+                }
+                return _buildFirstRouteSuggestion(home, suggested);
+              },
+            ),
+
           // ── Input Row ──
           Padding(
             padding: const EdgeInsets.symmetric(
@@ -1126,6 +1149,69 @@ class _RoutesViewState extends State<RoutesView> {
       if (airport.iata == hqIata) return airport;
     }
     return null;
+  }
+
+  /// GAME-08: a safe first route for a brand-new player — the nearest airport
+  /// to HQ. Short hops keep fuel/crew costs low while demand builds.
+  Airport? _recommendedFirstDestination(Airport home, List<Airport> airports) {
+    return Airport.nearestWithin(home, airports);
+  }
+
+  Widget _buildFirstRouteSuggestion(Airport home, Airport destination) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(
+        AppSpacing.xl,
+        AppSpacing.sm,
+        AppSpacing.xl,
+        0,
+      ),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        color: AppTheme.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusSoft),
+        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.lightbulb_outline, color: AppTheme.primary, size: 16),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              AppStrings.firstRouteSuggestion(
+                home.iata,
+                destination.iata,
+                destination.city,
+              ),
+              style: AppTypography.captionRegular.copyWith(
+                color: AppTheme.textSecondary,
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          TextButton(
+            onPressed: () {
+              setState(() {
+                _plannerOrigin = home;
+                _plannerDestination = destination;
+                _updatePlannerDistance();
+              });
+            },
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+              minimumSize: const Size(0, 28),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: Text(
+              AppStrings.firstRouteSuggestionAction,
+              style: AppTypography.badgeText.copyWith(color: AppTheme.primary),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   // ══════════════════════════════════════════════

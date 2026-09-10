@@ -12,7 +12,7 @@ import (
 
 // ProcessBots — orchestrator bot (mirror execute_bot_decisions).
 func (e *Engine) ProcessBots(ctx context.Context) (int, error) {
-	startingCash := e.getConfigNum(ctx, "starting_cash", 15000000.0)
+	startingCash := e.getConfigNum(ctx, "starting_cash", 25000000.0)
 	bankruptcyThreshold := e.getConfigNum(ctx, "bankruptcy_cash_threshold", -5000000.0)
 	repairReserve := e.getConfigNum(ctx, "bot_repair_cash_reserve", 500000.0)
 	purchaseMult := e.getConfigNum(ctx, "bot_purchase_cash_multiplier", 1.5)

@@ -138,6 +138,27 @@ class Airport with Equatable {
   // Calculate distance between two airports using Haversine formula in Dart
   double distanceTo(Airport other) => calculateDistance(this, other);
 
+  /// GAME-08: the nearest airport within [maxDistanceKm], used to suggest a
+  /// safe first route for new players. Returns null when none qualifies.
+  static Airport? nearestWithin(
+    Airport home,
+    Iterable<Airport> airports, {
+    double maxDistanceKm = 1500,
+  }) {
+    Airport? best;
+    double bestDistance = double.infinity;
+    for (final airport in airports) {
+      if (airport.iata == home.iata) continue;
+      final distance = home.distanceTo(airport);
+      if (distance <= 0 || distance > maxDistanceKm) continue;
+      if (distance < bestDistance) {
+        best = airport;
+        bestDistance = distance;
+      }
+    }
+    return best;
+  }
+
   static double calculateDistance(Airport a, Airport b) {
     const double earthRadiusKm = 6371.0;
 

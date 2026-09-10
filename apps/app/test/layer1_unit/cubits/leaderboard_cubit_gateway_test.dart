@@ -759,9 +759,9 @@ void main() {
         verify: (cubit) {
           final loaded = cubit.state as LeaderboardLoaded;
           final human = loaded.rankings.firstWhere((e) => !e.isBot);
-          // Should use GameConstants.startingCash defaults (15000000.0)
-          expect(human.cash, 15000000.0);
-          expect(human.netWorth, 15000000.0);
+          // Should use GameConstants.startingCash defaults (25000000.0)
+          expect(human.cash, 25000000.0);
+          expect(human.netWorth, 25000000.0);
         },
       );
     });
