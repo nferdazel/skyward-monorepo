@@ -352,6 +352,8 @@ func (h *MutationHandler) SimulationSync(w http.ResponseWriter, r *http.Request)
 		"message":                     "simulation synced",
 		"elapsed_game_days":           result.ElapsedDays,
 		"flights_run":                 result.FlightsRun,
+		"revenue":                     result.Revenue,
+		"expense":                     result.Expense,
 		"newly_unlocked_achievements": result.NewlyUnlocked,
 	})
 }

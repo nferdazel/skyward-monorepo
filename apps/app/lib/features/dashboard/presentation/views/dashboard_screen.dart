@@ -154,14 +154,18 @@ class _AuthenticatedDashboardShellState
     final digest = WhileAwayDigest.from(
       elapsedDays: state.lastElapsedDays,
       flightsRun: state.lastFlightsRun,
+      authoritativeRevenue: state.lastRevenue,
+      authoritativeExpense: state.lastExpense,
       dailySnapshots: financeState is FinanceDataState
           ? financeState.dailySnapshots
           : const [],
     );
     final shownFor = state.gameTime;
+    // Claim the guard immediately so a second emit for the same game time
+    // before the next frame cannot schedule a duplicate dialog.
+    _lastDigestShownFor = shownFor;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _showOnboarding) return;
-      _lastDigestShownFor = shownFor;
       showWhileAwayDigest(context, digest);
     });
   }
@@ -172,20 +176,28 @@ class _AuthenticatedDashboardShellState
   void _showAchievementToasts(BuildContext context, SimulationState state) {
     final newlyUnlocked = state.lastUnlockedAchievements;
     if (newlyUnlocked.isEmpty) return;
+    final names = <String>[];
     for (final raw in newlyUnlocked) {
       final achievement = NewAchievement.fromMap(raw);
       final type = achievement.achievementType;
       if (type.isEmpty || _shownAchievementTypes.contains(type)) continue;
       _shownAchievementTypes.add(type);
-      final name = achievement.achievementName.isEmpty
-          ? type
-          : achievement.achievementName;
-      if (!mounted) return;
-      AppSnackBar.showSuccess(
-        context,
-        '${AppStrings.achievementUnlockedPrefix}$name',
+      names.add(
+        achievement.achievementName.isEmpty
+            ? type
+            : achievement.achievementName,
       );
     }
+    if (names.isEmpty || !mounted) return;
+    // A single snackbar: AppSnackBar removes the current one before showing,
+    // so firing one per achievement would leave only the last visible.
+    final label = names.length == 1
+        ? names.first
+        : '${names.length} achievements: ${names.join(', ')}';
+    AppSnackBar.showSuccess(
+      context,
+      '${AppStrings.achievementUnlockedPrefix}$label',
+    );
   }
 
   Future<void> _checkOnboarding() async {
@@ -440,7 +452,9 @@ class _AuthenticatedDashboardShellState
                 simState: _simulationCubit.state,
                 routesState: _routesCubit.state,
                 bankState: _bankCubit.state,
-                activeEvents: _eventsCubit.activeEvents,
+                activeEvents: _eventsCubit.isLoaded
+                    ? _eventsCubit.activeEvents
+                    : null,
                 gameTime: _simulationCubit.state.gameTime,
               );
             },
@@ -453,7 +467,9 @@ class _AuthenticatedDashboardShellState
                 simState: _simulationCubit.state,
                 routesState: state,
                 bankState: _bankCubit.state,
-                activeEvents: _eventsCubit.activeEvents,
+                activeEvents: _eventsCubit.isLoaded
+                    ? _eventsCubit.activeEvents
+                    : null,
                 gameTime: _simulationCubit.state.gameTime,
               );
             },
@@ -469,7 +485,9 @@ class _AuthenticatedDashboardShellState
                 simState: _simulationCubit.state,
                 routesState: _routesCubit.state,
                 bankState: state,
-                activeEvents: _eventsCubit.activeEvents,
+                activeEvents: _eventsCubit.isLoaded
+                    ? _eventsCubit.activeEvents
+                    : null,
                 gameTime: _simulationCubit.state.gameTime,
               );
             },
@@ -484,7 +502,9 @@ class _AuthenticatedDashboardShellState
                 simState: state,
                 routesState: _routesCubit.state,
                 bankState: _bankCubit.state,
-                activeEvents: _eventsCubit.activeEvents,
+                activeEvents: _eventsCubit.isLoaded
+                    ? _eventsCubit.activeEvents
+                    : null,
                 gameTime: _simulationCubit.state.gameTime,
               );
               _maybeShowWhileAwayDigest(state);
@@ -499,7 +519,9 @@ class _AuthenticatedDashboardShellState
                 simState: _simulationCubit.state,
                 routesState: _routesCubit.state,
                 bankState: _bankCubit.state,
-                activeEvents: _eventsCubit.activeEvents,
+                activeEvents: _eventsCubit.isLoaded
+                    ? _eventsCubit.activeEvents
+                    : null,
                 gameTime: _simulationCubit.state.gameTime,
               );
             },

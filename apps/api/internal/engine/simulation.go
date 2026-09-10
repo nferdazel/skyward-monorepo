@@ -88,6 +88,11 @@ func (e *Engine) WorldTick(ctx context.Context) (*WorldTickResult, error) {
 type PlayerProcessResult struct {
 	ElapsedDays float64 `json:"elapsed_game_days"`
 	FlightsRun  int     `json:"flights_run"`
+	// Revenue/Expense — authoritative simulated totals for this process window,
+	// so the "while you were away" digest does not depend on client-side
+	// transaction caches that may not have been reloaded (GAME-07).
+	Revenue float64 `json:"revenue"`
+	Expense float64 `json:"expense"`
 	// NewlyUnlocked — achievements unlocked during this process, surfaced to
 	// the client for a celebration toast (GAME-15).
 	NewlyUnlocked []AchievementDef `json:"newly_unlocked_achievements,omitempty"`
@@ -118,10 +123,24 @@ func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime ti
 	e.Pool.QueryRow(ctx, `SELECT COALESCE(effect_value, 1.0) FROM game_events WHERE event_type='fuel_shock' AND is_active=true AND effect_type='fuel_price' AND start_game_time<=$1 AND end_game_time>$1 ORDER BY start_game_time DESC LIMIT 1`, targetTime).Scan(&fuelMult)
 	e.Pool.QueryRow(ctx, `SELECT COALESCE(effect_value, 1.0) FROM game_events WHERE event_type='maintenance_shock' AND is_active=true AND effect_type='maintenance_cost' AND start_game_time<=$1 AND end_game_time>$1 ORDER BY start_game_time DESC LIMIT 1`, targetTime).Scan(&maintMult)
 
-	// user data
+	// Serialize concurrent processing for the same user (POST /simulation/sync
+	// vs the world-tick worker). Without this, both calls read the same
+	// game_current_time and post the same route revenue/costs to the ledger;
+	// the day-advance guard below only prevents the clock/day-boundary from
+	// advancing twice, not the ledger writes.
+	tx, txErr := e.Pool.Begin(ctx)
+	if txErr != nil {
+		return PlayerProcessResult{}
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtext($1))`, userID); err != nil {
+		return PlayerProcessResult{}
+	}
+
+	// user data (read under the per-user lock)
 	var userGameTime time.Time
 	var autoThreshold float64
-	e.Pool.QueryRow(ctx, `SELECT game_current_time, auto_grounding_threshold FROM users WHERE id=$1`, userID).Scan(&userGameTime, &autoThreshold)
+	tx.QueryRow(ctx, `SELECT game_current_time, auto_grounding_threshold FROM users WHERE id=$1`, userID).Scan(&userGameTime, &autoThreshold)
 
 	elapsed := targetTime.Sub(userGameTime).Hours() / 24.0
 	if elapsed <= 0 {
@@ -172,12 +191,8 @@ func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime ti
 	}
 
 	flightsRun := 0.0
-
-	tx, txErr := e.Pool.Begin(ctx)
-	if txErr != nil {
-		return PlayerProcessResult{}
-	}
-	defer tx.Rollback(ctx) //nolint:errcheck
+	totalRevenue := 0.0
+	totalExpense := 0.0
 
 	for _, r := range routes {
 		// event multipliers (from cached fuelMult, maintMult)
@@ -249,26 +264,32 @@ func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime ti
 		if revenue > 0 {
 			_, _ = e.Ledger.CreditTx(ctx, tx, userID, revenue, "revenue", "ticket_revenue",
 				fmt.Sprintf("Route %s-%s", r.OriginIATA, r.DestIATA), targetTime)
+			totalRevenue += revenue
 		}
 		if cargoRev > 0 {
 			_, _ = e.Ledger.CreditTx(ctx, tx, userID, cargoRev, "revenue", "cargo_revenue",
 				fmt.Sprintf("Cargo: %s-%s", r.OriginIATA, r.DestIATA), targetTime)
+			totalRevenue += cargoRev
 		}
 		if fuelCost > 0 {
 			_, _ = e.Ledger.DebitTx(ctx, tx, userID, fuelCost, "cogs", "fuel_cost",
 				fmt.Sprintf("Fuel: %s-%s", r.OriginIATA, r.DestIATA), targetTime)
+			totalExpense += fuelCost
 		}
 		if crewCostTotal > 0 {
 			_, _ = e.Ledger.DebitTx(ctx, tx, userID, crewCostTotal, "cogs", "crew_cost",
 				fmt.Sprintf("Crew: %s-%s", r.OriginIATA, r.DestIATA), targetTime)
+			totalExpense += crewCostTotal
 		}
 		if maintCost > 0 {
 			_, _ = e.Ledger.DebitTx(ctx, tx, userID, maintCost, "cogs", "maintenance_cost",
 				fmt.Sprintf("Maintenance: %s-%s", r.OriginIATA, r.DestIATA), targetTime)
+			totalExpense += maintCost
 		}
 		if leaseCost > 0 {
 			_, _ = e.Ledger.DebitTx(ctx, tx, userID, leaseCost, "opex", "aircraft_lease",
 				fmt.Sprintf("Lease: %s-%s", r.OriginIATA, r.DestIATA), targetTime)
+			totalExpense += leaseCost
 		}
 
 		// wear
@@ -296,6 +317,7 @@ func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime ti
 	if idleLeaseCost > 0 {
 		_, _ = e.Ledger.DebitTx(ctx, tx, userID, idleLeaseCost, "opex", "aircraft_lease_idle",
 			"Idle lease carrying cost", targetTime)
+		totalExpense += idleLeaseCost
 	}
 
 	// update user game time. The WHERE guard makes the day advance atomic:
@@ -325,6 +347,8 @@ func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime ti
 	return PlayerProcessResult{
 		ElapsedDays:   elapsed,
 		FlightsRun:    int(math.Round(flightsRun)),
+		Revenue:       totalRevenue,
+		Expense:       totalExpense,
 		NewlyUnlocked: newlyUnlocked,
 	}
 }

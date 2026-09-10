@@ -55,7 +55,8 @@ class NotificationCubit extends Cubit<NotificationState> {
           final title = 'FLEET CONDITION CRITICAL';
           final message =
               '${aircraft.nickname} (${aircraft.model.modelName}) at ${aircraft.condition.toStringAsFixed(0)}% — immediate repair needed.';
-          final isRead = existingMap['$title|$message'] ?? false;
+          final identity = 'FLEET CONDITION CRITICAL|${aircraft.id}';
+          final isRead = existingMap[identity] ?? false;
           newNotifications.add(
             GameNotification(
               title: title,
@@ -63,13 +64,15 @@ class NotificationCubit extends Cubit<NotificationState> {
               type: NotificationType.error,
               timestamp: now,
               isRead: isRead,
+              dedupKey: identity,
             ),
           );
         } else if (aircraft.condition < 60) {
           final title = 'FLEET CONDITION WARNING';
           final message =
               '${aircraft.nickname} (${aircraft.model.modelName}) at ${aircraft.condition.toStringAsFixed(0)}% — schedule maintenance.';
-          final isRead = existingMap['$title|$message'] ?? false;
+          final identity = 'FLEET CONDITION WARNING|${aircraft.id}';
+          final isRead = existingMap[identity] ?? false;
           newNotifications.add(
             GameNotification(
               title: title,
@@ -77,6 +80,7 @@ class NotificationCubit extends Cubit<NotificationState> {
               type: NotificationType.warning,
               timestamp: now,
               isRead: isRead,
+              dedupKey: identity,
             ),
           );
         }
@@ -205,7 +209,8 @@ class NotificationCubit extends Cubit<NotificationState> {
         final type = loan.missedPayments >= 3
             ? NotificationType.error
             : NotificationType.warning;
-        final isRead = existingMap['$title|$message'] ?? false;
+        final identity = '$title|${loan.id}';
+        final isRead = existingMap[identity] ?? false;
         newNotifications.add(
           GameNotification(
             title: title,
@@ -213,6 +218,7 @@ class NotificationCubit extends Cubit<NotificationState> {
             type: type,
             timestamp: now,
             isRead: isRead,
+            dedupKey: identity,
           ),
         );
       }
@@ -222,6 +228,9 @@ class NotificationCubit extends Cubit<NotificationState> {
     // Event boundaries are in game time, so remaining duration must be computed
     // against the game clock, not wall clock. Dedup by event id so the live
     // countdown does not reset the read state on every refresh.
+    // `activeEvents == null` means the events cubit has not loaded yet; in that
+    // case carry over any event notifications already shown instead of wiping
+    // them on an unrelated refresh.
     if (activeEvents != null) {
       final eventNow = gameTime ?? now;
       for (final event in activeEvents) {
@@ -248,6 +257,10 @@ class NotificationCubit extends Cubit<NotificationState> {
           ),
         );
       }
+    } else {
+      newNotifications.addAll(
+        state.notifications.where((n) => n.type == NotificationType.event),
+      );
     }
 
     // Sort by severity (error first, then warning, then event, success, info)

@@ -235,14 +235,18 @@ class OverviewSnapshot {
               : (runwayDays < 45 ? AppTheme.warning : AppTheme.success));
 
     // Bankruptcy risk escalation (GAME-13). Critical when cash is at/below the
-    // warning threshold or negative days are near the limit; warning when cash
-    // is negative at all.
+    // warning threshold, or (only while cash is actually negative) when the
+    // negative-day streak is near the server's limit; warning when cash is
+    // negative at all. Gating the day-based branch on cash < 0 avoids showing
+    // "BANKRUPTCY IMMINENT" to a player who has already recovered.
     final cash = simState.cashBalance;
     final negDays = simState.consecutiveNegativeDays;
     final int bankruptcyRiskLevel;
     final String bankruptcyRiskLabel;
     if (cash <= GameConstants.bankruptcyWarningCashThreshold ||
-        negDays >= (GameConstants.bankruptcyNegativeDaysThreshold * 2 / 3)) {
+        (cash < 0 &&
+            negDays >=
+                (GameConstants.bankruptcyNegativeDaysThreshold * 2 / 3))) {
       bankruptcyRiskLevel = 2;
       bankruptcyRiskLabel = AppStrings.bankruptcyCritical;
     } else if (cash < 0) {

@@ -32,6 +32,11 @@ class EventsCubit extends Cubit<EventsState> with SimulationReactiveMixin {
     return current is EventsLoaded ? current.activeEvents : const [];
   }
 
+  /// True once events have loaded at least once. Callers use this to avoid
+  /// treating "not loaded yet" as "no active events" (which would wipe event
+  /// notifications on an unrelated refresh).
+  bool get isLoaded => state is EventsLoaded;
+
   Future<void> loadActiveEvents({bool silent = false}) async {
     if (!silent) {
       emit(const EventsLoading());

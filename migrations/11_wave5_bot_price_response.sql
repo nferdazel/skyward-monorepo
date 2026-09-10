@@ -9,8 +9,8 @@
 
 BEGIN;
 
-UPDATE game_config
-   SET value = '0.08'::jsonb
- WHERE key = 'bot_competitive_price_threshold';
+INSERT INTO game_config (key, value, category, unit, description)
+VALUES ('bot_competitive_price_threshold', '0.08'::jsonb, 'simulation', 'ratio', 'Price gap at which bots react to a competitor')
+ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW();
 
 COMMIT;

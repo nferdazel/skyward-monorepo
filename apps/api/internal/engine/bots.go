@@ -474,10 +474,11 @@ func (e *Engine) spawnBot(ctx context.Context, seasonID string) {
 	e.Pool.QueryRow(ctx, `SELECT current_game_time FROM season_clock WHERE status='active' LIMIT 1`).Scan(&gameTime)
 	username := fmt.Sprintf("bot_%s", randString(8))
 	company := fmt.Sprintf("Skyward %s Airways", archetype)
+	startingCash := e.getConfigNum(ctx, "starting_cash", 25000000.0)
 	_, err := e.Pool.Exec(ctx, `
 		INSERT INTO users (username, company_name, ceo_name, actor_type, hq_airport_iata, game_current_time, operational_status, net_worth, consecutive_negative_days, recovery_streak_days, auto_grounding_threshold, season_id)
-		VALUES ($1,$2,'AI CEO','AI',$3,$4,'Active',15000000.00,0,0,40.00,$5)
-		ON CONFLICT (company_name) DO NOTHING`, username, company, hq, gameTime, seasonID)
+		VALUES ($1,$2,'AI CEO','AI',$3,$4,'Active',$5,0,0,40.00,$6)
+		ON CONFLICT (company_name) DO NOTHING`, username, company, hq, gameTime, startingCash, seasonID)
 	if err != nil {
 		return
 	}

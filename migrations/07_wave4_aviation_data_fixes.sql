@@ -48,71 +48,71 @@ UPDATE aircraft_models SET turnaround_hours = 1.0
 -- ── AVIATION-10: lease prices ~30% above real dry-lease rates ──────────────
 -- Absolute target values (original * 0.70, precomputed) so this migration is
 -- idempotent and re-running does not compound the discount.
-UPDATE aircraft_models SET lease_price_per_month = 134750.0  WHERE model_name = '717-200';
-UPDATE aircraft_models SET lease_price_per_month = 151900.0  WHERE model_name = '737-500';
-UPDATE aircraft_models SET lease_price_per_month = 186200.0  WHERE model_name = '737-600';
-UPDATE aircraft_models SET lease_price_per_month = 218050.0  WHERE model_name = '737-700';
-UPDATE aircraft_models SET lease_price_per_month = 259700.0  WHERE model_name = '737-800';
-UPDATE aircraft_models SET lease_price_per_month = 274400.0  WHERE model_name = '737-900ER';
-UPDATE aircraft_models SET lease_price_per_month = 328300.0  WHERE model_name = '737 MAX 10';
-UPDATE aircraft_models SET lease_price_per_month = 301350.0  WHERE model_name = '737 MAX 200';
-UPDATE aircraft_models SET lease_price_per_month = 245000.0  WHERE model_name = '737 MAX 7';
-UPDATE aircraft_models SET lease_price_per_month = 296450.0  WHERE model_name = '737 MAX 8';
-UPDATE aircraft_models SET lease_price_per_month = 313600.0  WHERE model_name = '737 MAX 9';
-UPDATE aircraft_models SET lease_price_per_month = 1024100.0 WHERE model_name = '747-8';
-UPDATE aircraft_models SET lease_price_per_month = 281750.0  WHERE model_name = '757-200';
-UPDATE aircraft_models SET lease_price_per_month = 318500.0  WHERE model_name = '757-300';
-UPDATE aircraft_models SET lease_price_per_month = 492450.0  WHERE model_name = '767-300ER';
-UPDATE aircraft_models SET lease_price_per_month = 563500.0  WHERE model_name = '767-400ER';
-UPDATE aircraft_models SET lease_price_per_month = 749700.0  WHERE model_name = '777-200ER';
-UPDATE aircraft_models SET lease_price_per_month = 847700.0  WHERE model_name = '777-200LR';
-UPDATE aircraft_models SET lease_price_per_month = 808500.0  WHERE model_name = '777-300';
-UPDATE aircraft_models SET lease_price_per_month = 918750.0  WHERE model_name = '777-300ER';
-UPDATE aircraft_models SET lease_price_per_month = 1004500.0 WHERE model_name = '777-8';
-UPDATE aircraft_models SET lease_price_per_month = 1082900.0 WHERE model_name = '777-9';
-UPDATE aircraft_models SET lease_price_per_month = 828100.0  WHERE model_name = '787-10';
-UPDATE aircraft_models SET lease_price_per_month = 607600.0  WHERE model_name = '787-8';
-UPDATE aircraft_models SET lease_price_per_month = 715400.0  WHERE model_name = '787-9';
-UPDATE aircraft_models SET lease_price_per_month = 196000.0  WHERE model_name = 'A220-100';
-UPDATE aircraft_models SET lease_price_per_month = 220500.0  WHERE model_name = 'A220-300';
-UPDATE aircraft_models SET lease_price_per_month = 171500.0  WHERE model_name = 'A318-100';
-UPDATE aircraft_models SET lease_price_per_month = 225400.0  WHERE model_name = 'A319ceo';
-UPDATE aircraft_models SET lease_price_per_month = 249900.0  WHERE model_name = 'A319neo';
-UPDATE aircraft_models SET lease_price_per_month = 245000.0  WHERE model_name = 'A320ceo';
-UPDATE aircraft_models SET lease_price_per_month = 269500.0  WHERE model_name = 'A320neo';
-UPDATE aircraft_models SET lease_price_per_month = 289100.0  WHERE model_name = 'A321ceo';
-UPDATE aircraft_models SET lease_price_per_month = 330750.0  WHERE model_name = 'A321LR';
-UPDATE aircraft_models SET lease_price_per_month = 316050.0  WHERE model_name = 'A321neo';
-UPDATE aircraft_models SET lease_price_per_month = 347900.0  WHERE model_name = 'A321XLR';
-UPDATE aircraft_models SET lease_price_per_month = 583100.0  WHERE model_name = 'A330-200';
-UPDATE aircraft_models SET lease_price_per_month = 646800.0  WHERE model_name = 'A330-300';
-UPDATE aircraft_models SET lease_price_per_month = 637000.0  WHERE model_name = 'A330-800neo';
-UPDATE aircraft_models SET lease_price_per_month = 725200.0  WHERE model_name = 'A330-900neo';
-UPDATE aircraft_models SET lease_price_per_month = 896700.0  WHERE model_name = 'A350-1000';
-UPDATE aircraft_models SET lease_price_per_month = 776650.0  WHERE model_name = 'A350-900';
-UPDATE aircraft_models SET lease_price_per_month = 1090250.0 WHERE model_name = 'A380-800';
-UPDATE aircraft_models SET lease_price_per_month = 93100.0   WHERE model_name = 'ARJ21-700';
-UPDATE aircraft_models SET lease_price_per_month = 34300.0   WHERE model_name = 'ATR 42-500';
-UPDATE aircraft_models SET lease_price_per_month = 39200.0   WHERE model_name = 'ATR 42-600';
-UPDATE aircraft_models SET lease_price_per_month = 53900.0   WHERE model_name = 'ATR 72-500';
-UPDATE aircraft_models SET lease_price_per_month = 63700.0   WHERE model_name = 'ATR 72-600';
-UPDATE aircraft_models SET lease_price_per_month = 19600.0   WHERE model_name = 'C-212 Aviocar';
-UPDATE aircraft_models SET lease_price_per_month = 242550.0  WHERE model_name = 'C919';
-UPDATE aircraft_models SET lease_price_per_month = 124950.0  WHERE model_name = 'CRJ-1000';
-UPDATE aircraft_models SET lease_price_per_month = 83300.0   WHERE model_name = 'CRJ-550';
-UPDATE aircraft_models SET lease_price_per_month = 98000.0   WHERE model_name = 'CRJ-700';
-UPDATE aircraft_models SET lease_price_per_month = 117600.0  WHERE model_name = 'CRJ-900';
-UPDATE aircraft_models SET lease_price_per_month = 44100.0   WHERE model_name = 'Dash 8 Q300';
-UPDATE aircraft_models SET lease_price_per_month = 78400.0   WHERE model_name = 'Dash 8 Q400';
-UPDATE aircraft_models SET lease_price_per_month = 100450.0  WHERE model_name = 'E170';
-UPDATE aircraft_models SET lease_price_per_month = 107800.0  WHERE model_name = 'E175';
-UPDATE aircraft_models SET lease_price_per_month = 139650.0  WHERE model_name = 'E175-E2';
-UPDATE aircraft_models SET lease_price_per_month = 127400.0  WHERE model_name = 'E190';
-UPDATE aircraft_models SET lease_price_per_month = 147000.0  WHERE model_name = 'E190-E2';
-UPDATE aircraft_models SET lease_price_per_month = 134750.0  WHERE model_name = 'E195';
-UPDATE aircraft_models SET lease_price_per_month = 159250.0  WHERE model_name = 'E195-E2';
-UPDATE aircraft_models SET lease_price_per_month = 232750.0  WHERE model_name = 'MC-21-300';
-UPDATE aircraft_models SET lease_price_per_month = 85750.0   WHERE model_name = 'Superjet SSJ-100';
+UPDATE aircraft_models SET lease_price_per_month = 192500.0  WHERE model_name = '717-200';
+UPDATE aircraft_models SET lease_price_per_month = 217000.0  WHERE model_name = '737-500';
+UPDATE aircraft_models SET lease_price_per_month = 266000.0  WHERE model_name = '737-600';
+UPDATE aircraft_models SET lease_price_per_month = 311500.0  WHERE model_name = '737-700';
+UPDATE aircraft_models SET lease_price_per_month = 371000.0  WHERE model_name = '737-800';
+UPDATE aircraft_models SET lease_price_per_month = 392000.0  WHERE model_name = '737-900ER';
+UPDATE aircraft_models SET lease_price_per_month = 469000.0  WHERE model_name = '737 MAX 10';
+UPDATE aircraft_models SET lease_price_per_month = 430500.0  WHERE model_name = '737 MAX 200';
+UPDATE aircraft_models SET lease_price_per_month = 350000.0  WHERE model_name = '737 MAX 7';
+UPDATE aircraft_models SET lease_price_per_month = 423500.0  WHERE model_name = '737 MAX 8';
+UPDATE aircraft_models SET lease_price_per_month = 448000.0  WHERE model_name = '737 MAX 9';
+UPDATE aircraft_models SET lease_price_per_month = 1463000.0 WHERE model_name = '747-8';
+UPDATE aircraft_models SET lease_price_per_month = 402500.0  WHERE model_name = '757-200';
+UPDATE aircraft_models SET lease_price_per_month = 455000.0  WHERE model_name = '757-300';
+UPDATE aircraft_models SET lease_price_per_month = 703500.0  WHERE model_name = '767-300ER';
+UPDATE aircraft_models SET lease_price_per_month = 805000.0  WHERE model_name = '767-400ER';
+UPDATE aircraft_models SET lease_price_per_month = 1071000.0  WHERE model_name = '777-200ER';
+UPDATE aircraft_models SET lease_price_per_month = 1211000.0  WHERE model_name = '777-200LR';
+UPDATE aircraft_models SET lease_price_per_month = 1155000.0  WHERE model_name = '777-300';
+UPDATE aircraft_models SET lease_price_per_month = 1312500.0  WHERE model_name = '777-300ER';
+UPDATE aircraft_models SET lease_price_per_month = 1435000.0 WHERE model_name = '777-8';
+UPDATE aircraft_models SET lease_price_per_month = 1547000.0 WHERE model_name = '777-9';
+UPDATE aircraft_models SET lease_price_per_month = 1183000.0  WHERE model_name = '787-10';
+UPDATE aircraft_models SET lease_price_per_month = 868000.0  WHERE model_name = '787-8';
+UPDATE aircraft_models SET lease_price_per_month = 1022000.0  WHERE model_name = '787-9';
+UPDATE aircraft_models SET lease_price_per_month = 280000.0  WHERE model_name = 'A220-100';
+UPDATE aircraft_models SET lease_price_per_month = 315000.0  WHERE model_name = 'A220-300';
+UPDATE aircraft_models SET lease_price_per_month = 245000.0  WHERE model_name = 'A318-100';
+UPDATE aircraft_models SET lease_price_per_month = 322000.0  WHERE model_name = 'A319ceo';
+UPDATE aircraft_models SET lease_price_per_month = 357000.0  WHERE model_name = 'A319neo';
+UPDATE aircraft_models SET lease_price_per_month = 350000.0  WHERE model_name = 'A320ceo';
+UPDATE aircraft_models SET lease_price_per_month = 385000.0  WHERE model_name = 'A320neo';
+UPDATE aircraft_models SET lease_price_per_month = 413000.0  WHERE model_name = 'A321ceo';
+UPDATE aircraft_models SET lease_price_per_month = 472500.0  WHERE model_name = 'A321LR';
+UPDATE aircraft_models SET lease_price_per_month = 451500.0  WHERE model_name = 'A321neo';
+UPDATE aircraft_models SET lease_price_per_month = 497000.0  WHERE model_name = 'A321XLR';
+UPDATE aircraft_models SET lease_price_per_month = 833000.0  WHERE model_name = 'A330-200';
+UPDATE aircraft_models SET lease_price_per_month = 924000.0  WHERE model_name = 'A330-300';
+UPDATE aircraft_models SET lease_price_per_month = 910000.0  WHERE model_name = 'A330-800neo';
+UPDATE aircraft_models SET lease_price_per_month = 1036000.0  WHERE model_name = 'A330-900neo';
+UPDATE aircraft_models SET lease_price_per_month = 1281000.0  WHERE model_name = 'A350-1000';
+UPDATE aircraft_models SET lease_price_per_month = 1109500.0  WHERE model_name = 'A350-900';
+UPDATE aircraft_models SET lease_price_per_month = 1557500.0 WHERE model_name = 'A380-800';
+UPDATE aircraft_models SET lease_price_per_month = 133000.0   WHERE model_name = 'ARJ21-700';
+UPDATE aircraft_models SET lease_price_per_month = 49000.0   WHERE model_name = 'ATR 42-500';
+UPDATE aircraft_models SET lease_price_per_month = 56000.0   WHERE model_name = 'ATR 42-600';
+UPDATE aircraft_models SET lease_price_per_month = 77000.0   WHERE model_name = 'ATR 72-500';
+UPDATE aircraft_models SET lease_price_per_month = 91000.0   WHERE model_name = 'ATR 72-600';
+UPDATE aircraft_models SET lease_price_per_month = 28000.0   WHERE model_name = 'C-212 Aviocar';
+UPDATE aircraft_models SET lease_price_per_month = 346500.0  WHERE model_name = 'C919';
+UPDATE aircraft_models SET lease_price_per_month = 178500.0  WHERE model_name = 'CRJ-1000';
+UPDATE aircraft_models SET lease_price_per_month = 119000.0   WHERE model_name = 'CRJ-550';
+UPDATE aircraft_models SET lease_price_per_month = 140000.0   WHERE model_name = 'CRJ-700';
+UPDATE aircraft_models SET lease_price_per_month = 168000.0  WHERE model_name = 'CRJ-900';
+UPDATE aircraft_models SET lease_price_per_month = 63000.0   WHERE model_name = 'Dash 8 Q300';
+UPDATE aircraft_models SET lease_price_per_month = 112000.0   WHERE model_name = 'Dash 8 Q400';
+UPDATE aircraft_models SET lease_price_per_month = 143500.0  WHERE model_name = 'E170';
+UPDATE aircraft_models SET lease_price_per_month = 154000.0  WHERE model_name = 'E175';
+UPDATE aircraft_models SET lease_price_per_month = 199500.0  WHERE model_name = 'E175-E2';
+UPDATE aircraft_models SET lease_price_per_month = 182000.0  WHERE model_name = 'E190';
+UPDATE aircraft_models SET lease_price_per_month = 210000.0  WHERE model_name = 'E190-E2';
+UPDATE aircraft_models SET lease_price_per_month = 192500.0  WHERE model_name = 'E195';
+UPDATE aircraft_models SET lease_price_per_month = 227500.0  WHERE model_name = 'E195-E2';
+UPDATE aircraft_models SET lease_price_per_month = 332500.0  WHERE model_name = 'MC-21-300';
+UPDATE aircraft_models SET lease_price_per_month = 122500.0   WHERE model_name = 'Superjet SSJ-100';
 
 -- ── AVIATION-30/31/32: special-case airports ────────────────────────────────
 -- NOTE: these run AFTER the China/India tiering below, because the tiering
@@ -128,7 +128,7 @@ UPDATE airports SET demand_index = CASE
     WHEN iata IN ('PKX','SZX')                                       THEN 85
     WHEN iata IN ('SHA')                                             THEN 82
     WHEN iata IN ('CTU','KMG','XIY','CKG','HGH','WUH')              THEN 80
-    WHEN iata IN ('NKG','CSX','CGO','TAO','TSN','DLC','XMN','FOC','HRB','SHE','URC','KWE','NNG','SYX','HAK','SJW','TYN','HET','TNA','WNZ','NGB','TFU','INC','CGQ','ZUH','SWA','KWL','JJN') THEN 70
+    WHEN iata IN ('NKG','CSX','CGO','TAO','TSN','DLC','XMN','FOC','HRB','SHE','URC','KWE','NNG','SYX','HAK','SJW','TYN','HET','TNA','WNZ','NGB','TFU','INC','CGQ','ZUH','SWA','KWL','JJN','LXA','XNN') THEN 70
     WHEN iata IN ('EHU','HFE','HIA','LYG','YIW','WUX','HSN','JHG','KHG','LHW','LJG','DYG','DSN','BAV','DAT','TXN','YCU','YNZ','YNT','ZHA','NDG','JGN','LYA','DNH','HLD','KHN') THEN 55
     ELSE 40
   END

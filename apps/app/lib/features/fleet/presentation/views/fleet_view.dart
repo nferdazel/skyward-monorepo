@@ -954,7 +954,7 @@ class _FleetViewState extends State<FleetView>
         final cashBalance =
             context.select((SimulationCubit cubit) => cubit.state.cashBalance);
         final creditTierAndFinancing =
-            context.select<BankCubit, (String, double)>((cubit) {
+            context.select<BankCubit, (String?, double)>((cubit) {
           final bankState = cubit.state;
           final report = switch (bankState) {
             BankLoaded(:final creditReport) => creditReport,
@@ -964,10 +964,14 @@ class _FleetViewState extends State<FleetView>
             _ => null,
           };
           return (
-            report?.creditTier ?? 'Standard',
+            report?.creditTier,
             report?.maxFinancingAmount ?? double.infinity,
           );
         });
+        // While the bank report is not loaded yet, the tier is unknown. Treat
+        // it as unknown (unlocked) rather than defaulting to Standard, so a
+        // Gold/Platinum player does not see every model falsely locked during
+        // a bank refresh.
         final currentCreditTier = creditTierAndFinancing.$1;
         final maxFinancingAmount = creditTierAndFinancing.$2;
 
@@ -1229,7 +1233,8 @@ class _FleetViewState extends State<FleetView>
       case 'Standard':
         return 1;
       default:
-        return 1;
+        // Match the server's creditTierRank default for unknown tiers.
+        return 0;
     }
   }
 
@@ -1266,7 +1271,7 @@ class _FleetViewState extends State<FleetView>
     bool isActionLoading,
     double cashBalance,
     double maxFinancingAmount,
-    String currentCreditTier,
+    String? currentCreditTier,
   ) {
     return AppTableShell(
       child: Column(
@@ -1326,7 +1331,7 @@ class _FleetViewState extends State<FleetView>
     bool isActionLoading,
     double cashBalance,
     double maxFinancingAmount,
-    String currentCreditTier,
+    String? currentCreditTier,
   ) {
     // P1 #6b: Affordability indicators
     final canBuyCash = cashBalance >= model.purchasePrice;
@@ -1335,9 +1340,12 @@ class _FleetViewState extends State<FleetView>
     final isAffordable = canBuyCash || canFinance || canLease;
 
     // GAME-06: block acquisition when the player's tier is below the model's.
+    // Null tier = bank report not loaded yet -> do not lock (avoid false locks
+    // during a bank refresh).
     final isTierLocked =
+        currentCreditTier != null &&
         _creditTierRank(currentCreditTier) <
-        _creditTierRank(model.minCreditTier);
+            _creditTierRank(model.minCreditTier);
 
     Widget row = Table(
       columnWidths: _catalogColumnWidths,

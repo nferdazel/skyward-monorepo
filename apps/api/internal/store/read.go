@@ -97,13 +97,14 @@ type FleetAircraft struct {
 	EconomySeats    int     `json:"economy_seats"`
 	BusinessSeats   int     `json:"business_seats"`
 	FirstClassSeats int     `json:"first_class_seats"`
+	TurnaroundHr    float64 `json:"turnaround_hours"`
 }
 
 func (s *Store) GetFleet(ctx context.Context, userID string) ([]FleetAircraft, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT f.id, f.user_id, f.aircraft_model_id, m.model_name, m.manufacturer,
 		       f.acquisition_type, f.condition, f.status, f.tail_number, f.nickname,
-		       f.economy_seats, f.business_seats, f.first_class_seats
+		       f.economy_seats, f.business_seats, f.first_class_seats, m.turnaround_hours
 		FROM fleet_aircraft f
 		JOIN aircraft_models m ON m.id = f.aircraft_model_id
 		WHERE f.user_id = $1 ORDER BY f.acquired_game_date DESC NULLS LAST`, userID)
@@ -329,7 +330,10 @@ type GameEvent struct {
 	CreatedAt     time.Time `json:"created_at"`
 }
 
-// GetActiveEvents — global (not user-scoped) active world events.
+// GetActiveEvents — global (not user-scoped) active world events. Also filters
+// by the active season clock so expired/not-yet-started events are not returned
+// even if the world-tick worker has not deactivated them yet. If there is no
+// active season clock, the time filter is skipped (defensive fallback).
 func (s *Store) GetActiveEvents(ctx context.Context) ([]GameEvent, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT id, event_type, title, COALESCE(description, ''), effect_type,
@@ -337,6 +341,13 @@ func (s *Store) GetActiveEvents(ctx context.Context) ([]GameEvent, error) {
 		       end_game_time, is_active, COALESCE(created_at, NOW())
 		FROM game_events
 		WHERE is_active = true
+		  AND (
+		    (SELECT current_game_time FROM season_clock WHERE status='active' LIMIT 1) IS NULL
+		    OR (
+		      start_game_time <= (SELECT current_game_time FROM season_clock WHERE status='active' LIMIT 1)
+		      AND end_game_time > (SELECT current_game_time FROM season_clock WHERE status='active' LIMIT 1)
+		    )
+		  )
 		ORDER BY start_game_time DESC`)
 	if err != nil {
 		return nil, fmt.Errorf("store: active events: %w", err)
@@ -528,7 +539,7 @@ func (s *Store) GetFleetAvailable(ctx context.Context, userID string) ([]FleetAi
 	rows, err := s.pool.Query(ctx, `
 		SELECT f.id, f.user_id, f.aircraft_model_id, m.model_name, m.manufacturer,
 		       f.acquisition_type, f.condition, f.status, f.tail_number, f.nickname,
-		       f.economy_seats, f.business_seats, f.first_class_seats
+		       f.economy_seats, f.business_seats, f.first_class_seats, m.turnaround_hours
 		FROM fleet_aircraft f
 		JOIN aircraft_models m ON m.id = f.aircraft_model_id
 		WHERE f.user_id = $1 AND f.status = 'active'
@@ -547,13 +558,13 @@ func (s *Store) GetFleetByID(ctx context.Context, userID, fleetID string) (*Flee
 	err := s.pool.QueryRow(ctx, `
 		SELECT f.id, f.user_id, f.aircraft_model_id, m.model_name, m.manufacturer,
 		       f.acquisition_type, f.condition, f.status, f.tail_number, f.nickname,
-		       f.economy_seats, f.business_seats, f.first_class_seats
+		       f.economy_seats, f.business_seats, f.first_class_seats, m.turnaround_hours
 		FROM fleet_aircraft f
 		JOIN aircraft_models m ON m.id = f.aircraft_model_id
 		WHERE f.id = $1 AND f.user_id = $2`, fleetID, userID).Scan(
 		&f.ID, &f.UserID, &f.ModelID, &f.ModelName, &f.Manufacturer,
 		&f.AcquisitionType, &f.Condition, &f.Status, &f.TailNumber, &f.Nickname,
-		&f.EconomySeats, &f.BusinessSeats, &f.FirstClassSeats)
+		&f.EconomySeats, &f.BusinessSeats, &f.FirstClassSeats, &f.TurnaroundHr)
 	if err != nil {
 		return nil, err
 	}
@@ -566,7 +577,7 @@ func (s *Store) GetLatestFleetForModel(ctx context.Context, userID, modelID stri
 	err := s.pool.QueryRow(ctx, `
 		SELECT f.id, f.user_id, f.aircraft_model_id, m.model_name, m.manufacturer,
 		       f.acquisition_type, f.condition, f.status, f.tail_number, f.nickname,
-		       f.economy_seats, f.business_seats, f.first_class_seats
+		       f.economy_seats, f.business_seats, f.first_class_seats, m.turnaround_hours
 		FROM fleet_aircraft f
 		JOIN aircraft_models m ON m.id = f.aircraft_model_id
 		WHERE f.user_id = $1 AND f.aircraft_model_id = $2
@@ -574,7 +585,7 @@ func (s *Store) GetLatestFleetForModel(ctx context.Context, userID, modelID stri
 		LIMIT 1`, userID, modelID).Scan(
 		&f.ID, &f.UserID, &f.ModelID, &f.ModelName, &f.Manufacturer,
 		&f.AcquisitionType, &f.Condition, &f.Status, &f.TailNumber, &f.Nickname,
-		&f.EconomySeats, &f.BusinessSeats, &f.FirstClassSeats)
+		&f.EconomySeats, &f.BusinessSeats, &f.FirstClassSeats, &f.TurnaroundHr)
 	if err != nil {
 		return nil, err
 	}

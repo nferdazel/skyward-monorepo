@@ -15,6 +15,11 @@ class AircraftModel with Equatable {
   final double purchasePrice;
   final double leasePricePerMonth;
 
+  /// AVIATION-13: authoritative gate-turnaround hours for this model, used to
+  /// compute the weekly frequency limit. Must mirror
+  /// `aircraft_models.turnaround_hours` on the server.
+  final double turnaroundHours;
+
   /// GAME-06: minimum credit tier required to purchase/lease this model.
   /// One of Standard / Silver / Gold / Platinum.
   final String minCreditTier;
@@ -31,6 +36,7 @@ class AircraftModel with Equatable {
     required this.maintenanceCostPerHour,
     required this.purchasePrice,
     required this.leasePricePerMonth,
+    this.turnaroundHours = GameConstants.aircraftTurnaroundHours,
     this.minCreditTier = 'Standard',
   });
 
@@ -49,6 +55,8 @@ class AircraftModel with Equatable {
       purchasePrice: (map['purchase_price'] as num?)?.toDouble() ?? 0.0,
       leasePricePerMonth:
           (map['lease_price_per_month'] as num?)?.toDouble() ?? 0.0,
+      turnaroundHours: (map['turnaround_hours'] as num?)?.toDouble() ??
+          GameConstants.aircraftTurnaroundHours,
       minCreditTier: (map['min_credit_tier'] ?? 'Standard').toString(),
     );
   }
@@ -66,6 +74,7 @@ class AircraftModel with Equatable {
     maintenanceCostPerHour,
     purchasePrice,
     leasePricePerMonth,
+    turnaroundHours,
     minCreditTier,
   ];
 }
@@ -111,6 +120,8 @@ class UserFleetAircraft with Equatable {
         'maintenance_cost_per_hour': map['maintenance_cost_per_hour'] ?? 0.0,
         'purchase_price': map['purchase_price'] ?? 0.0,
         'lease_price_per_month': map['lease_price_per_month'] ?? 0.0,
+        'turnaround_hours': map['turnaround_hours'],
+        'min_credit_tier': map['min_credit_tier'],
       };
     }
 

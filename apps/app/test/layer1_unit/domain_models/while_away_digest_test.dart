@@ -59,5 +59,33 @@ void main() {
       expect(digest.expense, 0);
       expect(digest.net, 0);
     });
+
+    test('prefers authoritative server totals over snapshots', () {
+      final digest = WhileAwayDigest.from(
+        elapsedDays: 2,
+        flightsRun: 9,
+        dailySnapshots: [_snap(700, 200), _snap(500, 400)],
+        authoritativeRevenue: 12345,
+        authoritativeExpense: 6789,
+      );
+
+      expect(digest.revenue, 12345);
+      expect(digest.expense, 6789);
+      expect(digest.net, 5556);
+    });
+
+    test('authoritative zero is respected (not treated as absent)', () {
+      final digest = WhileAwayDigest.from(
+        elapsedDays: 2,
+        flightsRun: 0,
+        dailySnapshots: [_snap(700, 200)],
+        authoritativeRevenue: 0,
+        authoritativeExpense: 0,
+      );
+
+      expect(digest.revenue, 0);
+      expect(digest.expense, 0);
+      expect(digest.net, 0);
+    });
   });
 }
