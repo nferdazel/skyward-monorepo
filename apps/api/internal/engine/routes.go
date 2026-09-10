@@ -106,18 +106,19 @@ func (r *RoutesService) Assign(ctx context.Context, userID, routeID, aircraftID 
 		FROM users u WHERE u.id=$1`, userID).Scan(&threshold)
 	// aircraft + condition + model
 	var rangeKM, speedKMH int
+	var turnaroundHours float64
 	err = r.engine.Pool.QueryRow(ctx, `
-		SELECT m.range_km, m.speed_kmh FROM fleet_aircraft f JOIN aircraft_models m ON m.id=f.aircraft_model_id
+		SELECT m.range_km, m.speed_kmh, COALESCE(m.turnaround_hours, 1.0) FROM fleet_aircraft f JOIN aircraft_models m ON m.id=f.aircraft_model_id
 		WHERE f.id=$1 AND f.user_id=$2 AND f.condition >= $3`, aircraftID, userID, threshold).
-		Scan(&rangeKM, &speedKMH)
+		Scan(&rangeKM, &speedKMH, &turnaroundHours)
 	if err != nil {
 		return &MutationResult{false, "Aircraft is unavailable or below the safety threshold.", 0}, nil
 	}
 	if float64(rangeKM) < ceil(routeDist) {
 		return &MutationResult{false, "Aircraft range is insufficient for this route.", 0}, nil
 	}
-	// weekly capacity — 2-param overload (turnaround 1.0)
-	maxWeekly := calcMaxWeeklyFlights(routeDist, speedKMH, 1.0)
+	// weekly capacity — use the assigned model's real turnaround (AVIATION-13)
+	maxWeekly := calcMaxWeeklyFlights(routeDist, speedKMH, turnaroundHours)
 	if maxWeekly > 0 && routeFreq > maxWeekly {
 		return &MutationResult{false, "Route frequency exceeds this aircraft's weekly operating capacity.", 0}, nil
 	}
@@ -159,13 +160,14 @@ func (r *RoutesService) UpdateFreqPrice(ctx context.Context, userID, routeID str
 	}
 	if assigned != nil {
 		var rangeKM, speedKMH int
+		var turnaroundHours float64
 		r.engine.Pool.QueryRow(ctx, `
-			SELECT m.range_km, m.speed_kmh FROM fleet_aircraft f JOIN aircraft_models m ON m.id=f.aircraft_model_id
-			WHERE f.id=$1 AND f.user_id=$2`, *assigned, userID).Scan(&rangeKM, &speedKMH)
+			SELECT m.range_km, m.speed_kmh, COALESCE(m.turnaround_hours, 1.0) FROM fleet_aircraft f JOIN aircraft_models m ON m.id=f.aircraft_model_id
+			WHERE f.id=$1 AND f.user_id=$2`, *assigned, userID).Scan(&rangeKM, &speedKMH, &turnaroundHours)
 		if float64(rangeKM) < ceil(routeDist) {
 			return &MutationResult{false, "Assigned aircraft range is insufficient for this route.", 0}, nil
 		}
-		maxWeekly := calcMaxWeeklyFlights(routeDist, speedKMH, 1.0)
+		maxWeekly := calcMaxWeeklyFlights(routeDist, speedKMH, turnaroundHours)
 		if maxWeekly > 0 && freq > maxWeekly {
 			return &MutationResult{false, "Route frequency exceeds the assigned aircraft's weekly operating capacity.", 0}, nil
 		}

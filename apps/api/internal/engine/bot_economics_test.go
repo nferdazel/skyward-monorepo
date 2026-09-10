@@ -35,6 +35,7 @@ func testRouteParams() routePerfParams {
 		SpeedKMH:        800,
 		MaintCostHr:     600,
 		Capacity:        176,
+		TurnaroundHours: 1.0,
 		OriginDemand:    80,
 		DestDemand:      70,
 		EconomySeats:    160,
@@ -66,7 +67,7 @@ func TestRouteWeeklyProfitUsesDemandPoolAndCabins(t *testing.T) {
 	flights := math.Min(p.FlightsPerWeek, cfg.MaxWeekly/flightHours)
 	expected := revenue -
 		flights*p.DistanceKM*p.FuelBurnPerKM*cfg.FuelPrice -
-		flights*flightHours*cfg.CrewCost -
+		flights*flightHours*crewCostFor(cfg.CrewCost, p.Capacity) -
 		flights*p.DistanceKM*p.MaintCostHr/p.SpeedKMH
 
 	if math.Abs(profit-expected) > 0.01 {
@@ -122,5 +123,24 @@ func TestRouteWeeklyProfitUnconfiguredFallsBackToEconomy(t *testing.T) {
 
 	if math.Abs(routeWeeklyProfit(p, cfg)-routeWeeklyProfit(allEconomy, cfg)) > 0.01 {
 		t.Fatalf("unconfigured should equal all-economy fallback")
+	}
+}
+
+// The turnaround value must feed the weekly-frequency cap (AVIATION-13). Under
+// the GAME-02 pool model revenue is demand-limited, so at a fixed capped
+// frequency a slow aircraft flies fewer, more expensive-to-schedule cycles;
+// what we assert here is the mechanical effect: a turnaround change alters the
+// computed profit (i.e. the value is actually used, not ignored).
+func TestRouteWeeklyProfitUsesTurnaround(t *testing.T) {
+	cfg := testRouteConfig()
+	quick := testRouteParams()
+	quick.TurnaroundHours = 0.5
+	quick.FlightsPerWeek = 168
+	slow := testRouteParams()
+	slow.TurnaroundHours = 2.0
+	slow.FlightsPerWeek = 168
+
+	if math.Abs(routeWeeklyProfit(quick, cfg)-routeWeeklyProfit(slow, cfg)) < 0.01 {
+		t.Fatalf("turnaround must affect route economics (value appears unused)")
 	}
 }

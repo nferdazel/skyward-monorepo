@@ -49,9 +49,11 @@ class GameConstants {
   /// Total hours available in a standard week. Used for physical flight schedule computations.
   static const double totalWeeklyHoursCap = 168.0;
 
-  /// The turnaround time (in hours) required for an aircraft between flight cycles.
-  /// Encompasses refueling, catering, cleaning, boarding, and maintenance inspections.
-  static const double aircraftTurnaroundHours = 1.0;
+  /// Planning estimate for aircraft turnaround between flight cycles. The
+  /// authoritative value is per-model (`aircraft_models.turnaround_hours`,
+  /// used by the Go engine); this constant only backs the client-side
+  /// max-frequency preview. 0.75h reflects the common regional/narrowbody turn.
+  static const double aircraftTurnaroundHours = 0.75;
 
   /// Gross wear applied per completed flight cycle for owned aircraft.
   // Deprecated fallback — game_config 'owned_wear_per_flight_cycle' is authoritative
