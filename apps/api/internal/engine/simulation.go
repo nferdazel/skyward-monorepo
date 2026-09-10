@@ -50,8 +50,9 @@ func (e *Engine) WorldTick(ctx context.Context) (*WorldTickResult, error) {
 		e.ProcessPlayer(ctx, uid, gameTimeAfter)
 	}
 
-	// 4. Process bots (Fase 7 — engine bot)
-	bots, _ := e.ProcessBots(ctx)
+	// 4. Process bots (Fase 7 — engine bot): decisions gated on the new season
+	//    time, then advanced through the shared player simulation.
+	bots, _ := e.ProcessBots(ctx, gameTimeAfter)
 
 	// 5. Write world_tick_log
 	e.Pool.Exec(ctx, `INSERT INTO world_tick_log (season_id, status, started_at, finished_at, game_time_before, game_time_after, ticks_processed, players_processed, bots_processed)

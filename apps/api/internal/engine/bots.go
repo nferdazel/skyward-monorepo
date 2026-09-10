@@ -10,8 +10,11 @@ import (
 	"time"
 )
 
-// ProcessBots — orchestrator bot (mirror execute_bot_decisions).
-func (e *Engine) ProcessBots(ctx context.Context) (int, error) {
+// ProcessBots — orchestrator bot (mirror execute_bot_decisions +
+// process_all_bots_simulation_to_time). targetTime is the season clock; bot
+// decisions are gated on it and each bot is then advanced through the shared
+// player simulation so bot economics match the player model by construction.
+func (e *Engine) ProcessBots(ctx context.Context, targetTime time.Time) (int, error) {
 	startingCash := e.getConfigNum(ctx, "starting_cash", 25000000.0)
 	bankruptcyThreshold := e.getConfigNum(ctx, "bankruptcy_cash_threshold", -5000000.0)
 	repairReserve := e.getConfigNum(ctx, "bot_repair_cash_reserve", 500000.0)
@@ -27,45 +30,64 @@ func (e *Engine) ProcessBots(ctx context.Context) (int, error) {
 	e.Pool.QueryRow(ctx, `SELECT id FROM season_clock WHERE status='active' LIMIT 1`).Scan(&seasonID)
 
 	rows, err := e.Pool.Query(ctx, `
-		SELECT u.id, u.game_current_time, u.hq_airport_iata, u.auto_grounding_threshold,
-		       u.consecutive_negative_days, u.recovery_streak_days, u.operational_status,
+		SELECT u.id, u.hq_airport_iata, u.auto_grounding_threshold,
 		       COALESCE(bp.archetype,'Balanced'), bp.consecutive_loss_days, bp.recovery_loan_taken,
 		       COALESCE(bp.distress_stage,'stable')
 		FROM users u LEFT JOIN bot_profiles bp ON bp.user_id=u.id
-		WHERE u.actor_type='AI' AND COALESCE(u.operational_status,'Active') != 'Bankrupt'`)
+		WHERE u.actor_type='AI' AND COALESCE(u.operational_status,'Active') != 'Bankrupt'
+		  AND (u.season_id IS NULL OR $1::uuid IS NULL OR u.season_id = $1)`, nullableSeason(seasonID))
 	if err != nil {
 		return 0, err
 	}
 	defer rows.Close()
 
-	processed := 0
+	type botRow struct {
+		ID                string
+		HQ, AutoThreshold string
+		Archetype         string
+		LossDays          int
+		RecoveryLoanTaken bool
+		Distress          string
+	}
+	bots := []botRow{}
 	for rows.Next() {
-		var b struct {
-			ID                        string
-			GameTime                  time.Time
-			HQ, AutoThreshold         string
-			ConsecNeg, RecoveryStreak int
-			OperStatus, Archetype     string
-			LossDays                  int
-			RecoveryLoanTaken         bool
-			Distress                  string
-		}
-		rows.Scan(&b.ID, &b.GameTime, &b.HQ, &b.AutoThreshold, &b.ConsecNeg, &b.RecoveryStreak,
-			&b.OperStatus, &b.Archetype, &b.LossDays, &b.RecoveryLoanTaken, &b.Distress)
-		processed++
+		var b botRow
+		rows.Scan(&b.ID, &b.HQ, &b.AutoThreshold,
+			&b.Archetype, &b.LossDays, &b.RecoveryLoanTaken, &b.Distress)
+		bots = append(bots, b)
+	}
+	rows.Close()
 
-		gameTime := b.GameTime
+	// Pass 1 — simulate every bot's economics forward to the season time,
+	// matching process_all_bots_simulation_to_time. This posts route
+	// revenue/costs, applies wear, runs the day boundary (loans, credit,
+	// bankruptcy counters) and advances the bot clock. Doing all simulations
+	// before any decisions keeps same-tick pricing/route effects from feeding
+	// back into another bot's revenue within the same tick.
+	for _, b := range bots {
+		e.ProcessPlayer(ctx, b.ID, targetTime)
+	}
+
+	// Pass 2 — bot decisions (execute_bot_decisions), gated on the season time.
+	processed := 0
+	for _, b := range bots {
+		gameTime := targetTime
+
+		// Re-read state after the economic pass: cash, counters and status may
+		// all have changed. Bots that went bankrupt are skipped and reaped.
+		var operStatus string
+		var consecNeg, recoveryStreak int
+		e.Pool.QueryRow(ctx, `SELECT COALESCE(operational_status,'Active'), COALESCE(consecutive_negative_days,0), COALESCE(recovery_streak_days,0) FROM users WHERE id=$1`, b.ID).Scan(&operStatus, &consecNeg, &recoveryStreak)
 		cash, _ := e.Ledger.GetBalance(ctx, b.ID)
-
-		// bankruptcy check
-		if b.OperStatus == "Bankrupt" || cash < bankruptcyThreshold {
+		if operStatus == "Bankrupt" || cash < bankruptcyThreshold {
 			e.applyBankruptcy(ctx, b.ID)
 			e.Pool.Exec(ctx, `UPDATE bot_profiles SET distress_stage='desperate' WHERE user_id=$1`, b.ID)
 			continue
 		}
+		processed++
 
 		// evaluate distress
-		dist := e.botEvaluateDistress(ctx, b.ID, b.Archetype, b.ConsecNeg, cash/startingCash, float64(b.RecoveryStreak))
+		dist := e.botEvaluateDistress(ctx, b.ID, b.Archetype, consecNeg, cash/startingCash, float64(recoveryStreak))
 		threshold := math.Max(30.0, parseF(b.AutoThreshold, 40.0))
 
 		// repair
@@ -85,26 +107,81 @@ func (e *Engine) ProcessBots(ctx context.Context) (int, error) {
 
 		// financial
 		e.botHandleFinancial(ctx, b.ID, gameTime, dist, cash, startingCash, repayRatio, recoveryAmount)
-
-		// NOTE: unlike the SQL process_all_bots_simulation_to_time, the Go bot
-		// path does not yet advance the bot clock or simulate bot route
-		// revenue/costs. Bots only make decisions here; the day-boundary and
-		// achievement evaluation are therefore intentionally omitted until bot
-		// simulation is ported, to avoid fast-forwarding bot clocks while their
-		// cash stays static. See GAME-14 follow-up.
-
-		e.Pool.Exec(ctx, `UPDATE users SET last_active_at=NOW() WHERE id=$1`, b.ID)
 	}
 
-	// spawn replacement
-	var botCount int
-	e.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM users WHERE actor_type='AI' AND COALESCE(operational_status,'Active')!='Bankrupt'`).Scan(&botCount)
+	// Reap bankrupt bots so they do not accumulate (they were never counted
+	// against max_bot_count, which previously let the AI population grow
+	// unbounded). Use the same purge path as account deletion minus auth.
+	e.reapBankruptBots(ctx)
+
+	// Ensure the active bot population is exactly max_bot_count. Spawn one per
+	// tick until the cap is reached so the world does not pop a full roster in
+	// a single tick.
 	maxBots := int(e.getConfigNum(ctx, "max_bot_count", 5))
+	var botCount int
+	e.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM users WHERE actor_type='AI' AND COALESCE(operational_status,'Active') != 'Bankrupt' AND (season_id IS NULL OR $1::uuid IS NULL OR season_id = $1)`, nullableSeason(seasonID)).Scan(&botCount)
 	if botCount < maxBots {
 		e.spawnBot(ctx, seasonID)
 	}
-	_ = seasonID
 	return processed, nil
+}
+
+// nullableSeason passes nil for an empty season id so the `:uuid IS NULL`
+// guards in bot queries match all seasons, mirroring the SQL reference.
+func nullableSeason(seasonID string) *string {
+	if seasonID == "" {
+		return nil
+	}
+	return &seasonID
+}
+
+// reapBankruptBots removes AI users marked Bankrupt along with their dependent
+// rows, so the bot population cannot grow without bound. Mirrors the DELETE
+// ordering used by settings.DeleteAccount for the AI actor.
+func (e *Engine) reapBankruptBots(ctx context.Context) {
+	rows, err := e.Pool.Query(ctx, `SELECT id FROM users WHERE actor_type='AI' AND operational_status='Bankrupt'`)
+	if err != nil {
+		return
+	}
+	ids := []string{}
+	for rows.Next() {
+		var id string
+		rows.Scan(&id)
+		ids = append(ids, id)
+	}
+	rows.Close()
+	for _, id := range ids {
+		tx, txErr := e.Pool.Begin(ctx)
+		if txErr != nil {
+			continue
+		}
+		// Best-effort dependent cleanup: user-referencing FKs are ON DELETE
+		// CASCADE, so the final DELETE would suffice. These explicit deletes are
+		// defensive; a missing optional table must not abort the reap, so their
+		// errors are ignored (the CASCADE covers correctness).
+		for _, q := range []string{
+			`DELETE FROM finance_snapshots WHERE user_id=$1`,
+			`DELETE FROM bank_transactions WHERE user_id=$1`,
+			`DELETE FROM bank_accounts WHERE user_id=$1`,
+			`DELETE FROM achievements WHERE user_id=$1`,
+			`DELETE FROM credit_score_history WHERE user_id=$1`,
+			`DELETE FROM credit_scores WHERE user_id=$1`,
+			`DELETE FROM route_assignments WHERE user_id=$1`,
+			`DELETE FROM loans WHERE user_id=$1`,
+			`DELETE FROM fleet_aircraft WHERE user_id=$1`,
+		} {
+			_, _ = tx.Exec(ctx, q, id)
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM bot_profiles WHERE user_id=$1`, id); err != nil {
+			_ = tx.Rollback(ctx)
+			continue
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM users WHERE id=$1`, id); err != nil {
+			_ = tx.Rollback(ctx)
+			continue
+		}
+		_ = tx.Commit(ctx)
+	}
 }
 
 // botDistress — hasil bot_evaluate_distress.
@@ -472,6 +549,9 @@ func (e *Engine) botHandleFinancial(ctx context.Context, botID string, gameTime 
 }
 
 // spawnBot — mirror spawn_bot (buat bot baru dengan archetype random).
+// Company names are randomized (mirror generate_company_name) and the insert is
+// retried on unique-violation, because users.company_name is UNIQUE. Without
+// this the AI population could never exceed the number of distinct names.
 func (e *Engine) spawnBot(ctx context.Context, seasonID string) {
 	archetypes := []string{"Regional", "Aggressive", "Balanced"}
 	archetype := archetypes[rand.Intn(3)]
@@ -479,21 +559,50 @@ func (e *Engine) spawnBot(ctx context.Context, seasonID string) {
 	e.Pool.QueryRow(ctx, `SELECT iata FROM airports ORDER BY demand_index DESC, random() LIMIT 1`).Scan(&hq)
 	var gameTime time.Time
 	e.Pool.QueryRow(ctx, `SELECT current_game_time FROM season_clock WHERE status='active' LIMIT 1`).Scan(&gameTime)
-	username := fmt.Sprintf("bot_%s", randString(8))
-	company := fmt.Sprintf("Skyward %s Airways", archetype)
 	startingCash := e.getConfigNum(ctx, "starting_cash", 25000000.0)
-	_, err := e.Pool.Exec(ctx, `
-		INSERT INTO users (username, company_name, ceo_name, actor_type, hq_airport_iata, game_current_time, operational_status, net_worth, consecutive_negative_days, recovery_streak_days, auto_grounding_threshold, season_id)
-		VALUES ($1,$2,'AI CEO','AI',$3,$4,'Active',$5,0,0,40.00,$6)
-		ON CONFLICT (company_name) DO NOTHING`, username, company, hq, gameTime, startingCash, seasonID)
-	if err != nil {
+
+	for attempt := 0; attempt < 10; attempt++ {
+		username := fmt.Sprintf("bot_%s", randString(8))
+		company := generateCompanyName(archetype)
+		var id string
+		err := e.Pool.QueryRow(ctx, `
+			INSERT INTO users (username, company_name, ceo_name, actor_type, hq_airport_iata, game_current_time, operational_status, net_worth, consecutive_negative_days, recovery_streak_days, auto_grounding_threshold, season_id)
+			VALUES ($1,$2,'AI CEO','AI',$3,$4,'Active',$5,0,0,40.00,$6)
+			RETURNING id`, username, company, hq, gameTime, startingCash, seasonID).Scan(&id)
+		if err != nil {
+			// Likely a company_name/username unique collision — retry with new
+			// random values. Any other error will simply fail all attempts.
+			continue
+		}
+		e.Pool.Exec(ctx, `
+			INSERT INTO bot_profiles (user_id, archetype, distress_stage)
+			VALUES ($1, $2, 'stable')
+			ON CONFLICT (user_id) DO NOTHING`, id, archetype)
 		return
 	}
-	// bot_profiles row
-	e.Pool.Exec(ctx, `
-		INSERT INTO bot_profiles (user_id, archetype, distress_stage)
-		SELECT id, $1, 'stable' FROM users WHERE username=$2
-		ON CONFLICT (user_id) DO NOTHING`, archetype, username)
+}
+
+// generateCompanyName mirrors generate_company_name(archetype).
+func generateCompanyName(archetype string) string {
+	prefixes := []string{"Pacific", "Atlas", "Eagle", "Nova", "Apex", "Summit", "Horizon", "Zenith",
+		"Sterling", "Phoenix", "Titan", "Vanguard", "Sovereign", "Pinnacle", "Crest",
+		"Falcon", "Meridian", "Aurora", "Comet", "Star", "Sky", "Air", "Jet", "Swift"}
+	suffixes := []string{"Airways", "Air", "Airlines", "Aviation", "Air Lines", "Express", "Air Services"}
+	regional := []string{"Regional", "Air Express", "Commuter", "Air Link", "Connect"}
+	premium := []string{"International", "World", "Global", "Airways International", "Premium"}
+
+	name := prefixes[rand.Intn(len(prefixes))]
+	switch archetype {
+	case "Regional":
+		name += " " + regional[rand.Intn(len(regional))]
+	case "Aggressive":
+		name += " " + suffixes[rand.Intn(len(suffixes))]
+	case "Balanced":
+		name += " " + premium[rand.Intn(len(premium))]
+	default:
+		name += " " + suffixes[rand.Intn(len(suffixes))]
+	}
+	return name
 }
 
 func randString(n int) string {
