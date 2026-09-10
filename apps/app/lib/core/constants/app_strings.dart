@@ -104,6 +104,10 @@ class AppStrings {
   static const String liquidityPositionLabel = 'LIQUIDITY POSITION';
   static const String runwayEstimateLabel = 'RUNWAY ESTIMATE';
   static const String overviewDailyNetTrendLabel = 'DAILY NET';
+  static const String bankruptcyWarning =
+      'Cash is negative. Restore profitability or the airline will be shut down.';
+  static const String bankruptcyCritical =
+      'BANKRUPTCY IMMINENT — sell assets, cut routes, or take an emergency loan now.';
   static const String fleetReadyLabel = 'FLEET READY';
   static const String networkPressureLabel = 'NETWORK PRESSURE';
   static const String slackCapacityLabel = 'SCHEDULE SLACK';

@@ -152,4 +152,35 @@ void main() {
     expect(snapshot.netWorthTrend, isEmpty);
     expect(snapshot.profitTrend, isEmpty);
   });
+
+  OverviewSnapshot snapshotForCash(double cash, {int negDays = 0}) {
+    return OverviewSnapshot.fromStates(
+      user: user,
+      simState: SimulationState(
+        gameTime: DateTime(2038, 1, 3),
+        cashBalance: cash,
+        consecutiveNegativeDays: negDays,
+      ),
+      fleetState: const FleetInitial(),
+      routesState: const RoutesInitial(),
+      financeState: const FinanceInitial(),
+      leaderboardState: const LeaderboardInitial(),
+    );
+  }
+
+  test('bankruptcy risk escalates with negative cash and negative days', () {
+    expect(snapshotForCash(1000000).bankruptcyRiskLevel, 0);
+    expect(snapshotForCash(-100).bankruptcyRiskLevel, 1);
+    expect(snapshotForCash(-2500000).bankruptcyRiskLevel, 2);
+    // 30-day threshold: critical begins at 2/3 (20 days).
+    expect(snapshotForCash(-100, negDays: 19).bankruptcyRiskLevel, 1);
+    expect(snapshotForCash(-100, negDays: 20).bankruptcyRiskLevel, 2);
+    expect(snapshotForCash(-100, negDays: 5).bankruptcyRiskLevel, 1);
+  });
+
+  test('bankruptcy risk boundaries: cash 0 is safe, -2M is critical', () {
+    expect(snapshotForCash(0).bankruptcyRiskLevel, 0);
+    expect(snapshotForCash(-2000000).bankruptcyRiskLevel, 2);
+    expect(snapshotForCash(-1999999.99).bankruptcyRiskLevel, 1);
+  });
 }

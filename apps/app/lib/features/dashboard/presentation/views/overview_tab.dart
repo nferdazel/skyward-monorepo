@@ -68,6 +68,10 @@ class OverviewTab extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildKPICardsRow(context, overview),
+          if (overview.bankruptcyRiskLevel > 0) ...[
+            const SizedBox(height: AppSpacing.sectionGap),
+            _buildBankruptcyBanner(context, overview),
+          ],
           if (overview.activeEvents.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.sectionGap),
             _buildActiveEventsSection(
@@ -455,6 +459,44 @@ class OverviewTab extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+
+  // ── Bankruptcy Risk Banner (GAME-13) ──
+
+  Widget _buildBankruptcyBanner(
+    BuildContext context,
+    OverviewSnapshot overview,
+  ) {
+    final isCritical = overview.bankruptcyRiskLevel >= 2;
+    final color = isCritical ? AppTheme.error : AppTheme.warning;
+    return CraftCard(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      borderColor: color.withValues(alpha: 0.5),
+      child: Row(
+        children: [
+          Icon(Icons.warning_amber, color: color, size: 20),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isCritical ? 'BANKRUPTCY IMMINENT' : 'FINANCIAL WARNING',
+                  style: AppTypography.microLabel.copyWith(color: color),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  overview.bankruptcyRiskLabel,
+                  style: AppTypography.captionRegular.copyWith(
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 

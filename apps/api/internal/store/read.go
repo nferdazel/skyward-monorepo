@@ -25,6 +25,8 @@ type SimulationState struct {
 	SeasonID        *string   `json:"season_id"`
 	SeasonGameTime  time.Time `json:"season_game_time"`
 	TimeScaleMulti  float64   `json:"time_scale_multiplier"`
+	ConsecNegDays   int       `json:"consecutive_negative_days"`
+	RecoveryDays    int       `json:"recovery_streak_days"`
 }
 
 func (s *Store) GetSimulationState(ctx context.Context, userID string) (*SimulationState, error) {
@@ -35,6 +37,7 @@ func (s *Store) GetSimulationState(ctx context.Context, userID string) (*Simulat
 		       u.game_current_time, u.net_worth, u.hq_airport_iata,
 		       u.auto_grounding_threshold, u.operational_status, u.season_id,
 		       sc.current_game_time, sc.time_scale_multiplier,
+		       COALESCE(u.consecutive_negative_days, 0), COALESCE(u.recovery_streak_days, 0),
 		       COALESCE((SELECT ba.balance FROM bank_accounts ba WHERE ba.user_id = u.id AND ba.account_type = 'operating' LIMIT 1), 0)
 		FROM users u
 		CROSS JOIN (SELECT current_game_time, time_scale_multiplier FROM season_clock WHERE status = 'active' LIMIT 1) sc
@@ -42,7 +45,7 @@ func (s *Store) GetSimulationState(ctx context.Context, userID string) (*Simulat
 	).Scan(&out.UserID, &out.Username, &out.CompanyName, &out.CeoName,
 		&out.GameCurrentTime, &out.NetWorth, &out.HQAirportIATA,
 		&out.AutoGroundThres, &out.OperStatus, &out.SeasonID,
-		&out.SeasonGameTime, &out.TimeScaleMulti, &cash)
+		&out.SeasonGameTime, &out.TimeScaleMulti, &out.ConsecNegDays, &out.RecoveryDays, &cash)
 	if err != nil {
 		return nil, fmt.Errorf("store: simulation state: %w", err)
 	}
