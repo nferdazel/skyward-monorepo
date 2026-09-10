@@ -168,6 +168,54 @@ void main() {
         ],
       );
 
+      test(
+        'parses /game-config as a list of {key, value} entries (real shape)',
+        () async {
+          gateway.settingsToReturn = const [
+            {'key': 'fuel_price_per_liter', 'value': 1.35},
+            {'key': 'time_scale_multiplier', 'value': 3.0},
+            {'key': 'bankruptcy_cash_threshold', 'value': -4000000.0},
+            {'key': 'bankruptcy_negative_days_threshold', 'value': 21},
+          ];
+          gateway.deltaToReturn = const [
+            {'elapsed_game_days': 0.0, 'flights_run': 0},
+          ];
+
+          final cubit = SimulationCubit(gateway: gateway);
+          cubit.setTestUserId('user-1');
+          await cubit.syncWithDatabase();
+
+          expect(cubit.state.fuelPricePerLiter, 1.35);
+          expect(cubit.state.gameSpeedMultiplier, 3.0);
+          expect(cubit.state.bankruptcyCashThreshold, -4000000.0);
+          expect(cubit.state.bankruptcyNegativeDaysThreshold, 21);
+
+          await cubit.close();
+        },
+      );
+
+      test(
+        'coerces numeric strings in /game-config values',
+        () async {
+          gateway.settingsToReturn = const [
+            {'key': 'fuel_price_per_liter', 'value': '0.95'},
+            {'key': 'bankruptcy_cash_threshold', 'value': '-6000000'},
+          ];
+          gateway.deltaToReturn = const [
+            {'elapsed_game_days': 0.0, 'flights_run': 0},
+          ];
+
+          final cubit = SimulationCubit(gateway: gateway);
+          cubit.setTestUserId('user-1');
+          await cubit.syncWithDatabase();
+
+          expect(cubit.state.fuelPricePerLiter, 0.95);
+          expect(cubit.state.bankruptcyCashThreshold, -6000000.0);
+
+          await cubit.close();
+        },
+      );
+
       // =====================================================================
       // syncWithDatabase — error
       // =====================================================================

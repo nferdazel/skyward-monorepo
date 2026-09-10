@@ -223,6 +223,54 @@ void main() {
       expect(cubit.state.unreadCount, equals(0));
     });
 
+    test('event with under an hour left reads "expiring soon"', () {
+      final event = GameEvent(
+        id: 'e1',
+        eventType: 'fuel_shock',
+        title: 'Fuel Price Surge',
+        description: 'Global fuel prices increased',
+        effectType: 'fuel_price',
+        effectTarget: 'global',
+        effectValue: 1.2,
+        startGameTime: DateTime(2038, 1, 1),
+        endGameTime: DateTime(2038, 1, 1, 0, 30),
+        isActive: true,
+      );
+
+      cubit.refreshNotifications(
+        activeEvents: [event],
+        gameTime: DateTime(2038, 1, 1),
+      );
+
+      expect(cubit.state.notifications.first.message, contains('expiring soon'));
+    });
+
+    test('null activeEvents preserves existing event notifications', () {
+      final event = GameEvent(
+        id: 'e1',
+        eventType: 'fuel_shock',
+        title: 'Fuel Price Surge',
+        description: 'Global fuel prices increased',
+        effectType: 'fuel_price',
+        effectTarget: 'global',
+        effectValue: 1.2,
+        startGameTime: DateTime(2038, 1, 1),
+        endGameTime: DateTime(2038, 1, 4),
+        isActive: true,
+      );
+      cubit.refreshNotifications(
+        activeEvents: [event],
+        gameTime: DateTime(2038, 1, 2),
+      );
+      expect(cubit.state.notifications.length, equals(1));
+
+      // A refresh from an unrelated cubit before events load passes null and
+      // must not wipe the event notification.
+      cubit.refreshNotifications();
+      expect(cubit.state.notifications.length, equals(1));
+      expect(cubit.state.notifications.first.type, NotificationType.event);
+    });
+
     test('refreshNotifications drops events when activeEvents is null', () {
       final event = GameEvent(
         id: 'e1',

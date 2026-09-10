@@ -33,7 +33,14 @@ UPDATE aircraft_models SET fuel_burn_per_km = 2.0
  WHERE manufacturer = 'ATR' AND model_name = 'ATR 72-600';
 
 -- ── AVIATION-05: remove duplicate E195-E1 (identical to E195) ──────────────
--- E195 (original/E1, 116 seats) is kept; E195-E1 duplicated it.
+-- E195 (original/E1, 116 seats) is kept; E195-E1 duplicated it. Re-point any
+-- fleet rows that reference the duplicate to the kept model first so the
+-- delete cannot abort on the FK (fleet_aircraft_aircraft_model_id_fkey).
+UPDATE fleet_aircraft
+   SET aircraft_model_id = (SELECT id FROM aircraft_models
+                             WHERE manufacturer='Embraer' AND model_name='E195' LIMIT 1)
+ WHERE aircraft_model_id IN (SELECT id FROM aircraft_models
+                              WHERE manufacturer='Embraer' AND model_name='E195-E1');
 DELETE FROM aircraft_models
  WHERE manufacturer = 'Embraer' AND model_name = 'E195-E1';
 
@@ -157,7 +164,65 @@ UPDATE airports SET demand_index = 20
 
 -- ── AVIATION-32: duplicate / stale airport entries ─────────────────────────
 -- REP superseded by SAI (Siem Reap-Angkor, 2023). RML duplicates CMB (Colombo).
--- WSI is legitimate but was mislabelled "[Duplicate]".
+-- WSI is legitimate but was mislabelled "[Duplicate]". Re-point any references
+-- first (users.hq_airport_iata, route_assignments origin/destination,
+-- bot_profiles.secondary_hub_iata) so the delete cannot abort on an FK.
+-- The reassignment is guarded on the target airport existing, and routes whose
+-- re-pointed (user_id, origin, destination) would collide with an existing row
+-- under the unique_human_route index are redirected to CMB/SAI only when safe;
+-- otherwise the conflicting legacy route is removed before the delete.
+DO $$
+DECLARE
+    r RECORD;
+BEGIN
+    IF EXISTS (SELECT 1 FROM airports WHERE iata = 'SAI') THEN
+        UPDATE users SET hq_airport_iata = 'SAI' WHERE hq_airport_iata = 'REP';
+        UPDATE bot_profiles SET secondary_hub_iata = 'SAI' WHERE secondary_hub_iata = 'REP';
+        FOR r IN SELECT id, user_id, origin_iata, destination_iata
+                 FROM route_assignments WHERE origin_iata = 'REP' OR destination_iata = 'REP' LOOP
+            IF (CASE WHEN r.origin_iata = 'REP' THEN 'SAI' ELSE r.origin_iata END) =
+               (CASE WHEN r.destination_iata = 'REP' THEN 'SAI' ELSE r.destination_iata END) THEN
+                -- Re-pointing would create a degenerate SAI->SAI self-loop.
+                DELETE FROM route_assignments WHERE id = r.id;
+            ELSIF EXISTS (SELECT 1 FROM route_assignments
+                       WHERE user_id = r.user_id
+                         AND origin_iata = CASE WHEN r.origin_iata = 'REP' THEN 'SAI' ELSE r.origin_iata END
+                         AND destination_iata = CASE WHEN r.destination_iata = 'REP' THEN 'SAI' ELSE r.destination_iata END
+                         AND id <> r.id) THEN
+                DELETE FROM route_assignments WHERE id = r.id;
+            ELSE
+                UPDATE route_assignments
+                   SET origin_iata = CASE WHEN r.origin_iata = 'REP' THEN 'SAI' ELSE r.origin_iata END,
+                       destination_iata = CASE WHEN r.destination_iata = 'REP' THEN 'SAI' ELSE r.destination_iata END
+                 WHERE id = r.id;
+            END IF;
+        END LOOP;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM airports WHERE iata = 'CMB') THEN
+        UPDATE users SET hq_airport_iata = 'CMB' WHERE hq_airport_iata = 'RML';
+        UPDATE bot_profiles SET secondary_hub_iata = 'CMB' WHERE secondary_hub_iata = 'RML';
+        FOR r IN SELECT id, user_id, origin_iata, destination_iata
+                 FROM route_assignments WHERE origin_iata = 'RML' OR destination_iata = 'RML' LOOP
+            IF (CASE WHEN r.origin_iata = 'RML' THEN 'CMB' ELSE r.origin_iata END) =
+               (CASE WHEN r.destination_iata = 'RML' THEN 'CMB' ELSE r.destination_iata END) THEN
+                -- Re-pointing would create a degenerate CMB->CMB self-loop.
+                DELETE FROM route_assignments WHERE id = r.id;
+            ELSIF EXISTS (SELECT 1 FROM route_assignments
+                       WHERE user_id = r.user_id
+                         AND origin_iata = CASE WHEN r.origin_iata = 'RML' THEN 'CMB' ELSE r.origin_iata END
+                         AND destination_iata = CASE WHEN r.destination_iata = 'RML' THEN 'CMB' ELSE r.destination_iata END
+                         AND id <> r.id) THEN
+                DELETE FROM route_assignments WHERE id = r.id;
+            ELSE
+                UPDATE route_assignments
+                   SET origin_iata = CASE WHEN r.origin_iata = 'RML' THEN 'CMB' ELSE r.origin_iata END,
+                       destination_iata = CASE WHEN r.destination_iata = 'RML' THEN 'CMB' ELSE r.destination_iata END
+                 WHERE id = r.id;
+            END IF;
+        END LOOP;
+    END IF;
+END $$;
 DELETE FROM airports WHERE iata IN ('REP', 'RML');
 UPDATE airports
    SET name = 'Western Sydney International Airport'

@@ -86,6 +86,13 @@ func (e *Engine) ProcessBots(ctx context.Context) (int, error) {
 		// financial
 		e.botHandleFinancial(ctx, b.ID, gameTime, dist, cash, startingCash, repayRatio, recoveryAmount)
 
+		// NOTE: unlike the SQL process_all_bots_simulation_to_time, the Go bot
+		// path does not yet advance the bot clock or simulate bot route
+		// revenue/costs. Bots only make decisions here; the day-boundary and
+		// achievement evaluation are therefore intentionally omitted until bot
+		// simulation is ported, to avoid fast-forwarding bot clocks while their
+		// cash stays static. See GAME-14 follow-up.
+
 		e.Pool.Exec(ctx, `UPDATE users SET last_active_at=NOW() WHERE id=$1`, b.ID)
 	}
 
