@@ -2603,6 +2603,12 @@ COMMENT ON FUNCTION "public"."get_owner_route_optimizer"("p_user_id" "uuid", "p_
 
 
 
+-- DEPRECATED (GAME-25): the running app no longer calls this. Bot economics now
+-- live in the Go engine (internal/engine/bots.go routePerformance) and use the
+-- GAME-02 demand pool + GAME-03 cabin allocation. This SQL function is still
+-- statically referenced by the dormant SQL bot path (bot_handle_route_lifecycle
+-- / execute_bot_decisions), which is not scheduled (no pg_cron on the live DB),
+-- so it is kept for reference only — remove together with that path if desired.
 CREATE OR REPLACE FUNCTION "public"."get_route_performance"("p_user_id" "uuid") RETURNS TABLE("route_id" "uuid", "origin_iata" character varying, "destination_iata" character varying, "distance_km" double precision, "ticket_price" numeric, "flights_per_week" integer, "assigned_aircraft" character varying, "effective_capacity" integer, "expected_passengers" integer, "load_factor" numeric, "revenue_per_flight" numeric, "cost_per_flight" numeric, "profit_per_flight" numeric, "weekly_profit" numeric)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
