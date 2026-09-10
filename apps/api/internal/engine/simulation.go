@@ -96,6 +96,7 @@ func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime ti
 	ticketBase := e.getConfigNum(ctx, "ticket_base_fare", 50.0)
 	ticketKM := e.getConfigNum(ctx, "ticket_per_km_rate", 0.12)
 	maxWeekly := e.getConfigNum(ctx, "max_weekly_flights", 168.0)
+	demandPoolScale := e.getConfigNum(ctx, "demand_pool_scale", 290.0)
 
 	// fuel multiplier from events
 	var fuelMult, maintMult float64 = 1.0, 1.0
@@ -176,13 +177,23 @@ func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime ti
 			flights = vMaxWeekly
 		}
 
-		airportDemand := calcAirportDemandFactor(r.OriginDemand, r.DestDemand)
-		demandMult := calcRouteDemandMultiplier(r.DistanceKM, r.TicketPrice, ticketBase, ticketKM) * demandEvent
 		seasonalFactor := 1.0
 		effCapacity := math.Floor(r.Capacity * capacityEvent)
 
-		passengers := math.Min(effCapacity, math.Floor(effCapacity*0.95*airportDemand*demandMult*seasonalFactor))
-		revenue := float64(flights) * r.TicketPrice * passengers
+		// GAME-02: fixed daily demand pool split across the player's flights.
+		// Raising frequency past saturation lowers per-flight load factor.
+		// Price elasticity is applied inside routeDailyDemand (GAME-04).
+		dailyDemand := routeDailyDemand(r.OriginDemand, r.DestDemand, r.DistanceKM,
+			r.TicketPrice, ticketBase, ticketKM, demandPoolScale) * demandEvent * seasonalFactor
+		flightsPerDay := float64(flights) / 7.0
+		seatsPerDay := flightsPerDay * effCapacity
+		const maxLoadFactor = 0.95
+		passengersPerDay := math.Min(dailyDemand, seatsPerDay*maxLoadFactor)
+		// Weekly revenue from the pool directly (not floor-then-multiply per
+		// flight), so weekly revenue is monotonic in the pool and does not
+		// oscillate with rounding at fractional frequencies.
+		weeklyRevenue := passengersPerDay * 7.0 * r.TicketPrice
+		revenue := weeklyRevenue * timeFraction
 		fuelCost := float64(flights) * r.DistanceKM * r.FuelBurnPerKM * fuelPrice * fuelMult
 		crewCostTotal := float64(flights) * flightHours * crewCost
 		maintCost := float64(flights) * r.DistanceKM * r.MaintCostHr * maintMult / r.SpeedKMH
@@ -192,7 +203,6 @@ func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime ti
 			leaseCost = r.LeasePriceMonth * (elapsed / 30.0)
 		}
 
-		revenue *= timeFraction
 		opsCost *= timeFraction
 		cargoRev := revenue * cargoPct
 		fuelCost *= timeFraction
@@ -294,18 +304,46 @@ func (e *Engine) getConfigNum(ctx context.Context, key string, fallback float64)
 	return v
 }
 
-func calcAirportDemandFactor(originDemand, destDemand int) float64 {
-	minFactor := 0.55
-	maxFactor := 1.0
-	avg := (float64(originDemand) + float64(destDemand)) / 2.0 / 100.0
-	return math.Max(minFactor, math.Min(maxFactor, minFactor+avg*(maxFactor-minFactor)))
+// demandWeight maps an airport demand_index (0..100) to a 0..1 weight.
+func demandWeight(demandIndex int) float64 {
+	return float64(demandIndex) / 100.0
 }
 
-func calcRouteDemandMultiplier(distance, price, baseFare, perKM float64) float64 {
-	base := baseFare + distance*perKM
+// distanceDemandFactor thins out demand as stage length grows: short-haul
+// markets carry more passengers than long-haul ones. Linear from 1.0 at
+// <=500km down to 0.35 at >=12000km.
+func distanceDemandFactor(distanceKM float64) float64 {
+	const (
+		shortKM  = 500.0
+		longKM   = 12000.0
+		minFac   = 0.35
+		maxFac   = 1.0
+	)
+	if distanceKM <= shortKM {
+		return maxFac
+	}
+	if distanceKM >= longKM {
+		return minFac
+	}
+	t := (distanceKM - shortKM) / (longKM - shortKM)
+	return maxFac + t*(minFac-maxFac)
+}
+
+// routeDailyDemand computes the fixed daily passenger pool for a route. The
+// pool is split across all of the player's flights on that route, so raising
+// frequency past saturation lowers per-flight load factor (GAME-02).
+func routeDailyDemand(originDemand, destDemand int, distanceKM, price, baseFare, perKM, poolScale float64) float64 {
+	if poolScale <= 0 {
+		return 0
+	}
+	base := baseFare + distanceKM*perKM
 	if base <= 0 {
 		return 0
 	}
 	ratio := price / base
-	return math.Max(0, math.Min(1.5, 1.5-0.8*ratio*ratio))
+	// price elasticity: below reference fare fills the pool, above starves it.
+	priceElasticity := math.Max(0, math.Min(1.5, 1.5-0.8*ratio*ratio))
+	return poolScale * demandWeight(originDemand) * demandWeight(destDemand) *
+		distanceDemandFactor(distanceKM) * priceElasticity
 }
+
