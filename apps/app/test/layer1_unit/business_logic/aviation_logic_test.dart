@@ -266,8 +266,28 @@ void main() {
           premiumCabinAircraft.effectivePassengerCapacity,
           lessThan(allEconomyAircraft.effectivePassengerCapacity),
         );
+        // GAME-02: on a demand-constrained route the pool caps passengers, so a
+        // smaller premium cabin carries the same passenger count. Cabin config
+        // changes revenue per seat, not the pool (see GAME-03).
         expect(
           premiumCabinRoute.expectedPassengers,
+          premiumDemandRoute.expectedPassengers,
+        );
+        // GAME-02: raising frequency on a fixed pool lowers per-flight load.
+        final highFrequencyRoute = UserRoute(
+          id: 'route-premium-hf',
+          originIata: 'CGK',
+          destinationIata: 'SIN',
+          distanceKm: 883.82,
+          ticketPrice: 145.0,
+          flightsPerWeek: 42,
+          origin: premiumDemandRoute.origin,
+          destination: premiumDemandRoute.destination,
+          assignedAircraftId: allEconomyAircraft.id,
+          assignedAircraft: allEconomyAircraft,
+        );
+        expect(
+          highFrequencyRoute.expectedPassengers,
           lessThan(premiumDemandRoute.expectedPassengers),
         );
       },
