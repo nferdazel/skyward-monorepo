@@ -256,6 +256,37 @@ class OverviewTab extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
+          if (snapshot.netWorthTrend.length >= 3) ...[
+            const SizedBox(height: AppSpacing.xs),
+            AppSparkline(
+              data: snapshot.netWorthTrend,
+              width: 60,
+              height: 20,
+              color: snapshot.runwayColor,
+            ),
+          ],
+          if (snapshot.profitTrend.length >= 3) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Row(
+              children: [
+                Text(
+                  AppStrings.overviewDailyNetTrendLabel,
+                  style: AppTypography.captionRegular.copyWith(
+                    color: AppTheme.textMuted,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                AppSparkline(
+                  data: snapshot.profitTrend,
+                  width: 60,
+                  height: 20,
+                  color: snapshot.profitTrend.last >= 0
+                      ? AppTheme.success
+                      : AppTheme.error,
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: AppSpacing.sm),
           // Runway health indicator bar
           _buildRunwayHealthBar(snapshot),

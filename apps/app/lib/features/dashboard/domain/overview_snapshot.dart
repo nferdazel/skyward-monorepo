@@ -64,6 +64,10 @@ class OverviewSnapshot {
   final List<OverviewPriority> priorities;
   final List<GameEvent> activeEvents;
 
+  /// Recent net-worth / daily-net history for KPI sparklines (oldest → newest).
+  final List<double> netWorthTrend;
+  final List<double> profitTrend;
+
   const OverviewSnapshot({
     required this.totalFleetCount,
     required this.readyFleetCount,
@@ -99,6 +103,8 @@ class OverviewSnapshot {
     required this.bestRouteYieldLabel,
     required this.priorities,
     this.activeEvents = const [],
+    this.netWorthTrend = const [],
+    this.profitTrend = const [],
   });
 
   static OverviewSnapshot fromStates({
@@ -322,6 +328,21 @@ class OverviewSnapshot {
         ? AppStrings.financeNoExpenseHistory
         : '${((finance.totalLease / finance.totalExpense) * 100).toStringAsFixed(0)}% lease / ${((finance.totalOperations / finance.totalExpense) * 100).toStringAsFixed(0)}% ops';
 
+    // Trend series for KPI sparklines (oldest → newest). Net worth comes from
+    // finance_snapshots; profit uses the true per-day net bucketed from
+    // transactions (finance_snapshots.revenue_30d/expense_30d are not populated
+    // by the engine, so `financialSnapshots[].net` would always be zero).
+    final netWorthTrend = (finance?.financialSnapshots ?? const [])
+        .map((s) => s.netWorth)
+        .toList()
+        .reversed
+        .toList();
+    final profitTrend = (finance?.dailySnapshots ?? const [])
+        .map((s) => s.net)
+        .toList()
+        .reversed
+        .toList();
+
     return OverviewSnapshot(
       totalFleetCount: fleet.length,
       readyFleetCount: readyFleet,
@@ -364,6 +385,8 @@ class OverviewSnapshot {
           : '${topYieldRoute.originIata} ${AppStrings.routeDividerGlyph} ${topYieldRoute.destinationIata}',
       priorities: priorities.take(3).toList(),
       activeEvents: activeEvents,
+      netWorthTrend: netWorthTrend,
+      profitTrend: profitTrend,
     );
   }
 }
