@@ -24,6 +24,7 @@ class SimulationCubit extends Cubit<SimulationState>
   bool _loopRunning = false;
   bool _lifecycleObserverRegistered = false;
   Future<AppUser?>? _activeSync;
+  String? _activeSyncUserId;
   final SimulationGateway _gateway;
 
   // Retry with linear backoff
@@ -73,6 +74,7 @@ class SimulationCubit extends Cubit<SimulationState>
     stopLoop();
     _registerLifecycleObserver();
     _loopRunning = true;
+    _retryCount = 0;
 
     // Set initial state safely
     _safeEmit(
@@ -147,33 +149,48 @@ class SimulationCubit extends Cubit<SimulationState>
 
   // Backend world-clock reconcile. The RPC owns elapsed-time simulation.
   Future<AppUser?> syncWithDatabase() async {
-    if (_activeSync != null) return _activeSync;
-    _activeSync = _performSyncWithDatabase();
+    // Dedup hanya berlaku untuk user yang sama; kalau user berganti saat sync
+    // masih in-flight, jangan kembalikan hasil user lama.
+    if (_activeSync != null && _activeSyncUserId == _currentUserId) {
+      return _activeSync;
+    }
+    final userId = _currentUserId;
+    final sync = _performSyncWithDatabase(userId);
+    _activeSyncUserId = userId;
+    _activeSync = sync;
     try {
-      return await _activeSync;
+      return await sync;
     } finally {
-      _activeSync = null;
+      // Hanya bersihkan kalau sync ini masih yang aktif — sync yang
+      // tergantikan tidak boleh menghapus tracking sync terbaru.
+      if (identical(_activeSync, sync)) {
+        _activeSync = null;
+        _activeSyncUserId = null;
+      }
     }
   }
 
-  Future<AppUser?> _performSyncWithDatabase() async {
-    final userId = _currentUserId;
+  Future<AppUser?> _performSyncWithDatabase(String? userId) async {
     if (userId == null) return null;
 
     _safeEmit(state.copyWith(isSyncing: true));
 
     try {
       // 1. Reconcile actor to shared world clock & fetch user profile in parallel.
-      //    loadUserProfile does not depend on the delta result.
+      //    loadUserProfile does not depend on the delta result. Cash balance is
+      //    part of the profile payload (`/simulation/state`), so no separate
+      //    balance round-trip is needed.
       final results = await Future.wait([
         _gateway.processSimulationDelta(userId),
         _gateway.loadUserProfile(userId),
-        _gateway.getUserBalance(userId),
       ]).timeout(const Duration(seconds: 30));
 
       final List<dynamic> response = toSafeList(results[0]);
       final Map<String, dynamic> userProfile = toSafeMap(results[1]);
-      final double bankBalance = (results[2] as num?)?.toDouble() ?? 0.0;
+      final double bankBalance =
+          (userProfile['cash'] as num?)?.toDouble() ??
+          (userProfile['balance'] as num?)?.toDouble() ??
+          state.cashBalance;
 
       double elapsedGameDays = 0.0;
       int flightsRun = 0;
@@ -202,22 +219,44 @@ class SimulationCubit extends Cubit<SimulationState>
                 ?.toDouble() ??
             GameConstants.defaultGameSpeedMultiplier;
       } else {
-        final List<dynamic> settingsResponse = toSafeList(await _gateway.loadGameSettings());
+        // Fetch settings in isolation: kegagalan /game-config tidak boleh
+        // membatalkan cash & game time yang sudah berhasil diambil.
+        try {
+          final List<dynamic> settingsResponse =
+              toSafeList(await _gateway.loadGameSettings());
 
-        if (settingsResponse.isNotEmpty) {
-          _cachedGameSettings = toSafeMap(settingsResponse[0]);
-          _cachedSettingsTime = DateTime.now();
-          fuelPrice =
-              (_cachedGameSettings!['fuel_price_per_liter'] as num?)?.toDouble() ??
-              GameConstants.fuelPricePerLiter;
-          gameSpeedMultiplier =
-              (_cachedGameSettings!['time_scale_multiplier'] as num?)
-                  ?.toDouble() ??
-              GameConstants.defaultGameSpeedMultiplier;
+          if (settingsResponse.isNotEmpty) {
+            _cachedGameSettings = toSafeMap(settingsResponse[0]);
+            _cachedSettingsTime = DateTime.now();
+            fuelPrice =
+                (_cachedGameSettings!['fuel_price_per_liter'] as num?)
+                    ?.toDouble() ??
+                GameConstants.fuelPricePerLiter;
+            gameSpeedMultiplier =
+                (_cachedGameSettings!['time_scale_multiplier'] as num?)
+                    ?.toDouble() ??
+                GameConstants.defaultGameSpeedMultiplier;
+          }
+        } catch (e, stack) {
+          AppError.log('simulation_load_settings', e, stack);
+          // Fall back to last cache if available, else keep defaults.
+          if (_cachedGameSettings != null) {
+            fuelPrice =
+                (_cachedGameSettings!['fuel_price_per_liter'] as num?)
+                    ?.toDouble() ??
+                GameConstants.fuelPricePerLiter;
+            gameSpeedMultiplier =
+                (_cachedGameSettings!['time_scale_multiplier'] as num?)
+                    ?.toDouble() ??
+                GameConstants.defaultGameSpeedMultiplier;
+          }
         }
       }
 
       // 3. Update local simulation state from backend-owned actor state.
+      //    Abaikan kalau user sudah berganti selagi sync in-flight — hasil user
+      //    lama tidak boleh menimpa state user baru.
+      if (userId != _currentUserId) return null;
       _retryCount = 0; // Reset on successful sync
       _safeEmit(
         state.copyWith(
@@ -235,6 +274,7 @@ class SimulationCubit extends Cubit<SimulationState>
         ),
       );
 
+      if (isClosed) return null;
       SyncCoordinator.instance.publish(
         SeasonClockTickEvent(
           currentTick: authoritativeUser.gameCurrentTime.millisecondsSinceEpoch,
@@ -244,6 +284,8 @@ class SimulationCubit extends Cubit<SimulationState>
       // 4. Return the updated user for the caller to handle (event-based communication)
       return authoritativeUser;
     } catch (e, stack) {
+      // Abaikan error dari sync user lama yang sudah tergantikan.
+      if (userId != _currentUserId) return null;
       // Detect 401 Unauthorized — token expired, don't retry
       if (e is SimulationGatewayException &&
           e.message.toLowerCase().contains('unauthorized')) {
@@ -288,6 +330,10 @@ class SimulationCubit extends Cubit<SimulationState>
     _stopTimers();
     _retryTimer?.cancel();
     _retryTimer = null;
+    _realtimeSyncDebounce?.cancel();
+    _realtimeSyncDebounce = null;
+    _balanceRefreshDebounce?.cancel();
+    _balanceRefreshDebounce = null;
   }
 
   @override
@@ -328,15 +374,30 @@ class SimulationCubit extends Cubit<SimulationState>
   void _setupRealtime(String userId) {
     // Subscribe ke channel users (game-time / operational status) dan
     // bank_transactions (cash balance). Event hanya notification — refresh
-    // via REST auth-guarded.
+    // via REST auth-guarded. Sync dipicu dengan debounce agar rentetan event
+    // (mis. beberapa tick beruntun) tidak menghasilkan sync storm.
     subscribeToRealtime(
       ['users', 'bank_transactions'],
       (event) {
         if (event.channel == 'users') {
-          unawaited(syncWithDatabase());
+          _scheduleRealtimeSync();
         } else if (event.channel == 'bank_transactions') {
           _scheduleRealtimeBalanceRefresh(userId);
         }
+      },
+    );
+  }
+
+  Timer? _realtimeSyncDebounce;
+
+  /// Debounce sync yang dipicu event realtime `users` — trailing edge.
+  void _scheduleRealtimeSync() {
+    _realtimeSyncDebounce?.cancel();
+    _realtimeSyncDebounce = Timer(
+      const Duration(milliseconds: 400),
+      () {
+        if (isClosed || !_loopRunning) return;
+        unawaited(syncWithDatabase());
       },
     );
   }
@@ -348,7 +409,7 @@ class SimulationCubit extends Cubit<SimulationState>
     _balanceRefreshDebounce = Timer(const Duration(milliseconds: 300), () async {
       try {
         final balance = await _gateway.getUserBalance(userId);
-        if (!isClosed) {
+        if (!isClosed && userId == _currentUserId) {
           _safeEmit(state.copyWith(cashBalance: balance));
         }
       } catch (_) {

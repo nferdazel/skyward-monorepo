@@ -68,7 +68,6 @@ class DelayedSimulationGateway implements SimulationGateway {
       Completer<Map<String, dynamic>>();
   final Completer<List<dynamic>> settingsCompleter =
       Completer<List<dynamic>>();
-  final Completer<double> balanceCompleter = Completer<double>();
 
   int loadGameSettingsCallCount = 0;
 
@@ -86,7 +85,7 @@ class DelayedSimulationGateway implements SimulationGateway {
   }
 
   @override
-  Future<double> getUserBalance(String userId) => balanceCompleter.future;
+  Future<double> getUserBalance(String userId) async => 10000000.0;
 
   @override
   Future<void> markOnboardingComplete(String authUserId) async {}
@@ -107,6 +106,7 @@ final _mockUserProfile = <String, dynamic>{
   'operational_status': 'Active',
   'consecutive_negative_days': 0,
   'recovery_streak_days': 0,
+  'cash': 10000000.0,
 };
 
 // =============================================================================
@@ -230,8 +230,6 @@ void main() {
           ]);
           await Future<void>.delayed(Duration.zero);
 
-          delayedGateway.balanceCompleter.complete(10000000.0);
-
           // Both futures should resolve to the same result.
           final result1 = await future1;
           final result2 = await future2;
@@ -345,6 +343,114 @@ void main() {
 
           await cubit.syncWithDatabase();
           expect(gateway.loadGameSettingsCallCount, 2);
+
+          await cubit.close();
+        },
+      );
+    });
+
+    // =========================================================================
+    // Cash balance sourced from profile (#2) & settings failure isolation (#4)
+    // =========================================================================
+
+    group('sync resilience', () {
+      test('cash balance is derived from the profile payload', () async {
+        final gw = MockSimulationGateway()
+          ..profileToReturn = {
+            ..._mockUserProfile,
+            'cash': 42424242.0,
+          };
+        final cubit = SimulationCubit(gateway: gw);
+        cubit.setTestUserId('user-1');
+
+        await cubit.syncWithDatabase();
+
+        expect(cubit.state.cashBalance, 42424242.0);
+
+        await cubit.close();
+      });
+
+      test(
+        'settings fetch failure does not zero cash or block sync',
+        () async {
+          final gw = MockSimulationGateway()
+            ..profileToReturn = {
+              ..._mockUserProfile,
+              'cash': 9999999.0,
+            }
+            ..shouldThrowOnSettings = true;
+          final cubit = SimulationCubit(gateway: gw);
+          cubit.setTestUserId('user-1');
+
+          await cubit.syncWithDatabase();
+
+          // Cash dari profile tetap terpakai, sync tidak masuk error.
+          expect(cubit.state.cashBalance, 9999999.0);
+          expect(cubit.state.errorMessage, isNull);
+          expect(cubit.state.isSyncing, isFalse);
+
+          await cubit.close();
+        },
+      );
+
+      test(
+        'in-flight sync for an old user does not clobber the new user state',
+        () async {
+          final delayed = DelayedSimulationGateway();
+          final cubit = SimulationCubit(gateway: delayed);
+          cubit.setTestUserId('user-1');
+
+          final syncFuture = cubit.syncWithDatabase();
+          await Future<void>.delayed(Duration.zero);
+
+          // User berganti selagi sync user-1 masih in-flight.
+          cubit.setTestUserId('user-2');
+
+          delayed.deltaCompleter.complete([
+            <String, dynamic>{'elapsed_game_days': 0.04, 'flights_run': 0},
+          ]);
+          delayed.profileCompleter.complete({
+            ..._mockUserProfile,
+            'id': 'user-1',
+            'cash': 123456.0,
+          });
+          delayed.settingsCompleter.complete([
+            <String, dynamic>{
+              'fuel_price_per_liter': 1.20,
+              'time_scale_multiplier': 2.0,
+            },
+          ]);
+
+          await syncFuture;
+
+          // Hasil user-1 tidak boleh menimpa state user-2.
+          expect(cubit.state.cashBalance, isNot(123456.0));
+
+          await cubit.close();
+        },
+      );
+
+      test(
+        'in-flight sync error for an old user does not emit error to new user',
+        () async {
+          final delayed = DelayedSimulationGateway();
+          final cubit = SimulationCubit(gateway: delayed);
+          cubit.setTestUserId('user-1');
+
+          final syncFuture = cubit.syncWithDatabase();
+          await Future<void>.delayed(Duration.zero);
+
+          cubit.setTestUserId('user-2');
+
+          delayed.deltaCompleter.completeError(Exception('boom'));
+          // Lengkapi future lain agar tidak menggantung.
+          delayed.profileCompleter.complete(_mockUserProfile);
+          delayed.settingsCompleter.complete(const []);
+
+          await syncFuture;
+
+          expect(cubit.state.errorMessage, isNull,
+              reason: 'error user lama tidak boleh muncul di state user baru');
 
           await cubit.close();
         },
