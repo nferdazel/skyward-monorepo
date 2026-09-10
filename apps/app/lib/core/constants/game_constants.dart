@@ -121,6 +121,17 @@ class GameConstants {
   // Fallback only — game_config 'fuel_price_per_liter' is authoritative
   static const double fuelPricePerLiter = 0.85;
 
+  /// Bankruptcy: cash at/below this triggers immediate bankruptcy.
+  // Fallback only — game_config 'bankruptcy_cash_threshold' is authoritative
+  static const double bankruptcyCashThreshold = -5000000.0;
+
+  /// Bankruptcy: consecutive negative days at/above this triggers bankruptcy.
+  // Fallback only — game_config 'bankruptcy_negative_days_threshold'
+  static const int bankruptcyNegativeDaysThreshold = 30;
+
+  /// Cash at/below which the player gets a critical (pre-bankruptcy) warning.
+  static const double bankruptcyWarningCashThreshold = -2000000.0;
+
   // ==========================================
   // SIMULATION & SYSTEM PARAMETERS
   // ==========================================

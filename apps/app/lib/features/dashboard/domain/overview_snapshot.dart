@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/constants/app_strings.dart';
+import '../../../core/constants/game_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/domain/user_model.dart';
 import '../../events/domain/game_event_model.dart';
@@ -68,6 +69,10 @@ class OverviewSnapshot {
   final List<double> netWorthTrend;
   final List<double> profitTrend;
 
+  /// Bankruptcy risk: 0 = none, 1 = warning, 2 = critical.
+  final int bankruptcyRiskLevel;
+  final String bankruptcyRiskLabel;
+
   const OverviewSnapshot({
     required this.totalFleetCount,
     required this.readyFleetCount,
@@ -105,6 +110,8 @@ class OverviewSnapshot {
     this.activeEvents = const [],
     this.netWorthTrend = const [],
     this.profitTrend = const [],
+    this.bankruptcyRiskLevel = 0,
+    this.bankruptcyRiskLabel = '',
   });
 
   static OverviewSnapshot fromStates({
@@ -226,6 +233,25 @@ class OverviewSnapshot {
         : (runwayDays < 14
               ? AppTheme.error
               : (runwayDays < 45 ? AppTheme.warning : AppTheme.success));
+
+    // Bankruptcy risk escalation (GAME-13). Critical when cash is at/below the
+    // warning threshold or negative days are near the limit; warning when cash
+    // is negative at all.
+    final cash = simState.cashBalance;
+    final negDays = simState.consecutiveNegativeDays;
+    final int bankruptcyRiskLevel;
+    final String bankruptcyRiskLabel;
+    if (cash <= GameConstants.bankruptcyWarningCashThreshold ||
+        negDays >= (GameConstants.bankruptcyNegativeDaysThreshold * 2 / 3)) {
+      bankruptcyRiskLevel = 2;
+      bankruptcyRiskLabel = AppStrings.bankruptcyCritical;
+    } else if (cash < 0) {
+      bankruptcyRiskLevel = 1;
+      bankruptcyRiskLabel = AppStrings.bankruptcyWarning;
+    } else {
+      bankruptcyRiskLevel = 0;
+      bankruptcyRiskLabel = '';
+    }
 
     final playerEntry = rankings
         .where((r) => !r.isBot)
@@ -387,6 +413,8 @@ class OverviewSnapshot {
       activeEvents: activeEvents,
       netWorthTrend: netWorthTrend,
       profitTrend: profitTrend,
+      bankruptcyRiskLevel: bankruptcyRiskLevel,
+      bankruptcyRiskLabel: bankruptcyRiskLabel,
     );
   }
 }

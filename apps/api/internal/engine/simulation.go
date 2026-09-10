@@ -288,8 +288,12 @@ func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime ti
 			"Idle lease carrying cost", targetTime)
 	}
 
-	// update user game time
-	_, _ = tx.Exec(ctx, `UPDATE users SET game_current_time=$1, last_active_at=NOW() WHERE id=$2`, targetTime, userID)
+	// update user game time. The WHERE guard makes the day advance atomic:
+	// concurrent syncs/world-tick calls for the same user can only advance the
+	// clock once, so the day-boundary work below never double-counts a day.
+	tag, _ := tx.Exec(ctx, `UPDATE users SET game_current_time=$1, last_active_at=NOW()
+		WHERE id=$2 AND game_current_time < $1`, targetTime, userID)
+	advancedDay := tag.RowsAffected() > 0
 	_ = tx.Commit(ctx)
 
 	cashAfter, _ := e.Ledger.GetBalance(ctx, userID)
@@ -302,7 +306,7 @@ func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime ti
 	// day boundary
 	curDay := userGameTime.Truncate(24 * time.Hour)
 	targetDay := targetTime.Truncate(24 * time.Hour)
-	if curDay != targetDay {
+	if advancedDay && curDay != targetDay {
 		e.processDayBoundary(ctx, userID, targetTime, elapsed)
 	}
 }
@@ -319,6 +323,36 @@ func (e *Engine) processDayBoundary(ctx context.Context, userID string, gameDate
 	e.ProcessCreditAtDayBoundary(ctx, userID, gameDate)
 	e.ProcessLoanPayments(ctx, userID, gameDate)
 	e.ProcessAircraftFinancingPayments(ctx, userID, gameDate)
+
+	// Track consecutive negative days and trigger the day-based bankruptcy
+	// path (mirror process_actor_day_boundary). The cash-threshold path is
+	// handled in ProcessPlayer.
+	cashAfter, err := e.Ledger.GetBalance(ctx, userID)
+	if err != nil {
+		// Unknown balance: don't fabricate a recovery (which would wipe real
+		// negative-day progress). Skip the day-boundary accounting for now.
+		return
+	}
+	threshold := int(e.getConfigNum(ctx, "bankruptcy_negative_days_threshold", 30.0))
+	if cashAfter < 0 {
+		e.Pool.Exec(ctx, `UPDATE users SET consecutive_negative_days = COALESCE(consecutive_negative_days, 0) + 1,
+			recovery_streak_days = 0 WHERE id=$1`, userID)
+		var consecNeg int
+		e.Pool.QueryRow(ctx, `SELECT COALESCE(consecutive_negative_days, 0) FROM users WHERE id=$1`, userID).Scan(&consecNeg)
+		if shouldBankruptOnNegativeDays(consecNeg, threshold) {
+			e.applyBankruptcy(ctx, userID)
+		}
+	} else {
+		e.Pool.Exec(ctx, `UPDATE users SET consecutive_negative_days = 0,
+			recovery_streak_days = COALESCE(recovery_streak_days, 0) + 1 WHERE id=$1`, userID)
+	}
+}
+
+// shouldBankruptOnNegativeDays reports whether the player has accumulated
+// enough consecutive negative days to trigger the day-based bankruptcy path.
+// A non-positive threshold disables the day-based path.
+func shouldBankruptOnNegativeDays(consecutiveNegativeDays, threshold int) bool {
+	return threshold > 0 && consecutiveNegativeDays >= threshold
 }
 
 func (e *Engine) getConfigNum(ctx context.Context, key string, fallback float64) float64 {

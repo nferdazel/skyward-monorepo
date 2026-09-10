@@ -31,6 +31,8 @@ type User struct {
 	SeasonID            *string
 	PasswordHash        *string
 	OnboardingCompleted bool
+	ConsecNegDays       int
+	RecoveryDays        int
 }
 
 // ActiveSeason — baris season_clock aktif.
@@ -98,7 +100,8 @@ func (s *Store) GetUserByUsername(ctx context.Context, username string) (*User, 
 	return s.scanUser(ctx,
 		`SELECT id, username, company_name, ceo_name, game_current_time,
 		        net_worth, hq_airport_iata, auto_grounding_threshold,
-		        operational_status, season_id, password_hash, onboarding_completed
+		        operational_status, season_id, password_hash, onboarding_completed,
+		        COALESCE(consecutive_negative_days, 0), COALESCE(recovery_streak_days, 0)
 		   FROM users WHERE username = $1`, username)
 }
 
@@ -107,7 +110,8 @@ func (s *Store) GetUserByID(ctx context.Context, id string) (*User, error) {
 	return s.scanUser(ctx,
 		`SELECT id, username, company_name, ceo_name, game_current_time,
 		        net_worth, hq_airport_iata, auto_grounding_threshold,
-		        operational_status, season_id, password_hash, onboarding_completed
+		        operational_status, season_id, password_hash, onboarding_completed,
+		        COALESCE(consecutive_negative_days, 0), COALESCE(recovery_streak_days, 0)
 		   FROM users WHERE id = $1`, id)
 }
 
@@ -118,6 +122,7 @@ func (s *Store) scanUser(ctx context.Context, q string, arg any) (*User, error) 
 		&u.GameCurrentTime, &u.NetWorth, &u.HQAirportIATA,
 		&u.AutoGroundingThresh, &u.OperationalStatus, &u.SeasonID,
 		&u.PasswordHash, &u.OnboardingCompleted,
+		&u.ConsecNegDays, &u.RecoveryDays,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrUserNotFound

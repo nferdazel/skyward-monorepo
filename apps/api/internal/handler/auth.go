@@ -37,6 +37,8 @@ type userJSON struct {
 	OperationalStatus   string  `json:"operational_status"`
 	SeasonID            *string `json:"season_id"`
 	OnboardingCompleted bool    `json:"onboarding_completed"`
+	ConsecutiveNegDays  int     `json:"consecutive_negative_days"`
+	RecoveryStreakDays  int     `json:"recovery_streak_days"`
 }
 
 func toUserJSON(u *store.User) userJSON {
@@ -52,6 +54,8 @@ func toUserJSON(u *store.User) userJSON {
 		OperationalStatus:   u.OperationalStatus,
 		SeasonID:            u.SeasonID,
 		OnboardingCompleted: u.OnboardingCompleted,
+		ConsecutiveNegDays:  u.ConsecNegDays,
+		RecoveryStreakDays:  u.RecoveryDays,
 	}
 }
 
