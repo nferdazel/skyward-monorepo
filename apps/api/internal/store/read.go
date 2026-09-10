@@ -305,6 +305,38 @@ func (s *Store) GetLeaderboard(ctx context.Context) ([]LeaderboardEntry, error) 
 	return pgx.CollectRows(rows, pgx.RowToStructByPos[LeaderboardEntry])
 }
 
+// ── Game events ───────────────────────────────────────────────────────
+
+type GameEvent struct {
+	ID            string    `json:"id"`
+	EventType     string    `json:"event_type"`
+	Title         string    `json:"title"`
+	Description   string    `json:"description"`
+	EffectType    string    `json:"effect_type"`
+	EffectTarget  string    `json:"effect_target"`
+	EffectValue   float64   `json:"effect_value"`
+	StartGameTime time.Time `json:"start_game_time"`
+	EndGameTime   time.Time `json:"end_game_time"`
+	IsActive      bool      `json:"is_active"`
+	CreatedAt     time.Time `json:"created_at"`
+}
+
+// GetActiveEvents — global (not user-scoped) active world events.
+func (s *Store) GetActiveEvents(ctx context.Context) ([]GameEvent, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT id, event_type, title, COALESCE(description, ''), effect_type,
+		       COALESCE(effect_target, ''), effect_value, start_game_time,
+		       end_game_time, is_active, COALESCE(created_at, NOW())
+		FROM game_events
+		WHERE is_active = true
+		ORDER BY start_game_time DESC`)
+	if err != nil {
+		return nil, fmt.Errorf("store: active events: %w", err)
+	}
+	defer rows.Close()
+	return pgx.CollectRows(rows, pgx.RowToStructByPos[GameEvent])
+}
+
 type CompetitorInsight struct {
 	CompanyName    string  `json:"company_name"`
 	CeoName        string  `json:"ceo_name"`
