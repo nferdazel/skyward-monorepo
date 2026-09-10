@@ -35,6 +35,9 @@ class SyncCoordinator {
   }
 
   /// Convenience listener with optional debouncing.
+  ///
+  /// Membatalkan subscription juga membatalkan timer debounce yang tertunda,
+  /// sehingga [onData] tidak dipanggil setelah listener di-dispose.
   StreamSubscription<T> listen<T extends DomainEvent>(
     void Function(T event) onData, {
     Duration? debounce,
@@ -43,7 +46,8 @@ class SyncCoordinator {
     if (debounce != null && debounce > Duration.zero) {
       Timer? timer;
       T? lastEvent;
-      return stream.listen((event) {
+      late StreamSubscription<T> sub;
+      sub = stream.listen((event) {
         lastEvent = event;
         timer?.cancel();
         timer = Timer(debounce, () {
@@ -52,6 +56,11 @@ class SyncCoordinator {
             lastEvent = null;
           }
         });
+      });
+      return _CancellableSubscription<T>(sub, () {
+        timer?.cancel();
+        timer = null;
+        lastEvent = null;
       });
     }
     return stream.listen(onData);
@@ -62,4 +71,40 @@ class SyncCoordinator {
   void dispose() {
     // Keep standard broadcast stream open, but clear pending subscriptions if any
   }
+}
+
+/// Wrapper [StreamSubscription] yang menjalankan [onCancel] saat dibatalkan —
+/// dipakai untuk membersihkan timer debounce yang tertunda.
+class _CancellableSubscription<T> implements StreamSubscription<T> {
+  _CancellableSubscription(this._inner, this._onCancel);
+
+  final StreamSubscription<T> _inner;
+  final void Function() _onCancel;
+
+  @override
+  Future<void> cancel() {
+    _onCancel();
+    return _inner.cancel();
+  }
+
+  @override
+  void onData(void Function(T data)? handleData) => _inner.onData(handleData);
+
+  @override
+  void onError(Function? handleError) => _inner.onError(handleError);
+
+  @override
+  void onDone(void Function()? handleDone) => _inner.onDone(handleDone);
+
+  @override
+  void pause([Future<void>? resumeSignal]) => _inner.pause(resumeSignal);
+
+  @override
+  void resume() => _inner.resume();
+
+  @override
+  bool get isPaused => _inner.isPaused;
+
+  @override
+  Future<E> asFuture<E>([E? futureValue]) => _inner.asFuture<E>(futureValue);
 }
