@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:skyward/core/theme/app_theme.dart';
+import 'package:skyward/features/achievements/presentation/cubit/achievements_cubit.dart';
 import 'package:skyward/features/auth/presentation/cubit/auth_cubit.dart';
 import 'package:skyward/features/auth/presentation/cubit/auth_state.dart';
 import 'package:skyward/features/auth/domain/user_model.dart';
@@ -29,6 +30,7 @@ void main() {
     final financeCubit = FinanceCubit();
     final leaderboardCubit = LeaderboardCubit();
     final eventsCubit = EventsCubit();
+    final achievementsCubit = AchievementsCubit();
 
     addTearDown(() {
       authCubit.close();
@@ -38,6 +40,7 @@ void main() {
       financeCubit.close();
       leaderboardCubit.close();
       eventsCubit.close();
+      achievementsCubit.close();
     });
 
     authCubit.emit(
@@ -63,6 +66,7 @@ void main() {
           BlocProvider<FinanceCubit>.value(value: financeCubit),
           BlocProvider<LeaderboardCubit>.value(value: leaderboardCubit),
           BlocProvider<EventsCubit>.value(value: eventsCubit),
+          BlocProvider<AchievementsCubit>.value(value: achievementsCubit),
         ],
         child: MaterialApp(
           theme: AppTheme.darkTheme,
@@ -104,6 +108,7 @@ void main() {
     final financeCubit = FinanceCubit();
     final leaderboardCubit = LeaderboardCubit();
     final eventsCubit = EventsCubit(gateway: _StubEventsGateway());
+    final achievementsCubit = AchievementsCubit();
 
     addTearDown(() {
       authCubit.close();
@@ -113,6 +118,7 @@ void main() {
       financeCubit.close();
       leaderboardCubit.close();
       eventsCubit.close();
+      achievementsCubit.close();
     });
 
     authCubit.emit(
@@ -140,6 +146,7 @@ void main() {
           BlocProvider<FinanceCubit>.value(value: financeCubit),
           BlocProvider<LeaderboardCubit>.value(value: leaderboardCubit),
           BlocProvider<EventsCubit>.value(value: eventsCubit),
+          BlocProvider<AchievementsCubit>.value(value: achievementsCubit),
         ],
         child: MaterialApp(
           theme: AppTheme.darkTheme,

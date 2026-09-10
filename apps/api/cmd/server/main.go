@@ -188,6 +188,7 @@ func registerRoutes(ctx context.Context, mux *http.ServeMux, logger *slog.Logger
 	mux.Handle("GET /bank/accounts", guard(read.BankAccounts))
 	mux.Handle("GET /bank/transactions", guard(read.BankTransactionsByAccount))
 	mux.Handle("GET /events", guard(read.ActiveEvents))
+	mux.Handle("GET /achievements", guard(read.Achievements))
 
 	// Admin / ops (AdminGuard).
 	admin := func(next http.HandlerFunc) http.HandlerFunc {

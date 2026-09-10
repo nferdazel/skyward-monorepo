@@ -718,6 +718,11 @@ class AppStrings {
   // Status values
   static const String statusActive = 'Active';
 
+  // GAME-15 — Achievements
+  static const String achievementsSectionTitle = 'ACHIEVEMENTS';
+  static const String achievementsEmpty = 'No achievements unlocked yet. Keep flying!';
+  static const String achievementUnlockedPrefix = 'Achievement unlocked: ';
+
   // Fleet operation messages
   static const String purchaseSuccess = 'Successfully purchased aircraft!';
   static const String leaseSuccess = 'Successfully leased aircraft!';

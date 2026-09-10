@@ -15,6 +15,7 @@ class SimulationState with Equatable {
   final String operationalStatus;
   final int consecutiveNegativeDays;
   final int recoveryStreakDays;
+  final List<Map<String, dynamic>> lastUnlockedAchievements;
   final String? errorMessage;
 
   const SimulationState({
@@ -28,6 +29,7 @@ class SimulationState with Equatable {
     this.operationalStatus = AppStrings.statusActive,
     this.consecutiveNegativeDays = 0,
     this.recoveryStreakDays = 0,
+    this.lastUnlockedAchievements = const [],
     this.errorMessage,
   });
 
@@ -54,6 +56,7 @@ class SimulationState with Equatable {
     String? operationalStatus,
     int? consecutiveNegativeDays,
     int? recoveryStreakDays,
+    List<Map<String, dynamic>>? lastUnlockedAchievements,
     Object? errorMessage = _unset,
   }) {
     return SimulationState(
@@ -68,6 +71,8 @@ class SimulationState with Equatable {
       consecutiveNegativeDays:
           consecutiveNegativeDays ?? this.consecutiveNegativeDays,
       recoveryStreakDays: recoveryStreakDays ?? this.recoveryStreakDays,
+      lastUnlockedAchievements:
+          lastUnlockedAchievements ?? this.lastUnlockedAchievements,
       errorMessage: identical(errorMessage, _unset)
           ? this.errorMessage
           : errorMessage as String?,
@@ -86,6 +91,7 @@ class SimulationState with Equatable {
     operationalStatus,
     consecutiveNegativeDays,
     recoveryStreakDays,
+    lastUnlockedAchievements,
     errorMessage,
   ];
 }

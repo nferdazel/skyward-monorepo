@@ -88,6 +88,9 @@ func (e *Engine) WorldTick(ctx context.Context) (*WorldTickResult, error) {
 type PlayerProcessResult struct {
 	ElapsedDays float64 `json:"elapsed_game_days"`
 	FlightsRun  int     `json:"flights_run"`
+	// NewlyUnlocked — achievements unlocked during this process, surfaced to
+	// the client for a celebration toast (GAME-15).
+	NewlyUnlocked []AchievementDef `json:"newly_unlocked_achievements,omitempty"`
 }
 
 // ProcessPlayer — mirror of process_player_simulation_to_time inline logic.
@@ -311,15 +314,18 @@ func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime ti
 	}
 
 	// day boundary
+	var newlyUnlocked []AchievementDef
 	curDay := userGameTime.Truncate(24 * time.Hour)
 	targetDay := targetTime.Truncate(24 * time.Hour)
 	if advancedDay && curDay != targetDay {
 		e.processDayBoundary(ctx, userID, targetTime, elapsed)
+		newlyUnlocked = e.EvaluateAchievements(ctx, userID, targetTime)
 	}
 
 	return PlayerProcessResult{
-		ElapsedDays: elapsed,
-		FlightsRun:  int(math.Round(flightsRun)),
+		ElapsedDays:   elapsed,
+		FlightsRun:    int(math.Round(flightsRun)),
+		NewlyUnlocked: newlyUnlocked,
 	}
 }
 
