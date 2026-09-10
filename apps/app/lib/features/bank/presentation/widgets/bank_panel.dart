@@ -37,7 +37,10 @@ import '../cubit/bank_state.dart';
 /// Financial Command Center — redesigned Bank tab matching the
 /// design language of Finance Overview and Fleet tabs.
 class BankPanel extends StatefulWidget {
-  const BankPanel({super.key});
+  const BankPanel({super.key, this.onViewAllTransactions});
+
+  /// Optional cross-tab link: opens the full Transactions ledger.
+  final VoidCallback? onViewAllTransactions;
 
   @override
   State<BankPanel> createState() => _BankPanelState();
@@ -308,7 +311,17 @@ class _BankPanelState extends State<BankPanel> {
 
         // ── Recent Transactions ──
         if (transactions.isNotEmpty) ...[
-          AppSectionHeader(title: 'RECENT TRANSACTIONS'),
+          AppSectionHeader(
+            title: 'RECENT TRANSACTIONS',
+            trailing: widget.onViewAllTransactions == null
+                ? null
+                : AppButton(
+                    text: AppStrings.financeViewAllTransactions,
+                    type: AppButtonType.secondary,
+                    height: 32,
+                    onPressed: widget.onViewAllTransactions,
+                  ),
+          ),
           const SizedBox(height: AppSpacing.blockGap),
           _buildTransactionsTable(context, transactions),
           const SizedBox(height: AppSpacing.sectionGap),
