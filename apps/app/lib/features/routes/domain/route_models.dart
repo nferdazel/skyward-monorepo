@@ -268,42 +268,66 @@ class UserRoute with Equatable {
     return factor;
   }
 
+  // GAME-02: demand pool distance weight. Short-haul markets carry more
+  // passengers than long-haul ones. Mirrors Go distanceDemandFactor.
+  static double calculateDistanceDemandFactor({required double distanceKm}) {
+    const shortKm = GameConstants.demandPoolShortHaulKm;
+    const longKm = GameConstants.demandPoolLongHaulKm;
+    const minFactor = GameConstants.demandPoolMinDistanceFactor;
+    const maxFactor = 1.0;
+    if (distanceKm <= shortKm) return maxFactor;
+    if (distanceKm >= longKm) return minFactor;
+    final t = (distanceKm - shortKm) / (longKm - shortKm);
+    return maxFactor + t * (minFactor - maxFactor);
+  }
+
+  // GAME-02: fixed daily passenger demand pool for a route. Mirrors the
+  // authoritative Go engine (simulation.go routeDailyDemand).
+  static double calculateDailyDemandPool({
+    required double distanceKm,
+    required double ticketPrice,
+    required int originDemandIndex,
+    required int destinationDemandIndex,
+  }) {
+    final bp = calculateBaseTicketPrice(distanceKm);
+    if (bp <= 0) return 0.0;
+    final pricingDemand = calculateDemandMultiplier(
+      distanceKm: distanceKm,
+      ticketPrice: ticketPrice,
+    );
+    return GameConstants.demandPoolScale *
+        (originDemandIndex / 100.0) *
+        (destinationDemandIndex / 100.0) *
+        calculateDistanceDemandFactor(distanceKm: distanceKm) *
+        pricingDemand;
+  }
+
+  // GAME-02: per-flight passengers given the fixed daily pool split across the
+  // player's weekly flights. More flights on the same pool => lower load factor.
   static int calculateExpectedPassengers({
     required int capacity,
     required double distanceKm,
     required double ticketPrice,
     required int originDemandIndex,
     required int destinationDemandIndex,
-    double? airportDemandFactor,
-    double? competitionFactor,
-    double? congestionFactor,
-    double? hubBonus,
+    int flightsPerWeek = 7,
   }) {
-    if (capacity <= 0) return 0;
-    final pricingDemand = calculateDemandMultiplier(
+    if (capacity <= 0 || flightsPerWeek <= 0) return 0;
+    final dailyDemand = calculateDailyDemandPool(
       distanceKm: distanceKm,
       ticketPrice: ticketPrice,
+      originDemandIndex: originDemandIndex,
+      destinationDemandIndex: destinationDemandIndex,
     );
-    final airportDemand = airportDemandFactor ??
-        calculateAirportDemandFactor(
-          originDemandIndex: originDemandIndex,
-          destinationDemandIndex: destinationDemandIndex,
-        );
-    final competition = competitionFactor ?? 1.0;
-    final congestion = congestionFactor ?? 1.0;
-    final hub = hubBonus ?? 1.0;
-    final passengers =
-        (capacity *
-                GameConstants.routeBaseLoadFactor *
-                airportDemand *
-                pricingDemand *
-                competition *
-                congestion *
-                hub)
-            .floor();
-    if (passengers < 0) return 0;
-    if (passengers > capacity) return capacity;
-    return passengers;
+    final flightsPerDay = flightsPerWeek / 7.0;
+    final seatsPerDay = flightsPerDay * capacity;
+    final passengersPerDay = dailyDemand < seatsPerDay * GameConstants.demandPoolMaxLoadFactor
+        ? dailyDemand
+        : seatsPerDay * GameConstants.demandPoolMaxLoadFactor;
+    final passengersPerFlight = (passengersPerDay / flightsPerDay).floor();
+    if (passengersPerFlight < 0) return 0;
+    if (passengersPerFlight > capacity) return capacity;
+    return passengersPerFlight;
   }
 
   static double calculateDirectOperatingCostPerFlight({
@@ -381,6 +405,7 @@ class UserRoute with Equatable {
         ticketPrice: ticketPrice,
         originDemandIndex: origin.demandIndex,
         destinationDemandIndex: destination.demandIndex,
+        flightsPerWeek: flightsPerWeek,
       );
       final directCost = calculateDirectOperatingCostPerFlight(
         distanceKm: distanceKm,
@@ -465,6 +490,7 @@ class UserRoute with Equatable {
       ticketPrice: ticketPrice,
       originDemandIndex: origin.demandIndex,
       destinationDemandIndex: destination.demandIndex,
+      flightsPerWeek: flightsPerWeek,
     );
   }
 

@@ -90,6 +90,23 @@ class GameConstants {
   // Deprecated fallback — game_config 'max_airport_demand_factor' is authoritative
   static const double maxAirportDemandFactor = 1.0;
 
+  /// GAME-02: scale factor for a route's fixed daily passenger demand pool.
+  /// Must match the authoritative Go engine (simulation.go routeDailyDemand)
+  /// and game_config 'demand_pool_scale'.
+  static const double demandPoolScale = 290.0;
+
+  /// GAME-02: distance at/below which a route's demand pool is at full weight.
+  static const double demandPoolShortHaulKm = 500.0;
+
+  /// GAME-02: distance at/above which a route's demand pool is at minimum weight.
+  static const double demandPoolLongHaulKm = 12000.0;
+
+  /// GAME-02: minimum distance weight applied to very long-haul routes.
+  static const double demandPoolMinDistanceFactor = 0.35;
+
+  /// GAME-02: maximum load factor applied to offered seats per day.
+  static const double demandPoolMaxLoadFactor = 0.95;
+
   // Fallback only — game_config 'fuel_price_per_liter' is authoritative
   static const double fuelPricePerLiter = 0.85;
 
