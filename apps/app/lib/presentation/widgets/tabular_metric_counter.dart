@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../theme/app_motion.dart';
 import '../theme/app_typography.dart';
@@ -13,6 +14,11 @@ class TabularMetricCounter extends StatelessWidget {
   final int fractionDigits;
   final Duration duration;
 
+  /// Optional formatter applied to the animated value. When provided it takes
+  /// precedence over [fractionDigits] and the raw string path, so callers can
+  /// render grouped currency (e.g. "$1,234,567") without losing the animation.
+  final NumberFormat? formatter;
+
   const TabularMetricCounter({
     super.key,
     required this.value,
@@ -21,6 +27,7 @@ class TabularMetricCounter extends StatelessWidget {
     this.style,
     this.fractionDigits = 0,
     this.duration = AppMotion.regular,
+    this.formatter,
   });
 
   @override
@@ -32,9 +39,14 @@ class TabularMetricCounter extends StatelessWidget {
       duration: duration,
       curve: AppMotion.springOut,
       builder: (context, animatedVal, child) {
-        final formattedNumber = fractionDigits > 0
-            ? animatedVal.toStringAsFixed(fractionDigits)
-            : animatedVal.round().toString();
+        final String formattedNumber;
+        if (formatter != null) {
+          formattedNumber = formatter!.format(animatedVal.round());
+        } else if (fractionDigits > 0) {
+          formattedNumber = animatedVal.toStringAsFixed(fractionDigits);
+        } else {
+          formattedNumber = animatedVal.round().toString();
+        }
 
         return Text(
           '$prefix$formattedNumber$suffix',

@@ -7,7 +7,6 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/app_formatters.dart';
 import '../../../../core/utils/lazy_tab_cubit.dart';
 import '../../../../core/utils/perf_debug.dart';
-import '../../../../presentation/layout/command_palette.dart';
 import '../../../../presentation/theme/app_spacing.dart';
 import '../../../../presentation/theme/app_typography.dart';
 import '../../../../presentation/widgets/app_snackbar.dart';
@@ -574,68 +573,6 @@ class _AuthenticatedDashboardShellState
     );
   }
 
-  void _openCommandPalette() {
-    final commands = [
-      CommandItem(
-        id: 'nav_overview',
-        title: 'Go to Command Deck (Overview)',
-        category: 'Navigation',
-        icon: Icons.dashboard_outlined,
-        shortcut: '1',
-        onSelected: () => _navigationCubit.selectTab(0),
-      ),
-      CommandItem(
-        id: 'nav_fleet',
-        title: 'Go to Fleet Management',
-        category: 'Navigation',
-        icon: Icons.flight_outlined,
-        shortcut: '2',
-        onSelected: () => _navigationCubit.selectTab(1),
-      ),
-      CommandItem(
-        id: 'nav_routes',
-        title: 'Go to Flight Routes Network',
-        category: 'Navigation',
-        icon: Icons.route_outlined,
-        shortcut: '3',
-        onSelected: () => _navigationCubit.selectTab(2),
-      ),
-      CommandItem(
-        id: 'nav_finance',
-        title: 'Go to Financial Statements & Ledger',
-        category: 'Navigation',
-        icon: Icons.receipt_long_outlined,
-        shortcut: '4',
-        onSelected: () => _navigationCubit.selectTab(3),
-      ),
-      CommandItem(
-        id: 'nav_rankings',
-        title: 'Go to Global Leaderboard',
-        category: 'Navigation',
-        icon: Icons.leaderboard_outlined,
-        shortcut: '5',
-        onSelected: () => _navigationCubit.selectTab(4),
-      ),
-      CommandItem(
-        id: 'nav_settings',
-        title: 'Go to Airline Settings',
-        category: 'Navigation',
-        icon: Icons.settings_outlined,
-        shortcut: '6',
-        onSelected: () => _navigationCubit.selectTab(5),
-      ),
-      CommandItem(
-        id: 'op_sync',
-        title: 'Sync Simulation with Database',
-        category: 'Operations',
-        icon: Icons.sync,
-        onSelected: () => _simulationCubit.syncWithDatabase(),
-      ),
-    ];
-
-    CommandPalette.show(context: context, commands: commands);
-  }
-
   Widget _buildDesktopLayout(
     BuildContext context,
     AuthAuthenticated authState,
@@ -650,9 +587,7 @@ class _AuthenticatedDashboardShellState
         children: [
           Row(
             children: [
-              DashboardSidebar(
-                onOpenCommandPalette: _openCommandPalette,
-              ),
+              const DashboardSidebar(),
               Expanded(
                 child: Column(
                   children: [
@@ -672,7 +607,6 @@ class _AuthenticatedDashboardShellState
                               unreadCount: notifState.unreadCount,
                               onNotificationTap: () =>
                                   _toggleNotificationPanel(context),
-                              onOpenSearch: _openCommandPalette,
                             );
                           },
                         );

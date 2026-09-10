@@ -12,11 +12,8 @@ import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../navigation/presentation/cubit/navigation_cubit.dart';
 
 class DashboardSidebar extends StatelessWidget {
-  final VoidCallback? onOpenCommandPalette;
-
   const DashboardSidebar({
     super.key,
-    this.onOpenCommandPalette,
   });
 
   @override
@@ -87,15 +84,6 @@ class DashboardSidebar extends StatelessWidget {
               },
             ),
           ),
-          // Command Palette trigger
-          if (onOpenCommandPalette != null)
-            _SidebarItem(
-              icon: Icons.search,
-              label: 'Command Palette (⌘K)',
-              isActive: false,
-              onTap: onOpenCommandPalette,
-              color: AppTheme.textSecondary,
-            ),
           // Logout
           _SidebarItem(
             icon: Icons.logout,

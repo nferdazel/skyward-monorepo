@@ -466,17 +466,24 @@ class _FleetViewState extends State<FleetView>
                 final aircraft = fleetList[index];
                 return KeyedSubtree(
                   key: ValueKey(aircraft.id),
-                  child: GestureDetector(
-                    onTap: () =>
-                        setState(() => _selectedAircraftId = aircraft.id),
-                    child: _buildFleetRow(
-                      context,
-                      aircraft,
-                      userId,
-                      currencyFormat,
-                      isActionLoading,
-                      autoGroundingThreshold,
-                      assignedFleetIds,
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: InkWell(
+                      onTap: () =>
+                          setState(() => _selectedAircraftId = aircraft.id),
+                      hoverColor: AppTheme.surfaceActive.withValues(alpha: 0.4),
+                      splashColor: AppTheme.primary.withValues(alpha: 0.08),
+                      highlightColor:
+                          AppTheme.surfaceActive.withValues(alpha: 0.5),
+                      child: _buildFleetRow(
+                        context,
+                        aircraft,
+                        userId,
+                        currencyFormat,
+                        isActionLoading,
+                        autoGroundingThreshold,
+                        assignedFleetIds,
+                      ),
                     ),
                   ),
                 );
