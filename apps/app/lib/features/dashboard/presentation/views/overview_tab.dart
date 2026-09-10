@@ -15,6 +15,9 @@ import '../../../../presentation/widgets/segmented_progress_bar.dart';
 import '../../../../presentation/widgets/tactile_button.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
+import '../../../events/domain/game_event_model.dart';
+import '../../../events/presentation/cubit/events_cubit.dart';
+import '../../../events/presentation/cubit/events_state.dart';
 import '../../../finance/presentation/cubit/finance_cubit.dart';
 import '../../../fleet/presentation/cubit/fleet_cubit.dart';
 import '../../../leaderboard/presentation/cubit/leaderboard_cubit.dart';
@@ -65,6 +68,14 @@ class OverviewTab extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildKPICardsRow(context, overview),
+          if (overview.activeEvents.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.sectionGap),
+            _buildActiveEventsSection(
+              context,
+              overview,
+              context.read<SimulationCubit>().state.gameTime,
+            ),
+          ],
           const SizedBox(height: AppSpacing.sectionGap),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -416,6 +427,107 @@ class OverviewTab extends StatelessWidget {
     );
   }
 
+  // ── Active World Events ──
+
+  static IconData _eventIcon(String eventType) {
+    switch (eventType) {
+      case 'fuel_shock':
+        return Icons.local_gas_station;
+      case 'demand_surge':
+        return Icons.trending_up;
+      case 'weather_disruption':
+        return Icons.cloud;
+      case 'maintenance_shock':
+        return Icons.build;
+      default:
+        return Icons.public;
+    }
+  }
+
+  static Color _eventColor(String eventType) {
+    switch (eventType) {
+      case 'fuel_shock':
+        return AppTheme.warning;
+      case 'demand_surge':
+        return AppTheme.success;
+      case 'weather_disruption':
+        return AppTheme.info;
+      case 'maintenance_shock':
+        return AppTheme.warning;
+      default:
+        return AppTheme.textSecondary;
+    }
+  }
+
+  static String _remainingLabel(Duration remaining) {
+    final hours = remaining.inHours;
+    if (hours >= 24) {
+      return '${(hours / 24).toStringAsFixed(1)}d remaining';
+    }
+    if (hours > 0) {
+      return '${hours}h remaining';
+    }
+    return 'expiring soon';
+  }
+
+  Widget _buildActiveEventsSection(
+    BuildContext context,
+    OverviewSnapshot overview,
+    DateTime gameTime,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const AppSectionHeader(title: 'ACTIVE WORLD EVENTS'),
+        const SizedBox(height: AppSpacing.md),
+        Wrap(
+          spacing: AppSpacing.md,
+          runSpacing: AppSpacing.md,
+          children: overview.activeEvents.map((event) {
+            final color = _eventColor(event.eventType);
+            return ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 360),
+              child: CraftCard(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                borderColor: color.withValues(alpha: 0.3),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(_eventIcon(event.eventType), color: color, size: 18),
+                    const SizedBox(width: AppSpacing.sm),
+                    Flexible(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            event.title.toUpperCase(),
+                            style: AppTypography.microLabel.copyWith(color: color),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            event.description.isEmpty
+                                ? _remainingLabel(
+                                    event.remainingDuration(gameTime),
+                                  )
+                                : '${event.description} • ${_remainingLabel(event.remainingDuration(gameTime))}',
+                            style: AppTypography.captionRegular.copyWith(
+                              color: AppTheme.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
   // ── Action Queue / Priorities ──
 
   Widget _buildPrioritiesSection(
@@ -497,6 +609,9 @@ class OverviewTab extends StatelessWidget {
     final routesState = context.select((RoutesCubit c) => c.state);
     final financeState = context.select((FinanceCubit c) => c.state);
     final leaderboardState = context.select((LeaderboardCubit c) => c.state);
+    final eventsState = context.select((EventsCubit c) => c.state);
+    final activeEvents =
+        eventsState is EventsLoaded ? eventsState.activeEvents : const <GameEvent>[];
 
     return OverviewSnapshot.fromStates(
       user: user,
@@ -505,6 +620,7 @@ class OverviewTab extends StatelessWidget {
       routesState: routesState,
       financeState: financeState,
       leaderboardState: leaderboardState,
+      activeEvents: activeEvents,
     );
   }
 }

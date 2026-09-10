@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/domain/user_model.dart';
+import '../../events/domain/game_event_model.dart';
 import '../../finance/presentation/cubit/finance_state.dart';
 import '../../fleet/domain/fleet_models.dart';
 import '../../fleet/presentation/cubit/fleet_state.dart';
@@ -61,6 +62,7 @@ class OverviewSnapshot {
   final String topRouteRiskLabel;
   final String bestRouteYieldLabel;
   final List<OverviewPriority> priorities;
+  final List<GameEvent> activeEvents;
 
   const OverviewSnapshot({
     required this.totalFleetCount,
@@ -96,6 +98,7 @@ class OverviewSnapshot {
     required this.topRouteRiskLabel,
     required this.bestRouteYieldLabel,
     required this.priorities,
+    this.activeEvents = const [],
   });
 
   static OverviewSnapshot fromStates({
@@ -105,6 +108,7 @@ class OverviewSnapshot {
     required RoutesState routesState,
     required FinanceState financeState,
     required LeaderboardState leaderboardState,
+    List<GameEvent> activeEvents = const [],
   }) {
     final fleet = fleetState is FleetDataState
         ? fleetState.fleet
@@ -359,6 +363,7 @@ class OverviewSnapshot {
           ? AppStrings.noYieldSignalLabel
           : '${topYieldRoute.originIata} ${AppStrings.routeDividerGlyph} ${topYieldRoute.destinationIata}',
       priorities: priorities.take(3).toList(),
+      activeEvents: activeEvents,
     );
   }
 }

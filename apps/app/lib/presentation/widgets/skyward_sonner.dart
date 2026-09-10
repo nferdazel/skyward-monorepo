@@ -29,7 +29,13 @@ class _SkywardSonnerState extends State<SkywardSonner> {
 
   @override
   Widget build(BuildContext context) {
-    final activeNotifications = widget.notifications.take(4).toList();
+    // World events are persistent status (shown on the Overview), not transient
+    // alerts — excluding them avoids re-mounting toasts as their countdown
+    // changes each refresh.
+    final activeNotifications = widget.notifications
+        .where((n) => n.type != NotificationType.event)
+        .take(4)
+        .toList();
     if (activeNotifications.isEmpty) return const SizedBox.shrink();
 
     return Positioned(
@@ -136,7 +142,7 @@ class _ToastCard extends StatelessWidget {
     final borderColor = resolveBorderColor();
 
     return Dismissible(
-      key: ValueKey(notification.timestamp.toIso8601String() + notification.title),
+      key: ValueKey(notification.identity),
       direction: DismissDirection.horizontal,
       onDismissed: (_) => onDismiss(),
       child: GestureDetector(

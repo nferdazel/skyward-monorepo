@@ -6,6 +6,8 @@ import 'package:skyward/features/auth/presentation/cubit/auth_cubit.dart';
 import 'package:skyward/features/auth/presentation/cubit/auth_state.dart';
 import 'package:skyward/features/auth/domain/user_model.dart';
 import 'package:skyward/features/dashboard/presentation/views/overview_tab.dart';
+import 'package:skyward/features/events/data/events_gateway.dart';
+import 'package:skyward/features/events/presentation/cubit/events_cubit.dart';
 import 'package:skyward/features/finance/presentation/cubit/finance_cubit.dart';
 import 'package:skyward/features/fleet/presentation/cubit/fleet_cubit.dart';
 import 'package:skyward/features/leaderboard/presentation/cubit/leaderboard_cubit.dart';
@@ -26,6 +28,7 @@ void main() {
     final simulationCubit = SimulationCubit();
     final financeCubit = FinanceCubit();
     final leaderboardCubit = LeaderboardCubit();
+    final eventsCubit = EventsCubit();
 
     addTearDown(() {
       authCubit.close();
@@ -34,6 +37,7 @@ void main() {
       simulationCubit.close();
       financeCubit.close();
       leaderboardCubit.close();
+      eventsCubit.close();
     });
 
     authCubit.emit(
@@ -58,6 +62,7 @@ void main() {
           BlocProvider<SimulationCubit>.value(value: simulationCubit),
           BlocProvider<FinanceCubit>.value(value: financeCubit),
           BlocProvider<LeaderboardCubit>.value(value: leaderboardCubit),
+          BlocProvider<EventsCubit>.value(value: eventsCubit),
         ],
         child: MaterialApp(
           theme: AppTheme.darkTheme,
@@ -83,4 +88,99 @@ void main() {
     expect(find.text('QUICK ACTIONS'), findsOneWidget);
     expect(find.text('ACTION QUEUE'), findsOneWidget);
   });
+
+  testWidgets('OverviewTab renders active world events when present', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(2400, 1200);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final authCubit = AuthCubit();
+    final fleetCubit = FleetCubit();
+    final routesCubit = RoutesCubit();
+    final simulationCubit = SimulationCubit();
+    final financeCubit = FinanceCubit();
+    final leaderboardCubit = LeaderboardCubit();
+    final eventsCubit = EventsCubit(gateway: _StubEventsGateway());
+
+    addTearDown(() {
+      authCubit.close();
+      fleetCubit.close();
+      routesCubit.close();
+      simulationCubit.close();
+      financeCubit.close();
+      leaderboardCubit.close();
+      eventsCubit.close();
+    });
+
+    authCubit.emit(
+      AuthAuthenticated(
+        user: AppUser(
+          id: 'test-user-id',
+          username: 'testpilot',
+          companyName: 'Test Airlines',
+          ceoName: 'CEO Test',
+          gameCurrentTime: DateTime.parse('2038-01-02T00:00:00Z'),
+        ),
+        token: 'test-token',
+      ),
+    );
+
+    await eventsCubit.loadActiveEvents();
+
+    await tester.pumpWidget(
+      MultiBlocProvider(
+        providers: [
+          BlocProvider<AuthCubit>.value(value: authCubit),
+          BlocProvider<FleetCubit>.value(value: fleetCubit),
+          BlocProvider<RoutesCubit>.value(value: routesCubit),
+          BlocProvider<SimulationCubit>.value(value: simulationCubit),
+          BlocProvider<FinanceCubit>.value(value: financeCubit),
+          BlocProvider<LeaderboardCubit>.value(value: leaderboardCubit),
+          BlocProvider<EventsCubit>.value(value: eventsCubit),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.darkTheme,
+          home: Scaffold(
+            body: OverviewTab(
+              onNavigateToFleet: () {},
+              onNavigateToRoutes: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('ACTIVE WORLD EVENTS'), findsOneWidget);
+    expect(find.textContaining('FUEL PRICE SURGE'), findsOneWidget);
+    // The section computes remaining duration from the simulation game clock.
+    // The stub event ends 2 days from now, so a remaining label must render.
+    expect(find.textContaining('remaining'), findsOneWidget);
+  });
+}
+
+class _StubEventsGateway implements EventsGateway {
+  @override
+  Future<List<dynamic>> loadActiveEvents() async {
+    final now = DateTime.now().toUtc();
+    return [
+      {
+        'id': 'e1',
+        'event_type': 'fuel_shock',
+        'title': 'Fuel Price Surge',
+        'description': 'Global fuel prices increased',
+        'effect_type': 'fuel_price',
+        'effect_target': 'global',
+        'effect_value': 1.2,
+        'start_game_time': now.toIso8601String(),
+        'end_game_time': now.add(const Duration(days: 2)).toIso8601String(),
+        'is_active': true,
+      },
+    ];
+  }
 }

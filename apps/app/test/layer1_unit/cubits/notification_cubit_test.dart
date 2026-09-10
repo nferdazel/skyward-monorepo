@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:skyward/features/bank/domain/bank_account_model.dart';
 import 'package:skyward/features/bank/domain/credit_report_model.dart';
 import 'package:skyward/features/bank/presentation/cubit/bank_state.dart';
+import 'package:skyward/features/events/domain/game_event_model.dart';
 import 'package:skyward/features/fleet/domain/fleet_models.dart';
 import 'package:skyward/features/fleet/presentation/cubit/fleet_state.dart';
 import 'package:skyward/features/notification/presentation/cubit/notification_cubit.dart';
@@ -162,6 +163,85 @@ void main() {
       expect(cubit.state.unreadCount, equals(0));
 
       cubit.dismissNotification(notif);
+      expect(cubit.state.notifications, isEmpty);
+    });
+
+    test('refreshNotifications surfaces active world events', () {
+      final event = GameEvent(
+        id: 'e1',
+        eventType: 'fuel_shock',
+        title: 'Fuel Price Surge',
+        description: 'Global fuel prices increased',
+        effectType: 'fuel_price',
+        effectTarget: 'global',
+        effectValue: 1.2,
+        startGameTime: DateTime(2038, 1, 1),
+        endGameTime: DateTime(2038, 1, 4),
+        isActive: true,
+      );
+
+      cubit.refreshNotifications(
+        activeEvents: [event],
+        gameTime: DateTime(2038, 1, 2),
+      );
+
+      expect(cubit.state.notifications.length, equals(1));
+      final notification = cubit.state.notifications.first;
+      expect(notification.type, equals(NotificationType.event));
+      expect(notification.title, contains('Fuel Price Surge'));
+      // Remaining is computed against the supplied game time (2 days left).
+      expect(notification.message, contains('2.0d'));
+    });
+
+    test('event read state survives countdown changes (dedup by id)', () {
+      final event = GameEvent(
+        id: 'e1',
+        eventType: 'fuel_shock',
+        title: 'Fuel Price Surge',
+        description: 'Global fuel prices increased',
+        effectType: 'fuel_price',
+        effectTarget: 'global',
+        effectValue: 1.2,
+        startGameTime: DateTime(2038, 1, 1),
+        endGameTime: DateTime(2038, 1, 4),
+        isActive: true,
+      );
+
+      cubit.refreshNotifications(
+        activeEvents: [event],
+        gameTime: DateTime(2038, 1, 2),
+      );
+      cubit.markAsRead(cubit.state.notifications.first);
+      expect(cubit.state.unreadCount, equals(0));
+
+      // Later refresh: countdown changed, but read state must persist.
+      cubit.refreshNotifications(
+        activeEvents: [event],
+        gameTime: DateTime(2038, 1, 3),
+      );
+      expect(cubit.state.notifications.length, equals(1));
+      expect(cubit.state.unreadCount, equals(0));
+    });
+
+    test('refreshNotifications drops events when activeEvents is null', () {
+      final event = GameEvent(
+        id: 'e1',
+        eventType: 'fuel_shock',
+        title: 'Fuel Price Surge',
+        description: '',
+        effectType: 'fuel_price',
+        effectTarget: 'global',
+        effectValue: 1.2,
+        startGameTime: DateTime(2038, 1, 1),
+        endGameTime: DateTime(2038, 1, 4),
+        isActive: true,
+      );
+
+      cubit.refreshNotifications(activeEvents: [event]);
+      expect(cubit.state.notifications.length, equals(1));
+
+      // A refresh without events (e.g. they expired) clears them.
+      cubit.refreshNotifications(activeEvents: const []);
       expect(cubit.state.notifications, isEmpty);
     });
   });

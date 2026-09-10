@@ -19,6 +19,8 @@ import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
 import '../../../bank/presentation/cubit/bank_cubit.dart';
 import '../../../bank/presentation/cubit/bank_state.dart';
+import '../../../events/presentation/cubit/events_cubit.dart';
+import '../../../events/presentation/cubit/events_state.dart';
 import '../../../finance/presentation/cubit/finance_cubit.dart';
 import '../../../finance/presentation/cubit/finance_state.dart';
 import '../../../finance/presentation/views/finance_view.dart';
@@ -102,6 +104,7 @@ class _AuthenticatedDashboardShellState
   late final BankCubit _bankCubit;
   late final LazyTabCubit _lazyTabCubit;
   late final NotificationCubit _notificationCubit;
+  late final EventsCubit _eventsCubit;
 
   // ── Onboarding state ──
   bool _showOnboarding = false;
@@ -121,6 +124,7 @@ class _AuthenticatedDashboardShellState
     _bankCubit = BankCubit();
     _lazyTabCubit = LazyTabCubit();
     _notificationCubit = NotificationCubit();
+    _eventsCubit = EventsCubit();
     _bootstrapForUser(widget.initialUser);
     _checkOnboarding();
   }
@@ -174,6 +178,8 @@ class _AuthenticatedDashboardShellState
     _financeCubit
       ..loadLedger(user.id)
       ..setupReactivity(_simulationCubit, user.id);
+
+    _eventsCubit.setupReactivity(_simulationCubit);
   }
 
   void _ensureTabReady(int index, AppUser user, SimulationState simulationState) {
@@ -269,6 +275,7 @@ class _AuthenticatedDashboardShellState
     _bankCubit.close();
     _lazyTabCubit.close();
     _notificationCubit.close();
+    _eventsCubit.close();
     super.dispose();
   }
 
@@ -349,6 +356,7 @@ class _AuthenticatedDashboardShellState
         BlocProvider<BankCubit>.value(value: _bankCubit),
         BlocProvider<LazyTabCubit>.value(value: _lazyTabCubit),
         BlocProvider<NotificationCubit>.value(value: _notificationCubit),
+        BlocProvider<EventsCubit>.value(value: _eventsCubit),
       ],
       child: MultiBlocListener(
         listeners: [
@@ -370,6 +378,8 @@ class _AuthenticatedDashboardShellState
                 simState: _simulationCubit.state,
                 routesState: _routesCubit.state,
                 bankState: _bankCubit.state,
+                activeEvents: _eventsCubit.activeEvents,
+                gameTime: _simulationCubit.state.gameTime,
               );
             },
           ),
@@ -381,6 +391,8 @@ class _AuthenticatedDashboardShellState
                 simState: _simulationCubit.state,
                 routesState: state,
                 bankState: _bankCubit.state,
+                activeEvents: _eventsCubit.activeEvents,
+                gameTime: _simulationCubit.state.gameTime,
               );
             },
           ),
@@ -395,6 +407,8 @@ class _AuthenticatedDashboardShellState
                 simState: _simulationCubit.state,
                 routesState: _routesCubit.state,
                 bankState: state,
+                activeEvents: _eventsCubit.activeEvents,
+                gameTime: _simulationCubit.state.gameTime,
               );
             },
           ),
@@ -408,6 +422,21 @@ class _AuthenticatedDashboardShellState
                 simState: state,
                 routesState: _routesCubit.state,
                 bankState: _bankCubit.state,
+                activeEvents: _eventsCubit.activeEvents,
+                gameTime: _simulationCubit.state.gameTime,
+              );
+            },
+          ),
+          BlocListener<EventsCubit, EventsState>(
+            listenWhen: (prev, cur) => cur is EventsLoaded,
+            listener: (context, state) {
+              _notificationCubit.refreshNotifications(
+                fleetState: _fleetCubit.state,
+                simState: _simulationCubit.state,
+                routesState: _routesCubit.state,
+                bankState: _bankCubit.state,
+                activeEvents: _eventsCubit.activeEvents,
+                gameTime: _simulationCubit.state.gameTime,
               );
             },
           ),
