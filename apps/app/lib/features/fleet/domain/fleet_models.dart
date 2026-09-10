@@ -156,15 +156,14 @@ class UserFleetAircraft with Equatable {
     return model.leasePricePerMonth * 0.25;
   }
 
-  // Calculate dynamic repair cost based on condition, acquisition type, and pricing
+  // Calculate dynamic repair cost based on condition and asset value.
+  // Must match the authoritative Go backend (apps/api/internal/engine/fleet.go
+  // Repair): repair is priced off aircraft value for BOTH owned and leased
+  // aircraft. Leased aircraft already carry higher wear per flight cycle,
+  // which is the intended differentiator — not a punitive repair formula.
   double get repairCost {
     if (condition >= 100.0) return 0.0;
     final wearPercent = 100.0 - condition;
-    if (acquisitionType == 'lease') {
-      // Leased aircraft: maintenance is an operational cost proportional to lease rate
-      return wearPercent * (model.leasePricePerMonth * 0.5);
-    }
-    // Owned aircraft: capital repair cost proportional to asset value
     return wearPercent * (model.purchasePrice * 0.0005);
   }
 

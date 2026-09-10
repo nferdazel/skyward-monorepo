@@ -18,6 +18,20 @@ type MutationResult struct {
 	NewCash float64 `json:"new_cash,omitempty"`
 }
 
+// repairCostFor computes the cost to restore an aircraft from `condition` to
+// 100%. It is priced off the aircraft's value (purchase price) for BOTH owned
+// and leased aircraft. Leased aircraft already carry higher wear per flight
+// cycle (leased_wear_per_flight_cycle), which is the intended differentiator —
+// not a punitive repair formula. The previous lease formula
+// `(100-condition) * lease_price_per_month * 0.50` made a full repair cost
+// ~10x the monthly lease (GAME-05), turning leasing into a new-player trap.
+func repairCostFor(condition, purchasePrice float64) float64 {
+	if condition >= 100.0 {
+		return 0
+	}
+	return (100.0 - condition) * (purchasePrice * 0.0005)
+}
+
 // PurchaseParams — input purchase/lease.
 type PurchaseParams struct {
 	ModelID         string `json:"model_id"`
@@ -164,14 +178,13 @@ func (f *FleetService) Repair(ctx context.Context, userID, fleetID string) (*Mut
 	defer tx.Rollback(ctx) //nolint:errcheck
 
 	var condition float64
-	var acqType string
-	var purchasePrice, leasePrice float64
+	var purchasePrice float64
 	var modelName string
 	err = tx.QueryRow(ctx, `
-		SELECT f.condition, f.acquisition_type, m.purchase_price, m.lease_price_per_month, m.model_name
+		SELECT f.condition, m.purchase_price, m.model_name
 		FROM fleet_aircraft f JOIN aircraft_models m ON m.id=f.aircraft_model_id
 		WHERE f.id=$1 AND f.user_id=$2 FOR UPDATE`, fleetID, userID).
-		Scan(&condition, &acqType, &purchasePrice, &leasePrice, &modelName)
+		Scan(&condition, &purchasePrice, &modelName)
 	if err != nil {
 		return &MutationResult{Success: false, Message: "Aircraft not found."}, nil
 	}
@@ -179,12 +192,10 @@ func (f *FleetService) Repair(ctx context.Context, userID, fleetID string) (*Mut
 	if condition >= 100.0 {
 		return &MutationResult{Success: true, Message: fmt.Sprintf("Aircraft %s is already in pristine condition (100%%).", modelName), NewCash: cash}, nil
 	}
-	var repairCost float64
-	if acqType == "lease" {
-		repairCost = (100.0 - condition) * (leasePrice * 0.50)
-	} else {
-		repairCost = (100.0 - condition) * (purchasePrice * 0.0005)
-	}
+	// Repair is priced off the aircraft's value, not its monthly lease rent.
+	// Leased aircraft already carry higher wear (leased_wear_per_flight_cycle),
+	// which is the intended differentiator. See repairCostFor.
+	repairCost := repairCostFor(condition, purchasePrice)
 	if cash < repairCost {
 		return &MutationResult{Success: false,
 			Message: fmt.Sprintf("Insufficient funds for repair. Required: $%.2f", repairCost), NewCash: cash}, nil
