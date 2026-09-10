@@ -281,6 +281,49 @@ class UserRoute with Equatable {
     return maxFactor + t * (minFactor - maxFactor);
   }
 
+  // GAME-03: allocate a daily demand pool across cabins by willingness-to-pay.
+  // Mirrors Go allocateCabins (simulation.go). Returns total daily passengers
+  // and revenue. Premium seats beyond the willing share cannot be sold to
+  // economy passengers, which is what creates the trade-off.
+  static ({double passengers, double revenue}) allocateCabins({
+    required int economySeatsPerDay,
+    required int businessSeatsPerDay,
+    required int firstClassSeatsPerDay,
+    required double baseFare,
+    required double demandPool,
+  }) {
+    final totalWilling = GameConstants.economyWillingShare +
+        GameConstants.businessWillingShare +
+        GameConstants.firstWillingShare;
+    if (totalWilling <= 0) {
+      return (passengers: 0.0, revenue: 0.0);
+    }
+    final econDemand =
+        demandPool * GameConstants.economyWillingShare / totalWilling;
+    final bizDemand =
+        demandPool * GameConstants.businessWillingShare / totalWilling;
+    final firstDemand =
+        demandPool * GameConstants.firstWillingShare / totalWilling;
+
+    final firstPax =
+        firstDemand < firstClassSeatsPerDay ? firstDemand : firstClassSeatsPerDay.toDouble();
+    final bizPax =
+        bizDemand < businessSeatsPerDay ? bizDemand : businessSeatsPerDay.toDouble();
+    // Premium-willing passengers not accommodated in premium downgrade to
+    // economy, which fills from its own willing share plus that overflow.
+    final downgrades = (bizDemand - bizPax) + (firstDemand - firstPax);
+    final econPax =
+        (econDemand + downgrades) < economySeatsPerDay
+            ? (econDemand + downgrades)
+            : economySeatsPerDay.toDouble();
+
+    final passengers = econPax + bizPax + firstPax;
+    final revenue = econPax * baseFare +
+        bizPax * baseFare * GameConstants.businessFareMultiplier +
+        firstPax * baseFare * GameConstants.firstFareMultiplier;
+    return (passengers: passengers, revenue: revenue);
+  }
+
   // GAME-02: fixed daily passenger demand pool for a route. Mirrors the
   // authoritative Go engine (simulation.go routeDailyDemand).
   static double calculateDailyDemandPool({
@@ -302,8 +345,9 @@ class UserRoute with Equatable {
         pricingDemand;
   }
 
-  // GAME-02: per-flight passengers given the fixed daily pool split across the
-  // player's weekly flights. More flights on the same pool => lower load factor.
+  // GAME-02/GAME-03: per-flight passengers given the fixed daily pool split
+  // across the player's weekly flights and allocated across cabins. Mirrors Go
+  // simulation.go. When no cabin is configured, all seats are economy.
   static int calculateExpectedPassengers({
     required int capacity,
     required double distanceKm,
@@ -311,6 +355,9 @@ class UserRoute with Equatable {
     required int originDemandIndex,
     required int destinationDemandIndex,
     int flightsPerWeek = 7,
+    int economySeats = 0,
+    int businessSeats = 0,
+    int firstClassSeats = 0,
   }) {
     if (capacity <= 0 || flightsPerWeek <= 0) return 0;
     final dailyDemand = calculateDailyDemandPool(
@@ -319,12 +366,23 @@ class UserRoute with Equatable {
       originDemandIndex: originDemandIndex,
       destinationDemandIndex: destinationDemandIndex,
     );
+    var econ = economySeats;
+    var biz = businessSeats;
+    var first = firstClassSeats;
+    if (econ + biz + first <= 0) {
+      econ = capacity;
+      biz = 0;
+      first = 0;
+    }
     final flightsPerDay = flightsPerWeek / 7.0;
-    final seatsPerDay = flightsPerDay * capacity;
-    final passengersPerDay = dailyDemand < seatsPerDay * GameConstants.demandPoolMaxLoadFactor
-        ? dailyDemand
-        : seatsPerDay * GameConstants.demandPoolMaxLoadFactor;
-    final passengersPerFlight = (passengersPerDay / flightsPerDay).floor();
+    final allocation = allocateCabins(
+      economySeatsPerDay: (econ * flightsPerDay).round(),
+      businessSeatsPerDay: (biz * flightsPerDay).round(),
+      firstClassSeatsPerDay: (first * flightsPerDay).round(),
+      baseFare: ticketPrice,
+      demandPool: dailyDemand,
+    );
+    final passengersPerFlight = (allocation.passengers / flightsPerDay).floor();
     if (passengersPerFlight < 0) return 0;
     if (passengersPerFlight > capacity) return capacity;
     return passengersPerFlight;
@@ -406,6 +464,9 @@ class UserRoute with Equatable {
         originDemandIndex: origin.demandIndex,
         destinationDemandIndex: destination.demandIndex,
         flightsPerWeek: flightsPerWeek,
+        economySeats: aircraft.economySeats,
+        businessSeats: aircraft.businessSeats,
+        firstClassSeats: aircraft.firstClassSeats,
       );
       final directCost = calculateDirectOperatingCostPerFlight(
         distanceKm: distanceKm,
@@ -413,7 +474,31 @@ class UserRoute with Equatable {
         origin: origin,
         destination: destination,
       );
-      final revenuePerFlight = expectedPassengers * ticketPrice;
+      // Revenue includes premium yield: allocate the daily pool across cabins.
+      final flightsPerDay = flightsPerWeek / 7.0;
+      final dailyDemand = calculateDailyDemandPool(
+        distanceKm: distanceKm,
+        ticketPrice: ticketPrice,
+        originDemandIndex: origin.demandIndex,
+        destinationDemandIndex: destination.demandIndex,
+      );
+      var econSeats = aircraft.economySeats;
+      var bizSeats = aircraft.businessSeats;
+      var firstSeats = aircraft.firstClassSeats;
+      if (econSeats + bizSeats + firstSeats <= 0) {
+        econSeats = aircraft.effectivePassengerCapacity;
+        bizSeats = 0;
+        firstSeats = 0;
+      }
+      final allocation = allocateCabins(
+        economySeatsPerDay: (econSeats * flightsPerDay).round(),
+        businessSeatsPerDay: (bizSeats * flightsPerDay).round(),
+        firstClassSeatsPerDay: (firstSeats * flightsPerDay).round(),
+        baseFare: ticketPrice,
+        demandPool: dailyDemand,
+      );
+      final revenuePerFlight =
+          flightsPerDay > 0 ? allocation.revenue / flightsPerDay : 0.0;
       final contributionPerFlight = revenuePerFlight - directCost;
       final maintenancePreview = UserRoute.buildMaintenancePreviewForSchedule(
         distanceKm: distanceKm,
@@ -491,6 +576,9 @@ class UserRoute with Equatable {
       originDemandIndex: origin.demandIndex,
       destinationDemandIndex: destination.demandIndex,
       flightsPerWeek: flightsPerWeek,
+      economySeats: aircraft.economySeats,
+      businessSeats: aircraft.businessSeats,
+      firstClassSeats: aircraft.firstClassSeats,
     );
   }
 
