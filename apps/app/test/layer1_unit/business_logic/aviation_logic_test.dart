@@ -390,5 +390,31 @@ void main() {
         expect(assessment.viability, isNot(RouteViabilityBand.blocked));
       },
     );
+
+    test('GAME-03 cabin allocation trades yield against sellable seats', () {
+      const baseFare = 100.0;
+
+      // Large pool: premium-willing demand fills premium cabins.
+      final thick = UserRoute.allocateCabins(
+        economySeatsPerDay: 120,
+        businessSeatsPerDay: 18,
+        firstClassSeatsPerDay: 10,
+        baseFare: baseFare,
+        demandPool: 1000.0,
+      );
+      expect(thick.passengers, 148.0);
+      expect(thick.revenue, greaterThan(0.0));
+
+      // Zero pool yields nothing.
+      final none = UserRoute.allocateCabins(
+        economySeatsPerDay: 120,
+        businessSeatsPerDay: 18,
+        firstClassSeatsPerDay: 10,
+        baseFare: baseFare,
+        demandPool: 0.0,
+      );
+      expect(none.passengers, 0.0);
+      expect(none.revenue, 0.0);
+    });
   });
 }

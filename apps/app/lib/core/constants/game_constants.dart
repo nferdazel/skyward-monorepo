@@ -107,6 +107,17 @@ class GameConstants {
   /// GAME-02: maximum load factor applied to offered seats per day.
   static const double demandPoolMaxLoadFactor = 0.95;
 
+  /// GAME-03: premium fare multipliers. Calibrated so a real trade-off exists
+  /// (thin pool -> premium mix wins; thick pool -> all-economy wins).
+  static const double businessFareMultiplier = 1.5;
+  static const double firstFareMultiplier = 2.5;
+
+  /// GAME-03: share of the demand pool willing to pay for each cabin. Premium
+  /// seats beyond the willing share cannot be sold to economy passengers.
+  static const double economyWillingShare = 0.80;
+  static const double businessWillingShare = 0.15;
+  static const double firstWillingShare = 0.05;
+
   // Fallback only — game_config 'fuel_price_per_liter' is authoritative
   static const double fuelPricePerLiter = 0.85;
 
