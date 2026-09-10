@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/utils/app_formatters.dart';
 import '../../../../presentation/widgets/notification_panel.dart';
 import '../../../bank/presentation/cubit/bank_state.dart';
+import '../../../events/domain/game_event_model.dart';
 import '../../../fleet/presentation/cubit/fleet_state.dart';
 import '../../../routes/presentation/cubit/routes_state.dart';
 import '../../../simulation/presentation/cubit/simulation_state.dart';
@@ -14,10 +15,7 @@ class NotificationCubit extends Cubit<NotificationState> {
   void markAsRead(GameNotification notification) {
     final updated = [
       for (final n in state.notifications)
-        if (n.title == notification.title && n.message == notification.message)
-          n.copyWith(isRead: true)
-        else
-          n,
+        if (n.identity == notification.identity) n.copyWith(isRead: true) else n,
     ];
     emit(state.copyWith(notifications: updated));
   }
@@ -31,9 +29,7 @@ class NotificationCubit extends Cubit<NotificationState> {
 
   void dismissNotification(GameNotification notification) {
     final updated = state.notifications
-        .where(
-          (n) => !(n.title == notification.title && n.message == notification.message),
-        )
+        .where((n) => n.identity != notification.identity)
         .toList();
     emit(state.copyWith(notifications: updated));
   }
@@ -43,11 +39,13 @@ class NotificationCubit extends Cubit<NotificationState> {
     SimulationState? simState,
     RoutesState? routesState,
     BankState? bankState,
+    List<GameEvent>? activeEvents,
+    DateTime? gameTime,
   }) {
     final newNotifications = <GameNotification>[];
     final now = DateTime.now();
     final existingMap = {
-      for (final n in state.notifications) '${n.title}|${n.message}': n.isRead,
+      for (final n in state.notifications) n.identity: n.isRead,
     };
 
     // 1. Fleet condition warnings
@@ -220,6 +218,38 @@ class NotificationCubit extends Cubit<NotificationState> {
       }
     }
 
+    // 6. Active world events (fuel shocks, demand surges, weather, maintenance).
+    // Event boundaries are in game time, so remaining duration must be computed
+    // against the game clock, not wall clock. Dedup by event id so the live
+    // countdown does not reset the read state on every refresh.
+    if (activeEvents != null) {
+      final eventNow = gameTime ?? now;
+      for (final event in activeEvents) {
+        if (event.title.isEmpty) continue;
+        final title = 'WORLD EVENT: ${event.title}';
+        final remaining = event.remainingDuration(eventNow);
+        final hoursLeft = remaining.inHours;
+        final eta = hoursLeft >= 24
+            ? '${(hoursLeft / 24).toStringAsFixed(1)}d'
+            : '${hoursLeft}h';
+        final message = event.description.isEmpty
+            ? 'Active — $eta remaining.'
+            : '${event.description} — $eta remaining.';
+        final identity = 'WORLD EVENT|${event.id}';
+        final isRead = existingMap[identity] ?? false;
+        newNotifications.add(
+          GameNotification(
+            title: title,
+            message: message,
+            type: NotificationType.event,
+            timestamp: now,
+            isRead: isRead,
+            dedupKey: identity,
+          ),
+        );
+      }
+    }
+
     // Sort by severity (error first, then warning, then event, success, info)
     int severityRank(NotificationType type) {
       switch (type) {
@@ -257,7 +287,7 @@ class NotificationCubit extends Cubit<NotificationState> {
   ) {
     if (a.length != b.length) return false;
     for (var i = 0; i < a.length; i++) {
-      if (a[i].title != b[i].title ||
+      if (a[i].identity != b[i].identity ||
           a[i].message != b[i].message ||
           a[i].isRead != b[i].isRead) {
         return false;

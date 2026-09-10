@@ -14,13 +14,21 @@ class GameNotification {
   final DateTime timestamp;
   final bool isRead;
 
+  /// Stable identity used for read-state tracking and dismissal. Defaults to
+  /// `title|message`, but can be set for notifications whose message changes
+  /// over time (e.g. world events with a live countdown).
+  final String? dedupKey;
+
   const GameNotification({
     required this.title,
     required this.message,
     required this.type,
     required this.timestamp,
     this.isRead = false,
+    this.dedupKey,
   });
+
+  String get identity => dedupKey ?? '$title|$message';
 
   GameNotification copyWith({bool? isRead}) {
     return GameNotification(
@@ -29,6 +37,7 @@ class GameNotification {
       type: type,
       timestamp: timestamp,
       isRead: isRead ?? this.isRead,
+      dedupKey: dedupKey,
     );
   }
 }
