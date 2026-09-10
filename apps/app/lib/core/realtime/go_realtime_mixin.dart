@@ -21,7 +21,11 @@ mixin GoRealtimeMixin {
     List<String> channels,
     void Function(GoRealtimeEvent event) onEvent,
   ) {
-    _realtimeChannels.addAll(channels);
+    // Ganti (bukan tambah) set channel agar re-subscribe tidak menumpuk
+    // channel lama yang sudah tidak dipakai.
+    _realtimeChannels
+      ..clear()
+      ..addAll(channels);
     _realtimeSub?.cancel();
     _realtimeSub = GatewayFactory.realtimeClient.events.listen((event) {
       if (event.type != 'change') return;
