@@ -106,7 +106,8 @@ void main() {
       expect(aircraft.canOperateDistance(7600), isFalse);
       expect(aircraft.leaseTerminationFee, 125000.0);
       expect(aircraft.estimatedSaleValue, 0.0);
-      expect(aircraft.repairCost, closeTo(11.5 * (500000.0 * 0.5), 0.01));
+      // Leased repair is value-based, matching the Go backend (GAME-05).
+      expect(aircraft.repairCost, closeTo(11.5 * (100000000.0 * 0.0005), 0.01));
     });
 
     test(
