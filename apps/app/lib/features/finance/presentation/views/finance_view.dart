@@ -18,6 +18,7 @@ import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
 import '../../../bank/domain/bank_transaction_model.dart';
 import '../../../bank/presentation/cubit/bank_cubit.dart';
+import '../../../bank/presentation/cubit/bank_state.dart';
 import '../../../bank/presentation/widgets/bank_panel.dart';
 import '../cubit/finance_cubit.dart';
 import '../cubit/finance_state.dart';
@@ -204,7 +205,10 @@ class _FinanceViewState extends State<FinanceView>
                             ),
                             RepaintBoundary(
                               child: tabState.loadedIndexes.contains(2)
-                                  ? const BankPanel()
+                                  ? BankPanel(
+                                      onViewAllTransactions: () =>
+                                          _onTabTap(1),
+                                    )
                                   : const SizedBox.shrink(),
                             ),
                           ],
@@ -244,7 +248,22 @@ class _FinanceViewState extends State<FinanceView>
     if (state is! FinanceLoaded) {
       return const Center(child: CircularProgressIndicator());
     }
-    final overview = FinanceOverview.fromState(state);
+    // Debt service feeds the runway estimate. BankCubit is normally provided
+    // alongside FinanceCubit, but tolerate its absence (e.g. narrow test trees)
+    // rather than crashing the overview.
+    double weeklyDebt = 0;
+    try {
+      final bankState = context.read<BankCubit>().state;
+      if (bankState is BankLoaded) {
+        weeklyDebt = bankState.totalWeeklyPayment;
+      }
+    } on ProviderNotFoundException {
+      weeklyDebt = 0;
+    }
+    final overview = FinanceOverview.fromState(
+      state,
+      weeklyDebtPayment: weeklyDebt,
+    );
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.pagePadding),
       child: Column(
@@ -331,9 +350,60 @@ class _FinanceViewState extends State<FinanceView>
         ),
         const SizedBox(height: AppSpacing.blockGap),
         Expanded(
-          child: _buildGroupedLedger(context, state, filtered),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildLedgerHeaderRow(),
+              Expanded(
+                child: _buildGroupedLedger(context, state, filtered),
+              ),
+            ],
+          ),
         ),
       ],
+    );
+  }
+
+  /// Column header aligned with [_buildTransactionRow].
+  Widget _buildLedgerHeaderRow() {
+    Widget cell(String label, double width, {TextAlign align = TextAlign.left}) {
+      return SizedBox(
+        width: width,
+        child: Text(
+          label,
+          textAlign: align,
+          style: AppTypography.microLabel.copyWith(
+            color: AppTheme.textMuted,
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: AppTheme.border, width: 1)),
+      ),
+      child: Row(
+        children: [
+          cell(AppStrings.financeCategoryHeader, 100),
+          Expanded(
+            flex: 5,
+            child: Text(
+              AppStrings.financeDescriptionHeader,
+              style: AppTypography.microLabel.copyWith(
+                color: AppTheme.textMuted,
+              ),
+            ),
+          ),
+          cell(AppStrings.financeDateHeader, 120),
+          cell(AppStrings.financeAmountHeader, 110, align: TextAlign.right),
+          cell(AppStrings.financeBalanceHeader, 110, align: TextAlign.right),
+        ],
+      ),
     );
   }
 

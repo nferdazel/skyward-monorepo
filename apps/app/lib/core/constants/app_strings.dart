@@ -714,6 +714,7 @@ class AppStrings {
   static const String financeDateHeader = 'DATE';
   static const String financeAmountHeader = 'AMOUNT';
   static const String financeBalanceHeader = 'BALANCE';
+  static const String financeViewAllTransactions = 'VIEW ALL TRANSACTIONS';
 
   // Status values
   static const String statusActive = 'Active';

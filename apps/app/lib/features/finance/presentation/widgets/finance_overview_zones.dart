@@ -41,14 +41,21 @@ class FinanceOverview {
     return 'At current burn, cash lasts ${runwayDays!.toStringAsFixed(0)} days.';
   }
 
-  static FinanceOverview fromState(FinanceDataState state) {
+  static FinanceOverview fromState(
+    FinanceDataState state, {
+    double weeklyDebtPayment = 0,
+  }) {
     final rollingExpense = state.snapshot.rollingExpense30d;
     final rollingRevenue = state.snapshot.rollingRevenue30d;
     final dailyBurnRate = state.snapshot.ledgerWindowDays > 0
         ? rollingExpense / state.snapshot.ledgerWindowDays
         : 0.0;
-    final runwayDays = (rollingExpense > 0 && dailyBurnRate > 0)
-        ? state.snapshot.cash / dailyBurnRate
+    // Debt service is a real recurring outflow, so include it in the burn used
+    // for runway even before it appears in the rolling ledger window.
+    final dailyDebt = weeklyDebtPayment > 0 ? weeklyDebtPayment / 7.0 : 0.0;
+    final effectiveBurn = dailyBurnRate + dailyDebt;
+    final runwayDays = (effectiveBurn > 0)
+        ? state.snapshot.cash / effectiveBurn
         : null;
     final runwayLabel = runwayDays == null
         ? AppStrings.runwayUnknown

@@ -269,12 +269,15 @@ class FinanceCubit extends Cubit<FinanceState>
               final parsedDate = rawDate is DateTime
                   ? rawDate
                   : (rawDate != null ? DateTime.tryParse(rawDate.toString()) : null) ?? DateTime(2020, 1, 1);
+              // revenue_30d/expense_30d are not populated by the engine (only
+              // cash/net worth are), so 30d figures come from dailySnapshots
+              // derived from bank_transactions. Keep these at zero rather than
+              // reading dead columns.
               return FinanceDailySnapshot(
                 gameDate: parsedDate,
-                revenue: (sMap['revenue_30d'] as num?)?.toDouble() ?? 0.0,
-                expense: (sMap['expense_30d'] as num?)?.toDouble() ?? 0.0,
-                net: ((sMap['revenue_30d'] as num?)?.toDouble() ?? 0.0) -
-                    ((sMap['expense_30d'] as num?)?.toDouble() ?? 0.0),
+                revenue: 0.0,
+                expense: 0.0,
+                net: 0.0,
                 cash: (sMap['cash'] as num?)?.toDouble() ?? 0.0,
                 netWorth: (sMap['net_worth'] as num?)?.toDouble() ?? 0.0,
               );
@@ -413,12 +416,15 @@ class FinanceCubit extends Cubit<FinanceState>
               final parsedDate = rawDate is DateTime
                   ? rawDate
                   : (rawDate != null ? DateTime.tryParse(rawDate.toString()) : null) ?? DateTime(2020, 1, 1);
+              // revenue_30d/expense_30d are not populated by the engine (only
+              // cash/net worth are), so 30d figures come from dailySnapshots
+              // derived from bank_transactions. Keep these at zero rather than
+              // reading dead columns.
               return FinanceDailySnapshot(
                 gameDate: parsedDate,
-                revenue: (sMap['revenue_30d'] as num?)?.toDouble() ?? 0.0,
-                expense: (sMap['expense_30d'] as num?)?.toDouble() ?? 0.0,
-                net: ((sMap['revenue_30d'] as num?)?.toDouble() ?? 0.0) -
-                    ((sMap['expense_30d'] as num?)?.toDouble() ?? 0.0),
+                revenue: 0.0,
+                expense: 0.0,
+                net: 0.0,
                 cash: (sMap['cash'] as num?)?.toDouble() ?? 0.0,
                 netWorth: (sMap['net_worth'] as num?)?.toDouble() ?? 0.0,
               );
