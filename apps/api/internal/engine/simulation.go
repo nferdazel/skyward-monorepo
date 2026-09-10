@@ -8,6 +8,11 @@ import (
 	"time"
 )
 
+// financeSnapshotRetentionDays caps how many daily finance_snapshots rows are
+// kept per user. The table only feeds trend sparklines, so a bounded window is
+// enough and prevents unbounded growth.
+const financeSnapshotRetentionDays = 90
+
 // WorldTickResult — hasil world tick.
 type WorldTickResult struct {
 	TicksProcessed   int    `json:"ticks_processed"`
@@ -58,15 +63,32 @@ func (e *Engine) WorldTick(ctx context.Context) (*WorldTickResult, error) {
 	e.Pool.Exec(ctx, `INSERT INTO world_tick_log (season_id, status, started_at, finished_at, game_time_before, game_time_after, ticks_processed, players_processed, bots_processed)
 		VALUES ($1, 'success', NOW(), NOW(), $2, $3, 1, $4, $5)`, seasonID, gameTimeBefore, gameTimeAfter, players, bots)
 
-	// 6. Write finance_snapshots (Fase 6: per active player)
-	e.Pool.Exec(ctx, `
-		INSERT INTO finance_snapshots (user_id, snapshot_game_time, cash, net_worth, active_routes, fleet_count)
-		SELECT u.id, $1, COALESCE((SELECT balance FROM bank_accounts WHERE user_id=u.id AND account_type='operating' LIMIT 1), 0),
-		       COALESCE(u.net_worth, 0),
-		       (SELECT COUNT(*) FROM route_assignments WHERE user_id=u.id AND COALESCE(status,'active')='active'),
-		       (SELECT COUNT(*) FROM fleet_aircraft WHERE user_id=u.id)
-		FROM users u WHERE u.season_id = $2
-		ON CONFLICT DO NOTHING`, gameTimeAfter, seasonID)
+	// 6. Write finance_snapshots (Fase 6): one row per user per GAME DAY, not per
+	//    tick. Previously this inserted on every 60s tick with no retention,
+	//    growing unbounded (~100k+ rows/day). The table only feeds trend
+	//    sparklines, so a daily cadence is sufficient.
+	if !gameTimeAfter.Truncate(24 * time.Hour).Equal(gameTimeBefore.Truncate(24 * time.Hour)) {
+		e.Pool.Exec(ctx, `
+			INSERT INTO finance_snapshots (user_id, snapshot_game_time, cash, net_worth, active_routes, fleet_count)
+			SELECT u.id, date_trunc('day', $1::timestamptz),
+			       COALESCE((SELECT balance FROM bank_accounts WHERE user_id=u.id AND account_type='operating' LIMIT 1), 0),
+			       COALESCE(u.net_worth, 0),
+			       (SELECT COUNT(*) FROM route_assignments WHERE user_id=u.id AND COALESCE(status,'active')='active'),
+			       (SELECT COUNT(*) FROM fleet_aircraft WHERE user_id=u.id)
+			FROM users u WHERE u.season_id = $2 AND u.actor_type = 'REAL'
+			ON CONFLICT (user_id, snapshot_game_time) DO NOTHING`, gameTimeAfter, seasonID)
+
+		// Retention: keep at most financeSnapshotRetentionDays per user.
+		e.Pool.Exec(ctx, `
+			DELETE FROM finance_snapshots fs
+			USING (
+				SELECT id, ROW_NUMBER() OVER (
+					PARTITION BY user_id ORDER BY snapshot_game_time DESC
+				) AS rn
+				FROM finance_snapshots
+			) ranked
+			WHERE fs.id = ranked.id AND ranked.rn > $1`, financeSnapshotRetentionDays)
+	}
 
 	// 6. Broadcast realtime notifications
 	if e.Hub != nil {
