@@ -123,8 +123,8 @@ func (e *Engine) ProcessLoanPayments(ctx context.Context, userID string, gameDat
 				if dErr == nil {
 					_, _ = tx.Exec(ctx, `
 						UPDATE loans SET remaining_balance = GREATEST(0, remaining_balance - $1),
-						       status = CASE WHEN remaining_balance - $1 <= 0.005 THEN 'paid_off'::varchar ELSE status END
-						WHERE id=$2`, payment, l.ID)
+						       status = CASE WHEN remaining_balance - $1 <= $3 THEN 'paid_off'::varchar ELSE status END
+						WHERE id=$2`, payment, l.ID, moneyEpsilon)
 					if tx.Commit(ctx) == nil {
 						cash -= payment
 					} else {
@@ -183,8 +183,8 @@ func (e *Engine) ProcessAircraftFinancingPayments(ctx context.Context, userID st
 				if dErr == nil {
 					_, _ = tx.Exec(ctx, `
 						UPDATE loans SET remaining_balance = GREATEST(0, remaining_balance - $1),
-						       status = CASE WHEN remaining_balance - $1 <= 0.005 THEN 'paid_off'::varchar ELSE status END
-						WHERE id=$2`, payment, l.ID)
+						       status = CASE WHEN remaining_balance - $1 <= $3 THEN 'paid_off'::varchar ELSE status END
+						WHERE id=$2`, payment, l.ID, moneyEpsilon)
 					if tx.Commit(ctx) == nil {
 						cash -= payment
 					} else {

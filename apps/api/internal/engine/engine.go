@@ -16,6 +16,12 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// moneyEpsilon — toleransi pembulatan 1-sen untuk keputusan "lunas".
+// AUDIT-11: dulu literal 0.005 tersebar di bank.go/dayboundary.go dan
+// dibandingkan dengan kolom numeric tanpa scale. Setelah migration 16 semua
+// kolom uang di loans = numeric(20,2) dan komparasi memakai konstanta ini.
+const moneyEpsilon = 0.005
+
 // Engine — root engine; aggregates services.
 type Engine struct {
 	Store    *store.Store
