@@ -62,6 +62,16 @@ Supabase-contracts framing are retired; do not reintroduce them.
   it, and a typed exception boundary. Cubits depend on the abstraction.
 - DRY and KISS are strictly enforced. Do not invent patterns the repo already
   has. No static mutable state. Magic numbers belong in `GameConstants`.
+- Money rules (post-2026-09 audit):
+  - Simulation costs use `Ledger.DebitTxAllowNegative`; user-initiated debits
+    use the guarded `DebitTx`. Never swallow a ledger error — roll the tx back.
+  - Every `UPDATE`/`DELETE` against a money or ownership table must repeat
+    `AND user_id = $n` in the statement, even when a prior SELECT validated
+    ownership (defense-in-depth; a refactor must not re-open an IDOR).
+  - Read-modify-write on a single row (loans, fleet, routes) belongs in one
+    transaction with `SELECT … FOR UPDATE`.
+  - Loan/aircraft money comparisons use `engine.moneyEpsilon`, never a raw
+    `0.005` literal.
 
 ## 4. Testing Bar
 

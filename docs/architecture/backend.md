@@ -52,12 +52,27 @@ shutdown.
 - `GetBalance(ctx, userID)` — operating `bank_accounts` balance.
 - `DebitTx` / `CreditTx` — mutate balance inside a caller-supplied `pgx.Tx` and
   append a `bank_transactions` row with IFRS category/subcategory and game time.
+- `DebitTxAllowNegative` — **simulation-only** debit without a balance guard
+  (AUDIT-06). Unavoidable operating costs (fuel/crew/maintenance/lease/idle)
+  are always recorded, pushing the balance negative so the bankruptcy
+  machinery (`bankruptcy_cash_threshold`, `consecutive_negative_days`) can
+  actually fire. Never use it for user-initiated actions.
 - `DebitAccount` / `CreditAccount` — open their own transaction (used by the
   per-route simulation loop).
 - `GenerateTailNumber`, `GetUserGameTime`, `GetUserGameTimeTx`.
 
 `bank_accounts.balance` is canonical cash; `bank_transactions` is canonical
 money movement.
+
+**Ledger error policy (AUDIT-06):** `ProcessPlayer` returns `(result, error)`
+and rolls back the whole player transaction on any failure — queries, scans,
+ledger writes, wear, clock advance, or commit. The player's
+`game_current_time` only advances after a fully successful day, so the window
+is retried on the next tick instead of silently losing revenue or costs.
+`WorldTick` logs per-player failures and writes `world_tick_log.status =
+'success' | 'degraded'`. Paid-off decisions use the shared `moneyEpsilon`
+(0.005) constant, and all loan money columns are `numeric(20,2)` (migration
+16).
 
 ### Banking and loans
 
