@@ -144,12 +144,20 @@ func (b *BankService) Repay(ctx context.Context, userID, loanID string, amount *
 }
 
 // Refinance — POST /bank/loans/{id}/refinance. Faithful port of refinance_loan.
+// AUDIT-07: seluruh alur dalam SATU tx dengan row lock (dulu read di luar tx
+// lalu UPDATE tanpa user_id → lost update vs repay/refinance concurrent).
 func (b *BankService) Refinance(ctx context.Context, userID, loanID string) (*MutationResult, error) {
+	tx, err := b.engine.Pool.Begin(ctx)
+	if err != nil {
+		return &MutationResult{false, "transaction error", 0}, nil
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+
 	var loanType string
 	var rate, remaining, weeklyPay, monthlyPay float64
-	err := b.engine.Pool.QueryRow(ctx, `
+	err = tx.QueryRow(ctx, `
 		SELECT loan_type, interest_rate, remaining_balance, weekly_payment, monthly_payment
-		FROM loans WHERE id=$1 AND user_id=$2 AND status='active'`, loanID, userID).
+		FROM loans WHERE id=$1 AND user_id=$2 AND status='active' FOR UPDATE`, loanID, userID).
 		Scan(&loanType, &rate, &remaining, &weeklyPay, &monthlyPay)
 	if err != nil {
 		return &MutationResult{false, "Loan not found or not active.", 0}, nil
@@ -179,11 +187,14 @@ func (b *BankService) Refinance(ctx context.Context, userID, loanID string) (*Mu
 	newTotal := outstanding * (1 + newRate)
 	newMonthly := newTotal / periods
 	newWeekly := newMonthly / 4.33
-	_, err = b.engine.Pool.Exec(ctx, `
-		UPDATE loans SET interest_rate=$1, remaining_balance=$2, weekly_payment=$3, monthly_payment=$4 WHERE id=$5`,
-		newRate, newTotal, newWeekly, newMonthly, loanID)
-	if err != nil {
+	if _, err := tx.Exec(ctx, `
+		UPDATE loans SET interest_rate=$1, remaining_balance=$2, weekly_payment=$3, monthly_payment=$4
+		WHERE id=$5 AND user_id=$6`,
+		newRate, newTotal, newWeekly, newMonthly, loanID, userID); err != nil {
 		return &MutationResult{false, "refinance failed", 0}, nil
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return &MutationResult{false, "commit failed", 0}, nil
 	}
 	savings := maxf(0, remaining-newTotal)
 	return &MutationResult{true, fmt.Sprintf("Loan refinanced successfully (savings $%.2f).", savings), 0}, nil
