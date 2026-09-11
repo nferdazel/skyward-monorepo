@@ -182,7 +182,6 @@ class OverviewTab extends StatelessWidget {
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Row(
           children: [
@@ -322,7 +321,6 @@ class OverviewTab extends StatelessWidget {
   Widget _buildTrendBlock(OverviewSnapshot overview) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         _buildTrendRow(
           _S.netWorthTrend,
