@@ -3,9 +3,12 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 )
 
 // financeSnapshotRetentionDays caps how many daily finance_snapshots rows are
@@ -41,34 +44,60 @@ func (e *Engine) WorldTick(ctx context.Context) (*WorldTickResult, error) {
 	e.GenerateGameEvents(ctx, gameTimeAfter)
 	e.DeactivateExpiredEvents(ctx, gameTimeAfter)
 
-	// 3. Process REAL players
+	// 3. Process REAL players (AUDIT-06: error per player dicatat, tick jalan
+	// terus; player yang gagal tidak maju clock-nya dan retry di tick berikut).
 	players := 0
-	rows, _ := e.Pool.Query(ctx, `
+	failed := 0
+	rows, err := e.Pool.Query(ctx, `
 		SELECT id, game_current_time FROM users
 		WHERE season_id = $1 AND actor_type = 'REAL' AND COALESCE(operational_status, 'Active') != 'Bankrupt'`, seasonID)
+	if err != nil {
+		return nil, fmt.Errorf("world tick: players query: %w", err)
+	}
 	defer rows.Close()
 	for rows.Next() {
 		var uid string
 		var curTime time.Time
-		rows.Scan(&uid, &curTime)
+		if serr := rows.Scan(&uid, &curTime); serr != nil {
+			e.log().Error("world tick: players scan", "error", serr)
+			break
+		}
+		if _, perr := e.ProcessPlayer(ctx, uid, gameTimeAfter); perr != nil {
+			failed++
+			e.log().Error("world tick: process player failed", "user", uid, "error", perr)
+			continue
+		}
 		players++
-		e.ProcessPlayer(ctx, uid, gameTimeAfter)
+	}
+	if rerr := rows.Err(); rerr != nil {
+		failed++
+		e.log().Error("world tick: players iteration", "error", rerr)
 	}
 
 	// 4. Process bots (Fase 7 — engine bot): decisions gated on the new season
 	//    time, then advanced through the shared player simulation.
-	bots, _ := e.ProcessBots(ctx, gameTimeAfter)
+	bots, berr := e.ProcessBots(ctx, gameTimeAfter)
+	if berr != nil {
+		failed++
+		e.log().Error("world tick: bots", "error", berr)
+	}
 
-	// 5. Write world_tick_log
-	e.Pool.Exec(ctx, `INSERT INTO world_tick_log (season_id, status, started_at, finished_at, game_time_before, game_time_after, ticks_processed, players_processed, bots_processed)
-		VALUES ($1, 'success', NOW(), NOW(), $2, $3, 1, $4, $5)`, seasonID, gameTimeBefore, gameTimeAfter, players, bots)
+	// 5. Write world_tick_log — status 'degraded' bila ada kegagalan (AUDIT-06).
+	status := "success"
+	if failed > 0 {
+		status = "degraded"
+	}
+	if _, lerr := e.Pool.Exec(ctx, `INSERT INTO world_tick_log (season_id, status, started_at, finished_at, game_time_before, game_time_after, ticks_processed, players_processed, bots_processed)
+		VALUES ($1, $2, NOW(), NOW(), $3, $4, 1, $5, $6)`, seasonID, status, gameTimeBefore, gameTimeAfter, players, bots); lerr != nil {
+		e.log().Error("world tick: log insert failed", "error", lerr)
+	}
 
 	// 6. Write finance_snapshots (Fase 6): one row per user per GAME DAY, not per
 	//    tick. Previously this inserted on every 60s tick with no retention,
 	//    growing unbounded (~100k+ rows/day). The table only feeds trend
 	//    sparklines, so a daily cadence is sufficient.
 	if !gameTimeAfter.Truncate(24 * time.Hour).Equal(gameTimeBefore.Truncate(24 * time.Hour)) {
-		e.Pool.Exec(ctx, `
+		if _, ierr := e.Pool.Exec(ctx, `
 			INSERT INTO finance_snapshots (user_id, snapshot_game_time, cash, net_worth, active_routes, fleet_count)
 			SELECT u.id, date_trunc('day', $1::timestamptz),
 			       COALESCE((SELECT balance FROM bank_accounts WHERE user_id=u.id AND account_type='operating' LIMIT 1), 0),
@@ -76,10 +105,12 @@ func (e *Engine) WorldTick(ctx context.Context) (*WorldTickResult, error) {
 			       (SELECT COUNT(*) FROM route_assignments WHERE user_id=u.id AND COALESCE(status,'active')='active'),
 			       (SELECT COUNT(*) FROM fleet_aircraft WHERE user_id=u.id)
 			FROM users u WHERE u.season_id = $2 AND u.actor_type = 'REAL'
-			ON CONFLICT (user_id, snapshot_game_time) DO NOTHING`, gameTimeAfter, seasonID)
+			ON CONFLICT (user_id, snapshot_game_time) DO NOTHING`, gameTimeAfter, seasonID); ierr != nil {
+			e.log().Error("world tick: finance_snapshots insert failed", "error", ierr)
+		}
 
 		// Retention: keep at most financeSnapshotRetentionDays per user.
-		e.Pool.Exec(ctx, `
+		if _, derr := e.Pool.Exec(ctx, `
 			DELETE FROM finance_snapshots fs
 			USING (
 				SELECT id, ROW_NUMBER() OVER (
@@ -87,7 +118,9 @@ func (e *Engine) WorldTick(ctx context.Context) (*WorldTickResult, error) {
 				) AS rn
 				FROM finance_snapshots
 			) ranked
-			WHERE fs.id = ranked.id AND ranked.rn > $1`, financeSnapshotRetentionDays)
+			WHERE fs.id = ranked.id AND ranked.rn > $1`, financeSnapshotRetentionDays); derr != nil {
+			e.log().Error("world tick: snapshot retention failed", "error", derr)
+		}
 	}
 
 	// 6. Broadcast realtime notifications
@@ -119,7 +152,14 @@ type PlayerProcessResult struct {
 }
 
 // ProcessPlayer — mirror of process_player_simulation_to_time inline logic.
-func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime time.Time) PlayerProcessResult {
+//
+// AUDIT-06: setiap kegagalan (query, ledger, wear, clock, commit) return
+// error dan SELURUH tx di-rollback — game_current_time player tidak maju,
+// sehingga window retry di tick berikutnya dan biaya tidak pernah hilang
+// senyap. Operating cost (fuel/crew/maintenance/lease) memakai
+// DebitTxAllowNegative: cash tidak cukup ⇒ saldo jadi negatif (mesin
+// bankruptcy berjalan), bukan debit dilewati.
+func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime time.Time) (PlayerProcessResult, error) {
 	// load config constants
 	fuelPrice := e.getConfigNum(ctx, "fuel_price_per_liter", 0.85)
 	crewCost := e.getConfigNum(ctx, "crew_cost_per_hour", 350.0)
@@ -140,8 +180,12 @@ func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime ti
 
 	// fuel multiplier from events
 	var fuelMult, maintMult float64 = 1.0, 1.0
-	e.Pool.QueryRow(ctx, `SELECT COALESCE(effect_value, 1.0) FROM game_events WHERE event_type='fuel_shock' AND is_active=true AND effect_type='fuel_price' AND start_game_time<=$1 AND end_game_time>$1 ORDER BY start_game_time DESC LIMIT 1`, targetTime).Scan(&fuelMult)
-	e.Pool.QueryRow(ctx, `SELECT COALESCE(effect_value, 1.0) FROM game_events WHERE event_type='maintenance_shock' AND is_active=true AND effect_type='maintenance_cost' AND start_game_time<=$1 AND end_game_time>$1 ORDER BY start_game_time DESC LIMIT 1`, targetTime).Scan(&maintMult)
+	if err := e.Pool.QueryRow(ctx, `SELECT COALESCE(effect_value, 1.0) FROM game_events WHERE event_type='fuel_shock' AND is_active=true AND effect_type='fuel_price' AND start_game_time<=$1 AND end_game_time>$1 ORDER BY start_game_time DESC LIMIT 1`, targetTime).Scan(&fuelMult); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return PlayerProcessResult{}, fmt.Errorf("process %s: fuel event lookup: %w", userID, err)
+	}
+	if err := e.Pool.QueryRow(ctx, `SELECT COALESCE(effect_value, 1.0) FROM game_events WHERE event_type='maintenance_shock' AND is_active=true AND effect_type='maintenance_cost' AND start_game_time<=$1 AND end_game_time>$1 ORDER BY start_game_time DESC LIMIT 1`, targetTime).Scan(&maintMult); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return PlayerProcessResult{}, fmt.Errorf("process %s: maintenance event lookup: %w", userID, err)
+	}
 
 	// Serialize concurrent processing for the same user (POST /simulation/sync
 	// vs the world-tick worker). Without this, both calls read the same
@@ -150,23 +194,27 @@ func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime ti
 	// advancing twice, not the ledger writes.
 	tx, txErr := e.Pool.Begin(ctx)
 	if txErr != nil {
-		return PlayerProcessResult{}
+		return PlayerProcessResult{}, fmt.Errorf("process %s: begin tx: %w", userID, txErr)
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
 	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtext($1))`, userID); err != nil {
-		return PlayerProcessResult{}
+		return PlayerProcessResult{}, fmt.Errorf("process %s: user lock: %w", userID, err)
 	}
 
 	// user data (read under the per-user lock)
 	var userGameTime time.Time
 	var autoThreshold float64
-	tx.QueryRow(ctx, `SELECT game_current_time, auto_grounding_threshold FROM users WHERE id=$1`, userID).Scan(&userGameTime, &autoThreshold)
+	if err := tx.QueryRow(ctx, `SELECT game_current_time, auto_grounding_threshold FROM users WHERE id=$1`, userID).Scan(&userGameTime, &autoThreshold); err != nil {
+		return PlayerProcessResult{}, fmt.Errorf("process %s: load user: %w", userID, err)
+	}
 
 	elapsed := targetTime.Sub(userGameTime).Hours() / 24.0
 	if elapsed <= 0 {
 		// no-op guard
-		e.Pool.Exec(ctx, `UPDATE users SET last_active_at=NOW() WHERE id=$1`, userID)
-		return PlayerProcessResult{}
+		if _, err := e.Pool.Exec(ctx, `UPDATE users SET last_active_at=NOW() WHERE id=$1`, userID); err != nil {
+			e.log().Warn("sim: touch last_active_at failed", "user", userID, "error", err)
+		}
+		return PlayerProcessResult{}, nil
 	}
 	timeFraction := math.Min(elapsed/7.0, 1.0)
 	safetyThreshold := math.Max(autoThreshold, e.getConfigNum(ctx, "absolute_minimum_safety_limit", 30.0))
@@ -186,7 +234,7 @@ func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime ti
 		FirstClassSeats              int
 	}
 	routes := []routeRow{}
-	rrows, _ := e.Pool.Query(ctx, `
+	rrows, err := e.Pool.Query(ctx, `
 		SELECT ur.origin_iata, ur.destination_iata, ur.distance_km, ur.ticket_price, ur.flights_per_week,
 		       am.fuel_burn_per_km, am.speed_kmh, am.turnaround_hours, am.capacity,
 		       am.lease_price_per_month, am.maintenance_cost_per_hour,
@@ -198,16 +246,24 @@ func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime ti
 		JOIN airports a1 ON a1.iata=ur.origin_iata
 		JOIN airports a2 ON a2.iata=ur.destination_iata
 		WHERE ur.user_id=$1 AND ur.status='active' AND fa.status='active' AND fa.condition>=$2`, userID, safetyThreshold)
-	if rrows != nil {
-		for rrows.Next() {
-			var r routeRow
-			rrows.Scan(&r.OriginIATA, &r.DestIATA, &r.DistanceKM, &r.TicketPrice, &r.FlightsPerWeek,
-				&r.FuelBurnPerKM, &r.SpeedKMH, &r.TurnaroundHours, &r.Capacity,
-				&r.LeasePriceMonth, &r.MaintCostHr, &r.AcqType, &r.OriginDemand, &r.DestDemand, &r.AircraftID,
-				&r.EconomySeats, &r.BusinessSeats, &r.FirstClassSeats)
-			routes = append(routes, r)
+	if err != nil {
+		return PlayerProcessResult{}, fmt.Errorf("process %s: routes query: %w", userID, err)
+	}
+	for rrows.Next() {
+		var r routeRow
+		if serr := rrows.Scan(&r.OriginIATA, &r.DestIATA, &r.DistanceKM, &r.TicketPrice, &r.FlightsPerWeek,
+			&r.FuelBurnPerKM, &r.SpeedKMH, &r.TurnaroundHours, &r.Capacity,
+			&r.LeasePriceMonth, &r.MaintCostHr, &r.AcqType, &r.OriginDemand, &r.DestDemand, &r.AircraftID,
+			&r.EconomySeats, &r.BusinessSeats, &r.FirstClassSeats); serr != nil {
+			rrows.Close()
+			return PlayerProcessResult{}, fmt.Errorf("process %s: routes scan: %w", userID, serr)
 		}
-		rrows.Close()
+		routes = append(routes, r)
+	}
+	rerr := rrows.Err()
+	rrows.Close()
+	if rerr != nil {
+		return PlayerProcessResult{}, fmt.Errorf("process %s: routes iteration: %w", userID, rerr)
 	}
 
 	flightsRun := 0.0
@@ -217,9 +273,13 @@ func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime ti
 	for _, r := range routes {
 		// event multipliers (from cached fuelMult, maintMult)
 		demandEvent := 1.0
-		e.Pool.QueryRow(ctx, `SELECT COALESCE(effect_value,1.0) FROM game_events WHERE event_type='demand_surge' AND is_active=true AND effect_target IN ($1,$2) AND start_game_time<=$3 AND end_game_time>$3 ORDER BY start_game_time DESC LIMIT 1`, r.OriginIATA, r.DestIATA, targetTime).Scan(&demandEvent)
+		if err := e.Pool.QueryRow(ctx, `SELECT COALESCE(effect_value,1.0) FROM game_events WHERE event_type='demand_surge' AND is_active=true AND effect_target IN ($1,$2) AND start_game_time<=$3 AND end_game_time>$3 ORDER BY start_game_time DESC LIMIT 1`, r.OriginIATA, r.DestIATA, targetTime).Scan(&demandEvent); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return PlayerProcessResult{}, fmt.Errorf("process %s: demand surge lookup: %w", userID, err)
+		}
 		capacityEvent := 1.0
-		e.Pool.QueryRow(ctx, `SELECT COALESCE(effect_value,1.0) FROM game_events WHERE event_type='weather_disruption' AND is_active=true AND effect_target IN ($1,$2) AND start_game_time<=$3 AND end_game_time>$3 ORDER BY start_game_time DESC LIMIT 1`, r.OriginIATA, r.DestIATA, targetTime).Scan(&capacityEvent)
+		if err := e.Pool.QueryRow(ctx, `SELECT COALESCE(effect_value,1.0) FROM game_events WHERE event_type='weather_disruption' AND is_active=true AND effect_target IN ($1,$2) AND start_game_time<=$3 AND end_game_time>$3 ORDER BY start_game_time DESC LIMIT 1`, r.OriginIATA, r.DestIATA, targetTime).Scan(&capacityEvent); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return PlayerProcessResult{}, fmt.Errorf("process %s: weather lookup: %w", userID, err)
+		}
 
 		flightHours := r.DistanceKM/r.SpeedKMH + r.TurnaroundHours
 		if flightHours <= 0 {
@@ -280,35 +340,48 @@ func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime ti
 		crewCostTotal *= timeFraction
 		maintCost *= timeFraction
 
-		// write ledger rows inside transaction
+		// write ledger rows inside transaction (AUDIT-06: error ⇒ rollback;
+		// debit operasional ⇒ allow-negative, tercatat selalu)
 		if revenue > 0 {
-			_, _ = e.Ledger.CreditTx(ctx, tx, userID, revenue, "revenue", "ticket_revenue",
-				fmt.Sprintf("Route %s-%s", r.OriginIATA, r.DestIATA), targetTime)
+			if _, err := e.Ledger.CreditTx(ctx, tx, userID, revenue, "revenue", "ticket_revenue",
+				fmt.Sprintf("Route %s-%s", r.OriginIATA, r.DestIATA), targetTime); err != nil {
+				return PlayerProcessResult{}, fmt.Errorf("process %s: credit ticket revenue: %w", userID, err)
+			}
 			totalRevenue += revenue
 		}
 		if cargoRev > 0 {
-			_, _ = e.Ledger.CreditTx(ctx, tx, userID, cargoRev, "revenue", "cargo_revenue",
-				fmt.Sprintf("Cargo: %s-%s", r.OriginIATA, r.DestIATA), targetTime)
+			if _, err := e.Ledger.CreditTx(ctx, tx, userID, cargoRev, "revenue", "cargo_revenue",
+				fmt.Sprintf("Cargo: %s-%s", r.OriginIATA, r.DestIATA), targetTime); err != nil {
+				return PlayerProcessResult{}, fmt.Errorf("process %s: credit cargo: %w", userID, err)
+			}
 			totalRevenue += cargoRev
 		}
 		if fuelCost > 0 {
-			_, _ = e.Ledger.DebitTx(ctx, tx, userID, fuelCost, "cogs", "fuel_cost",
-				fmt.Sprintf("Fuel: %s-%s", r.OriginIATA, r.DestIATA), targetTime)
+			if _, err := e.Ledger.DebitTxAllowNegative(ctx, tx, userID, fuelCost, "cogs", "fuel_cost",
+				fmt.Sprintf("Fuel: %s-%s", r.OriginIATA, r.DestIATA), targetTime); err != nil {
+				return PlayerProcessResult{}, fmt.Errorf("process %s: debit fuel: %w", userID, err)
+			}
 			totalExpense += fuelCost
 		}
 		if crewCostTotal > 0 {
-			_, _ = e.Ledger.DebitTx(ctx, tx, userID, crewCostTotal, "cogs", "crew_cost",
-				fmt.Sprintf("Crew: %s-%s", r.OriginIATA, r.DestIATA), targetTime)
+			if _, err := e.Ledger.DebitTxAllowNegative(ctx, tx, userID, crewCostTotal, "cogs", "crew_cost",
+				fmt.Sprintf("Crew: %s-%s", r.OriginIATA, r.DestIATA), targetTime); err != nil {
+				return PlayerProcessResult{}, fmt.Errorf("process %s: debit crew: %w", userID, err)
+			}
 			totalExpense += crewCostTotal
 		}
 		if maintCost > 0 {
-			_, _ = e.Ledger.DebitTx(ctx, tx, userID, maintCost, "cogs", "maintenance_cost",
-				fmt.Sprintf("Maintenance: %s-%s", r.OriginIATA, r.DestIATA), targetTime)
+			if _, err := e.Ledger.DebitTxAllowNegative(ctx, tx, userID, maintCost, "cogs", "maintenance_cost",
+				fmt.Sprintf("Maintenance: %s-%s", r.OriginIATA, r.DestIATA), targetTime); err != nil {
+				return PlayerProcessResult{}, fmt.Errorf("process %s: debit maintenance: %w", userID, err)
+			}
 			totalExpense += maintCost
 		}
 		if leaseCost > 0 {
-			_, _ = e.Ledger.DebitTx(ctx, tx, userID, leaseCost, "opex", "aircraft_lease",
-				fmt.Sprintf("Lease: %s-%s", r.OriginIATA, r.DestIATA), targetTime)
+			if _, err := e.Ledger.DebitTxAllowNegative(ctx, tx, userID, leaseCost, "opex", "aircraft_lease",
+				fmt.Sprintf("Lease: %s-%s", r.OriginIATA, r.DestIATA), targetTime); err != nil {
+				return PlayerProcessResult{}, fmt.Errorf("process %s: debit lease: %w", userID, err)
+			}
 			totalExpense += leaseCost
 		}
 
@@ -321,37 +394,50 @@ func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime ti
 		grossDamage := wearPerCycle * float64(flights) * timeFraction
 		selfHeal := grossDamage * autoRepair
 		netDamage := math.Max(0, grossDamage-selfHeal)
-		_, _ = tx.Exec(ctx, `UPDATE fleet_aircraft SET condition = GREATEST(0, condition - $1) WHERE id=$2`, netDamage, r.AircraftID)
+		if _, werr := tx.Exec(ctx, `UPDATE fleet_aircraft SET condition = GREATEST(0, condition - $1) WHERE id=$2`, netDamage, r.AircraftID); werr != nil {
+			return PlayerProcessResult{}, fmt.Errorf("process %s: apply wear (%s): %w", userID, r.AircraftID, werr)
+		}
 
 		flightsRun += float64(flights) * (elapsed / 7.0)
 	}
 
 	// idle lease cost
 	var idleLeaseCost float64
-	tx.QueryRow(ctx, `
+	if err := tx.QueryRow(ctx, `
 		SELECT COALESCE(SUM(am.lease_price_per_month * ($1 / 30.0)), 0)
 		FROM fleet_aircraft fa JOIN aircraft_models am ON am.id=fa.aircraft_model_id
 		WHERE fa.user_id=$2 AND fa.acquisition_type='lease' AND NOT EXISTS (
 			SELECT 1 FROM route_assignments ra WHERE ra.assigned_aircraft_id=fa.id AND ra.status='active'
-		)`, elapsed, userID).Scan(&idleLeaseCost)
+		)`, elapsed, userID).Scan(&idleLeaseCost); err != nil {
+		return PlayerProcessResult{}, fmt.Errorf("process %s: idle lease sum: %w", userID, err)
+	}
 	if idleLeaseCost > 0 {
-		_, _ = e.Ledger.DebitTx(ctx, tx, userID, idleLeaseCost, "opex", "aircraft_lease_idle",
-			"Idle lease carrying cost", targetTime)
+		if _, err := e.Ledger.DebitTxAllowNegative(ctx, tx, userID, idleLeaseCost, "opex", "aircraft_lease_idle",
+			"Idle lease carrying cost", targetTime); err != nil {
+			return PlayerProcessResult{}, fmt.Errorf("process %s: debit idle lease: %w", userID, err)
+		}
 		totalExpense += idleLeaseCost
 	}
 
 	// update user game time. The WHERE guard makes the day advance atomic:
 	// concurrent syncs/world-tick calls for the same user can only advance the
 	// clock once, so the day-boundary work below never double-counts a day.
-	tag, _ := tx.Exec(ctx, `UPDATE users SET game_current_time=$1, last_active_at=NOW()
+	tag, cerr := tx.Exec(ctx, `UPDATE users SET game_current_time=$1, last_active_at=NOW()
 		WHERE id=$2 AND game_current_time < $1`, targetTime, userID)
+	if cerr != nil {
+		return PlayerProcessResult{}, fmt.Errorf("process %s: advance clock: %w", userID, cerr)
+	}
 	advancedDay := tag.RowsAffected() > 0
-	_ = tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return PlayerProcessResult{}, fmt.Errorf("process %s: commit: %w", userID, err)
+	}
 
-	cashAfter, _ := e.Ledger.GetBalance(ctx, userID)
-
-	// bankruptcy
-	if cashAfter <= bankruptcyThreshold {
+	cashAfter, balErr := e.Ledger.GetBalance(ctx, userID)
+	if balErr != nil {
+		// Post-commit: jangan menebak status finansial — log, cek threshold
+		// lewat jalur hari berikutnya (AUDIT-06).
+		e.log().Error("sim: balance read failed; bankruptcy check skipped", "user", userID, "error", balErr)
+	} else if cashAfter <= bankruptcyThreshold {
 		e.applyBankruptcy(ctx, userID)
 	}
 
@@ -371,7 +457,7 @@ func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime ti
 		FlightsRun:  int(math.Round(flightsRun)),
 		Revenue:     totalRevenue,
 		Expense:     totalExpense,
-	}
+	}, nil
 }
 
 func (e *Engine) applyBankruptcy(ctx context.Context, userID string) {

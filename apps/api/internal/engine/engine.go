@@ -5,6 +5,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"math/rand"
 	"time"
 
@@ -24,6 +25,17 @@ type Engine struct {
 	Settings *SettingsService
 	Bank     *BankService
 	Hub      Broadcaster // opsional — realtime notification
+
+	// Logger — opsional; fallback slog.Default (lihat log()).
+	Logger *slog.Logger
+}
+
+// log — logger engine (selalu non-nil).
+func (e *Engine) log() *slog.Logger {
+	if e.Logger != nil {
+		return e.Logger
+	}
+	return slog.Default()
 }
 
 // Broadcaster — interface broadcast (diimplementasi realtime.Hub).
@@ -54,17 +66,28 @@ func (l *LedgerService) GetBalance(ctx context.Context, userID string) (float64,
 	return b, err
 }
 
-// DebitTx — debit dalam transaksi (mirror debit_bank_account).
+// DebitTx — debit dalam transaksi (mirror debit_bank_account). GUARDED:
+// gagal (ErrNoRows) bila saldo tidak cukup. Untuk jalur user-initiated
+// (beli, bayar, deposit) — dana kurang harus ditolak.
 func (l *LedgerService) DebitTx(ctx context.Context, tx pgx.Tx, userID string, amount float64, ifrsCat, ifrsSubcat, desc string, gameTime time.Time) (float64, error) {
-	return l.applyTx(ctx, tx, userID, amount, ifrsCat, ifrsSubcat, desc, gameTime, false)
+	return l.applyTx(ctx, tx, userID, amount, ifrsCat, ifrsSubcat, desc, gameTime, false, false)
+}
+
+// DebitTxAllowNegative — debit TANPA guard saldo (AUDIT-06 step 2). Khusus
+// biaya tak-terelakkan hasil simulasi (fuel/crew/maintenance/lease): saldo
+// boleh jadi negatif supaya (a) biaya selalu tercatat di ledger dan
+// (b) mesin bangkrut (cash threshold + consecutive_negative_days) benar-benar
+// bisa terpicu. Jangan dipakai untuk aksi user.
+func (l *LedgerService) DebitTxAllowNegative(ctx context.Context, tx pgx.Tx, userID string, amount float64, ifrsCat, ifrsSubcat, desc string, gameTime time.Time) (float64, error) {
+	return l.applyTx(ctx, tx, userID, amount, ifrsCat, ifrsSubcat, desc, gameTime, false, true)
 }
 
 // CreditTx — credit dalam transaksi (mirror credit_bank_account).
 func (l *LedgerService) CreditTx(ctx context.Context, tx pgx.Tx, userID string, amount float64, ifrsCat, ifrsSubcat, desc string, gameTime time.Time) (float64, error) {
-	return l.applyTx(ctx, tx, userID, amount, ifrsCat, ifrsSubcat, desc, gameTime, true)
+	return l.applyTx(ctx, tx, userID, amount, ifrsCat, ifrsSubcat, desc, gameTime, true, false)
 }
 
-func (l *LedgerService) applyTx(ctx context.Context, tx pgx.Tx, userID string, amount float64, ifrsCat, ifrsSubcat, desc string, gameTime time.Time, credit bool) (float64, error) {
+func (l *LedgerService) applyTx(ctx context.Context, tx pgx.Tx, userID string, amount float64, ifrsCat, ifrsSubcat, desc string, gameTime time.Time, credit, allowNegative bool) (float64, error) {
 	if amount < 0 {
 		return 0, fmt.Errorf("amount must be non-negative: %v", amount)
 	}
@@ -75,11 +98,16 @@ func (l *LedgerService) applyTx(ctx context.Context, tx pgx.Tx, userID string, a
 	}
 	var newBalance float64
 	var err error
-	if credit {
+	switch {
+	case credit:
 		err = tx.QueryRow(ctx,
 			`UPDATE bank_accounts SET balance = balance + $1 WHERE user_id=$2 AND account_type='operating' RETURNING balance`,
 			amount, userID).Scan(&newBalance)
-	} else {
+	case allowNegative:
+		err = tx.QueryRow(ctx,
+			`UPDATE bank_accounts SET balance = balance - $1 WHERE user_id=$2 AND account_type='operating' RETURNING balance`,
+			amount, userID).Scan(&newBalance)
+	default:
 		err = tx.QueryRow(ctx,
 			`UPDATE bank_accounts SET balance = balance - $1 WHERE user_id=$2 AND account_type='operating' AND balance >= $1 RETURNING balance`,
 			amount, userID).Scan(&newBalance)
