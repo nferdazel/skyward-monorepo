@@ -136,7 +136,7 @@ func registerRoutes(ctx context.Context, mux *http.ServeMux, logger *slog.Logger
 
 	// Auth (Fase 3 — register/login/me).
 	// Realtime WS (Fase 8) — token via query param.
-	wsServer := &handler.WSServer{Hub: hub, JWTSecret: []byte(cfg.JWTSecret)}
+	wsServer := &handler.WSServer{Hub: hub, JWTSecret: []byte(cfg.JWTSecret), AllowedOrigins: cfg.AllowedOrigins}
 	mux.Handle("GET /ws", http.HandlerFunc(wsServer.ServeWS))
 
 	authHandler := &handler.AuthHandler{

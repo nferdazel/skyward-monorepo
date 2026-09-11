@@ -4,6 +4,7 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
 	"skyward-api/internal/auth"
@@ -13,11 +14,49 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	// Browser origin check — dev lenient; prod via CORS-adjacent allowlist.
-	CheckOrigin: func(r *http.Request) bool { return true },
+// WSServer — endpoint WS /ws?token=<jwt>.
+type WSServer struct {
+	Hub       *realtime.Hub
+	JWTSecret []byte
+
+	// AllowedOrigins — sama dengan sumber CORS (CORS_ALLOWED_ORIGINS). Kosong
+	// = tanpa batasan (dev). Browser origin di luar daftar ditolak (AUDIT-05).
+	AllowedOrigins []string
+}
+
+// originHost — "https://Host:Port" → "host" (lower, tanpa port/scheme).
+func originHost(s string) string {
+	s = strings.ToLower(s)
+	if i := strings.Index(s, "://"); i >= 0 {
+		s = s[i+3:]
+	}
+	if i := strings.LastIndex(s, ":"); i > 0 {
+		s = s[:i]
+	}
+	return strings.Trim(s, "/")
+}
+
+// checkOrigin — (AUDIT-05) dulu selalu true. Rules:
+//   - Origin kosong ⇒ allow: bukan browser (dart:io/desktop/curl); tidak ada
+//     vektor cross-site tanpa Origin.
+//   - AllowedOrigins kosong ⇒ allow (dev, tidak ada allowlist terkonfigurasi).
+//   - selain itu: host Origin harus ada di allowlist (port longgar, sama seperti
+//     penanganan host di CORS middleware).
+func (s *WSServer) checkOrigin(r *http.Request) bool {
+	origin := r.Header.Get("Origin")
+	if origin == "" || len(s.AllowedOrigins) == 0 {
+		return true
+	}
+	h := originHost(origin)
+	if h == "" {
+		return false
+	}
+	for _, a := range s.AllowedOrigins {
+		if originHost(a) == h {
+			return true
+		}
+	}
+	return false
 }
 
 const (
@@ -26,12 +65,6 @@ const (
 	pingPeriod = 50 * time.Second
 	maxMsgSize = 1024
 )
-
-// WSServer — endpoint WS /ws?token=<jwt>.
-type WSServer struct {
-	Hub       *realtime.Hub
-	JWTSecret []byte
-}
 
 type wsMessage struct {
 	Action   string   `json:"action"` // subscribe | unsubscribe | ping
@@ -51,7 +84,11 @@ func (s *WSServer) ServeWS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	conn, err := upgrader.Upgrade(w, r, nil)
+	conn, err := (&websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+		CheckOrigin:     s.checkOrigin,
+	}).Upgrade(w, r, nil)
 	if err != nil {
 		return
 	}
