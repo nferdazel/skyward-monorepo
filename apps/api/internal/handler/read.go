@@ -3,8 +3,11 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
+
+	"github.com/jackc/pgx/v5"
 
 	"skyward-api/internal/httperr"
 	"skyward-api/internal/middleware"
@@ -173,7 +176,13 @@ func (h *ReadHandler) CompetitorInsights(w http.ResponseWriter, r *http.Request)
 	isBot := r.URL.Query().Get("isBot") == "true"
 	ci, err := h.Store.GetCompetitorInsights(r.Context(), id, isBot)
 	if err != nil {
-		httperr.WriteError(w, nil, httperr.NotFound("competitor not found"))
+		// Jangan lapisi error query sebagai "not found" (masking bug SQL
+		// jadi 404 tanpa jejak — insiden intel-pane 2026-09-12).
+		if errors.Is(err, pgx.ErrNoRows) {
+			httperr.WriteError(w, nil, httperr.NotFound("competitor not found"))
+			return
+		}
+		httperr.WriteError(w, nil, httperr.Internal("competitor insights failed"))
 		return
 	}
 	httperr.WriteJSON(w, http.StatusOK, ci)
