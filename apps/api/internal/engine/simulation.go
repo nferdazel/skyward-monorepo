@@ -512,10 +512,16 @@ func shouldBankruptOnNegativeDays(consecutiveNegativeDays, threshold int) bool {
 	return threshold > 0 && consecutiveNegativeDays >= threshold
 }
 
+// getConfigNum — baca game_config.key. AUDIT-10: fresh DB tanpa seed
+// (migration 17) akan kehilangan key dan senyap memakai fallback Go; catat
+// sekali per key supaya drift terlihat, bukan hilang.
 func (e *Engine) getConfigNum(ctx context.Context, key string, fallback float64) float64 {
 	var v float64
 	err := e.Pool.QueryRow(ctx, `SELECT COALESCE((value#>>'{}')::numeric, $1) FROM game_config WHERE key=$2`, fallback, key).Scan(&v)
 	if err != nil {
+		if _, loaded := e.warnedCfg.LoadOrStore(key, struct{}{}); !loaded {
+			e.log().Warn("game_config read failed; using Go fallback", "key", key, "fallback", fallback, "err", err)
+		}
 		return fallback
 	}
 	return v
