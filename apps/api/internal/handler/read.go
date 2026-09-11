@@ -306,7 +306,12 @@ func (h *ReadHandler) BankTransactionsByAccount(w http.ResponseWriter, r *http.R
 		h.FinanceTransactions(w, r)
 		return
 	}
-	txns, err := h.Store.GetBankTransactionsByAccount(r.Context(), accountID, 50)
+	// AUDIT-02: ownership check — query ledger per-akun terkunci ke user login.
+	uid, ok := userID(w, r)
+	if !ok {
+		return
+	}
+	txns, err := h.Store.GetBankTransactionsByAccount(r.Context(), accountID, uid, 50)
 	if err != nil {
 		httperr.WriteError(w, nil, httperr.Internal("load account transactions failed"))
 		return
