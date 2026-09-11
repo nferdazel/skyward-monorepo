@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'core/di/gateway_factory.dart';
 import 'core/theme/app_theme.dart';
 import 'core/widgets/terminal_loader.dart';
 import 'features/auth/presentation/cubit/auth_cubit.dart';
@@ -34,7 +37,15 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
-        BlocProvider<AuthCubit>(create: (context) => AuthCubit()..autoLogin()),
+        BlocProvider<AuthCubit>(
+          create: (context) {
+            final cubit = AuthCubit();
+            // AUDIT-17: 401 dari endpoint mana pun memicu logout otomatis
+            // (idempotent — logout() diserialisasi CubitActionRunner).
+            GatewayFactory.onUnauthorized = () => unawaited(cubit.logout());
+            return cubit..autoLogin();
+          },
+        ),
         BlocProvider<SettingsCubit>(create: (context) => SettingsCubit()),
       ],
       child: BlocBuilder<SettingsCubit, SettingsState>(
