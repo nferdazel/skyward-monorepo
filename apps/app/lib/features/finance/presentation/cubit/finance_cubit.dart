@@ -24,7 +24,7 @@ class FinanceCubit extends Cubit<FinanceState>
   Future<void>? _activeTransactionLoad;
   Future<void>? _activeSnapshotRefresh;
   int _consecutiveSnapshotFailures = 0;
-  static const int _maxSilentFailures = 5;
+  static const int _maxSilentFailures = 2;
 
   static const _leaseSubcategories = {
     'aircraft_lease',
@@ -354,14 +354,14 @@ class FinanceCubit extends Cubit<FinanceState>
       emit(_buildFinanceState(_cachedTransactions, snapshot: _cachedSnapshot));
     } catch (e) {
       _consecutiveSnapshotFailures++;
+      // AUDIT-20: selalu log — dulu silent=true tidak meninggalkan jejak sama
+      // sekali; batas toleransi juga diturunkan 5→2 (deklarasi field).
+      AppError.log('refreshFinanceSnapshot', e);
       PerfDebug.end(
         'finance.snapshot_refresh',
         stopwatch,
         fields: {'silent': silent, 'error': true},
       );
-      if (!silent) {
-        AppError.log('refreshFinanceSnapshot', e);
-      }
       if (_consecutiveSnapshotFailures >= _maxSilentFailures && !isClosed) {
         final snapshot = _snapshotState();
         emit(

@@ -27,7 +27,15 @@ mixin CubitActionRunner<S> on Cubit<S> {
     String fallbackMessage = 'Action failed. Please try again.',
     Map<String, dynamic> rpcParams = const {},
   }) async {
-    if (_activeActionFuture != null) return false;
+    if (_activeActionFuture != null) {
+      // AUDIT-20: jangan benar-benar silent — double-tap yang di-drop harus
+      // punya jejak minimal untuk diagnosis (dulu return false tanpa apa pun).
+      AppError.log(
+        actionName,
+        StateError('action skipped: another action is still in flight'),
+      );
+      return false;
+    }
     final completer = Completer<void>();
     _activeActionFuture = completer.future;
 
