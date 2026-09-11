@@ -5,7 +5,10 @@ import 'package:skyward/features/fleet/domain/fleet_models.dart';
 import 'package:skyward/features/routes/domain/route_models.dart';
 
 void main() {
-  group('Layer 4 Database RPC & Triggers Integration Harness', () {
+  // AUDIT-21: test di layer ini hanya MEMERIKSA TEKS SQL (audit script) dan
+  // parsing model — tidak mengeksekusi apa pun ke Postgres. Nama group dibuat
+  // eksplisit supaya tidak menjanjikan cakupan integrasi DB yang tidak ada.
+  group('Layer 4 SQL text checks (no DB execution)', () {
     test('Verify native SQL audit script exists and contains valid transactional blocks', () async {
       final sqlFile = File('test/layer4_database/native_audit/supabase_audit_test.sql');
       

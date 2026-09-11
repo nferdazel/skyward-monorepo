@@ -395,6 +395,9 @@ class _AuthenticatedDashboardShellState
       },
     );
 
+    // AUDIT-21: overlay bisa terpasang setelah dispose (mis. sync selesai
+    // ketika screen ditutup) — guard sebelum menyentuh Overlay/BuildContext.
+    if (!mounted) return;
     Overlay.of(context).insert(_notificationOverlayEntry!);
   }
 
