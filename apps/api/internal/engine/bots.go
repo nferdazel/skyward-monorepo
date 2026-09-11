@@ -65,7 +65,9 @@ func (e *Engine) ProcessBots(ctx context.Context, targetTime time.Time) (int, er
 	// before any decisions keeps same-tick pricing/route effects from feeding
 	// back into another bot's revenue within the same tick.
 	for _, b := range bots {
-		e.ProcessPlayer(ctx, b.ID, targetTime)
+		if _, perr := e.ProcessPlayer(ctx, b.ID, targetTime); perr != nil {
+			e.log().Error("bot sim: process player failed", "bot", b.ID, "error", perr)
+		}
 	}
 
 	// Pass 2 — bot decisions (execute_bot_decisions), gated on the season time.

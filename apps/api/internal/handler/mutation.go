@@ -344,9 +344,18 @@ func (h *MutationHandler) SimulationSync(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	var seasonTime time.Time
-	h.Engine.Pool.QueryRow(r.Context(),
-		`SELECT current_game_time FROM season_clock WHERE status='active' LIMIT 1`).Scan(&seasonTime)
-	result := h.Engine.ProcessPlayer(r.Context(), uid, seasonTime)
+	if err := h.Engine.Pool.QueryRow(r.Context(),
+		`SELECT current_game_time FROM season_clock WHERE status='active' LIMIT 1`).Scan(&seasonTime); err != nil {
+		// AUDIT-13: jangan pernah lapor success kalau tidak ada season aktif.
+		httperr.WriteError(w, nil, httperr.Internal("no active season for simulation sync"))
+		return
+	}
+	result, err := h.Engine.ProcessPlayer(r.Context(), uid, seasonTime)
+	if err != nil {
+		// AUDIT-06: sync gagal = 500; clock player tidak maju, client retry aman.
+		httperr.WriteError(w, nil, httperr.Internal("simulation sync failed"))
+		return
+	}
 	// Deliver any achievements unlocked since the last sync (including those
 	// inserted by the background world tick). Claimed here, not in the engine,
 	// so the tick never consumes a toast it cannot show.

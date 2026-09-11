@@ -79,6 +79,7 @@ func main() {
 	// World-tick worker (Fase 6: engine.WorldTick; loop + backoff).
 	st := store.New(pool)
 	eng := engine.New(pool, st)
+	eng.Logger = logger
 	hub := realtime.NewHub(logger)
 	eng.Hub = hub
 	wk := worker.New(pool, func(ctx context.Context) error {
@@ -170,6 +171,7 @@ func registerRoutes(ctx context.Context, mux *http.ServeMux, logger *slog.Logger
 
 	// Mutasi (Fase 5) — fleet/routes/settings/bank writes.
 	eng := engine.New(pool, st)
+	eng.Logger = logger
 	mut := &handler.MutationHandler{Engine: eng, Hub: hub}
 	mux.Handle("POST /fleet/purchase", guard(mut.FleetPurchase))
 	mux.Handle("POST /fleet/lease", guard(mut.FleetLease))
