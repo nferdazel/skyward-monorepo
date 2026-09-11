@@ -231,6 +231,37 @@ void main() {
       expect(route.destination.iata, 'SIN');
     });
 
+    test('UserRoute.fromMap hydrates assigned aircraft attributes (AUDIT-15)',
+        () {
+      final map = {
+        'id': 'route-a1',
+        'origin_iata': 'CGK',
+        'destination_iata': 'DPS',
+        'distance_km': 694.0,
+        'ticket_price': 120.0,
+        'flights_per_week': 21,
+        'assigned_aircraft_id': 'ac-1',
+        'tail_number': 'PK-SKY',
+        'model_name': 'A320neo',
+        'assigned_capacity': 180,
+        'assigned_range_km': 6300,
+        'assigned_speed_kmh': 828,
+        'assigned_fuel_burn_per_km': 2.9,
+        'assigned_maintenance_cost_per_hour': 42.0,
+        'assigned_condition': 87.5,
+      };
+
+      final route = UserRoute.fromMap(map);
+      final ac = route.assignedAircraft;
+      expect(ac, isNotNull);
+      expect(ac!.tailNumber, 'PK-SKY');
+      expect(ac.effectivePassengerCapacity, 180,
+          reason: 'bukan stub capacity-0 lagi');
+      expect(ac.model.rangeKm, 6300);
+      expect(ac.condition, 87.5);
+      expect(ac.canOperateDistance(694), isTrue);
+    });
+
     test('FinanceSnapshot.fromMap parses safely', () {
       final map = {
         'actor_id': 'user-123',
