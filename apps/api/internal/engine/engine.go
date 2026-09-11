@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math/rand"
+	"sync"
 	"time"
 
 	"skyward-api/internal/store"
@@ -28,6 +29,13 @@ type Engine struct {
 
 	// Logger — opsional; fallback slog.Default (lihat log()).
 	Logger *slog.Logger
+
+	// tickMu — AUDIT-09: hanya satu WorldTick boleh jalan per proses.
+	// Advisory xact-lock lama hanya melindungi statement UPDATE clock
+	// (autocommit), bukan steps 2-6; mutex ini menutup worker tick vs
+	// POST /admin/world/tick yang overlap. Multi-instance: tetap butuh
+	// lock DB penuh (backlog).
+	tickMu sync.Mutex
 }
 
 // log — logger engine (selalu non-nil).
