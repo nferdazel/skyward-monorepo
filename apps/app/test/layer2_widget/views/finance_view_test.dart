@@ -53,7 +53,8 @@ void main() {
 
     // Tab labels should always be visible
     expect(find.text(AppStrings.financeOverviewTab), findsOneWidget);
-    expect(find.text(AppStrings.financeTransactionsTab), findsOneWidget);
+    expect(find.text('LEDGER'), findsOneWidget); // rework: TRANSACTIONS -> LEDGER tab
+    expect(find.text('REPORTS'), findsOneWidget);
   });
 
   testWidgets('FinanceView renders with loaded finance data', (tester) async {
@@ -109,7 +110,8 @@ void main() {
 
     // Tab labels
     expect(find.text(AppStrings.financeOverviewTab), findsOneWidget);
-    expect(find.text(AppStrings.financeTransactionsTab), findsOneWidget);
+    expect(find.text('LEDGER'), findsOneWidget); // rework: TRANSACTIONS -> LEDGER tab
+    expect(find.text('REPORTS'), findsOneWidget);
     // Section headers from overview tab
     expect(find.text(AppStrings.financeHealthHeroTitle), findsOneWidget);
     expect(find.text(AppStrings.financePerformanceTitle), findsOneWidget);
