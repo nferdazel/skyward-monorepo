@@ -121,7 +121,7 @@ func (b *BankService) Repay(ctx context.Context, userID, loanID string, amount *
 
 	gameTime, _ := b.engine.Ledger.GetUserGameTime(ctx, userID)
 	desc := "Loan partial repayment"
-	paidOff := (remaining - payment) <= 0.005
+	paidOff := (remaining - payment) <= moneyEpsilon
 	if paidOff {
 		desc = "Loan fully repaid"
 	}
@@ -131,8 +131,8 @@ func (b *BankService) Repay(ctx context.Context, userID, loanID string, amount *
 	}
 	_, err = tx.Exec(ctx, `
 		UPDATE loans SET remaining_balance = GREATEST(0, remaining_balance - $1),
-		       status = CASE WHEN remaining_balance - $1 <= 0.005 THEN 'paid_off'::varchar ELSE status END
-		WHERE id=$2`, payment, loanID)
+		       status = CASE WHEN remaining_balance - $1 <= $3 THEN 'paid_off'::varchar ELSE status END
+		WHERE id=$2`, payment, loanID, moneyEpsilon)
 	if err != nil {
 		return &MutationResult{Success: false, Message: "update loan failed", NewCash: cash}, nil
 	}
