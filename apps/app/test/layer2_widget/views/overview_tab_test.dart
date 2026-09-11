@@ -91,6 +91,13 @@ void main() {
     expect(find.text('RISK & COMPETITIVE SIGNALS'), findsOneWidget);
     expect(find.text('QUICK ACTIONS'), findsOneWidget);
     expect(find.text('ACTION QUEUE'), findsOneWidget);
+    // Cockpit rework sections (2026-09 redesign).
+    expect(find.text('MONEY & RUNWAY'), findsOneWidget);
+    expect(find.text('FLEET GLANCE'), findsOneWidget);
+    expect(find.text('ROUTES GLANCE'), findsOneWidget);
+    expect(find.text('NET WORTH'), findsOneWidget);
+    // NOTE: 'DAILY NET' only renders when expense history exists — not
+    // assertable in the empty-cubit state.
   });
 
   testWidgets('OverviewTab renders active world events when present', (
