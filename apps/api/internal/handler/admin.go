@@ -2,6 +2,7 @@
 package handler
 
 import (
+	"crypto/subtle"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -14,15 +15,24 @@ import (
 
 // AdminGuard — middleware untuk endpoint admin (ops: owner optimizer, world tick manual, dll).
 // Memeriksa `Authorization: Bearer <token>` terhadap `SKYWARD_ADMIN_TOKEN`.
+//
+// AUDIT-03: fail-CLOSED. Config kosong dulu lolos di env dev (header `Bearer `
+// kosong = authed). Sekarang token kosong ⇒ 503 di semua env. Perbandingan
+// pakai constant-time compare.
 func AdminGuard(token string, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if token == "" {
+			httperr.WriteError(w, nil, httperr.Unavailable("admin endpoints disabled (no SKYWARD_ADMIN_TOKEN)"))
+			return
+		}
 		h := r.Header.Get("Authorization")
 		if h == "" {
 			httperr.WriteError(w, nil, httperr.Unauthorized("missing admin token"))
 			return
 		}
 		parts := strings.SplitN(h, " ", 2)
-		if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") || parts[1] != token {
+		if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") ||
+			subtle.ConstantTimeCompare([]byte(parts[1]), []byte(token)) != 1 {
 			httperr.WriteError(w, nil, httperr.Unauthorized("invalid admin token"))
 			return
 		}
