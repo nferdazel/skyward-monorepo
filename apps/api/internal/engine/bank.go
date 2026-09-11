@@ -29,6 +29,12 @@ func (b *BankService) TakeLoan(ctx context.Context, userID string, p TakeLoanPar
 	if loanType == "" {
 		loanType = "unsecured"
 	}
+	// AUDIT-12: collateral dulu diterima lalu diabaikan senyap — pemain
+	// mengira mendapat secured loan padahal unsecured. Tolak eksplisit sampai
+	// secured lending benar-benar diimplementasikan (backlog roadmap).
+	if p.CollateralAircraftID != nil && *p.CollateralAircraftID != "" {
+		return &MutationResult{Success: false, Message: "Collateral is not supported yet."}, nil
+	}
 
 	tx, err := b.engine.Pool.Begin(ctx)
 	if err != nil {
