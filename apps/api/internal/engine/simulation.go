@@ -27,6 +27,14 @@ type WorldTickResult struct {
 // WorldTick — advance season clock, process all players, write world_tick_log.
 // Mirror of process_world_tick + process_player_simulation_to_time.
 func (e *Engine) WorldTick(ctx context.Context) (*WorldTickResult, error) {
+	// AUDIT-09: cegah overlap tick dalam proses (worker vs manual admin tick).
+	// Step 1 advance-clock advisory lock bersifat autocommit sehingga tidak
+	// melindungi langkah 2-6; mutex ini penutupnya untuk single-instance.
+	if !e.tickMu.TryLock() {
+		return nil, fmt.Errorf("another world tick is already running")
+	}
+	defer e.tickMu.Unlock()
+
 	// 1. Lock & advance season
 	var seasonID string
 	var gameTimeBefore, gameTimeAfter time.Time
