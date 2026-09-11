@@ -13,6 +13,7 @@ import '../../../../presentation/widgets/app_badge.dart';
 import '../../../../presentation/widgets/app_button.dart';
 import '../../../../presentation/widgets/app_empty_state.dart';
 import '../../../../presentation/widgets/app_section_header.dart';
+import '../../../../presentation/widgets/help_tooltip.dart';
 import '../../../../presentation/widgets/segmented_pill_control.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
@@ -30,6 +31,27 @@ import '../widgets/ifrs_report_panel.dart';
 /// the dashboard's [LazyTabCubit] when both are in the widget tree.
 class FinanceSubTabCubit extends LazyTabCubit {
   FinanceSubTabCubit({super.initialIndex});
+}
+
+/// Private finance UI copy (orchestrator consolidates into AppStrings later).
+class _S {
+  const _S._();
+
+  static const String overviewTab = AppStrings.financeOverviewTab;
+  static const String ledgerTab = 'LEDGER';
+  static const String reportsTab = 'REPORTS';
+  static const String bankTab = AppStrings.bankTab;
+
+  static const String reportsTitle = 'FINANCIAL REPORTS';
+  static const String reportsDescription =
+      'IFRS-style statements compiled from the ledger. Tap a section to collapse it.';
+  static const String ledgerInflow = 'IN';
+  static const String ledgerOutflow = 'OUT';
+  static const String ledgerCountSuffix = ' entries';
+  static const String positionAtAGlance = 'AT A GLANCE';
+  static const String reportsHelp =
+      'These statements are generated locally from ledger rows returned by '
+      'the backend. They are display-only and not authoritative accounting.';
 }
 
 class FinanceView extends StatefulWidget {
@@ -54,7 +76,7 @@ class _FinanceViewState extends State<FinanceView>
   void initState() {
     super.initState();
     _lazyTabCubit = FinanceSubTabCubit();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _tabController.addListener(() {
       final index = _tabController.index;
       if (!_lazyTabCubit.state.loadedIndexes.contains(index)) {
@@ -106,17 +128,22 @@ class _FinanceViewState extends State<FinanceView>
                   items: const [
                     SegmentedPillItem(
                       value: 0,
-                      label: AppStrings.financeOverviewTab,
+                      label: _S.overviewTab,
                       icon: Icons.analytics_outlined,
                     ),
                     SegmentedPillItem(
                       value: 1,
-                      label: AppStrings.financeTransactionsTab,
+                      label: _S.ledgerTab,
                       icon: Icons.receipt_long_outlined,
                     ),
                     SegmentedPillItem(
                       value: 2,
-                      label: AppStrings.bankTab,
+                      label: _S.reportsTab,
+                      icon: Icons.assessment_outlined,
+                    ),
+                    SegmentedPillItem(
+                      value: 3,
+                      label: _S.bankTab,
                       icon: Icons.account_balance_outlined,
                     ),
                   ],
@@ -131,24 +158,7 @@ class _FinanceViewState extends State<FinanceView>
                 buildWhen: (prev, curr) => true,
                 builder: (context, state) {
                   if (state is FinanceInitial) {
-                    return Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          CircularProgressIndicator(
-                            color: AppTheme.primary,
-                            strokeWidth: 2,
-                          ),
-                          const SizedBox(height: AppSpacing.lg),
-                          Text(
-                            AppStrings.loadingFinancialData,
-                            style: AppTypography.microLabel.copyWith(
-                              color: AppTheme.textMuted,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
+                    return _buildLoading(AppStrings.loadingFinancialData);
                   }
 
                   if (state is FinanceError && !state.hasData) {
@@ -200,11 +210,16 @@ class _FinanceViewState extends State<FinanceView>
                             ),
                             RepaintBoundary(
                               child: tabState.loadedIndexes.contains(1)
-                                  ? _buildTransactionsTab(context, state)
+                                  ? _buildLedgerTab(context, state)
                                   : const SizedBox.shrink(),
                             ),
                             RepaintBoundary(
                               child: tabState.loadedIndexes.contains(2)
+                                  ? _buildReportsTab(state)
+                                  : const SizedBox.shrink(),
+                            ),
+                            RepaintBoundary(
+                              child: tabState.loadedIndexes.contains(3)
                                   ? BankPanel(
                                       onViewAllTransactions: () =>
                                           _onTabTap(1),
@@ -217,24 +232,7 @@ class _FinanceViewState extends State<FinanceView>
                     );
                   }
 
-                  return Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const CircularProgressIndicator(
-                          color: AppTheme.primary,
-                          strokeWidth: 2,
-                        ),
-                        const SizedBox(height: AppSpacing.lg),
-                        Text(
-                          AppStrings.loadingControls,
-                          style: AppTypography.microLabel.copyWith(
-                            color: AppTheme.textMuted,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
+                  return _buildLoading(AppStrings.loadingControls);
                 },
               ),
             ),
@@ -243,6 +241,28 @@ class _FinanceViewState extends State<FinanceView>
       ),
     );
   }
+
+  Widget _buildLoading(String label) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const CircularProgressIndicator(color: AppTheme.primary, strokeWidth: 2),
+          const SizedBox(height: AppSpacing.lg),
+          Text(
+            label,
+            style: AppTypography.microLabel.copyWith(
+              color: AppTheme.textMuted,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // OVERVIEW
+  // ───────────────────────────────────────────────────────────────────────────
 
   Widget _buildOverviewTab(FinanceDataState state) {
     if (state is! FinanceLoaded) {
@@ -264,55 +284,91 @@ class _FinanceViewState extends State<FinanceView>
       state,
       weeklyDebtPayment: weeklyDebt,
     );
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.pagePadding),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Zone 1 — Health Hero
-          AppSectionHeader(title: AppStrings.financeHealthHeroTitle),
-          const SizedBox(height: AppSpacing.blockGap),
-          FinanceHealthHero(state: state, overview: overview),
-          const SizedBox(height: AppSpacing.sectionGap),
-
-          // Zone 2 — Performance (30d)
+          // ── KPI strip ──
           AppSectionHeader(
-            title: AppStrings.financePerformanceTitle,
+            title: AppStrings.financeHealthHeroTitle,
             trailing: AppButton(
               text: AppStrings.financeViewFullReportCta,
               type: AppButtonType.secondary,
               height: 32,
               onPressed: () {
                 final bankState = context.read<BankCubit>().state;
-                showIfrsReportPanel(context, financeState: state, bankState: bankState);
+                showIfrsReportPanel(
+                  context,
+                  financeState: state,
+                  bankState: bankState,
+                );
               },
             ),
           ),
           const SizedBox(height: AppSpacing.blockGap),
-          FinancePerformanceSection(
-            state: state,
-            overview: overview,
-            onCategoryTap: (category) {
-              setState(() {
-                _activeFilter = _filterForCategory(category);
-              });
-              _tabController.animateTo(1);
-              _lazyTabCubit.activate(1);
-            },
-          ),
+          FinanceHealthHero(state: state, overview: overview),
           const SizedBox(height: AppSpacing.sectionGap),
 
-          // Zone 3 — Position
-          AppSectionHeader(title: AppStrings.financePositionTitle),
-          const SizedBox(height: AppSpacing.blockGap),
-          FinancePositionStrip(state: state, overview: overview),
+          // ── Performance + Position side-by-side on wide screens ──
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final performance = Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const AppSectionHeader(
+                    title: AppStrings.financePerformanceTitle,
+                  ),
+                  const SizedBox(height: AppSpacing.blockGap),
+                  FinancePerformanceSection(
+                    state: state,
+                    overview: overview,
+                    onCategoryTap: (category) {
+                      setState(() {
+                        _activeFilter = _filterForCategory(category);
+                      });
+                      _onTabTap(1);
+                    },
+                  ),
+                ],
+              );
+              final position = Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const AppSectionHeader(title: _S.positionAtAGlance),
+                  const SizedBox(height: AppSpacing.blockGap),
+                  FinancePositionStrip(state: state, overview: overview),
+                ],
+              );
+
+              if (constraints.maxWidth >= 1180) {
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(flex: 3, child: performance),
+                    const SizedBox(width: AppSpacing.sectionGap),
+                    Expanded(flex: 2, child: position),
+                  ],
+                );
+              }
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  performance,
+                  const SizedBox(height: AppSpacing.sectionGap),
+                  position,
+                ],
+              );
+            },
+          ),
         ],
       ),
     );
   }
 
   /// Maps a category key from [FinancePerformanceSection.onCategoryTap]
-  /// to a [LedgerFilter] value for the Transactions tab.
+  /// to a [LedgerFilter] value for the Ledger tab.
   static LedgerFilter _filterForCategory(String category) {
     switch (category) {
       case 'revenue':
@@ -330,37 +386,56 @@ class _FinanceViewState extends State<FinanceView>
     }
   }
 
-  Widget _buildTransactionsTab(BuildContext context, FinanceDataState state) {
+  // ───────────────────────────────────────────────────────────────────────────
+  // LEDGER
+  // ───────────────────────────────────────────────────────────────────────────
+
+  Widget _buildLedgerTab(BuildContext context, FinanceDataState state) {
     if (state is! FinanceLoaded) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    final filtered = applyLedgerFilter(state.transactions, _activeFilter, _searchQuery);
+    final filtered = applyLedgerFilter(
+      state.transactions,
+      _activeFilter,
+      _searchQuery,
+    );
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        AppSectionHeader(title: AppStrings.financeTransactionsTab),
-        const SizedBox(height: AppSpacing.blockGap),
-        FinanceLedgerFilters(
-          activeFilter: _activeFilter,
-          searchQuery: _searchQuery,
-          onFilterChanged: (f) => setState(() => _activeFilter = f),
-          onSearchChanged: (q) => setState(() => _searchQuery = q),
-        ),
-        const SizedBox(height: AppSpacing.blockGap),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildLedgerHeaderRow(),
-              Expanded(
-                child: _buildGroupedLedger(context, state, filtered),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.pagePadding),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AppSectionHeader(
+            title: _S.ledgerTab,
+            trailing: Text(
+              '${filtered.length}${_S.ledgerCountSuffix}',
+              style: AppTypography.microLabel.copyWith(
+                color: AppTheme.textMuted,
               ),
-            ],
+            ),
           ),
-        ),
-      ],
+          const SizedBox(height: AppSpacing.blockGap),
+          FinanceLedgerFilters(
+            activeFilter: _activeFilter,
+            searchQuery: _searchQuery,
+            onFilterChanged: (f) => setState(() => _activeFilter = f),
+            onSearchChanged: (q) => setState(() => _searchQuery = q),
+          ),
+          const SizedBox(height: AppSpacing.blockGap),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildLedgerHeaderRow(),
+                Expanded(
+                  child: _buildGroupedLedger(context, state, filtered),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -389,7 +464,7 @@ class _FinanceViewState extends State<FinanceView>
       ),
       child: Row(
         children: [
-          cell(AppStrings.financeCategoryHeader, 100),
+          cell(AppStrings.financeCategoryHeader, 120),
           Expanded(
             flex: 5,
             child: Text(
@@ -399,9 +474,10 @@ class _FinanceViewState extends State<FinanceView>
               ),
             ),
           ),
+          cell(_S.ledgerInflow, 56, align: TextAlign.center),
           cell(AppStrings.financeDateHeader, 120),
-          cell(AppStrings.financeAmountHeader, 110, align: TextAlign.right),
-          cell(AppStrings.financeBalanceHeader, 110, align: TextAlign.right),
+          cell(AppStrings.financeAmountHeader, 120, align: TextAlign.right),
+          cell(AppStrings.financeBalanceHeader, 120, align: TextAlign.right),
         ],
       ),
     );
@@ -459,7 +535,7 @@ class _FinanceViewState extends State<FinanceView>
                     ),
                   ),
                   Text(
-                    '${AppStrings.financeDayNetLabel}: ${AppFormatters.currency.format(dayNet)}',
+                    '${dayTxns.length} · ${AppStrings.financeDayNetLabel}: ${AppFormatters.currency.format(dayNet)}',
                     style: AppTypography.badgeText.copyWith(
                       color: dayNet >= 0 ? AppTheme.success : AppTheme.error,
                     ),
@@ -477,6 +553,7 @@ class _FinanceViewState extends State<FinanceView>
 
   Widget _buildTransactionRow(BankTransaction txn) {
     final gameDate = txn.gameDate ?? DateTime(2020, 1, 1);
+    final isInflow = txn.amount >= 0;
 
     return Container(
       padding: const EdgeInsets.symmetric(
@@ -490,7 +567,7 @@ class _FinanceViewState extends State<FinanceView>
         children: [
           // Category badge
           SizedBox(
-            width: 100,
+            width: 120,
             child: _buildCategoryPill(
               txn.ifrsCategory ?? '',
               txn.ifrsSubcategory ?? '',
@@ -508,6 +585,15 @@ class _FinanceViewState extends State<FinanceView>
               overflow: TextOverflow.ellipsis,
             ),
           ),
+          // Type chip (IN / OUT)
+          SizedBox(
+            width: 56,
+            child: Center(
+              child: isInflow
+                  ? AppBadge.success(label: _S.ledgerInflow)
+                  : AppBadge.error(label: _S.ledgerOutflow),
+            ),
+          ),
           // Date
           SizedBox(
             width: 120,
@@ -522,11 +608,11 @@ class _FinanceViewState extends State<FinanceView>
           ),
           // Amount
           SizedBox(
-            width: 110,
+            width: 120,
             child: Text(
-              AppFormatters.currency.format(txn.amount),
+              '${isInflow ? '+' : ''}${AppFormatters.currency.format(txn.amount)}',
               style: AppTypography.monoValue.copyWith(
-                color: txn.amount >= 0 ? AppTheme.success : AppTheme.error,
+                color: isInflow ? AppTheme.success : AppTheme.error,
               ),
               textAlign: TextAlign.right,
               maxLines: 1,
@@ -535,7 +621,7 @@ class _FinanceViewState extends State<FinanceView>
           ),
           // Balance
           SizedBox(
-            width: 110,
+            width: 120,
             child: Text(
               AppFormatters.currencyDetailed.format(txn.balanceAfter),
               style: AppTypography.monoValue.copyWith(
@@ -586,5 +672,36 @@ class _FinanceViewState extends State<FinanceView>
       default:
         return AppBadge.secondary(label: effectiveKey.replaceAll('_', ' '));
     }
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // REPORTS
+  // ───────────────────────────────────────────────────────────────────────────
+
+  Widget _buildReportsTab(FinanceDataState state) {
+    final bankState = context.read<BankCubit>().state;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(AppSpacing.pagePadding),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1080),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AppSectionHeader(
+                title: _S.reportsTitle,
+                description: _S.reportsDescription,
+                trailing: const HelpTooltip(message: _S.reportsHelp),
+              ),
+              const SizedBox(height: AppSpacing.blockGap),
+              IfrsReportBody(
+                financeState: state,
+                bankState: bankState,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

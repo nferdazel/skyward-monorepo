@@ -56,7 +56,10 @@ only product backlog — no shadow checklists at repo root.
       (view-layer only, cubit untouched), dedupe executive-vs-IFRS summary, transactions
       tab from data-dump to filterable day-grouped ledger, dataviz polish (extend
       `AppLineChart`, don't fork). Partially addressed by `1f7d6be` (ledger headers,
-      debt-aware runway, dead columns).
+      debt-aware runway, dead columns). Partially addressed again 2026-09-12: 4-tab IA
+      (OVERVIEW/LEDGER/REPORTS/BANK), KPI-strip overview, inline collapsible IFRS
+      report with tooltips, sign-colored ledger rows with running balance
+      (view-layer only). Dedupe + AppLineChart extension not done.
 - [ ] **Fleet page pass** (from deleted `docs/plans/fleet-page-audit.md`):
       P0 — finance-term label bug, repair cost visible + fixed-width action cell, honest
       STATUS (EARNING/IDLE/GROUNDED with lease burn); P1 — fleet summary strip, merged

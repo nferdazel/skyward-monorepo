@@ -6,16 +6,16 @@ import '../../../../core/utils/app_formatters.dart';
 import '../../../../presentation/theme/app_spacing.dart';
 import '../../../../presentation/theme/app_typography.dart';
 import '../../../../presentation/widgets/app_card.dart';
-import '../../../../presentation/widgets/app_line_chart.dart';
 import '../../../../presentation/widgets/app_sparkline.dart';
 import '../../../../presentation/widgets/expense_breakdown_bar.dart';
+import '../../../../presentation/widgets/help_tooltip.dart';
 import '../cubit/finance_state.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// FinanceOverview — moved from _FinanceOverview in finance_view.dart
+// FinanceOverview — pre-computed finance metrics shared by the zone widgets.
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Pre-computed finance overview metrics used by all three zone widgets.
+/// Pre-computed finance overview metrics used by the overview zone widgets.
 class FinanceOverview {
   final double? runwayDays;
   final String runwayLabel;
@@ -105,10 +105,10 @@ class FinanceOverview {
 // Zone 1 — FinanceHealthHero
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Full-width health hero strip showing the four core finance KPIs.
+/// Full-width health strip showing the core finance KPIs.
 ///
-/// Layout: Row of 4 equal columns — CASH (with sparkline), 30D NET,
-/// RUNWAY (color-coded badge), NET WORTH.
+/// Wide screens lay the five KPIs out in a single row; narrow screens wrap
+/// them into a balanced grid. Values are right-aligned monospace for scanning.
 class FinanceHealthHero extends StatelessWidget {
   final FinanceDataState state;
   final FinanceOverview overview;
@@ -132,7 +132,7 @@ class FinanceHealthHero extends StatelessWidget {
     final netColor = net30d >= 0 ? AppTheme.success : AppTheme.error;
     final netPrefix = net30d >= 0 ? '+' : '';
 
-    // Compute 7d vs prior 7d delta
+    // Compute 7d vs prior 7d delta.
     final snapshots = state.dailySnapshots;
     double? delta;
     if (snapshots.length >= 14) {
@@ -142,115 +142,155 @@ class FinanceHealthHero extends StatelessWidget {
       delta = recent7d - prior7d;
     }
 
-    return AppCard(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      child: Row(
-        children: [
-          // ── CASH ──
-          Expanded(
-            child: _HeroColumn(
-              label: AppStrings.financeCashLabel,
-              value: AppFormatters.currency.format(snapshot.cash),
-              valueStyle: AppTypography.largeKpi,
-              sub: SizedBox(
-                height: 28,
-                child: AppSparkline(
-                  data: cashData,
-                  width: 80,
-                  height: 28,
-                  color: AppTheme.primary,
-                ),
+    final revenue = state.totalRevenue;
+    final expense = state.totalExpense;
+    final margin = revenue > 0 ? ((revenue - expense) / revenue * 100) : 0.0;
+    final marginColor = margin > 20
+        ? AppTheme.success
+        : margin > 5
+            ? AppTheme.warning
+            : AppTheme.error;
+
+    final cards = <Widget>[
+      _KpiCell(
+        label: AppStrings.financeCashLabel,
+        value: AppFormatters.currency.format(snapshot.cash),
+        valueColor: AppTheme.textPrimary,
+        valueStyle: AppTypography.largeKpi,
+        help: 'Canonical bank cash — the money available right now.',
+        sub: SizedBox(
+          height: 22,
+          child: AppSparkline(
+            data: cashData,
+            width: 72,
+            height: 22,
+            color: AppTheme.primary,
+          ),
+        ),
+      ),
+      _KpiCell(
+        label: AppStrings.financeNetWorthLabel,
+        value: AppFormatters.currency.format(snapshot.netWorth),
+        valueColor: AppTheme.primary,
+        help: 'Cash plus owned aircraft value minus outstanding loans.',
+        sub: Row(
+          children: [
+            SizedBox(
+              height: 22,
+              child: AppSparkline(
+                data: netWorthData,
+                width: 72,
+                height: 22,
+                color: AppTheme.primary,
               ),
             ),
-          ),
-          _verticalDivider(),
-          // ── 30D NET ──
-          Expanded(
-            child: _HeroColumn(
-              label: AppStrings.financeNet30dLabel,
-              value: '$netPrefix${AppFormatters.currency.format(net30d.abs())}',
-              valueStyle: AppTypography.dataEmphasis.copyWith(color: netColor),
-              sub: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    net30d >= 0 ? 'Profit' : 'Loss',
-                    style: AppTypography.captionRegular.copyWith(
-                      color: netColor,
-                    ),
+            const SizedBox(width: AppSpacing.xs),
+            Expanded(
+              child: Text(
+                '${snapshot.ownedFleetCount} owned / ${snapshot.leasedFleetCount} leased',
+                style: AppTypography.captionRegular.copyWith(
+                  color: AppTheme.textMuted,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+      _KpiCell(
+        label: AppStrings.financeNet30dLabel,
+        value: '$netPrefix${AppFormatters.currency.format(net30d.abs())}',
+        valueColor: netColor,
+        help: 'Rolling 30-game-day net result from the ledger.',
+        sub: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              net30d >= 0 ? 'Profit' : 'Loss',
+              style: AppTypography.captionRegular.copyWith(color: netColor),
+            ),
+            if (delta != null) ...[
+              const SizedBox(width: AppSpacing.xs),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                decoration: BoxDecoration(
+                  color: (delta >= 0 ? AppTheme.success : AppTheme.error)
+                      .withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+                child: Text(
+                  '${delta >= 0 ? '+' : ''}${AppFormatters.compactCurrency.format(delta)}',
+                  style: AppTypography.captionRegular.copyWith(
+                    color: delta >= 0 ? AppTheme.success : AppTheme.error,
+                    fontSize: 10,
                   ),
-                  if (delta != null) ...[
-                    const SizedBox(width: AppSpacing.xs),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 1,
-                      ),
-                      decoration: BoxDecoration(
-                        color: (delta >= 0 ? AppTheme.success : AppTheme.error)
-                            .withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                      child: Text(
-                        '${delta >= 0 ? '+' : ''}${AppFormatters.compactCurrency.format(delta)}',
-                        style: AppTypography.captionRegular.copyWith(
-                          color: delta >= 0 ? AppTheme.success : AppTheme.error,
-                          fontSize: 10,
-                        ),
-                      ),
-                    ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+      _KpiCell(
+        label: AppStrings.financeRunwayLabel,
+        value: overview.runwayLabel,
+        valueColor: overview.runwayColor,
+        help: overview.runwayVerdict,
+        sub: Text(
+          overview.coverageLabel,
+          style: AppTypography.captionRegular.copyWith(
+            color: overview.coverageColor,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+      _KpiCell(
+        label: AppStrings.financeMarginLabel,
+        value: '${margin.toStringAsFixed(1)}%',
+        valueColor: marginColor,
+        help: 'Operating margin across the current ledger window.',
+        sub: Text(
+          overview.burnMixLabel,
+          style: AppTypography.captionRegular.copyWith(
+            color: AppTheme.textMuted,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+    ];
+
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth >= 1080) {
+            return IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (var i = 0; i < cards.length; i++) ...[
+                    Expanded(child: cards[i]),
+                    if (i < cards.length - 1) _verticalDivider(),
                   ],
                 ],
               ),
-            ),
-          ),
-          _verticalDivider(),
-          // ── RUNWAY ──
-          Expanded(
-            child: _HeroColumn(
-              label: AppStrings.financeRunwayLabel,
-              value: overview.runwayLabel,
-              valueStyle: AppTypography.dataEmphasis.copyWith(
-                color: overview.runwayColor,
-              ),
-              sub: _RunwayBadge(
-                color: overview.runwayColor,
-                label: overview.runwayLabel,
-              ),
-            ),
-          ),
-          _verticalDivider(),
-          // ── NET WORTH ──
-          Expanded(
-            child: _HeroColumn(
-              label: AppStrings.financeNetWorthLabel,
-              value: AppFormatters.currency.format(snapshot.netWorth),
-              valueStyle: AppTypography.dataEmphasis,
-              sub: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    height: 120,
-                    child: AppLineChart(
-                      data: netWorthData,
-                      height: 120,
-                      showMinMaxLabels: true,
-                      yFormat: AppFormatters.compactCurrency,
-                    ),
+            );
+          }
+          return Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            children: cards
+                .map(
+                  (card) => SizedBox(
+                    width: (constraints.maxWidth - AppSpacing.sm) / 2,
+                    child: card,
                   ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    '${snapshot.ownedFleetCount} owned / ${snapshot.leasedFleetCount} leased',
-                    style: AppTypography.captionRegular.copyWith(
-                      color: AppTheme.textMuted,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+                )
+                .toList(),
+          );
+        },
       ),
     );
   }
@@ -258,75 +298,76 @@ class FinanceHealthHero extends StatelessWidget {
   Widget _verticalDivider() {
     return Container(
       width: 0.5,
-      height: 56,
       margin: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
       color: AppTheme.border,
     );
   }
 }
 
-/// Reusable column layout for a hero KPI cell.
-class _HeroColumn extends StatelessWidget {
+/// A single KPI cell used inside [FinanceHealthHero].
+class _KpiCell extends StatelessWidget {
   final String label;
   final String value;
-  final TextStyle valueStyle;
+  final Color valueColor;
+  final TextStyle? valueStyle;
+  final String? help;
   final Widget? sub;
 
-  const _HeroColumn({
+  const _KpiCell({
     required this.label,
     required this.value,
-    required this.valueStyle,
+    required this.valueColor,
+    this.valueStyle,
+    this.help,
     this.sub,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          label,
-          style: AppTypography.microLabel.copyWith(color: AppTheme.textMuted),
-        ),
-        const SizedBox(height: AppSpacing.xs),
-        Text(
-          value,
-          style: valueStyle,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        if (sub != null) ...[
-          const SizedBox(height: AppSpacing.xs),
-          sub!,
-        ],
-      ],
-    );
-  }
-}
-
-/// Small color-coded badge for the runway value.
-class _RunwayBadge extends StatelessWidget {
-  final Color color;
-  final String label;
-
-  const _RunwayBadge({required this.color, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
+    return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.sm,
         vertical: AppSpacing.xs,
       ),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(AppSpacing.radiusTight),
-        border: Border.all(color: color.withValues(alpha: 0.3), width: 0.5),
-      ),
-      child: Text(
-        label,
-        style: AppTypography.nanoLabel.copyWith(color: color),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Flexible(
+                child: Text(
+                  label,
+                  style: AppTypography.microLabel.copyWith(
+                    color: AppTheme.textMuted,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (help != null) ...[
+                const SizedBox(width: AppSpacing.xs),
+                HelpTooltip(message: help!),
+              ],
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              value,
+              style: (valueStyle ?? AppTypography.dataEmphasis)
+                  .copyWith(color: valueColor),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.right,
+            ),
+          ),
+          if (sub != null) ...[
+            const SizedBox(height: AppSpacing.xs),
+            sub!,
+          ],
+        ],
       ),
     );
   }
@@ -336,8 +377,8 @@ class _RunwayBadge extends StatelessWidget {
 // Zone 2 — FinancePerformanceSection
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Performance section: 30-day money in / out / margin, expense breakdown bar,
-/// legend rows, and largest-expense prose callout.
+/// Performance section: money in / out / margin, expense breakdown bar,
+/// clickable legend rows, and largest-expense callout.
 class FinancePerformanceSection extends StatelessWidget {
   final FinanceDataState state;
   final FinanceOverview overview;
@@ -427,11 +468,20 @@ class FinancePerformanceSection extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'WHERE YOUR MONEY GOES',
-                    style: AppTypography.microLabel.copyWith(
-                      color: AppTheme.textMuted,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        'WHERE YOUR MONEY GOES',
+                        style: AppTypography.microLabel.copyWith(
+                          color: AppTheme.textMuted,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      const HelpTooltip(
+                        message: 'Share of total spend by category. '
+                            'Click a row to filter the ledger.',
+                      ),
+                    ],
                   ),
                   Text(
                     AppFormatters.currency.format(totalExpense),
@@ -530,11 +580,15 @@ class _CompactStat extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.xs),
-          Text(
-            value,
-            style: AppTypography.dataEmphasis.copyWith(color: color),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              value,
+              style: AppTypography.dataEmphasis.copyWith(color: color),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.right,
+            ),
           ),
         ],
       ),
@@ -590,6 +644,11 @@ class _LegendRow extends StatelessWidget {
               ),
               textAlign: TextAlign.right,
             ),
+          ),
+          Icon(
+            Icons.chevron_right,
+            size: 14,
+            color: AppTheme.textMuted,
           ),
         ],
       ),
@@ -696,6 +755,11 @@ class FinancePositionStrip extends StatelessWidget {
                 label: AppStrings.financeFleetMixLabel,
                 value: fleetLabel,
               ),
+              const SizedBox(width: AppSpacing.lg),
+              _FactChip(
+                label: AppStrings.activeRoutesLabel,
+                value: '${snapshot.activeRouteCount}',
+              ),
             ],
           ),
         ],
@@ -718,22 +782,28 @@ class _EquationTerm extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          label,
-          style: AppTypography.nanoLabel.copyWith(color: AppTheme.textMuted),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          value,
-          style: AppTypography.hudValue.copyWith(
-            color: valueColor ?? AppTheme.textPrimary,
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: AppTypography.nanoLabel.copyWith(color: AppTheme.textMuted),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-        ),
-      ],
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: AppTypography.hudValue.copyWith(
+              color: valueColor ?? AppTheme.textPrimary,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
     );
   }
 }
@@ -767,6 +837,8 @@ class _FactChip extends StatelessWidget {
               style: AppTypography.nanoLabel.copyWith(
                 color: AppTheme.textMuted,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 2),
             Text(

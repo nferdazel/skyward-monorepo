@@ -6,23 +6,23 @@ import '../../../../presentation/theme/app_spacing.dart';
 import '../../../../presentation/theme/app_typography.dart';
 import '../../../../presentation/widgets/app_card.dart';
 import '../../../../presentation/widgets/app_section_header.dart';
+import '../../../../presentation/widgets/help_tooltip.dart';
 import '../../../bank/presentation/cubit/bank_state.dart';
 import '../../domain/ifrs_report_builder.dart';
 import '../cubit/finance_state.dart';
 
-/// Slide-over panel displaying an IFRS-style financial report.
+/// IFRS-style report body: income statement, balance sheet and cash flows.
 ///
-/// Accessible from the Finance Overview tab via "VIEW FULL REPORT" button.
-class IfrsReportPanel extends StatelessWidget {
+/// Shared by the slide-over [IfrsReportPanel] and the inline Reports tab so
+/// both surfaces render identical numbers and jargon explanations.
+class IfrsReportBody extends StatelessWidget {
   final FinanceDataState financeState;
   final BankState bankState;
-  final VoidCallback? onClose;
 
-  const IfrsReportPanel({
+  const IfrsReportBody({
     super.key,
     required this.financeState,
     required this.bankState,
-    this.onClose,
   });
 
   static final NumberFormat _currency = NumberFormat.currency(
@@ -53,80 +53,28 @@ class IfrsReportPanel extends StatelessWidget {
       financeState.transactions,
     );
 
-    return Material(
-      color: AppTheme.surface,
-      child: Container(
-        width: 420,
-        decoration: BoxDecoration(
-          border: Border(left: BorderSide(color: AppTheme.border, width: 1.0)),
-        ),
-        child: Column(
-          children: [
-            _buildHeader(),
-            Divider(color: AppTheme.border, height: 1),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildIncomeStatementSection(incomeStatement),
-                    const SizedBox(height: AppSpacing.sectionGap),
-                    _buildBalanceSheetSection(balanceSheet),
-                    const SizedBox(height: AppSpacing.sectionGap),
-                    _buildCashFlowsSection(cashFlows),
-                    const SizedBox(height: AppSpacing.xxl),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      child: Row(
-        children: [
-          Icon(Icons.assessment_outlined, color: AppTheme.primary, size: 18),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Text(
-              'FINANCIAL REPORT',
-              style: AppTypography.sectionHeaderLarge.copyWith(
-                color: AppTheme.textPrimary,
-              ),
-            ),
-          ),
-          Semantics(
-            button: true,
-            label: 'Close report',
-            child: InkWell(
-              onTap: onClose,
-              borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
-              hoverColor: AppTheme.textMuted.withValues(alpha: 0.08),
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.xs),
-                child: Icon(Icons.close, size: 18, color: AppTheme.textMuted),
-              ),
-            ),
-          ),
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildIncomeStatementSection(incomeStatement),
+        const SizedBox(height: AppSpacing.sectionGap),
+        _buildBalanceSheetSection(balanceSheet),
+        const SizedBox(height: AppSpacing.sectionGap),
+        _buildCashFlowsSection(cashFlows),
+        const SizedBox(height: AppSpacing.xxl),
+      ],
     );
   }
 
   // ── Section 1: Income Statement ──
 
   Widget _buildIncomeStatementSection(IncomeStatement stmt) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return _ReportSection(
+      title: 'INCOME STATEMENT',
+      subtitle: 'Last 30 game days',
+      help: 'Revenue minus operating costs over the trailing ledger window. '
+          'This is the profit-and-loss view.',
       children: [
-        const AppSectionHeader(title: 'INCOME STATEMENT (Last 30 Game Days)'),
-        const SizedBox(height: AppSpacing.blockGap),
         AppCard(
           padding: const EdgeInsets.all(AppSpacing.lg),
           child: Column(
@@ -134,8 +82,16 @@ class IfrsReportPanel extends StatelessWidget {
             children: [
               _sectionLabel('REVENUE'),
               const SizedBox(height: AppSpacing.sm),
-              _lineItem('Ticket Sales', stmt.ticketSales),
-              _lineItem('Cargo Revenue', stmt.cargoRevenue),
+              _lineItem(
+                'Ticket Sales',
+                stmt.ticketSales,
+                help: 'Passenger ticket income from flown routes.',
+              ),
+              _lineItem(
+                'Cargo Revenue',
+                stmt.cargoRevenue,
+                help: 'Freight and cargo income from flown routes.',
+              ),
               const SizedBox(height: AppSpacing.xs),
               _divider(),
               const SizedBox(height: AppSpacing.xs),
@@ -165,11 +121,12 @@ class IfrsReportPanel extends StatelessWidget {
   // ── Section 2: Balance Sheet ──
 
   Widget _buildBalanceSheetSection(BalanceSheet bs) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return _ReportSection(
+      title: 'BALANCE SHEET',
+      subtitle: 'Current position',
+      help: 'What the airline owns (assets) versus what it owes '
+          '(liabilities) and the residual equity.',
       children: [
-        const AppSectionHeader(title: 'BALANCE SHEET (Current)'),
-        const SizedBox(height: AppSpacing.blockGap),
         AppCard(
           padding: const EdgeInsets.all(AppSpacing.lg),
           child: Column(
@@ -177,8 +134,16 @@ class IfrsReportPanel extends StatelessWidget {
             children: [
               _sectionLabel('ASSETS'),
               const SizedBox(height: AppSpacing.sm),
-              _lineItem('Cash & Equivalents', bs.cash),
-              _lineItem('Fleet (Net Book Value)', bs.fleetNetBookValue),
+              _lineItem(
+                'Cash & Equivalents',
+                bs.cash,
+                help: 'Canonical bank cash available to the airline.',
+              ),
+              _lineItem(
+                'Fleet (Net Book Value)',
+                bs.fleetNetBookValue,
+                help: 'Current resale value of owned aircraft.',
+              ),
               const SizedBox(height: AppSpacing.xs),
               _divider(),
               const SizedBox(height: AppSpacing.xs),
@@ -190,6 +155,7 @@ class IfrsReportPanel extends StatelessWidget {
                 'Outstanding Loans',
                 bs.outstandingLoans,
                 isNegative: bs.outstandingLoans > 0,
+                help: 'Remaining balance across all active loans.',
               ),
               const SizedBox(height: AppSpacing.xs),
               _divider(),
@@ -198,7 +164,11 @@ class IfrsReportPanel extends StatelessWidget {
               const SizedBox(height: AppSpacing.lg),
               _sectionLabel('EQUITY'),
               const SizedBox(height: AppSpacing.sm),
-              _lineItem('Retained Earnings', bs.netWorth),
+              _lineItem(
+                'Retained Earnings',
+                bs.netWorth,
+                help: 'Assets minus liabilities — the residual stake.',
+              ),
               const SizedBox(height: AppSpacing.xs),
               _divider(),
               const SizedBox(height: AppSpacing.xs),
@@ -250,11 +220,12 @@ class IfrsReportPanel extends StatelessWidget {
   // ── Section 3: Cash Flows ──
 
   Widget _buildCashFlowsSection(CashFlows cf) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return _ReportSection(
+      title: 'CASH FLOWS',
+      subtitle: 'Last 30 game days',
+      help: 'How cash actually moved: operations, asset purchases/sales, '
+          'and loan activity.',
       children: [
-        const AppSectionHeader(title: 'CASH FLOWS (Last 30 Game Days)'),
-        const SizedBox(height: AppSpacing.blockGap),
         AppCard(
           padding: const EdgeInsets.all(AppSpacing.lg),
           child: Column(
@@ -316,6 +287,7 @@ class IfrsReportPanel extends StatelessWidget {
     String label,
     double value, {
     bool isNegative = false,
+    String? help,
   }) {
     final displayValue = value.abs();
     final hasValue = displayValue > 0;
@@ -329,12 +301,24 @@ class IfrsReportPanel extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: AppTypography.captionRegular.copyWith(
-              color: AppTheme.textSecondary,
+          Flexible(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  style: AppTypography.captionRegular.copyWith(
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+                if (help != null) ...[
+                  const SizedBox(width: AppSpacing.xs),
+                  HelpTooltip(message: help),
+                ],
+              ],
             ),
           ),
+          const SizedBox(width: AppSpacing.md),
           Text(
             hasValue
                 ? '${effectiveIsNegative ? '-' : ''}${_currency.format(displayValue)}'
@@ -430,6 +414,144 @@ class IfrsReportPanel extends StatelessWidget {
           color: AppTheme.textMuted,
           fontStyle: FontStyle.italic,
         ),
+      ),
+    );
+  }
+}
+
+/// A collapsible report section with an explanatory help affordance.
+class _ReportSection extends StatefulWidget {
+  final String title;
+  final String? subtitle;
+  final String? help;
+  final List<Widget> children;
+
+  const _ReportSection({
+    required this.title,
+    required this.children,
+    this.subtitle,
+    this.help,
+  });
+
+  @override
+  State<_ReportSection> createState() => _ReportSectionState();
+}
+
+class _ReportSectionState extends State<_ReportSection> {
+  bool _expanded = true;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InkWell(
+          onTap: () => setState(() => _expanded = !_expanded),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+            child: Row(
+              children: [
+                Icon(
+                  _expanded
+                      ? Icons.keyboard_arrow_down
+                      : Icons.keyboard_arrow_right,
+                  size: 16,
+                  color: AppTheme.textMuted,
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                Expanded(
+                  child: AppSectionHeader(
+                    title: widget.title,
+                    description: widget.subtitle,
+                  ),
+                ),
+                if (widget.help != null) HelpTooltip(message: widget.help!),
+              ],
+            ),
+          ),
+        ),
+        if (_expanded) ...[
+          const SizedBox(height: AppSpacing.blockGap),
+          ...widget.children,
+        ],
+      ],
+    );
+  }
+}
+
+/// Slide-over wrapper around [IfrsReportBody].
+///
+/// Kept for flows that prefer a modal drill-down (e.g. Overview CTA).
+class IfrsReportPanel extends StatelessWidget {
+  final FinanceDataState financeState;
+  final BankState bankState;
+  final VoidCallback? onClose;
+
+  const IfrsReportPanel({
+    super.key,
+    required this.financeState,
+    required this.bankState,
+    this.onClose,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppTheme.surface,
+      child: Container(
+        width: 420,
+        decoration: BoxDecoration(
+          border: Border(left: BorderSide(color: AppTheme.border, width: 1.0)),
+        ),
+        child: Column(
+          children: [
+            _buildHeader(),
+            Divider(color: AppTheme.border, height: 1),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: IfrsReportBody(
+                  financeState: financeState,
+                  bankState: bankState,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Row(
+        children: [
+          Icon(Icons.assessment_outlined, color: AppTheme.primary, size: 18),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              'FINANCIAL REPORT',
+              style: AppTypography.sectionHeaderLarge.copyWith(
+                color: AppTheme.textPrimary,
+              ),
+            ),
+          ),
+          Semantics(
+            button: true,
+            label: 'Close report',
+            child: InkWell(
+              onTap: onClose,
+              borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
+              hoverColor: AppTheme.textMuted.withValues(alpha: 0.08),
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.xs),
+                child: Icon(Icons.close, size: 18, color: AppTheme.textMuted),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
