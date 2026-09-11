@@ -104,14 +104,27 @@ func (r *RoutesService) Assign(ctx context.Context, userID, routeID, aircraftID 
 	r.engine.Pool.QueryRow(ctx, `
 		SELECT GREATEST(COALESCE(u.auto_grounding_threshold,40.0), COALESCE(get_config_numeric('absolute_minimum_safety_limit'),30.0))
 		FROM users u WHERE u.id=$1`, userID).Scan(&threshold)
-	// aircraft + condition + model
+	// AUDIT-08: lock the aircraft row and perform check+update inside ONE tx,
+	// serialized against Fleet.Sell — previously an aircraft could be sold
+	// between guard and update (ghost route with NULL aircraft via FK SET NULL)
+	// or double-assigned to two routes by concurrent calls.
+	tx, txErr := r.engine.Pool.Begin(ctx)
+	if txErr != nil {
+		return &MutationResult{false, "transaction error", 0}, nil
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
 	var rangeKM, speedKMH int
-	var turnaroundHours float64
-	err = r.engine.Pool.QueryRow(ctx, `
-		SELECT m.range_km, m.speed_kmh, COALESCE(m.turnaround_hours, 1.0) FROM fleet_aircraft f JOIN aircraft_models m ON m.id=f.aircraft_model_id
-		WHERE f.id=$1 AND f.user_id=$2 AND f.condition >= $3`, aircraftID, userID, threshold).
-		Scan(&rangeKM, &speedKMH, &turnaroundHours)
+	var turnaroundHours, condition float64
+	var status string
+	err = tx.QueryRow(ctx, `
+		SELECT m.range_km, m.speed_kmh, COALESCE(m.turnaround_hours, 1.0), f.condition, f.status
+		FROM fleet_aircraft f JOIN aircraft_models m ON m.id=f.aircraft_model_id
+		WHERE f.id=$1 AND f.user_id=$2 FOR UPDATE`, aircraftID, userID).
+		Scan(&rangeKM, &speedKMH, &turnaroundHours, &condition, &status)
 	if err != nil {
+		return &MutationResult{false, "Aircraft is unavailable or below the safety threshold.", 0}, nil
+	}
+	if condition < threshold {
 		return &MutationResult{false, "Aircraft is unavailable or below the safety threshold.", 0}, nil
 	}
 	if float64(rangeKM) < ceil(routeDist) {
@@ -122,21 +135,23 @@ func (r *RoutesService) Assign(ctx context.Context, userID, routeID, aircraftID 
 	if maxWeekly > 0 && routeFreq > maxWeekly {
 		return &MutationResult{false, "Route frequency exceeds this aircraft's weekly operating capacity.", 0}, nil
 	}
-	// double-assignment check
+	// double-assignment check (aircraft row is locked)
 	var assigned bool
-	r.engine.Pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM route_assignments WHERE user_id=$1 AND assigned_aircraft_id=$2 AND id<>$3)`, userID, aircraftID, routeID).Scan(&assigned)
+	if qerr := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM route_assignments WHERE user_id=$1 AND assigned_aircraft_id=$2 AND id<>$3)`, userID, aircraftID, routeID).Scan(&assigned); qerr != nil {
+		return &MutationResult{false, "assignment check failed", 0}, nil
+	}
 	if assigned {
 		return &MutationResult{false, "Aircraft is already assigned to another route.", 0}, nil
 	}
 	// ground safety: aircraft tidak boleh grounded
-	var status string
-	r.engine.Pool.QueryRow(ctx, `SELECT status FROM fleet_aircraft WHERE id=$1`, aircraftID).Scan(&status)
 	if status == "grounded" {
 		return &MutationResult{false, "Aircraft is grounded and cannot be assigned.", 0}, nil
 	}
-	_, err = r.engine.Pool.Exec(ctx, `UPDATE route_assignments SET assigned_aircraft_id=$1 WHERE id=$2`, aircraftID, routeID)
-	if err != nil {
+	if _, err := tx.Exec(ctx, `UPDATE route_assignments SET assigned_aircraft_id=$1 WHERE id=$2 AND user_id=$3`, aircraftID, routeID, userID); err != nil {
 		return &MutationResult{false, "assign failed", 0}, nil
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return &MutationResult{false, "commit failed", 0}, nil
 	}
 	return &MutationResult{true, "Aircraft assigned to route.", 0}, nil
 }
