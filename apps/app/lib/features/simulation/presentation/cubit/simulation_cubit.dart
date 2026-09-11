@@ -504,8 +504,9 @@ class SimulationCubit extends Cubit<SimulationState>
         if (!isClosed && userId == _currentUserId) {
           _safeEmit(state.copyWith(cashBalance: balance));
         }
-      } catch (_) {
-        // Silently ignore balance fetch errors in realtime callbacks
+      } catch (e, stack) {
+        // AUDIT-20: minimal jejak untuk diagnosis (sebelumnya ditelan total).
+        AppError.log('realtime_balance_refresh', e, stack);
       }
     });
   }
