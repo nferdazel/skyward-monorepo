@@ -7,7 +7,9 @@ package worker
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
+	"runtime/debug"
 	"sync"
 	"time"
 
@@ -148,12 +150,22 @@ func (w *Worker) loop(ctx context.Context) {
 	}
 }
 
-func (w *Worker) runTick(ctx context.Context) error {
+func (w *Worker) runTick(ctx context.Context) (err error) {
 	start := time.Now()
 	if w.tickFn == nil {
 		return nil
 	}
-	if err := w.tickFn(ctx); err != nil {
+	// AUDIT-22: panic di tickFn dulu mematikan SELURUH proses (panic di
+	// goroutine loop tidak tertangkap middleware HTTP). Recover di sini dan
+	// laporkan sebagai error supaya loop backoff dan proses tetap hidup.
+	defer func() {
+		if r := recover(); r != nil {
+			w.logger.Error("tick panic recovered",
+				"panic", r, "stack", string(debug.Stack()))
+			err = fmt.Errorf("tick panic: %v", r)
+		}
+	}()
+	if err = w.tickFn(ctx); err != nil {
 		return err
 	}
 	elapsed := time.Since(start)
