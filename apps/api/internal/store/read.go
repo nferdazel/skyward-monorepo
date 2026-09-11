@@ -172,13 +172,23 @@ type RouteAssignment struct {
 	AssignedAircraftID *string `json:"assigned_aircraft_id,omitempty"`
 	TailNumber         *string `json:"tail_number,omitempty"`
 	ModelName          *string `json:"model_name,omitempty"`
+	// AUDIT-15: atribut pesawat ter-assign ikut di-return supaya client tidak
+	// merekonstruksi stub ber-capacity-0 (load factor & preview ekonomi salah).
+	AssignedCapacity  *int     `json:"assigned_capacity,omitempty"`
+	AssignedRangeKM   *int     `json:"assigned_range_km,omitempty"`
+	AssignedSpeedKMH  *int     `json:"assigned_speed_kmh,omitempty"`
+	AssignedFuelBurn  *float64 `json:"assigned_fuel_burn_per_km,omitempty"`
+	AssignedMaintHr   *float64 `json:"assigned_maintenance_cost_per_hour,omitempty"`
+	AssignedCondition *float64 `json:"assigned_condition,omitempty"`
 }
 
 func (s *Store) GetRoutes(ctx context.Context, userID string) ([]RouteAssignment, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT r.id, r.user_id, r.origin_iata, r.destination_iata, r.distance_km,
 		       r.ticket_price, r.flights_per_week, COALESCE(r.status, 'active'),
-		       r.assigned_aircraft_id, f.tail_number, m.model_name
+		       r.assigned_aircraft_id, f.tail_number, m.model_name,
+		       m.capacity, m.range_km, m.speed_kmh, m.fuel_burn_per_km,
+		       m.maintenance_cost_per_hour, f.condition
 		FROM route_assignments r
 		LEFT JOIN fleet_aircraft f ON f.id = r.assigned_aircraft_id
 		LEFT JOIN aircraft_models m ON m.id = f.aircraft_model_id

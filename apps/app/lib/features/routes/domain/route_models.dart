@@ -236,9 +236,18 @@ class UserRoute with Equatable {
             )
           : (map['tail_number'] != null
               ? UserFleetAircraft.fromMap({
+                  // AUDIT-15: server kini mengirim atribut pesawat ter-assign;
+                  // tanpa ini stub ber-capacity-0 merusak load factor & preview.
                   'id': map['assigned_aircraft_id'],
                   'tail_number': map['tail_number'],
                   'model_name': map['model_name'],
+                  'capacity': map['assigned_capacity'],
+                  'range_km': map['assigned_range_km'],
+                  'speed_kmh': map['assigned_speed_kmh'],
+                  'fuel_burn_per_km': map['assigned_fuel_burn_per_km'],
+                  'maintenance_cost_per_hour':
+                      map['assigned_maintenance_cost_per_hour'],
+                  'condition': map['assigned_condition'],
                 })
               : null),
       status: map['status']?.toString() ?? 'active',
