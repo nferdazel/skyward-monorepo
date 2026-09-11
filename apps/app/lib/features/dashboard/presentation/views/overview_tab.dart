@@ -442,10 +442,13 @@ class OverviewTab extends StatelessWidget {
                               size: 14,
                             ),
                             const SizedBox(width: AppSpacing.sm),
-                            Text(
-                              AppStrings.fleetReadyLabel,
-                              style: AppTypography.microLabel.copyWith(
-                                color: AppTheme.textMuted,
+                            Flexible(
+                              child: Text(
+                                AppStrings.fleetReadyLabel,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTypography.microLabel.copyWith(
+                                  color: AppTheme.textMuted,
+                                ),
                               ),
                             ),
                             const SizedBox(width: AppSpacing.xs),
@@ -475,10 +478,13 @@ class OverviewTab extends StatelessWidget {
                               size: 14,
                             ),
                             const SizedBox(width: AppSpacing.sm),
-                            Text(
-                              _S.avgCondition,
-                              style: AppTypography.microLabel.copyWith(
-                                color: AppTheme.textMuted,
+                            Flexible(
+                              child: Text(
+                                _S.avgCondition,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTypography.microLabel.copyWith(
+                                  color: AppTheme.textMuted,
+                                ),
                               ),
                             ),
                             const SizedBox(width: AppSpacing.xs),
@@ -587,10 +593,13 @@ class OverviewTab extends StatelessWidget {
                               size: 14,
                             ),
                             const SizedBox(width: AppSpacing.sm),
-                            Text(
-                              _S.networkHealth,
-                              style: AppTypography.microLabel.copyWith(
-                                color: AppTheme.textMuted,
+                            Flexible(
+                              child: Text(
+                                _S.networkHealth,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTypography.microLabel.copyWith(
+                                  color: AppTheme.textMuted,
+                                ),
                               ),
                             ),
                             const SizedBox(width: AppSpacing.xs),
