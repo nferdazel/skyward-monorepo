@@ -226,23 +226,31 @@ func RateLimit(ctx context.Context, perMin int, logger *slog.Logger) func(http.H
 	}
 }
 
-// clientIP — ekstrak IP client (CF-Connecting-IP dari Cloudflare, X-Forwarded-For untuk proxy, atau header langsung).
+// clientIP — IP klien. Header proxy (CF-Connecting-IP / X-Forwarded-For /
+// X-Real-IP) hanya dipercaya bila koneksi datang dari trusted proxy
+// (default loopback; lihat proxy.go / SKYWARD_TRUSTED_PROXIES). (AUDIT-04)
 func clientIP(r *http.Request) string {
-	if cf := r.Header.Get("CF-Connecting-IP"); cf != "" {
-		return strings.TrimSpace(cf)
-	}
-	if fwd := r.Header.Get("X-Forwarded-For"); fwd != "" {
-		if i := strings.Index(fwd, ","); i > 0 {
-			return strings.TrimSpace(fwd[:i])
+	rip := remoteIP(r.RemoteAddr)
+	if rip != nil && ipTrusted(rip) {
+		if cf := strings.TrimSpace(r.Header.Get("CF-Connecting-IP")); cf != "" {
+			if ip := net.ParseIP(cf); ip != nil {
+				return cf
+			}
 		}
-		return strings.TrimSpace(fwd)
+		if fwd := r.Header.Get("X-Forwarded-For"); fwd != "" {
+			first := strings.TrimSpace(strings.Split(fwd, ",")[0])
+			if ip := net.ParseIP(first); ip != nil {
+				return first
+			}
+		}
+		if xr := strings.TrimSpace(r.Header.Get("X-Real-IP")); xr != "" {
+			if ip := net.ParseIP(xr); ip != nil {
+				return xr
+			}
+		}
 	}
-	if rip := r.Header.Get("X-Real-IP"); rip != "" {
-		return rip
-	}
-	i := strings.LastIndex(r.RemoteAddr, ":")
-	if i > 0 {
-		return r.RemoteAddr[:i]
+	if rip != nil {
+		return rip.String()
 	}
 	return r.RemoteAddr
 }

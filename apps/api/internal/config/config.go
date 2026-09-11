@@ -40,6 +40,11 @@ type Config struct {
 	// RateLimitPerMin — batas request per menit per IP. 0 = disabled.
 	RateLimitPerMin int
 
+	// TrustedProxies — CSV CIDR/IP yang boleh menentukan client IP via header
+	// X-Forwarded-For / CF-Connecting-IP (AUDIT-04). Default loopback: sesuai
+	// deploy (API bind 127.0.0.1, Caddy di host yang sama).
+	TrustedProxies string
+
 	// LogDir — direktori log harian (app-YYYY-MM-DD.log, retensi 7 hari).
 	// Kosong = log ke stdout (default dev).
 	LogDir string
@@ -74,6 +79,7 @@ func Load() (Config, error) {
 		Port:                      getenv("PORT", "8090"),
 		Host:                      getenv("HOST", "127.0.0.1"),
 		RateLimitPerMin:           atoiDefault(os.Getenv("SKYWARD_RATE_LIMIT_PER_MIN"), 2400),
+		TrustedProxies:            getenv("SKYWARD_TRUSTED_PROXIES", "127.0.0.0/8,::1"),
 		LogDir:                    os.Getenv("SKYWARD_LOG_DIR"),
 		LogLevel:                  os.Getenv("SKYWARD_LOG_LEVEL"),
 		AdminToken:                os.Getenv("SKYWARD_ADMIN_TOKEN"),
