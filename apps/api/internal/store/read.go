@@ -668,14 +668,16 @@ func (s *Store) GetBankAccounts(ctx context.Context, userID string) ([]BankAccou
 	return pgx.CollectRows(rows, pgx.RowToStructByPos[BankAccount])
 }
 
-// GetBankTransactionsByAccount — transaksi per akun.
-func (s *Store) GetBankTransactionsByAccount(ctx context.Context, accountID string, limit int) ([]BankTransaction, error) {
+// GetBankTransactionsByAccount — transaksi per akun, TERKUNCI kepemilikan:
+// accountId dari query client wajib milik userID, kalau tidak hasil kosong
+// (AUDIT-02: dulu tanpa filter user_id = IDOR ledger pemain lain).
+func (s *Store) GetBankTransactionsByAccount(ctx context.Context, accountID, userID string, limit int) ([]BankTransaction, error) {
 	if limit <= 0 || limit > 500 {
 		limit = 50
 	}
 	rows, err := s.pool.Query(ctx, `
 		SELECT id, account_id, user_id, game_date, transaction_type, amount, balance_after, ifrs_category, ifrs_subcategory, description
-		FROM bank_transactions WHERE account_id=$1 ORDER BY game_date DESC LIMIT $2`, accountID, limit)
+		FROM bank_transactions WHERE account_id=$1 AND user_id=$2 ORDER BY game_date DESC LIMIT $3`, accountID, userID, limit)
 	if err != nil {
 		return nil, fmt.Errorf("store: account txns: %w", err)
 	}
