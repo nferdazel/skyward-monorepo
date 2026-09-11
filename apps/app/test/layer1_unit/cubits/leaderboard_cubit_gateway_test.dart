@@ -243,6 +243,30 @@ void main() {
       );
 
       blocTest<LeaderboardCubit, LeaderboardState>(
+        'release semantics (AUDIT-16): no mock fallback => LeaderboardError',
+        build: () {
+          final gateway = ThrowingLeaderboardGateway();
+          return LeaderboardCubit(
+            gateway: gateway,
+            allowMockFallback: false,
+          );
+        },
+        act: (cubit) => cubit.loadRankings(
+          humanUserId: 'user-1',
+          humanCompanyName: 'Test Airline',
+          humanCeoName: 'Test CEO',
+        ),
+        expect: () => [
+          const LeaderboardLoading(),
+          isA<LeaderboardError>().having(
+            (s) => s.rankings,
+            'never fabricates competitors',
+            isEmpty,
+          ),
+        ],
+      );
+
+      blocTest<LeaderboardCubit, LeaderboardState>(
         'success: human entry uses provided cash and netWorth',
         build: () {
           final gateway = MockLeaderboardGateway()

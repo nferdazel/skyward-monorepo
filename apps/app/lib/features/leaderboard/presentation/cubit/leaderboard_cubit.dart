@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants/app_strings.dart';
@@ -32,9 +33,15 @@ class LeaderboardCubit extends Cubit<LeaderboardState>
   bool _lastRefreshHadActivity = false;
   Future<void>? _activeRankingsLoad;
 
-  LeaderboardCubit({LeaderboardGateway? gateway})
-      : _gateway = gateway ?? GatewayFactory.createLeaderboardGateway(),
+  LeaderboardCubit({
+    LeaderboardGateway? gateway,
+    // AUDIT-16: mock competitor data hanya untuk debug/dev. Release build
+    // WAJIB menampilkan error state, bukan maskapai fiktif.
+    @visibleForTesting this.allowMockFallback = kDebugMode,
+  })  : _gateway = gateway ?? GatewayFactory.createLeaderboardGateway(),
         super(const LeaderboardInitial());
+
+  final bool allowMockFallback;
 
   void setupReactivity(
     SimulationCubit simCubit,
@@ -217,6 +224,15 @@ class LeaderboardCubit extends Cubit<LeaderboardState>
         fields: {'silent': silent, 'error': true},
       );
       AppError.log('loadRankings', e, stack);
+      // AUDIT-16: fabricated airlines must never appear in release builds.
+      if (!allowMockFallback) {
+        if (isClosed) return;
+        emit(LeaderboardError(
+          message: 'Leaderboard is temporarily unavailable.',
+          rankings: _cachedEntries,
+        ));
+        return;
+      }
       _loadMockRankings(
         humanUserId: humanUserId,
         companyName: humanCompanyName,
@@ -384,6 +400,9 @@ class LeaderboardCubit extends Cubit<LeaderboardState>
       throw Exception('Competitor insights returned empty payload');
     } catch (e, stack) {
       AppError.log('get_competitor_insights', e, stack);
+      // AUDIT-16: tanpa mock (release), biarkan caller menangani — jangan
+      // karang insights pemain lain.
+      if (!allowMockFallback) rethrow;
       final mockIns = _getMockInsights(
         id,
         fallbackName,
