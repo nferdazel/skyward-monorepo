@@ -1,150 +1,167 @@
-# Skyward Architecture Baseline
+# Skyward Architecture Overview
 
-Last verified against code on 2026-07-22.
+Status: current | Last verified against code: 2026-09-11
 
-## Application model
+This is the system-shape page for a new contributor or agent. It answers "what
+are the moving parts and who owns the truth?" Deep dives live in the sibling
+docs: [backend.md](backend.md), [frontend.md](frontend.md),
+[database.md](database.md), and the product rules in
+[`../standards/maintainer-standard.md`](../standards/maintainer-standard.md). Operational
+procedures are in [`../operations/runbook.md`](../operations/runbook.md).
 
-Skyward is a Flutter airline-management sim with a Supabase/Postgres backend.
+## System shape
 
-The Flutter app is responsible for:
-- Supabase Auth session flow and username-only login UX
-- dashboard shell and navigation
-- Cubit-owned state orchestration
-- rendering fleet, routes, finance, leaderboard, bank, and settings
+Skyward is a Flutter Web/Desktop airline-management sim backed by an
+authoritative Go API and PostgreSQL.
 
-The backend is responsible for:
-- authoritative economy, credit, and simulation outcomes
-- bank balances and financial mutation history
-- transactional validation
-- world-time progression
-- player and bot processing
-- leaderboard and competitor insight payloads
+```
+┌────────────────────────────────┐
+│  Flutter client (apps/app)     │
+│  Web + Desktop                 │
+│  Cubit-owned state             │
+│  • ApiClient  (HTTP, REST)     │
+│  • GoRealtimeClient (WS)       │
+└───────────────┬────────────────┘
+                │  HTTPS / WSS
+                │  dev : http://localhost:8090
+                │  prod: https://api.qouver.com/skyward
+                ▼
+┌────────────────────────────────┐
+│  skyward-api (apps/api, Go)    │
+│  cmd/server  → HTTP + routing  │
+│  handler     → thin HTTP glue  │
+│  engine      → SOLE business   │
+│                logic           │
+│  worker      → world-tick loop │   ← same binary as the API
+│  realtime    → WS hub          │
+│  store       → SQL access      │
+└───────────────┬────────────────┘
+                │  pgx/v5
+                ▼
+┌────────────────────────────────┐
+│  PostgreSQL                    │
+│  storage + constraints +       │
+│  safety-net triggers           │
+└────────────────────────────────┘
+```
 
-## State management
+The world-tick worker runs **inside the same process** as the HTTP server
+(`cmd/server/main.go` constructs `worker.New(...)` and calls `wk.Start(ctx)`).
+There is no separate cron/worker deployment.
 
-App state is Cubit-owned.
+## Request and auth flow
 
-Current runtime cubits:
-- `AuthCubit`
-- `NavigationCubit`
-- `SimulationCubit`
-- `FleetCubit`
-- `RoutesCubit`
-- `FinanceCubit`
-- `LeaderboardCubit`
-- `LazyTabCubit`
-- `SettingsCubit`
-- `BankCubit`
+- The client authenticates with `username + password`
+  (`POST /auth/register`, `POST /auth/login`). Passwords are hashed with
+  **argon2id** and verified in `internal/auth` with no external JWT dependency.
+- On success the API returns a **JWT HS256** signed with `SKYWARD_JWT_SECRET`.
+  Claims are `sub` (the `public.users.id`), `username`, `exp`, `iat`.
+- The client stores the token (`AuthTokenStore`) and injects
+  `Authorization: Bearer <jwt>` on every request (`ApiClient`).
+- `middleware.AuthGuard` validates the bearer token, then puts the resolved
+  `user_id` into the request context (`middleware.UserIDFromContext`). Handlers
+  call the engine with that id — there is no trust in a client-supplied user id.
+- Admin/ops routes use a separate `handler.AdminGuard` token
+  (`SKYWARD_ADMIN_TOKEN`), not the player JWT.
 
-Repo-present but not mounted in the active dashboard runtime:
-(none — `features/achievements/` was removed on 2026-06-27)
+## Realtime (WebSocket)
 
-Allowed widget-local state remains limited to lifecycle concerns such as
-controllers, focus nodes, and dialog-local composition.
+The WS endpoint is `GET /ws?token=<jwt>` (`internal/handler/ws.go`). It
+authenticates by parsing the same JWT, upgrades the connection, and registers a
+`realtime.Client` on the `realtime.Hub`.
 
-## Gateway pattern
+Client → server messages (`internal/handler/ws.go`):
 
-Every Supabase-facing feature uses a dedicated gateway abstraction:
-- `AuthGateway`
-- `SimulationGateway`
-- `FleetGateway`
-- `RoutesGateway`
-- `FinanceGateway`
-- `LeaderboardGateway`
-- `SettingsGateway`
-- `BankGateway`
+- `{"action":"subscribe","channels":[...]}`
+- `{"action":"unsubscribe","channels":[...]}`
+- `{"action":"ping"}` → server replies `{"type":"pong"}`
 
-Each gateway defines an abstract interface, a concrete `Supabase*Gateway`, and
-a typed exception boundary.
+Server → client events are notifications only. `hub.Broadcast(channel, event)`
+and `hub.BroadcastAll(event)` emit
+`{"type":"change","channel":"...","event":"INSERT|UPDATE|DELETE|world_tick"}`.
+Realtime is a **freshness layer, not a source of truth**: clients react by
+refetching over REST.
 
-## Backend-owned time and simulation
+Channels broadcast by the code today:
 
-Production game time is backend-owned:
-- `season_clock.current_game_time` is shared season time
-- `users.game_current_time` is the player cursor
-- bot progress is coordinated by the backend world-tick path
-- `process_world_tick()` advances the season and actor state
-- `process_simulation_delta()` is a compatibility reconciliation RPC for the current player
+- `fleet_aircraft` — purchase / sale / repair / seat config mutations
+  (`internal/handler/mutation.go`)
+- `route_assignments` — route create / delete / assign / freq-price
+- `users` — settings save/reset, and each world tick
+- `loans` — take / repay / refinance / finance-aircraft
+- `bank_transactions` and `users`, plus a global `world_tick`, on every
+  `engine.WorldTick`
 
-Flutter does not locally advance authoritative game time.
+The Flutter side shares one connection (`GatewayFactory.realtimeClient`) via
+`GoRealtimeMixin.subscribeToRealtime`; it reconnects with exponential backoff
+and re-subscribes. Cubits subscribe to the channels they care about and refetch
+on change.
 
-## Realtime reflection
+## Season clock and the world tick
 
-Realtime is a reflection layer, not a source of truth.
+Game time is server-owned; the Flutter client never advances it locally.
 
-Current live subscriptions:
-- `SimulationCubit` listens to `users` and `bank_transactions`
-- `FleetCubit` listens to `fleet_aircraft`
-- `RoutesCubit` listens to `route_assignments`
-- `FinanceCubit` listens to `bank_transactions`
-- `BankCubit` listens to `loans`, `bank_accounts`, and `bank_transactions`
+- `season_clock.current_game_time` is the shared season time;
+  `users.game_current_time` is each actor's cursor.
+- `engine.WorldTick` (`internal/engine/simulation.go`) locks the active season
+  with `pg_try_advisory_xact_lock`, advances `current_game_time` by
+  `tick_interval_seconds * time_scale_multiplier`, generates/deactivates game
+  events, then processes every `REAL` player via `ProcessPlayer`.
+- `ProcessPlayer` advances one actor by the elapsed game time: it runs the
+  route loop, posts ledger rows, applies aircraft wear, advances the player
+  cursor atomically (guarded `UPDATE`), and runs the day-boundary work when the
+  game day rolls.
+- Bots are processed by `engine.ProcessBots` (`internal/engine/bots.go`), which
+  first runs each bot through the same shared `ProcessPlayer` path and then
+  applies bot decisions.
+- The tick interval: the worker's ticker is created from
+  `SKYWARD_WORKER_TICK_INTERVAL_SECONDS` (default 60s). Season advancement
+  itself uses `season_clock.tick_interval_seconds * time_scale_multiplier`. A
+  TODO in `internal/worker/worker.go` notes that reading interval changes from
+  `season_clock` on each tick is not implemented yet.
 
-`LeaderboardCubit` refreshes through RPC reads rather than owning a direct
-Postgres Changes subscription.
+## What is authoritative server-side
 
-Operational rule:
-- mutation success paths that materially affect cash, ledger chronology, or
-  profile-owned simulation inputs should not rely on Postgres Changes alone
-- current Flutter runtime explicitly resyncs after aircraft acquisition /
-  disposal / repair flows, route mutation flows, bank loan / refinance /
-  financing flows, settings save, and airline reset
-- this keeps `SimulationCubit`, `BankCubit`, `FinanceCubit`, and profile-owned
-  consumers aligned even when realtime delivery is delayed or staggered
+All of the following are decided by the Go engine (Postgres is storage +
+constraints), never by the client:
 
-## Canonical financial model
+- **Finance ledger** — `engine.LedgerService`
+  (`internal/engine/engine.go`): `DebitTx` / `CreditTx` / `DebitAccount` /
+  `CreditAccount` update `bank_accounts.balance` and append
+  `bank_transactions`. `bank_accounts` is canonical cash; `bank_transactions`
+  is canonical money movement.
+- **Banking and loans** — `engine.BankService` (`internal/engine/bank.go`):
+  `TakeLoan`, `Repay`, `Refinance`, `FinanceAircraft`. The credit model lives in
+  `internal/engine/dayboundary.go`: `calculateCreditScore`,
+  `resolveCreditTier`, `ProcessCreditAtDayBoundary`, `ProcessLoanPayments`,
+  `ProcessAircraftFinancingPayments`.
+- **Bots** — `internal/engine/bots.go`: spawn, distress evaluation, fleet/route
+  decisions, GAME-22 price response, bankruptcy, and population capping.
+- **Demand and fares** — `routeDailyDemand`, `allocateCabins` in
+  `internal/engine/simulation.go`; calibrated by migrations
+  `05_demand_pool_scale.sql` and `06_cabin_fare_multipliers.sql`.
+- **Achievements** — `internal/engine/achievements.go` (`EvaluateAchievements`,
+  `ClaimUnnotifiedAchievements`), with `notified_at` from migration
+  `14_wave5_achievement_notified.sql`.
+- **Game events** — `GenerateGameEvents` / `DeactivateExpiredEvents` in
+  `internal/engine/dayboundary.go`.
+- **Fleet and routes** — `internal/engine/fleet.go` and
+  `internal/engine/routes.go`.
+- **Finance snapshots** — written once per game day by `WorldTick`, pruned to a
+  bounded window (migration `15_finance_snapshots_retention.sql`).
 
-Skyward is now bank-centric:
-- `bank_accounts.balance` is canonical cash
-- `bank_transactions` is canonical financial history
-- `users.net_worth` is reconciled state, not the authoritative cash store
-- fleet and loan mutations reconcile net worth through database logic
+## The client rule
 
-## Auth and security model
+The Flutter app **displays backend results and sends user commands**. It must
+not implement authoritative economy logic locally: no local cash math, no local
+flight-revenue calculation, no local credit scoring, no local clock advance.
+Valid client concerns are presentation, navigation, controller/focus lifecycle,
+and optimistic UI that is always reconciled against a server refetch.
 
-- user-facing login remains `username + password`
-- usernames map to synthetic auth emails
-- Supabase Auth is the source of session truth
-- gameplay RPC wrappers resolve the player row from `auth.uid()`
-- app-facing reads are protected by RLS
-- live DB verification confirms `handle_new_auth_user()` is attached to
-  `auth.users` via `on_auth_user_created` trigger (declared in migration
-  `20260709180000`)
+## Deployment
 
-## Primary user-facing surfaces
-
-Fleet:
-- acquisition
-- repairs
-- sale / lease termination
-- seat configuration
-
-Routes:
-- route creation
-- aircraft assignment
-- fare and frequency updates
-- route retirement
-- world-map-backed planning
-
-Finance:
-- current snapshot from `get_finance_snapshot()`
-- bank transaction history
-- rolling operating metrics
-
-Bank:
-- loan origination
-- refinancing
-- repayment
-- aircraft financing
-- credit reporting
-
-Settings:
-- airline profile and HQ
-- safety / auto-grounding configuration
-- reset flow
-- account deletion flow through Edge Function
-
-## Current documentation rule
-
-Treat the docs in `docs/` as the active maintenance record.
-Do not trust older migration-era naming such as `user_fleet`, `user_routes`,
-or `financial_ledger` unless the current code still uses them.
+The API runs as a native binary behind Caddy; the Flutter web build is served
+as static files. Container/quadlet manifests, Caddy configs, and the deploy
+script live in [`../../deploy/`](../../deploy/). Environment and operational
+detail are indexed in [`../README.md`](../README.md) and
+[`../../apps/api/README.md`](../../apps/api/README.md).
