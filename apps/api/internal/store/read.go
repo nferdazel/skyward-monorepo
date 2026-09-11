@@ -445,12 +445,12 @@ func (s *Store) GetCompetitorInsights(ctx context.Context, id string, isBot bool
 		           FROM fleet_aircraft f
 		           JOIN aircraft_models m ON m.id = f.aircraft_model_id
 		           WHERE f.user_id = u.id
-		           GROUP BY 1), fb), '{}'::jsonb),
+		           GROUP BY 1) fb), '{}'::jsonb),
 		       COALESCE((SELECT jsonb_agg(r) FROM (
 		           SELECT DISTINCT origin_iata || '-' || destination_iata AS r
 		           FROM route_assignments
 		           WHERE user_id = u.id AND status = 'active'
-		           ORDER BY 1 LIMIT 64), nr), '[]'::jsonb)
+		           ORDER BY 1 LIMIT 64) nr), '[]'::jsonb)
 		FROM users u
 		LEFT JOIN bot_profiles bp ON bp.user_id = u.id
 		WHERE u.id = $1`, id).Scan(
