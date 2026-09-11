@@ -38,6 +38,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	// AUDIT-04: header X-Forwarded-For/CF hanya menentukan client IP bila
+	// koneksi berasal dari proxy di daftar ini (default loopback).
+	if err := middleware.SetTrustedProxies(cfg.TrustedProxies); err != nil {
+		slog.Error("trusted proxies config error", "error", err)
+		os.Exit(1)
+	}
+
 	// Logger: stdout default; kalau SKYWARD_LOG_DIR di-set → file harian
 	// (app-YYYY-MM-DD.log, retensi 7 hari).
 	var logCloser func() error
