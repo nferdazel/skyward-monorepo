@@ -31,9 +31,17 @@ class GatewayFactory {
   /// header Authorization tiap request.
   static ApiClient? _sharedApiClient;
   static ApiClient get apiClient => _sharedApiClient ??= ApiClient(
-    baseUrl: AppEnv.apiBaseUrl,
-    tokenStore: const SharedPrefsAuthTokenStore(),
-  );
+        baseUrl: AppEnv.apiBaseUrl,
+        tokenStore: const SharedPrefsAuthTokenStore(),
+        // AUDIT-17: late-bound — handler boleh di-set setelah client dibuat
+        // (main.dart mendaftarkan AuthCubit.logout saat startup).
+        onUnauthorized: () => onUnauthorized?.call(),
+      );
+
+  /// Handler global untuk response 401 (didaftarkan main.dart → `AuthCubit.logout`).
+  /// Sebelumnya `ApiClient.onUnauthorized` tidak pernah diisi sehingga token
+  /// kedaluwarsa membuat UI stuck di tombol Retry yang selalu 401.
+  static void Function()? onUnauthorized;
 
   /// Kredensial dari [apiClient] bisa dioverride untuk test/integrasi.
   @visibleForTesting
