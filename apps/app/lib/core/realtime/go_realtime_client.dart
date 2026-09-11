@@ -50,7 +50,11 @@ class GoRealtimeClient {
   WebSocketChannel? _channel;
   StreamSubscription? _subscription;
   final _eventController = StreamController<GoRealtimeEvent>.broadcast();
-  final Set<String> _subscribedChannels = {};
+
+  /// AUDIT-14: reference count per channel. Semua cubit berbagi SATU client;
+  /// dulu `unsubscribe` satu cubit melepas channel untuk cubit lain. Sekarang
+  /// pesan ke server hanya dikirim saat ref count 0→1 / 1→0.
+  final Map<String, int> _channelRefs = {};
   Timer? _pingTimer;
   Timer? _reconnectTimer;
   int _reconnectAttempts = 0;
@@ -123,9 +127,10 @@ class GoRealtimeClient {
       _pingTimer?.cancel();
       _pingTimer = Timer.periodic(const Duration(seconds: 30), (_) => ping());
 
-      // Resubscribe channel jika sebelumnya ada subscription
-      if (_subscribedChannels.isNotEmpty) {
-        subscribe(List.of(_subscribedChannels));
+      // Resubscribe channel aktif jika sebelumnya ada subscription
+      // (tanpa menyentuh ref count — key sudah terhitung).
+      if (_channelRefs.isNotEmpty) {
+        _sendChannels(List.of(_channelRefs.keys), 'subscribe');
       }
     } catch (e) {
       debugPrint('[GoRealtimeClient] Connection error: $e');
@@ -155,21 +160,38 @@ class GoRealtimeClient {
   }
 
   /// Subscribe ke satu atau beberapa channel (`fleet_aircraft`, `users`, etc.)
+  /// Idempotent per-pemanggil: pesan ke server hanya keluar saat ref count
+  /// channel naik dari 0 ke 1 (AUDIT-14).
   void subscribe(List<String> channels) {
-    _subscribedChannels.addAll(channels);
-    if (_channel != null) {
-      final msg = jsonEncode({'action': 'subscribe', 'channels': channels});
-      _channel!.sink.add(msg);
+    final fresh = <String>[];
+    for (final ch in channels) {
+      final n = (_channelRefs[ch] ?? 0) + 1;
+      _channelRefs[ch] = n;
+      if (n == 1) fresh.add(ch);
     }
+    _sendChannels(fresh, 'subscribe');
   }
 
-  /// Unsubscribe dari channel
+  /// Unsubscribe dari channel. Pesan ke server hanya dikirim ketika channel
+  /// terakhir yang memegangnya melepas (ref count habis) (AUDIT-14).
   void unsubscribe(List<String> channels) {
-    _subscribedChannels.removeAll(channels);
-    if (_channel != null) {
-      final msg = jsonEncode({'action': 'unsubscribe', 'channels': channels});
-      _channel!.sink.add(msg);
+    final gone = <String>[];
+    for (final ch in channels) {
+      final n = (_channelRefs[ch] ?? 1) - 1;
+      if (n <= 0) {
+        _channelRefs.remove(ch);
+        gone.add(ch);
+      } else {
+        _channelRefs[ch] = n;
+      }
     }
+    _sendChannels(gone, 'unsubscribe');
+  }
+
+  void _sendChannels(List<String> channels, String action) {
+    if (_channel == null || channels.isEmpty) return;
+    final msg = jsonEncode({'action': action, 'channels': channels});
+    _channel!.sink.add(msg);
   }
 
   /// Kirim ping ke Go WS hub
