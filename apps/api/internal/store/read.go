@@ -416,6 +416,13 @@ type CompetitorInsight struct {
 	DistressStage  *string `json:"distress_stage,omitempty"`
 	ConsecNegDays  *int    `json:"consecutive_negative_days,omitempty"`
 	RecoveryStreak *int    `json:"recovery_streak_days,omitempty"`
+
+	// FleetBreakdown/NetworkRoutes dulu TIDAK pernah dikirim server padahal
+	// panel "Hangar Fleet Breakdown" & "Operating Route Pathways" (leaderboard
+	// view) membacanya → kedua panel selalu kosong untuk semua pemain nyata.
+	// (Bug reported 2026-09-12.)
+	FleetBreakdown map[string]int `json:"fleet_breakdown"`
+	NetworkRoutes  []string       `json:"network_routes"`
 }
 
 func (s *Store) GetCompetitorInsights(ctx context.Context, id string, isBot bool) (*CompetitorInsight, error) {
@@ -426,13 +433,31 @@ func (s *Store) GetCompetitorInsights(ctx context.Context, id string, isBot bool
 		       (SELECT COUNT(*)::int FROM route_assignments r WHERE r.user_id=u.id),
 		       COALESCE((SELECT SUM(bt.amount) FROM bank_transactions bt WHERE bt.user_id=u.id AND bt.transaction_type='credit' AND bt.game_date >= u.game_current_time - INTERVAL '30 days'), 0),
 		       COALESCE(u.operational_status,'Active'), u.hq_airport_iata,
-		       bp.distress_stage, bp.consecutive_loss_days, u.recovery_streak_days
+		       bp.distress_stage, bp.consecutive_loss_days, u.recovery_streak_days,
+		       COALESCE((SELECT jsonb_object_agg(model, qty) FROM (
+		           SELECT m.manufacturer || ' ' || m.model_name ||
+		                          CASE f.acquisition_type
+		                              WHEN 'lease'  THEN ' (lease)'
+		                              WHEN 'finance' THEN ' (financed)'
+		                              ELSE ''
+		                          END AS model,
+		                  COUNT(*)::int AS qty
+		           FROM fleet_aircraft f
+		           JOIN aircraft_models m ON m.id = f.aircraft_model_id
+		           WHERE f.user_id = u.id
+		           GROUP BY 1), fb), '{}'::jsonb),
+		       COALESCE((SELECT jsonb_agg(r) FROM (
+		           SELECT DISTINCT origin_iata || '-' || destination_iata AS r
+		           FROM route_assignments
+		           WHERE user_id = u.id AND status = 'active'
+		           ORDER BY 1 LIMIT 64), nr), '[]'::jsonb)
 		FROM users u
 		LEFT JOIN bot_profiles bp ON bp.user_id = u.id
 		WHERE u.id = $1`, id).Scan(
 		&ci.CompanyName, &ci.CeoName, &ci.NetWorth, &ci.FleetSize, &ci.RouteCount,
 		&ci.MonthlyRevenue, &ci.OperStatus, &ci.HQAirportIATA,
-		&ci.DistressStage, &ci.ConsecNegDays, &ci.RecoveryStreak)
+		&ci.DistressStage, &ci.ConsecNegDays, &ci.RecoveryStreak,
+		&ci.FleetBreakdown, &ci.NetworkRoutes)
 	if err != nil {
 		return nil, fmt.Errorf("store: competitor insights: %w", err)
 	}
