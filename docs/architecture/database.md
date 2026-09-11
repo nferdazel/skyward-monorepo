@@ -1,373 +1,224 @@
 # Skyward Database Design
 
-Last verified against code, migrations, and linked live schema on 2026-07-22.
-
-This file records the current public schema shape and the operational meaning
-of the tables that actually exist in the linked runtime.
-
-## Live table inventory
-
-Linked live schema currently exposes these public tables:
-
-1. `achievements`
-2. `aircraft_models`
-3. `airports`
-4. `bank_accounts`
-5. `bank_transactions`
-6. `bot_profiles`
-7. `credit_score_history`
-8. `credit_scores`
-9. `fleet_aircraft`
-10. `game_config`
-11. `game_events`
-12. `loans`
-13. `route_assignments`
-14. `season_clock`
-15. `users`
-16. `world_tick_log`
-
-## Core authority model
-
-## Clock Domain Map
-
-Use this when deciding whether a timestamp should be shown to players, treated
-as backend audit metadata, or compared against another field.
-
-Frontend-facing game chronology:
-- `users.game_current_time`
-- `season_clock.current_game_time`
-- `bank_transactions.game_date`
-- `credit_score_history.game_date`
-- `world_tick_log.game_time_before`
-- `world_tick_log.game_time_after`
-- `game_events.start_game_time`
-- `game_events.end_game_time`
-- `achievements.game_date` when present
-
-Real-time backend or ops metadata:
-- `season_clock.last_tick_at`
-- `world_tick_log.started_at`
-- `world_tick_log.finished_at`
-- `credit_score_history.computed_at`
-- `loans.taken_at`
-- `achievements.unlocked_at`
-- generic row metadata such as `created_at` / `updated_at`
-
-Current product rule:
-- player-facing chronology should default to in-game timestamps
-- real-time timestamps are acceptable in the product only as clearly labeled
-  metadata, not as the main gameplay timeline
-
-Current chronology audit status:
-- loan origination now uses `loans.originated_game_date`
-- loan repayment ledger rows now use exact `users.game_current_time`
-- aircraft financing origination and down-payment rows now use exact shared
-  game time
-- lease termination ledger rows now use exact `users.game_current_time`
-- `achievements.game_date` remains the intended player-facing chronology field;
-  currently dormant as the Flutter module was removed 2026-06-27
-- native SQL audits now also prove exact game-clock timestamps for purchase /
-  lease / repair / sale ledger rows
-
-### `users`
-
-Primary human-player actor record.
-
-Important fields:
-- `id`
-- `auth_user_id`
-- `username`
-- `company_name`
-- `ceo_name`
-- `hq_airport_iata`
-- `game_current_time`
-- `season_id`
-- `net_worth`
-
-Important notes:
-- `auth_user_id` is the ownership bridge from `auth.uid()`
-- `cash` is no longer the canonical money store
-- `handle_new_auth_user()` is attached to `auth.users` via `on_auth_user_created` trigger
-- declared in migration `20260709180000_declare_auth_trigger.sql`
-
-### `bank_accounts`
-
-Canonical cash storage.
-
-Important fields:
-- `user_id`
-- `account_type`
-- `balance`
-
-Operational rule:
-- player cash lives here, not in `users.cash`
-
-### `bank_transactions`
-
-Canonical money-movement trail.
-
-Important fields:
-- `account_id`
-- `user_id`
-- `transaction_type`
-- `amount`
-- `balance_after`
-- `ifrs_category`
-- `ifrs_subcategory`
-- `description`
-- `game_date`
-
-Operational rule:
-- purchases, loan disbursements, repayments, maintenance, lease carrying costs,
-  and route/simulation financial effects are expected to leave an auditable row here
-- `game_date` is in-game time, not wall-clock time; comparing it directly to
-  real-world timestamps such as `loans.taken_at` is misleading
-- `ifrs_category` serves dual purpose: it maps to both income statement line
-  items (`revenue`, `cogs`, `opex`) and cash flow categories (`investing`,
-  `financing`)
-
-Valid IFRS subcategory values:
-- `revenue`: `ticket_revenue`, `cargo_revenue`
-- `cogs`: `fuel_cost`, `crew_cost`, `maintenance_cost`
-- `opex`: `aircraft_lease`, `aircraft_lease_idle`
-- `investing`: `aircraft_purchase`, `aircraft_purchase_deposit`,
-  `aircraft_lease_deposit`, `aircraft_sale`
-- `financing`: `loan_disbursement`, `loan_repayment`, `financing_payment`,
-  `financing_late_fee`, `loan_refinance`
-
-**Migration note:** Database migrations currently write older subcategory values
-(`ticket_revenue` for combined revenue, `fuel`/`crew`/`maintenance` for COGS).
-The Flutter IFRS report builder expects the newer values listed above.
-
-### `fleet_aircraft`
-
-Authoritative fleet state.
-
-Important fields:
-- `user_id`
-- `aircraft_model_id`
-- `nickname`
-- `tail_number`
-- `acquisition_type`
-- `condition`
-- `status`
-- `economy_seats`
-- `business_seats`
-- `first_class_seats`
-
-### `route_assignments`
-
-Authoritative route-network state.
-
-Important fields:
-- `user_id`
-- `origin_iata`
-- `destination_iata`
-- `distance_km`
-- `ticket_price`
-- `flights_per_week`
-- `assigned_aircraft_id`
-
-### `loans`
-
-Authoritative debt state.
-
-Important fields:
-- `user_id`
-- `loan_type`
-- `principal`
-- `remaining_balance`
-- `interest_rate`
-- `weekly_payment`
-- `monthly_payment`
-- `status`
-- `collateral_aircraft_id`
-- `originated_game_date`
-
-Operational note:
-- `taken_at` is a real-world origination timestamp
-- `originated_game_date` is the player-facing in-game origination timestamp
-- related bank-ledger rows such as `loan_disbursement` are stamped with
-  `bank_transactions.game_date`, which follows the shared game calendar
-- repayment-side ledger rows are also stamped with the exact shared game clock
-
-### `credit_scores`
-
-Current credit state per player.
-
-Important fields:
-- `user_id`
-- `score`
-- `tier`
-- factor columns used by the bank/credit model
-
-### `credit_score_history`
-
-Historical credit-score snapshots.
-
-Important fields:
-- `user_id`
-- `score`
-- factor scores
-- `game_date`
-- `computed_at`
-
-Operational note:
-- `game_date` is the in-game scoring date used by the client history view
-- `computed_at` is the real-world timestamp when the backend wrote the snapshot
-
-### `season_clock`
-
-Shared world-time authority.
-
-Important fields:
-- `current_game_time`
-- `last_tick_at`
-- `time_scale_multiplier`
-- `tick_interval_seconds`
-- `status`
-
-Operational note:
-- `current_game_time` is the shared in-game world clock
-- `last_tick_at` is the real-world timestamp of the latest successful backend tick
-
-### `world_tick_log`
-
-Operational audit trail for world-tick attempts.
-
-Important fields:
-- `season_id`
-- `started_at`
-- `finished_at`
-- `game_time_before`
-- `game_time_after`
-- `ticks_processed`
-- `players_processed`
-- `bots_processed`
-- `status`
-- `message`
-
-Operational note:
-- `started_at` and `finished_at` are real-world scheduler timestamps
-- `game_time_before` and `game_time_after` are the in-game clock interval that
-  the tick advanced
-
-### `bot_profiles`
-
-Backend-only bot behavior state.
-
-Important fields:
-- `user_id` (PK, FK to users)
-- `archetype` (Regional/Aggressive/Balanced)
-- `distress_stage` (stable/cautious/defensive/desperate)
-- `consecutive_loss_days` — tracks chronic route losses
-- `secondary_hub_iata` — optional non-HQ origin for route creation
-- `recovery_loan_taken` — prevents multiple recovery loans per desperate episode
-- Cooldown timestamps: `last_growth_action_at`, `last_route_change_at`,
-  `last_pricing_review_at`, `last_repair_action_at`, `last_route_optimization_at`,
-  `last_route_audit_at`, `last_financial_action_at`
-
-### `game_events`
-
-Time-bounded world events that modify simulation economics.
-
-Important fields:
-- `event_type`
-- `effect_type`
-- `effect_target`
-- `effect_value`
-- `start_game_time`
-- `end_game_time`
-- `is_active`
-
-Active event types (after migration 42):
-- `fuel_shock` — global fuel price multiplier (0.7×–1.3×) for 72 hours
-- `demand_surge` — airport-specific demand multiplier (1.2×–1.5×) for 48 hours
-- `weather_disruption` — airport-specific capacity penalty (0.5×) for 24 hours
-- `maintenance_shock` — global maintenance cost multiplier (1.1×–1.3×) for 168 hours
-
-Operational note:
-- `start_game_time` and `end_game_time` are in-game activation bounds, not
-  wall-clock schedule timestamps
-- `regulatory` events were removed in migration 42 (generated but never consumed)
-
-### `achievements`
-
-Player achievement tracking.
-
-Operational note:
-- `unlocked_at` is a real-world write timestamp
-- `game_date` captures the in-game moment the achievement was awarded when the
-  backend provides it
-- the `features/achievements/` Flutter module was removed on 2026-06-27; this
-  table has no active Flutter consumer currently
-
-## Static reference tables
-
-### `aircraft_models`
-
-Static aircraft catalog used by fleet, bank, planning, and simulation logic.
-
-### `airports`
-
-Static airport registry used by routes, settings, and planning flows.
-
-### `game_config`
-
-Key-value runtime configuration.
-
-Used for:
-- starting cash
-- credit-tier policy
-- lease deposit policy
-- economy/simulation constants that remain backend-owned
-- bot behavior tuning (8 entries added in migration 36):
-  `bot_consecutive_loss_days_threshold`, `bot_route_optimization_cooldown_hours`,
-  `bot_secondary_hub_chance`, `bot_fleet_diversity_chance`,
-  `bot_purchase_cash_multiplier`, `bot_competitive_price_threshold`,
-  `bot_recovery_loan_amount`, `bot_loan_repayment_ratio`
-
-## Live trigger surface
-
-Repo-local schema defines and the audit pass verified these trigger paths:
-
-1. `create_default_bank_account` on `users`
-2. `fleet_reconcile_net_worth` on `fleet_aircraft`
-3. `trg_user_hq_change` on `users`
-4. `trg_bank_balance_reconcile_net_worth` on `bank_accounts`
-5. `trg_loan_reconcile_net_worth` on `loans`
-
-Additional auth-side truth:
-- `handle_new_auth_user()` is attached to `auth.users` via `on_auth_user_created` trigger
-- declared in migration `20260709180000_declare_auth_trigger.sql`
-
-## Live cron / ops surface
-
-Repo-defined scheduler jobs:
-
-1. `skyward_world_tick` → `ensure_world_current()`
-2. `skyward_prune_bank_transactions` → `prune_bank_transactions(false)`
-3. `skyward_prune_world_tick_log` → `prune_world_tick_log()`
-
-Note: migration 34 added `tick_interval_seconds` and `max_catchup_ticks` as
-configurable `game_config` entries so tick behavior can be tuned without
-redeploying. The original `skyward_compact_world_tick_log` cron job was replaced
-by `skyward_prune_world_tick_log` in migration 37 because pg_cron failed to
-execute DELETE through the `compact_world_tick_log(false)` parameterized call.
-
-## Important schema truths
-
-- Do not document legacy names like `user_fleet`, `user_routes`, or `financial_ledger` as live tables.
-- Do not document `users.cash` as canonical cash.
-- `bank_accounts` and `bank_transactions` are now the core finance surface.
-- Finance history in the current Flutter runtime is bank-transaction-driven.
-- `bank_transaction_daily_summary` and `bank_transactions_archive` were removed
-  from the live schema by migration `27`.
-- raw `bank_transactions` retention is now a delete-only ops surface driven by
-  `prune_bank_transactions(false)` and `bank_txn_raw_retention_game_days`.
-
-## Verification note
-
-This file is about the current live schema, not every historical migration idea.
-If a table is absent from the linked live schema, it should not be described
-here as if it were runtime truth.
+Status: current | Last verified against code: 2026-09-11
+
+This is the current schema reference for the PostgreSQL database behind
+`skyward-api`. For the runtime owner of writes see [backend.md](backend.md);
+for the client see [frontend.md](frontend.md) and the system shape in
+[overview.md](overview.md).
+
+## Canonical notes
+
+- **Migrations are sequential**: `migrations/00_baseline.sql` …
+  `migrations/15_finance_snapshots_retention.sql`.
+- `00_baseline.sql` is a consolidated dump of the live schema (310 KB) that
+  **replaced 58 older migration files on 2026-07-22**. It is the baseline, not
+  a numbered feature migration.
+- The old `Migration NN` numbering (27, 33–46) and timestamped filenames are
+  obsolete and must not be used.
+- **Application functions (the Supabase RPC era) are no longer the write
+  path.** The Go engine executes SQL directly through a `pgx` pool. See
+  [Current write path](#current-write-path).
+
+## Current write path
+
+`apps/api` is the authoritative writer. It connects with `pgx/v5`'s
+`pgxpool` (`internal/db/db.go`: `NewPool`, `MaxConns = 10`, slow-query tracer).
+Data access is split between `internal/store` (reads + a `Tx` helper) and
+`internal/engine` (mutations):
+
+- `store.Store.Tx(ctx, fn)` opens one transaction per mutation, committing on
+  success and rolling back on error (`internal/store/store.go`).
+- `internal/engine/*` run raw SQL against tables (`users`, `bank_accounts`,
+  `bank_transactions`, `fleet_aircraft`, `route_assignments`, `loans`,
+  `season_clock`, `finance_snapshots`, …) inside those transactions. The
+  package doc is explicit: *"Semua mutasi engine berjalan dalam satu transaksi
+  (store.Tx). Tidak ada fungsi SQL yang dipanggil."* — engine mutations use
+  direct table SQL, not the legacy RPC functions.
+- Handlers (`internal/handler/mutation.go`) are thin glue: resolve the
+  authenticated `user_id` from context, call an engine service
+  (`Fleet.Purchase`, `Routes.Create`, `Bank.TakeLoan`, `Settings.Reset`, …),
+  then broadcast a realtime change.
+- The world tick is `engine.WorldTick` (`internal/engine/simulation.go`), run
+  by the in-process `worker` goroutine (same binary as the API, replacing
+  pg_cron). It locks the season with `pg_try_advisory_xact_lock`, advances
+  `season_clock.current_game_time`, processes actors, writes `finance_snapshots`
+  once per game day, and appends `world_tick_log`.
+- A handful of SQL helper functions remain callable and are invoked by the Go
+  code where useful (for example `get_hq_prefix`), but the gameplay RPC surface
+  is legacy. The functions still exist in the baseline; migration 02 removed the
+  legacy custom-session functions (`register_company`, `login_company`,
+  `validate_session`) and the `sessions` table.
+
+## Table groups
+
+The baseline defines 16 tables. `finance_snapshots` was captured later by
+migration 15, so the current schema has 17 application tables.
+
+### Identity / users
+
+- `users` — actor record for both players and bots. Columns include
+  `id`, `username`, `company_name`, `ceo_name`, `game_current_time`,
+  `last_active_at`, `net_worth`, `hq_airport_iata`, `auto_grounding_threshold`,
+  `operational_status` (`Active`/`Bankrupt`), `consecutive_negative_days`,
+  `recovery_streak_days`, `season_id`, `auth_user_id`, `onboarding_completed`,
+  `actor_type` (`REAL`/`AI`).
+  There is **no `users.cash` column**; cash lives in `bank_accounts`.
+- `bot_profiles` — backend-only bot behavior state keyed by `user_id`:
+  `archetype`, `distress_stage`
+  (`stable`/`cautious`/`defensive`/`desperate`), `consecutive_loss_days`,
+  `secondary_hub_iata`, `recovery_loan_taken`, and a set of cooldown
+  timestamps (`last_growth_action_at`, `last_route_change_at`,
+  `last_pricing_review_at`, `last_repair_action_at`,
+  `last_route_optimization_at`, `last_route_audit_at`,
+  `last_financial_action_at`).
+
+### Fleet
+
+- `fleet_aircraft` — authoritative fleet state: `user_id`,
+  `aircraft_model_id`, `acquisition_type`
+  (`purchase`/`lease`/`finance`), `condition`, `status`
+  (`grounded`/`active`/`maintenance`), `tail_number`, `economy_seats`,
+  `business_seats`, `first_class_seats`, `nickname`, `acquired_game_date`.
+- `aircraft_models` — static catalog: `manufacturer`, `model_name`, `type`
+  (`regional_turboprop`/`regional_jet`/`narrow_body_jet`/`wide_body_jet`),
+  `range_km`, `capacity`, `speed_kmh`, `fuel_burn_per_km`,
+  `maintenance_cost_per_hour`, `purchase_price`, `lease_price_per_month`,
+  `turnaround_hours`, and `min_credit_tier` (added by migration 10).
+
+### Routes
+
+- `route_assignments` — authoritative route network: `user_id`, `origin_iata`,
+  `destination_iata`, `distance_km`, `ticket_price`, `assigned_aircraft_id`,
+  `flights_per_week` (1–168), `status` (`active`/`cancelled`).
+- `airports` — static registry: `iata` (PK), `name`, `city`, `country`,
+  `latitude`, `longitude`, `demand_index` (1–100).
+
+### Finance
+
+- `bank_accounts` — **canonical cash**. Columns: `user_id`, `account_type`
+  (only `operating`), `balance`, timestamps. Player cash lives here.
+- `bank_transactions` — **canonical money movement**. Columns: `account_id`,
+  `user_id`, `transaction_type`
+  (`debit`/`credit`/`payment`/`deposit`/`disbursement`/`refinance`/`late_fee`/
+  `accrual`/`refund`), `amount`, `balance_after`, `description`, `game_date`,
+  `ifrs_category`, `ifrs_subcategory`. Every economic event should leave an
+  auditable row.
+- `loans` — debt state: `user_id`, `principal`, `interest_rate`,
+  `remaining_balance`, `weekly_payment`, `monthly_payment`, `term_months`,
+  `status` (`active`/`paid_off`/`defaulted`/`repossessed`), `loan_type`
+  (`unsecured`/`secured`/`credit_line`/`aircraft_financing`),
+  `collateral_aircraft_id`, `missed_payments`, `taken_at`,
+  `originated_game_date`.
+- `credit_scores` — current per-player credit state: `score`, `tier`,
+  factor columns (`fleet_health_score`, `revenue_stability_score`,
+  `debt_ratio_score`, `cash_reserves_score`, `profit_history_score`),
+  `computed_at`.
+- `credit_score_history` — historical snapshots of the same factor columns plus
+  `game_date` and `computed_at`.
+- `finance_snapshots` — daily per-user trend rows captured by migration 15:
+  `user_id`, `snapshot_game_time`, `cash`, `net_worth`, `revenue_30d`,
+  `expense_30d`, `active_routes`, `fleet_count`, unique on
+  `(user_id, snapshot_game_time)`. Written once per game day and pruned to a
+  retention window (see [Migrations](#migrations)).
+
+### Game state
+
+- `game_config` — key/value JSONB runtime configuration (`key`, `value`,
+  `category`, `unit`, `description`, `updated_at`). Drives starting cash,
+  demand pools, cabin fares, tier policy, and bot tuning.
+- `season_clock` — shared world-time authority: `label`, `current_game_time`,
+  `last_tick_at`, `time_scale_multiplier`, `tick_interval_seconds`, `status`
+  (`draft`/`active`/`paused`/`completed`).
+- `world_tick_log` — operational audit trail for tick attempts: `season_id`,
+  `started_at`, `finished_at`, `game_time_before`, `game_time_after`,
+  `ticks_processed`, `real_seconds_processed`, `game_seconds_processed`,
+  `players_processed`, `bots_processed`, `status`, `message`.
+- `game_events` — time-bounded world events: `event_type`, `title`,
+  `description`, `effect_type`, `effect_target`, `effect_value`,
+  `start_game_time`, `end_game_time`, `is_active`.
+- `achievements` — per-user achievement rows: `user_id`, `achievement_type`,
+  `achievement_name`, `description`, `unlocked_at`, `game_date`, and
+  `notified_at` (added by migration 14 for reliable unlock toasts).
+
+## Season clock and chronology
+
+- `season_clock.current_game_time` is the shared game clock.
+- `users.game_current_time` is each actor's cursor and follows the season clock
+  after migration 03.
+- Player-facing chronology uses in-game timestamps such as
+  `bank_transactions.game_date`, `credit_score_history.game_date`,
+  `loans.originated_game_date`, and `game_events.start_/end_game_time`.
+- `last_tick_at`, `world_tick_log.started_at`/`finished_at`, `computed_at`,
+  `taken_at`, and generic `created_at`/`updated_at` are **real-world metadata**,
+  not gameplay time.
+
+## RLS and security posture
+
+Security is declared in migrations 01 and 02:
+
+- `01_security_phase5_rls.sql` enables RLS on the user-facing tables (`users`,
+  `bank_accounts`, `bank_transactions`, `fleet_aircraft`, `route_assignments`,
+  `loans`, `credit_scores`, `credit_score_history`, `achievements`) and on
+  reference tables (`aircraft_models`, `airports`, `game_config`,
+  `season_clock`, `bot_profiles`).
+  - User tables get tenant-isolation policies scoped through
+    `auth_user_id = auth.uid()`.
+  - Global definition tables get public read-only `SELECT` policies.
+- `02_security_phase6_legacy_cleanup.sql` drops the legacy custom-session RPCs
+  (`register_company`, `login_company`, `validate_session`) and the `sessions`
+  table.
+
+The Go API connects as the database owner and enforces ownership itself
+(`middleware.AuthGuard` resolves `user_id` from the bearer JWT; handlers never
+trust a client-supplied id). RLS is the defense-in-depth layer, not the primary
+authorization check for API traffic.
+
+## Safety-net triggers
+
+The baseline attaches these triggers, which reconcile derived state:
+
+| Trigger | Table | Purpose |
+|---|---|---|
+| `create_default_bank_account` | `users` (AFTER INSERT) | create the operating account for a new user |
+| `fleet_reconcile_net_worth` | `fleet_aircraft` (INSERT/UPDATE/DELETE) | recompute net worth on fleet change |
+| `trg_bank_balance_reconcile_net_worth` | `bank_accounts` (balance/user_id change) | recompute net worth on cash change |
+| `trg_loan_reconcile_net_worth` | `loans` (remaining_balance/status/user_id change) | recompute net worth on debt change |
+| `trg_user_hq_change` | `users` (hq_airport_iata change) | sync tail numbers on HQ change |
+
+The historical `on_auth_user_created` → `handle_new_auth_user()` trigger
+belongs to the retired Supabase Auth path and is not part of the current
+Go-API runtime.
+
+## Migrations
+
+Files are applied in numeric order.
+
+| File | What it changes | Applies to |
+|---|---|---|
+| `00_baseline.sql` | Consolidated live schema dump (tables, functions, triggers, RLS) replacing 58 old files on 2026-07-22 | whole schema |
+| `01_security_phase5_rls.sql` | Enable RLS + tenant/global policies | user + reference tables |
+| `02_security_phase6_legacy_cleanup.sql` | Drop legacy custom-session RPCs and `sessions` table | auth |
+| `03_sync_user_game_time_to_season_clock.sql` | Catch up `users.game_current_time` to the active season clock; redefine `reset_user_airline` to seed from `season_clock` | `users`, `reset_user_airline` |
+| `04_wave1_game_review_fixes.sql` | Value-based lease repair cost; GRU airport name; UAE demand recalibration | `perform_actor_aircraft_repair`, `airports` |
+| `05_demand_pool_scale.sql` | Add `demand_pool_scale` (default 290.0) fixed daily demand pool knob | `game_config` |
+| `06_cabin_fare_multipliers.sql` | Add cabin fare multipliers and willingness shares | `game_config` |
+| `07_wave4_aviation_data_fixes.sql` | Aviation data integrity: speeds, ranges, fuel burn, turnaround, lease prices, China/India demand tiers, airport cleanup | `aircraft_models`, `airports`, `fleet_aircraft`, `route_assignments`, `users`, `bot_profiles` |
+| `08_wave4_corrective.sql` | Restore hubs downgraded by 07's China CASE; keep RKZ low | `airports` |
+| `09_wave5_starting_cash.sql` | Raise starting cash to $25M | `game_config.starting_cash` |
+| `10_wave5_aircraft_tiers.sql` | Add `min_credit_tier` and set progression gates | `aircraft_models` |
+| `11_wave5_bot_price_response.sql` | Tighten bot competitive price threshold to 0.08 | `game_config` |
+| `12_wave5_china_demand_corrective.sql` | Restore LXA/XNN demand to 70 | `airports` |
+| `13_wave5_reset_starting_cash.sql` | Fix `reset_user_airline` to read config starting cash ($25M) | `reset_user_airline` |
+| `14_wave5_achievement_notified.sql` | Add `achievements.notified_at` + backfill so tick unlocks can be toasted exactly once | `achievements` |
+| `15_finance_snapshots_retention.sql` | Capture `finance_snapshots` schema, add trend index, align FK cascade; Go worker writes one row per game day and prunes | `finance_snapshots` |
+
+## Schema truths to keep straight
+
+- Do **not** document legacy names such as `user_fleet`, `user_routes`, or
+  `financial_ledger` as live tables.
+- Do **not** document `users.cash` as canonical cash.
+- `bank_accounts` (cash) and `bank_transactions` (movement) are the finance
+  core; `finance_snapshots` is only the bounded trend cache.
+- The old `Migration 27/33–46` references and timestamped migration filenames
+  in earlier docs are obsolete.

@@ -1,8 +1,12 @@
 # Skyward Monorepo
 
-Skyward is an airline-tycoon simulation application composed of:
+Skyward is an airline-tycoon simulation composed of:
 - **`apps/app`**: Flutter frontend client (Web & Desktop).
 - **`apps/api`**: Authoritative Go backend API (REST + WebSockets, simulation engine, world-tick worker).
+- **PostgreSQL**: single database, written to exclusively by the Go backend.
+
+All documentation lives in [`docs/`](docs/README.md) — start with
+[`docs/architecture/overview.md`](docs/architecture/overview.md).
 
 ## Repository Structure
 
@@ -11,11 +15,12 @@ skyward-monorepo/
 ├── apps/
 │   ├── app/                # Flutter frontend client
 │   └── api/                # Go HTTP API & simulation worker
-├── docs/                   # Unified architecture, database, API contract & handover docs
+├── docs/                   # Architecture, product, operations, standards, reviews
+├── migrations/             # Sequential DB migrations (00_baseline … NN_name.sql)
 ├── deploy/                 # Docker Compose, VPS Podman Quadlet / Caddy / systemd manifests
-├── scripts/                # Database audit scripts & deployment tools
-├── Makefile                # Root task runner (make dev, make test, make analyze)
-└── README.md
+├── scripts/                # Deployment tools
+├── AGENTS.md               # Agent/repo working rules
+└── Makefile                # Root task runner (make dev, make test, make analyze)
 ```
 
 ## Quick Start
