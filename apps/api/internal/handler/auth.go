@@ -7,7 +7,9 @@
 package handler
 
 import (
+	"crypto/subtle"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -18,10 +20,23 @@ import (
 	"skyward-api/internal/store"
 )
 
-// AuthHandler — register, login, me.
+// AuthHandler — register, login, me, reset-password.
 type AuthHandler struct {
 	Store     *store.Store
 	JWTSecret []byte
+
+	// Logger — audit-log attempt reset password. Boleh nil (fallback slog.Default).
+	Logger *slog.Logger
+	// ResetLimiter — brute-force guard /auth/reset-password (AUDIT-01).
+	// Boleh nil = tanpa guard extra (dev/test); jangan nil di prod.
+	ResetLimiter *middleware.WindowLimiter
+}
+
+func (h *AuthHandler) logger() *slog.Logger {
+	if h.Logger != nil {
+		return h.Logger
+	}
+	return slog.Default()
 }
 
 // userJSON — payload user yang dikembalikan ke client (tanpa password_hash).
@@ -189,7 +204,40 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	httperr.WriteJSON(w, http.StatusOK, toUserJSON(u))
 }
 
+// recoveryFactorMatch — konstan-time setelah normalisasi trim+lower.
+// Empty di sisi mana pun = tidak match.
+func recoveryFactorMatch(provided, want string) bool {
+	p := strings.ToLower(strings.TrimSpace(provided))
+	w := strings.ToLower(strings.TrimSpace(want))
+	if p == "" || w == "" {
+		return false
+	}
+	return subtle.ConstantTimeCompare([]byte(p), []byte(w)) == 1
+}
+
+// validateRecoveryCredentials — SEMUA tiga faktor wajib diisi dan wajib match
+// (AND). Historisnya OR: satu faktor (company/ceo) yang terekspos publik via
+// /leaderboard sudah cukup untuk reset password siapa pun — audit 2026-09-11
+// (AUDIT-01). HQ airport bukan faktor publik yang baik, digabung AND sehingga
+// penyerang butuh ketiganya sekaligus.
+func validateRecoveryCredentials(companyName, ceoName, hqIATA string, u *store.User) bool {
+	if !recoveryFactorMatch(companyName, u.CompanyName) {
+		return false
+	}
+	if !recoveryFactorMatch(ceoName, u.CeoName) {
+		return false
+	}
+	hq := ""
+	if u.HQAirportIATA != nil {
+		hq = *u.HQAirportIATA
+	}
+	return recoveryFactorMatch(hqIATA, hq)
+}
+
 // ResetPassword — POST /auth/reset-password {username, newPassword, companyName, ceoName, hqAirportIata}.
+// Guard (AUDIT-01): 10 attempt/15mnt per IP + 5 attempt/15mnt per username;
+// counter username di-clear setelah sukses; response sama untuk user tak
+// dikenal vs faktor salah (anti-enumeration).
 func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Username      string `json:"username"`
@@ -213,27 +261,36 @@ func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Brute-force guard (AUDIT-01): setiap attempt dihitung, termasuk yang
+	// gagal karena user tidak dikenal.
+	if h.ResetLimiter != nil {
+		ip := middleware.ClientIP(r)
+		okIP := h.ResetLimiter.Allow("reset:ip:"+ip, 10)
+		okUser := h.ResetLimiter.Allow("reset:u:"+username, 5)
+		if !okIP || !okUser {
+			h.logger().Warn("reset-password: attempt limit exceeded", "ip", ip, "username", username)
+			httperr.WriteError(w, nil, httperr.Validation("too many reset attempts, try again in 15 minutes"))
+			return
+		}
+	}
+
 	u, err := h.Store.GetUserByUsername(r.Context(), username)
 	if err != nil {
+		// SAMA dengan respons credential-salah: anti-enumeration.
 		httperr.WriteError(w, nil, httperr.Unauthorized("invalid recovery credentials"))
 		return
 	}
 
-	valid := false
-	if body.CompanyName != "" && strings.EqualFold(strings.TrimSpace(body.CompanyName), u.CompanyName) {
-		valid = true
-	}
-	if body.CeoName != "" && strings.EqualFold(strings.TrimSpace(body.CeoName), u.CeoName) {
-		valid = true
-	}
-	if body.HQAirportIATA != "" && u.HQAirportIATA != nil && strings.EqualFold(strings.TrimSpace(body.HQAirportIATA), *u.HQAirportIATA) {
-		valid = true
-	}
-
-	if !valid {
+	if !validateRecoveryCredentials(body.CompanyName, body.CeoName, body.HQAirportIATA, u) {
+		h.logger().Warn("reset-password: invalid recovery credentials",
+			"ip", middleware.ClientIP(r), "username", username)
 		httperr.WriteError(w, nil, httperr.Unauthorized("invalid recovery credentials"))
 		return
 	}
+	if h.ResetLimiter != nil {
+		h.ResetLimiter.Clear("reset:u:" + username)
+	}
+	h.logger().Info("reset-password: password reset succeeded", "username", username)
 
 	hash, err := auth.HashPassword(body.NewPassword)
 	if err != nil {
