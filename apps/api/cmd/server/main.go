@@ -132,7 +132,12 @@ func registerRoutes(ctx context.Context, mux *http.ServeMux, logger *slog.Logger
 	wsServer := &handler.WSServer{Hub: hub, JWTSecret: []byte(cfg.JWTSecret)}
 	mux.Handle("GET /ws", http.HandlerFunc(wsServer.ServeWS))
 
-	authHandler := &handler.AuthHandler{Store: st, JWTSecret: []byte(cfg.JWTSecret)}
+	authHandler := &handler.AuthHandler{
+		Store:        st,
+		JWTSecret:    []byte(cfg.JWTSecret),
+		Logger:       logger,
+		ResetLimiter: middleware.NewWindowLimiter(15*time.Minute, 0), // AUDIT-01
+	}
 	mux.Handle("POST /auth/register", http.HandlerFunc(authHandler.Register))
 	mux.Handle("POST /auth/login", http.HandlerFunc(authHandler.Login))
 	mux.Handle("POST /auth/reset-password", http.HandlerFunc(authHandler.ResetPassword))
