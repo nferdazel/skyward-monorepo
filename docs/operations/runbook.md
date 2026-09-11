@@ -194,7 +194,9 @@ where notified_at is null
 `fleet_count`, `created_at`) with a unique key on
 `(user_id, snapshot_game_time)`. The Go engine keeps one row per user per game
 day and prunes to `financeSnapshotRetentionDays = 90` per user in
-`apps/api/internal/engine/simulation.go`.
+`apps/api/internal/engine/simulation.go`. **Retention lives only in Go** —
+migration 15 creates the table/index/unique-key but has no SQL prune function;
+never rely on a DB job for this.
 
 Rows per user vs the 90-day cap (expect `snapshots <= 90`):
 
@@ -223,6 +225,12 @@ order by count(*) desc;
 These functions exist in `00_baseline.sql` and are read-only audit surfaces.
 They are still callable via `psql`; they are not exposed as HTTP endpoints
 except the worker status route below.
+
+> ⚠️ **Caveat (2026-09-12):** `get_world_tick_scheduler_health()` and
+> `get_world_tick_guardrail_report()` predate the Go world-tick worker and
+> still look at the pg_cron scheduler era. They may return stale or
+> meaningless values now that the worker is in-process — verify before
+> trusting, or retire them.
 
 ```sql
 select * from get_world_tick_guardrail_report();
@@ -401,11 +409,20 @@ Prod API base: `https://api.qouver.com/skyward`; dev defaults to
 ## 5. Reset / Reseed Operations
 
 `scripts/` contains only `deploy.sh`; there are **no standalone seeders** in
-the repo. Fresh-environment data comes from applying the migrations in order,
-not from a seed script.
+the repo.
 
-- Schema/seed baseline: apply `migrations/00_baseline.sql` first, then
-  `01_…` through `15_…` sequentially.
+**Bootstrap reality (corrected 2026-09-12):** the migrations capture *schema*
+plus a handful of `game_config` rows (`09`, `11`), **not** the reference data.
+`aircraft_models`, `airports`, and roughly 25 `game_config` keys (fuel price,
+crew cost, wear rates, ticket base/km, all bot knobs, `credit_tier_config`)
+exist only in the live database; a fresh environment that runs migrations
+alone silently falls back to the Go hardcoded defaults and runs a different
+economy. To bootstrap, restore those tables from a live data dump
+(`pg_dump --data-only -t aircraft_models -t airports -t game_config …`) until
+the seed migration lands (tracked as AUDIT-10 in the local audit action plan).
+
+- Schema baseline: apply `migrations/00_baseline.sql` first, then
+  `01_…` through `16_…` sequentially.
 - Migrations are applied directly with `psql` against the target database, e.g.
   `psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -1 -f migrations/15_finance_snapshots_retention.sql`.
   Each migration header names its apply command.

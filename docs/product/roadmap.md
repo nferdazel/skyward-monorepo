@@ -75,15 +75,15 @@ only product backlog — no shadow checklists at repo root.
 
 ## 5. Engineering debt
 
-- [ ] Backend infra test gap: `handler/`, `store/`, `middleware/`, `worker/`,
-      `realtime/` have zero tests (`engine/` + `auth/` are covered).
+- [ ] Backend infra test gap: `handler/`, `store/`, `realtime/` still have no tests
+      (`engine/`, `auth/`, `middleware/`, `worker/` are covered as of 2026-09-12).
 - [ ] Worker tick interval does not re-read `season_clock.tick_interval_seconds` at
       runtime (`internal/worker/worker.go` TODO).
 - [ ] `worker.Status.NextTickAfter` declared but never populated.
 - [ ] `internal/domain` is dead: no importers; `domain.Money` is a string skeleton while
       money flows as `float64` (the decimal claim in the old api README was aspirational).
-- [ ] `apps/app/lib/core/config/app_env.dart` still declares unused `SUPABASE_URL` /
-      `SUPABASE_KEY` env fields.
+- [x] ~~`apps/app/lib/core/config/app_env.dart` still declares unused `SUPABASE_URL` /
+      `SUPABASE_KEY` env fields.~~ Resolved 2026-09-12 (AUDIT-21).
 - [ ] SQL audit surfaces `get_world_tick_scheduler_health()` / guardrail reports still
       reference the pg_cron era — verify or retire (see `../operations/runbook.md`).
 - [ ] Add tests where stale-state regressions are likely (carried from the old
@@ -92,3 +92,27 @@ only product backlog — no shadow checklists at repo root.
 
 **Standing rule** (from the game review): `game_config` is authoritative at runtime —
 any balance change must update the DB row, not just the `game_constants.dart` fallback.
+
+### Debt logged by the 2026-09-12 security/correctness audit
+- [ ] **Game-config seed migration (AUDIT-10)** — ~25 `game_config` keys
+      (fuel/crew/wear/fares/bot knobs/`credit_tier_config`) are not seeded by any
+      migration; a fresh DB silently runs Go defaults. Blocked on a live
+      `SELECT key, value FROM game_config` dump to avoid balance drift; will land as
+      `migrations/17_game_config_seed.sql`.
+- [ ] **Handler/store DB test harness (AUDIT-24)** — HTTP-level regression tests for the
+      fixed IDOR/validation paths need a test DB (testcontainers-lite). Also unlocks
+      real layer-4 DB integration tests (currently SQL-text checks only).
+- [ ] **Day-boundary serialization (AUDIT-25)** — `ProcessPlayer` commits before
+      `processDayBoundary` runs, so the per-user advisory lock no longer covers loan
+      payments/late fees. Small race window; wrap the boundary work in its own lock.
+- [ ] **Secured lending (AUDIT-12)** — `collateral_aircraft_id` is now rejected
+      explicitly; the real feature (validate ownership, lien, lower rate) is backlog.
+- [ ] **Multi-instance world-tick lock (AUDIT-09)** — `Engine.tickMu` covers a single
+      process; a full-scope DB advisory lock is needed before running more than one API
+      replica.
+- [ ] **WS token in query string (AUDIT-05 residual)** — deferred; move to a
+      first-message auth frame or one-time ticket (proxy logs currently capture JWTs).
+- [ ] **Fleet/Routes load coalescing (AUDIT-19 residual)** — they still drop concurrent
+      refreshes (`await _activeLoad; return;`); port the Bank pending-refresh pattern.
+- [ ] **UI feedback for dropped double-tap actions (AUDIT-20 residual)** — the runner now
+      logs, but a snackbar needs UI plumbing.
