@@ -138,8 +138,10 @@ class GameConstants {
   /// Maximum aircraft operational condition (fully repaired).
   static const double maxCondition = 100.0;
 
-  /// Default annual interest rate for bank loans.
-  static const double defaultLoanInterestRate = 0.05;
+  /// Fallback only — `game_config.credit_tier_config.Standard.rate_unsecured`
+  /// (0.12) is authoritative, matching `bank.go`. The credit report supplies the
+  /// player's actual tiered rate; this is used only before the report loads.
+  static const double defaultLoanInterestRate = 0.12;
 
   /// TTL for cached game_config settings to avoid redundant Supabase fetches.
   static const Duration settingsCacheTtl = Duration(minutes: 5);

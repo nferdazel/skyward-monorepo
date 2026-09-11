@@ -411,18 +411,18 @@ Prod API base: `https://api.qouver.com/skyward`; dev defaults to
 `scripts/` contains only `deploy.sh`; there are **no standalone seeders** in
 the repo.
 
-**Bootstrap reality (corrected 2026-09-12):** the migrations capture *schema*
-plus a handful of `game_config` rows (`09`, `11`), **not** the reference data.
-`aircraft_models`, `airports`, and roughly 25 `game_config` keys (fuel price,
-crew cost, wear rates, ticket base/km, all bot knobs, `credit_tier_config`)
-exist only in the live database; a fresh environment that runs migrations
-alone silently falls back to the Go hardcoded defaults and runs a different
-economy. To bootstrap, restore those tables from a live data dump
-(`pg_dump --data-only -t aircraft_models -t airports -t game_config …`) until
-the seed migration lands (tracked as AUDIT-10 in the local audit action plan).
+**Bootstrap reality (corrected 2026-09-12; seed migration landed):** the
+migrations capture *schema* plus `game_config` rows: `09`/`11` seeded 3 keys and
+`17_game_config_seed.sql` (AUDIT-10) seeds the 39 live keys read by the engine
+and workers (fuel price, crew cost, wear rates, ticket base/km, all bot knobs,
+`credit_tier_config`) via `ON CONFLICT (key) DO NOTHING`. A fresh environment
+that runs migrations now gets the live economy instead of silently falling back
+to the Go hardcoded defaults. `aircraft_models` and `airports` reference data
+are still **not** captured by migrations; restore those from a live data dump
+(`pg_dump --data-only -t aircraft_models -t airports …`) until they are seeded.
 
 - Schema baseline: apply `migrations/00_baseline.sql` first, then
-  `01_…` through `16_…` sequentially.
+  `01_…` through `17_…` sequentially.
 - Migrations are applied directly with `psql` against the target database, e.g.
   `psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -1 -f migrations/15_finance_snapshots_retention.sql`.
   Each migration header names its apply command.

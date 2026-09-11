@@ -36,6 +36,10 @@ type Engine struct {
 	// Logger — opsional; fallback slog.Default (lihat log()).
 	Logger *slog.Logger
 
+	// warnedCfg — AUDIT-10: key → struct{}, supaya cache-miss game_config
+	// hanya di-Warn sekali per proses (bukan tiap tick).
+	warnedCfg sync.Map
+
 	// tickMu — AUDIT-09: hanya satu WorldTick boleh jalan per proses.
 	// Advisory xact-lock lama hanya melindungi statement UPDATE clock
 	// (autocommit), bukan steps 2-6; mutex ini menutup worker tick vs
