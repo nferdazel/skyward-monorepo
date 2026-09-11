@@ -30,6 +30,8 @@ class BankCubit extends Cubit<BankState>
   Timer? _realtimeRefreshDebounce;
   String? _userId;
   Future<void>? _activeLoad;
+  bool _pendingLoad = false;
+  bool _pendingLoadSilent = true;
   Future<void>? _activeAction;
 
   BankCubit({BankGateway? gateway})
@@ -68,13 +70,37 @@ class BankCubit extends Cubit<BankState>
   }
 
   /// Load all bank data: loans, credit report, credit history, financing.
+  /// AUDIT-19: permintaan yang datang saat load lain in-flight TIDAK dibuang —
+  /// ditandai pending dan dijalankan sekali lagi setelah in-flight selesai
+  /// (dulu `return _activeLoad` membuat refresh akibat event realtime hilang,
+  /// sehingga panel bank bisa menampilkan saldo pra-mutasi).
   Future<void> loadBankData(String userId, {bool silent = false}) async {
-    if (_activeLoad != null) return _activeLoad;
+    if (_activeLoad != null) {
+      if (!_pendingLoad) {
+        _pendingLoad = true;
+        _pendingLoadSilent = silent;
+      } else {
+        _pendingLoadSilent = _pendingLoadSilent && silent;
+      }
+      await _activeLoad;
+      return;
+    }
     _activeLoad = _loadBankDataInternal(userId, silent: silent);
     try {
       await _activeLoad;
     } finally {
       _activeLoad = null;
+    }
+    while (_pendingLoad) {
+      final pendingSilent = _pendingLoadSilent;
+      _pendingLoad = false;
+      _pendingLoadSilent = true;
+      _activeLoad = _loadBankDataInternal(userId, silent: pendingSilent);
+      try {
+        await _activeLoad;
+      } finally {
+        _activeLoad = null;
+      }
     }
   }
 
