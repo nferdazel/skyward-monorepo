@@ -185,6 +185,21 @@ func (f *FleetService) Sell(ctx context.Context, userID, fleetID string) (*Mutat
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
 
+	// AUDIT-08: lock the aircraft row — serializes against Routes.Assign so a
+	// plane cannot be sold while being assigned (FK SET NULL ghost route) or
+	// double-assigned. The pre-read check above stays only as a fast-fail.
+	var lockedID string
+	if err := tx.QueryRow(ctx, `SELECT id FROM fleet_aircraft WHERE id=$1 AND user_id=$2 FOR UPDATE`, fleetID, userID).Scan(&lockedID); err != nil {
+		return &MutationResult{Success: false, Message: "Aircraft not found."}, nil
+	}
+	var stillAssigned bool
+	if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM route_assignments WHERE user_id=$1 AND assigned_aircraft_id=$2)`, userID, fleetID).Scan(&stillAssigned); err != nil {
+		return &MutationResult{Success: false, Message: "assignment check failed"}, nil
+	}
+	if stillAssigned {
+		return &MutationResult{Success: false, Message: "Aircraft is still assigned to a route."}, nil
+	}
+
 	gameTime, _ := f.engine.Ledger.GetUserGameTime(ctx, userID)
 	newCash, err := f.engine.Ledger.CreditTx(ctx, tx, userID, saleValue, "investing", "aircraft_sale",
 		fmt.Sprintf("Sold aircraft %s [%s]", fr.ModelName, deref(fr.TailNumber, "NO-TAIL")), gameTime)
