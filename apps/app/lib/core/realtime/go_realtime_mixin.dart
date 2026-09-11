@@ -22,10 +22,15 @@ mixin GoRealtimeMixin {
     void Function(GoRealtimeEvent event) onEvent,
   ) {
     // Ganti (bukan tambah) set channel agar re-subscribe tidak menumpuk
-    // channel lama yang sudah tidak dipakai.
+    // channel lama yang sudah tidak dipakai. (AUDIT-14: kirim hanya DELTA —
+    // channel yang tetap di-subscribe tidak boleh menambah ref count dua
+    // kali dari cubit yang sama.)
+    final desired = channels.toSet();
+    final toAdd = desired.difference(_realtimeChannels).toList();
+    final toRemove = _realtimeChannels.difference(desired).toList();
     _realtimeChannels
       ..clear()
-      ..addAll(channels);
+      ..addAll(desired);
     _realtimeSub?.cancel();
     _realtimeSub = GatewayFactory.realtimeClient.events.listen((event) {
       if (event.type != 'change') return;
@@ -37,7 +42,12 @@ mixin GoRealtimeMixin {
     // Pastikan koneksi WS terbuka sebelum subscribe (pesan subscribe hanya
     // terkirim ketika _channel != null — di-set oleh connect()).
     unawaited(GatewayFactory.realtimeClient.connect());
-    GatewayFactory.realtimeClient.subscribe(channels);
+    if (toAdd.isNotEmpty) {
+      GatewayFactory.realtimeClient.subscribe(toAdd);
+    }
+    if (toRemove.isNotEmpty) {
+      GatewayFactory.realtimeClient.unsubscribe(toRemove);
+    }
   }
 
   /// Batalkan subscription realtime. Panggil dari cubit's [close()].
