@@ -256,16 +256,6 @@ void main() {
         expect(fleetCubit.state, const FleetInitial());
         expect(routesCubit.state, const RoutesInitial());
 
-        final expectedFleetStates = [
-          isA<FleetLoaded>().having((f) => f.fleet.length, 'fleet count', 1),
-        ];
-        final expectedRoutesStates = [
-          isA<RoutesLoaded>().having((r) => r.routes.length, 'routes count', 1),
-        ];
-
-        expectLater(fleetCubit.stream, emitsInOrder(expectedFleetStates));
-        expectLater(routesCubit.stream, emitsInOrder(expectedRoutesStates));
-
         // Trigger simulation sync loop with backend
         await simulationCubit.startLoop(
           userId: 'u-99',
@@ -273,8 +263,17 @@ void main() {
           initialCash: 12000000.0,
         );
 
-        // Allow stream listener to process the state change
-        await Future<void>.delayed(const Duration(milliseconds: 50));
+        // AUDIT-18: reload cubit kini menyusul SETELAH debounce
+        // (fleet 200ms, routes 400ms) — tunggu melewati yang terbesar.
+        await Future<void>.delayed(const Duration(milliseconds: 900));
+
+        final fleet = fleetCubit.state;
+        expect(fleet, isA<FleetLoaded>());
+        expect((fleet as FleetLoaded).fleet.length, 1);
+
+        final routes = routesCubit.state;
+        expect(routes, isA<RoutesLoaded>());
+        expect((routes as RoutesLoaded).routes.length, 1);
 
         // Verify the simulation cubit state has a cash balance from sync
         expect(simulationCubit.state.cashBalance, isA<double>());

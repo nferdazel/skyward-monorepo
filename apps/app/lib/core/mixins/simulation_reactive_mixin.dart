@@ -10,8 +10,25 @@ import '../../features/simulation/presentation/cubit/simulation_state.dart';
 /// Provides subscription management to avoid code duplication.
 mixin SimulationReactiveMixin {
   StreamSubscription? _simSubscription;
+  Timer? _syncDebounceTimer;
   bool _wasSyncing = false;
   bool _isDisposed = false;
+
+  /// AUDIT-18: [delay] dulu diterima tapi diabaikan — semua cubit yang minta
+  /// debounce 200-800ms tetap reload sinkron di dalam listener (bisa membaca
+  /// state pra-commit tick). Sekarang callback dijadwalkan setelah [delay];
+  /// pemanggilan baru membatalkan timer lama (debounce trailing-edge).
+  void _scheduleSyncCallback(VoidCallback callback, Duration delay) {
+    _syncDebounceTimer?.cancel();
+    if (delay <= Duration.zero) {
+      callback();
+      return;
+    }
+    _syncDebounceTimer = Timer(delay, () {
+      if (_isDisposed) return;
+      callback();
+    });
+  }
 
   /// Subscribes to simulation stream and calls [onSyncComplete] when sync
   /// transitions from true → false with no error.
@@ -26,7 +43,7 @@ mixin SimulationReactiveMixin {
       if (_isDisposed) return;
       final isSyncing = simState.isSyncing;
       if (_wasSyncing && !isSyncing && simState.errorMessage == null) {
-        onSyncComplete();
+        _scheduleSyncCallback(onSyncComplete, delay);
       }
       _wasSyncing = isSyncing;
     });
@@ -45,7 +62,7 @@ mixin SimulationReactiveMixin {
       if (_isDisposed) return;
       final isSyncing = simState.isSyncing;
       if (_wasSyncing && !isSyncing && simState.errorMessage == null) {
-        onSyncComplete(simState);
+        _scheduleSyncCallback(() => onSyncComplete(simState), delay);
       }
       _wasSyncing = isSyncing;
     });
@@ -54,6 +71,8 @@ mixin SimulationReactiveMixin {
   /// Cancel simulation subscription. Call from cubit's [close()].
   void disposeReactivity() {
     _isDisposed = true;
+    _syncDebounceTimer?.cancel();
+    _syncDebounceTimer = null;
     _simSubscription?.cancel();
     _simSubscription = null;
   }
