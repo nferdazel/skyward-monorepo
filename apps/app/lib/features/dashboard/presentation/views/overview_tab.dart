@@ -342,19 +342,31 @@ class OverviewTab extends StatelessWidget {
   }
 
   Widget _buildTrendRow(String label, List<double> data, Color color) {
-    return Row(
+    // Chart sits UNDER the label and spans the block width — a 96px sparkline
+    // crammed beside the label read as misplaced (user report 2026-09-12).
+    // NOTE: LayoutBuilder is NOT usable here: the strip wraps this row in
+    // IntrinsicHeight and LayoutBuilder throws "does not support returning
+    // intrinsic dimensions" once real trend data renders it (caught by
+    // overview_tab_layout_sweep_test). FittedBox inherits proxy intrinsics
+    // and is safe; the wide child aspect keeps the scaled height ~30px.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Text(
-            label,
-            style: AppTypography.nanoLabel.copyWith(color: AppTheme.textMuted),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
+        Text(
+          label,
+          style: AppTypography.nanoLabel.copyWith(color: AppTheme.textMuted),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
-        const SizedBox(width: AppSpacing.sm),
+        const SizedBox(height: AppSpacing.xs),
         if (data.length >= 3)
-          AppSparkline(data: data, width: 96, height: 28, color: color)
+          // Fixed size, no intrinsic-driven scaling: the strip is wrapped in
+          // IntrinsicHeight (for the stretched dividers), so any child whose
+          // laid-out height differs from its intrinsic height overflows the
+          // card — LayoutBuilder throws there, and FittedBox scaled taller
+          // than its intrinsic (3.2px bottom overflow). 200x36 fits the
+          // narrowest wide-mode block (~219px content).
+          AppSparkline(data: data, width: 200, height: 36, color: color)
         else
           Text(
             AppStrings.runwayUnknown,
