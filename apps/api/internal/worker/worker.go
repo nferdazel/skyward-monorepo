@@ -103,6 +103,19 @@ func backoff(n int) time.Duration {
 	return time.Duration(d) * time.Second
 }
 
+// tickInterval — interval ticker berikutnya: interval konfigurasi saat sehat,
+// backoff eksponensial saat tick gagal.
+//
+// Dulu `ticker.Reset` hanya dipanggil di cabang error, jadi backoff terakhir
+// menempel permanen setelah tick pulih kembali: world tick berjalan jauh lebih
+// cepat dari `tick_interval_seconds` dan waktu dunia melaju tanpa batas.
+func tickInterval(base time.Duration, errors int) time.Duration {
+	if errors > 0 {
+		return backoff(errors)
+	}
+	return base
+}
+
 func (w *Worker) loop(ctx context.Context) {
 	w.logger.Info("worker started", "interval", w.interval)
 	w.mu.Lock()
@@ -137,13 +150,15 @@ func (w *Worker) loop(ctx context.Context) {
 				w.mu.Unlock()
 				w.logger.Error("tick failed", "error", err, "errors_total", errors)
 				// backoff on error
-				ticker.Reset(backoff(errors))
+				ticker.Reset(tickInterval(w.interval, errors))
 				continue
 			}
 			errors = 0
 			w.mu.Lock()
 			w.status.ErrorsCount = 0
 			w.mu.Unlock()
+			// Kembalikan cadence ke interval konfigurasi setelah pulih.
+			ticker.Reset(tickInterval(w.interval, errors))
 			// TODO Fase 6: baca season_clock.tick_interval_seconds dan reset
 			// ticker.Interval bila berubah.
 		}
