@@ -319,7 +319,10 @@ func (b *BankService) FinanceAircraft(ctx context.Context, userID string, p Fina
 	if err != nil {
 		return &MutationResult{false, "insert loan failed", cash}, nil
 	}
-	tx.Commit(ctx) //nolint:errcheck
+	if err := tx.Commit(ctx); err != nil {
+		// Commit gagal = tidak ada pesawat maupun pinjaman; jangan bilang sukses.
+		return &MutationResult{false, "commit failed", cash}, nil
+	}
 	newCash, _ := b.engine.Ledger.GetBalance(ctx, userID)
 	return &MutationResult{true, "Aircraft financed successfully.", newCash}, nil
 }

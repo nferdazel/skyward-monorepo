@@ -254,7 +254,7 @@ func (f *FleetService) Repair(ctx context.Context, userID, fleetID string) (*Mut
 	if err != nil {
 		return &MutationResult{Success: false, Message: "ledger debit failed", NewCash: cash}, nil
 	}
-	_, err = tx.Exec(ctx, `UPDATE fleet_aircraft SET condition=100.00, status='active' WHERE id=$1`, fleetID)
+	_, err = tx.Exec(ctx, `UPDATE fleet_aircraft SET condition=100.00, status='active' WHERE id=$1 AND user_id=$2`, fleetID, userID)
 	if err != nil {
 		return &MutationResult{Success: false, Message: "update aircraft failed", NewCash: cash}, nil
 	}
@@ -357,7 +357,11 @@ func (f *FleetService) Lease(ctx context.Context, userID string, p LeaseParams) 
 	if err != nil {
 		return &MutationResult{false, "insert aircraft failed", cash}, nil
 	}
-	tx.Commit(ctx) //nolint:errcheck
+	if err := tx.Commit(ctx); err != nil {
+		// Commit gagal = deposit sudah didebit di transaksi yang batal dan
+		// pesawatnya tidak pernah ada; jangan laporkan sukses.
+		return &MutationResult{false, "commit failed", cash}, nil
+	}
 	newCash, _ := f.engine.Ledger.GetBalance(ctx, userID)
 	return &MutationResult{true, fmt.Sprintf("Successfully leased %s [%s]", modelName, tail), newCash}, nil
 }
