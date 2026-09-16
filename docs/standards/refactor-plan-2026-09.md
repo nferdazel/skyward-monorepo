@@ -49,9 +49,13 @@ commit (same convention as `docs/product/roadmap.md`).
 - [x] **0.6** CI: use `go-version-file: apps/api/go.mod` (was pinned 1.22 vs
       go.mod 1.26.5), add `go vet ./...`, add `permissions:` and `concurrency:`.
       Remaining: `golangci-lint` + migration smoke (after 0.2/0.4).
-- [ ] **0.7** Backup/restore automation: scheduled `pg_dump` (custom format) with
-      off-box copy + a documented restore drill; add a runbook §0 covering
-      backup and the single-replica constraint.
+- [x] **0.7** Backup/restore automation. `scripts/backup-db.sh` dumps `pg_dump -Fc`,
+      verifies the archive with `pg_restore -l`, prunes past `RETENTION_DAYS` and
+      optionally `rsync`s to `BACKUP_REMOTE`. Installed on the VPS as the daily
+      systemd user timer `skyward-backup.timer` (03:15, on-box
+      `/srv/qouver/apps/skyward/backups`, 14 days ≈ 1 GB). Restore drill +
+      single-replica constraint documented in runbook §0 and executed once with
+      matching row counts. **Open:** no off-box `BACKUP_REMOTE` destination yet.
 - [x] **0.8** Docs sweep: migration index now covers 16–18, `docs/README.md`
       range, `maintainer-standard.md` §5 range, root `README.md` (Go floor,
       deploy description, Makefile targets), runbook retired-function status.

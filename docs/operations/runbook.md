@@ -1,6 +1,6 @@
 # Skyward Operations Runbook
 
-Status: current | Last verified against code: 2026-09-11
+Status: current | Last verified against code: 2026-09-16
 
 Practical operations for the solo owner. This file merges the former
 `audit-queries.md`, `simulation-guide.md`, `owner-tools.md`, and
@@ -8,6 +8,66 @@ Practical operations for the solo owner. This file merges the former
 SQL Editor, Edge Functions, `select * from <rpc>()` gameplay wrappers) are gone;
 the Go API in `apps/api` is authoritative and ops actions go through HTTP admin
 endpoints.
+
+## 0. Backups and Restore
+
+`scripts/backup-db.sh` writes a `pg_dump -Fc` archive, verifies that
+`pg_restore -l` can read it back, prunes archives older than `RETENTION_DAYS`
+(default 14), and optionally `rsync`s the result off-box. It fails loudly and
+deletes the partial archive if the dump is empty or unreadable.
+
+```bash
+# on the VPS — one archive per run in /srv/qouver/apps/skyward/backups
+PG_DUMP='podman exec qouver-postgres pg_dump -U qouver -d skyward' \
+PG_RESTORE='podman exec -i qouver-postgres pg_restore' \
+BACKUP_DIR=/srv/qouver/apps/skyward/backups RETENTION_DAYS=14 \
+  scripts/backup-db.sh
+```
+
+Do **not** pass `-f -` to `pg_dump`: on PG 18 that writes a file literally named
+`-` inside the container instead of streaming to stdout.
+
+Under podman the verification step logs `Failed to write to fd container stdin:
+Broken pipe` from conmon — expected noise, because `pg_restore -l` stops reading
+stdin once it has read the table of contents. The script still exits non-zero if
+the archive is unreadable.
+
+Scheduling: installed as a systemd **user** timer (`skyward-backup.timer`,
+daily 03:15 local, `Persistent=true`), alongside the existing `system-health`
+and `podman-prune` timers. `loginctl show-user sachiel` reports `Linger=yes`, so
+it runs without an interactive session. Disable with
+`systemctl --user disable --now skyward-backup.timer`.
+
+Off-box copy: set `BACKUP_REMOTE=user@host:/path` to rsync each archive. No
+destination is configured yet, and on-box archives alone do not survive losing
+the VPS disk. One archive is ~71 MB, so 14 days ≈ 1 GB (disk is 59 GB, 40 % used).
+
+### Restore drill
+
+Run this after any schema change, and at least once a season: an archive nobody
+has ever restored is not a backup.
+
+```bash
+LATEST=$(ls -t /srv/qouver/apps/skyward/backups/skyward-*.dump | head -1)
+podman exec qouver-postgres psql -U qouver -d postgres -c "DROP DATABASE IF EXISTS skyward_restore_check"
+podman exec qouver-postgres psql -U qouver -d postgres -c "CREATE DATABASE skyward_restore_check"
+podman exec -i qouver-postgres pg_restore -U qouver -d skyward_restore_check \
+  --no-owner --no-privileges < "$LATEST"
+# row counts must match prod
+podman exec qouver-postgres psql -U qouver -d skyward_restore_check -c \
+  "select (select count(*) from airports) airports,
+          (select count(*) from fleet_aircraft) fleet,
+          (select count(*) from game_events) events,
+          (select count(*) from bank_accounts) accounts"
+podman exec qouver-postgres psql -U qouver -d postgres -c "DROP DATABASE skyward_restore_check"
+```
+
+### Single replica
+
+`skyward-api` is a single instance that owns the world-tick worker: two API
+processes against one database would double-apply ticks. Postgres is one
+container on one host. A restore therefore means "stop the API, restore, start
+the API" — there is no replica to fail over to.
 
 ## 1. Architecture Pointer
 
