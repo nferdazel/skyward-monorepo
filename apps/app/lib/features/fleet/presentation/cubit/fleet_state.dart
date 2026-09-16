@@ -150,5 +150,9 @@ class FleetError extends FleetDataState with Equatable {
     selectedRangeBrackets,
     sortBy,
     hasData,
+    // `message` wajib ada: tanpa ini dua error dengan pesan berbeda tapi data
+    // sama dianggap state identik, sehingga emit() di-skip dan pesan error
+    // kedua tidak pernah muncul di UI.
+    message,
   ];
 }
