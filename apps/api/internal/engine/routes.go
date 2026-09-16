@@ -68,7 +68,7 @@ func (r *RoutesService) Delete(ctx context.Context, userID, routeID string) (*Mu
 	if err != nil {
 		return &MutationResult{Success: false, Message: "Route not found."}, nil
 	}
-	_, err = r.engine.Pool.Exec(ctx, `UPDATE route_assignments SET status='cancelled', assigned_aircraft_id=NULL WHERE id=$1`, routeID)
+	_, err = r.engine.Pool.Exec(ctx, `UPDATE route_assignments SET status='cancelled', assigned_aircraft_id=NULL WHERE id=$1 AND user_id=$2`, routeID, userID)
 	if err != nil {
 		return &MutationResult{Success: false, Message: "delete route failed"}, nil
 	}
@@ -187,7 +187,7 @@ func (r *RoutesService) UpdateFreqPrice(ctx context.Context, userID, routeID str
 			return &MutationResult{false, "Route frequency exceeds the assigned aircraft's weekly operating capacity.", 0}, nil
 		}
 	}
-	_, err = r.engine.Pool.Exec(ctx, `UPDATE route_assignments SET ticket_price=$1, flights_per_week=$2 WHERE id=$3`, price, freq, routeID)
+	_, err = r.engine.Pool.Exec(ctx, `UPDATE route_assignments SET ticket_price=$1, flights_per_week=$2 WHERE id=$3 AND user_id=$4`, price, freq, routeID, userID)
 	if err != nil {
 		return &MutationResult{false, "update failed", 0}, nil
 	}

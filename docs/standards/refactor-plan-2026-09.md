@@ -119,14 +119,24 @@ Every item below must fail-then-pass with a DB-backed test once 0.4 lands.
       (`main.go`). Two `engine.New` calls meant two `tickMu` mutexes, so
       `POST /admin/world/tick` could overlap the worker tick (AUDIT-09 guard was
       a no-op), and the mutation engine never received `Hub`.
-- [ ] **1.4** Check `tx.Commit` in the fleet/bank financing paths
-      (`fleet.go:360`, `bank.go:322`).
-- [ ] **1.5** Repay: malformed body must be 400, not "repay the whole loan"
-      (`mutation.go:220`).
-- [ ] **1.6** Abort day-boundary servicing when `GetBalance` fails instead of
-      classifying every loan as missed (`dayboundary.go:92,154`).
-- [ ] **1.7** Add `AND user_id = $n` to the four owner-table writes
-      (`simulation.go:405`, `fleet.go:257`, `routes.go:71,190`).
+- [x] **1.4** Lease (`fleet.go`) and aircraft financing (`bank.go`) now check
+      `tx.Commit`: a failed commit returns "commit failed" with the
+      pre-transaction balance instead of reporting success for an aircraft/loan
+      that was never written while the deposit debit rolled back.
+- [x] **1.5** `BankRepayLoan` returns 400 for a malformed body. An empty body still
+      means "repay the whole loan" (`Amount` nil) — `io.EOF` is the only decode
+      error treated that way. The handler test drives the real `AuthGuard` + JWT
+      path with a nil engine, so it passes only because the body is rejected
+      before the engine is touched.
+- [x] **1.6** Both day-boundary servicing loops abort when `GetBalance` errors.
+      Previously the discarded error left `cash = 0`, so every loan was treated as
+      missed — 10% late fee, rising `missed_payments`, eventually default plus
+      grounded collateral — because of a single transient read error.
+- [x] **1.7** Owner-table writes scoped with `AND user_id = $n` (`routes.go`
+      delete + update, `fleet.go` repair, `simulation.go` wear). Note: all four
+      were already preceded by an ownership `SELECT` that returns early, so this
+      is hardening against future edits rather than a live hole — which also means
+      no discriminating test exists for it.
 - [ ] **1.8** Log 500s with a cause; stop passing `nil` loggers
       (`httperr`/all handlers).
 - [ ] **1.9** Auth: stop exposing `hq_airport_iata` in public insights

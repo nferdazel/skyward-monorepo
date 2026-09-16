@@ -406,7 +406,7 @@ func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime ti
 		grossDamage := wearPerCycle * float64(flights) * timeFraction
 		selfHeal := grossDamage * autoRepair
 		netDamage := math.Max(0, grossDamage-selfHeal)
-		if _, werr := tx.Exec(ctx, `UPDATE fleet_aircraft SET condition = GREATEST(0, condition - $1) WHERE id=$2`, netDamage, r.AircraftID); werr != nil {
+		if _, werr := tx.Exec(ctx, `UPDATE fleet_aircraft SET condition = GREATEST(0, condition - $1) WHERE id=$2 AND user_id=$3`, netDamage, r.AircraftID, userID); werr != nil {
 			return PlayerProcessResult{}, fmt.Errorf("process %s: apply wear (%s): %w", userID, r.AircraftID, werr)
 		}
 
