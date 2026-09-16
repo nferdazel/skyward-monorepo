@@ -147,34 +147,7 @@ func (l *LedgerService) applyTx(ctx context.Context, tx pgx.Tx, userID string, a
 	return newBalance, err
 }
 
-// DebitAccount — debit tanpa tx eksplisit (dipakai simulation loop per-rute).
-func (l *LedgerService) DebitAccount(ctx context.Context, userID string, amount float64, ifrsCat, ifrsSubcat, desc string, gameTime time.Time) (float64, error) {
-	tx, err := l.engine.Pool.Begin(ctx)
-	if err != nil {
-		return 0, err
-	}
-	defer tx.Rollback(ctx) //nolint:errcheck
-	bal, err := l.DebitTx(ctx, tx, userID, amount, ifrsCat, ifrsSubcat, desc, gameTime)
-	if err != nil {
-		return 0, err
-	}
-	return bal, tx.Commit(ctx)
-}
-
-// CreditAccount — credit tanpa tx eksplisit (dipakai simulation loop per-rute).
-func (l *LedgerService) CreditAccount(ctx context.Context, userID string, amount float64, ifrsCat, ifrsSubcat, desc string, gameTime time.Time) (float64, error) {
-	tx, err := l.engine.Pool.Begin(ctx)
-	if err != nil {
-		return 0, err
-	}
-	defer tx.Rollback(ctx) //nolint:errcheck
-	bal, err := l.CreditTx(ctx, tx, userID, amount, ifrsCat, ifrsSubcat, desc, gameTime)
-	if err != nil {
-		return 0, err
-	}
-	return bal, tx.Commit(ctx)
-}
-
+// GenerateTailNumber — prefix berdasarkan HQ user.
 func (l *LedgerService) GenerateTailNumber(ctx context.Context, hqIATA string) (string, error) {
 	prefix, err := l.getHQPrefix(ctx, hqIATA)
 	if err != nil {

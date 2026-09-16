@@ -137,13 +137,26 @@ Every item below must fail-then-pass with a DB-backed test once 0.4 lands.
       were already preceded by an ownership `SELECT` that returns early, so this
       is hardening against future edits rather than a live hole — which also means
       no discriminating test exists for it.
-- [ ] **1.8** Log 500s with a cause; stop passing `nil` loggers
-      (`httperr`/all handlers).
+- [x] **1.8** 500s are logged again. All 97 `httperr.WriteError` call sites pass
+      `nil` for the logger, and `WriteError` only logged when that was non-nil, so
+      no handler-level 500 ever left a server-side trace. `WriteError` now falls
+      back to `slog.Default()` and `main` calls `slog.SetDefault(logger)`, so
+      those records land in the same sink as the rest of the app. Tests cover the
+      logged case and assert client errors are not logged.
+- [ ] **1.8b** *Needs a decision (client-visible).* `WriteError` echoes
+      `he.Message` into the 500 response body, so server-side text reaches the
+      client — e.g. `main.go` returns `Internal("tick failed: " + err.Error())`
+      and the database's own error text would be shown to the user. Genericising
+      the 500 message (log the cause, return "internal error") changes what
+      clients display, so it needs an explicit call.
 - [ ] **1.9** Auth: stop exposing `hq_airport_iata` in public insights
       (password-recovery factor) and add a per-username login limiter.
       *Breaking: removes a public response field — coordinate with the FE intel pane.*
-- [ ] **1.10** Delete dead code: `internal/domain`, unused ledger helpers,
-      `store.Tx` (`engine.go:150-176`, `store/store.go:28`).
+- [x] **1.10** Dead code deleted: `internal/domain` (7 model types, zero
+      references anywhere including tests), `Store.Tx` (no callers; the engine
+      opens its own transactions), and `LedgerService.DebitAccount` /
+      `CreditAccount` (defined, never called). Removed the now-unused imports in
+      `store.go`; `go build`/`vet`/tests green.
 - [ ] **1.11** FE: `FleetError.props` includes `message`
       (`fleet_state.dart:144`).
 - [ ] **1.12** FE: disconnect the WebSocket on logout/user-switch
