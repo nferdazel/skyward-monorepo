@@ -26,13 +26,16 @@ commit (same convention as `docs/product/roadmap.md`).
       Supabase-only `users_auth_user_id_fkey` → `auth.users` plus the 16 baseline
       RLS enables + 16 policies (prod has none). Verified: `00–18` apply cleanly
       to a scratch DB. *Breaking for fresh-apply only; prod untouched.*
-- [ ] **0.2b** Converge RLS. `01_security_phase5_rls.sql` re-enables RLS on 14
-      tables with `auth.uid()`-scoped policies (no `TO` clause → applies to
-      PUBLIC), yet prod has RLS **disabled** (`rls_enabled_tables=0`, 0 policies)
-      and the API connects as `skyward_app` while tables are owned by `postgres`.
-      A fresh env therefore applies migrations successfully but the API is
-      **non-functional** (every user-table access is denied). Add a migration
-      that disables RLS and drops the obsolete policies to match prod — pending D5.
+- [x] **0.2b** RLS converged (D5 = match prod). `migrations/21_disable_rls_to_match_prod.sql`
+      disables RLS on the 14 tables enabled by `01` and drops its 15 `auth.uid()`
+      policies, then raises if any RLS/policy remains. Verified: a scratch DB went
+      14 tables/15 policies → 0/0, a fresh `00–21` apply ends at 0/0 with 22 ledger
+      rows, and prod/`skyward_test` took it as a no-op with data unchanged.
+- [ ] **0.2c** Role provisioning. `00_baseline.sql` creates `anon`,
+      `authenticated`, `service_role` (Supabase-era) but the API connects as
+      **`skyward_app`** (present in prod, `login=true`), which no migration
+      creates or grants to. A fresh env therefore still needs the role + grants
+      set up by hand.
 - [x] **0.3** Migration ledger + `make migrate`. `migrations/19_schema_migrations.sql`
       creates `schema_migrations` and backfills 00–18; `scripts/migrate.sh` applies
       pending files in order, records filename+checksum, verifies checksums of

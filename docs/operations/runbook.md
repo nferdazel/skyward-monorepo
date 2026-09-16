@@ -488,8 +488,12 @@ reference data instead of falling back to Go hardcoded defaults and empty
 lookups. Regenerate the latter with `scripts/dump-reference-data.sh`.
 
 - Schema baseline: apply `migrations/00_baseline.sql` first, then `01_…` through
-  `19_…` sequentially — or run `make migrate`, which applies pending migrations
+  `21_…` sequentially — or run `make migrate`, which applies pending migrations
   in order and records each filename + checksum in `schema_migrations`.
+- **RLS is off** on every `public` table and no policies exist: authorization
+  lives in the Go API (JWT + `user_id` predicates). `01` enabled RLS for the
+  Supabase era, `21` disables it again so a migrated database matches prod.
+  Never treat RLS as the tenant-isolation boundary.
 - `schema_migrations` (added by `migrations/19_schema_migrations.sql`) is the
   applied-migrations ledger; it backfills `00`–`18` because every known
   environment already has them. A database created **before** the ledger existed
