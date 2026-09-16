@@ -161,11 +161,15 @@ func registerRoutes(ctx context.Context, mux *http.ServeMux, logger *slog.Logger
 	guard := func(next http.HandlerFunc) http.HandlerFunc {
 		return middleware.AuthGuard([]byte(cfg.JWTSecret), next)
 	}
+	// Penilaian rute memakai mesin yang sama dengan tick; handler sempit supaya
+	// bisa diuji dengan fake tanpa database.
+	assess := &handler.RouteAssessHandler{Assessor: eng}
 	mux.Handle("GET /simulation/state", guard(read.SimulationState))
 	mux.Handle("GET /game-config", guard(read.GameConfig))
 	mux.Handle("GET /fleet", guard(read.Fleet))
 	mux.Handle("GET /aircraft-models", guard(read.AircraftModels))
 	mux.Handle("GET /routes", guard(read.Routes))
+	mux.Handle("GET /routes/assess", guard(assess.RouteAssess))
 	mux.Handle("GET /airports", guard(read.Airports))
 	mux.Handle("GET /finance/snapshot", guard(read.FinanceSnapshot))
 	mux.Handle("GET /finance/transactions", guard(read.FinanceTransactions))
