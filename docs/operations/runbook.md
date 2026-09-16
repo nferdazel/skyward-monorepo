@@ -544,9 +544,13 @@ PGPASSWORD='…' TEST_DATABASE_URL='postgres://qouver@127.0.0.1:15432/skyward_te
 - The test database must have **all migrations applied** (`make migrate` against
   it); helper seeds assume the current schema and the
   `create_default_bank_account` trigger.
-- CI (`.github/workflows/ci.yml`) runs a `postgres:18` service container, applies
-  migrations through `make migrate`, and exports `TEST_DATABASE_URL`, so the
-  DB-backed tests actually execute there rather than skipping.
+- CI does **no** database work: no service container, no `make migrate`, no
+  `TEST_DATABASE_URL`. CI therefore takes the hermetic path and the DB-backed
+  tests skip there. Run them from a machine that can reach the clone, as above.
+  (An earlier CI attempt ran a `postgres:18` service + `make migrate`; it failed
+  with `role "postgres" does not exist`, because the image makes `POSTGRES_USER`
+  the superuser instead of `postgres`, while the Supabase-dump baseline has many
+  `OWNER TO "postgres"` statements.)
 - `TRUNCATE users CASCADE` clears player tables only; reference data
   (`airports`, `aircraft_models`) and global tables (`game_config`,
   `season_clock`) survive, and helper seeds upsert to stay idempotent.

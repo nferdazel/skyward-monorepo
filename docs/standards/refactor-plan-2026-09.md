@@ -47,16 +47,21 @@ commit (same convention as `docs/product/roadmap.md`).
       `Reset` via `TRUNCATE users CASCADE`, seeds for user/season/model/aircraft/
       bank account/config/transaction) skips unless `TEST_DATABASE_URL` is set, so
       `go test ./...` stays hermetic. Its own smoke test proves connect + seed +
-      reset against a real schema. CI runs a `postgres:18` service, applies
-      migrations with `make migrate`, and exports `TEST_DATABASE_URL` for the Go test
-      step. DB-backed runs need `go test -p 1`: packages execute in parallel and
-      several share the test database while `Reset` truncates `users`, so without
-      it they delete each other's fixtures. Runbook §6 documents the tunnel
-      workflow.
-- [ ] **0.5** Deploy hardening in `deploy/deploy-vps.sh`: keep
+      reset against a real schema. DB-backed runs need `go test -p 1`: packages
+      execute in parallel and several share the test database while `Reset`
+      truncates `users`, so without it they delete each other's fixtures. Runbook
+      §6 documents the tunnel workflow. **CI does no database work** — an earlier
+      pass wired a `postgres:18` service plus `make migrate`, which failed
+      (`role "postgres" does not exist`: the image creates `POSTGRES_USER` as the
+      superuser and never a `postgres` role, while the Supabase-dump baseline has
+      hundreds of `OWNER TO "postgres"` / `DEFAULT PRIVILEGES FOR ROLE "postgres"`
+      statements). Removed on request: `make migrate` is an operator-run step, CI
+      stays hermetic, and the DB-backed tests skip there.
+- [x] **0.5** Deploy hardening in `deploy/deploy-vps.sh`: keep
       `bin/skyward-api.prev`, gate restart on `/readyz` with rollback, atomic web
       swap (build to `web.new/` then rename), skip the API restart when only
-      `apps/app/` changed, retain full build logs.
+      `apps/app/` changed, retain full build logs. All five verified present in
+      the script; exercised by the real deploy of `bdf0b7c`.
 - [x] **0.6** CI: use `go-version-file: apps/api/go.mod` (was pinned 1.22 vs
       go.mod 1.26.5), add `go vet ./...`, add `permissions:` and `concurrency:`.
       Remaining: `golangci-lint` + migration smoke (after 0.2/0.4).
