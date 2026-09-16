@@ -25,6 +25,7 @@ import '../../../../presentation/widgets/app_table_cells.dart';
 import '../../../../presentation/widgets/app_table_shell.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
+import '../../../finance/domain/ifrs_category.dart';
 import '../../../finance/presentation/cubit/finance_cubit.dart';
 import '../../../simulation/presentation/cubit/simulation_cubit.dart';
 import '../../domain/bank_account_model.dart';
@@ -767,35 +768,23 @@ class _BankPanelState extends State<BankPanel> {
   }
 
   Widget _buildTxnCategoryBadge(BankTransaction txn) {
+    // Subcategory menang bila ada; subcategory kosong TIDAK meminjam category
+    // (perilaku lama), jadi baris kosong tetap jatuh ke CREDIT/DEBIT.
     final sub = txn.ifrsSubcategory ?? txn.ifrsCategory ?? '';
-    switch (sub) {
-      case 'route_revenue':
-      case 'cargo_revenue':
-      case 'revenue':
+    switch (IfrsCategory.groupFor(sub)) {
+      case IfrsGroup.ticketSales:
         return AppBadge.success(label: 'REVENUE');
-      case 'fuel_cost':
-      case 'crew_cost':
-      case 'maintenance_cost':
-      case 'airport_fees':
-      case 'cogs':
-      case 'opex':
+      case IfrsGroup.operations:
         return AppBadge.warning(label: 'OPS');
-      case 'aircraft_lease':
-      case 'aircraft_lease_init':
-      case 'aircraft_lease_exit':
+      case IfrsGroup.lease:
         return AppBadge.error(label: 'LEASE');
-      case 'aircraft_repair':
+      case IfrsGroup.repair:
         return AppBadge.error(label: 'REPAIR');
-      case 'aircraft_purchase':
-      case 'aircraft_purchase_deposit':
+      case IfrsGroup.purchase:
         return AppBadge.primary(label: 'ACQUIRE');
-      case 'loan_payment':
-      case 'loan_disbursement':
-      case 'loan_refinance':
-      case 'financing_payment':
-      case 'financing':
+      case IfrsGroup.financing:
         return AppBadge.secondary(label: 'FINANCE');
-      default:
+      case IfrsGroup.other:
         return AppBadge.secondary(
           label: txn.transactionType == 'credit' ? 'CREDIT' : 'DEBIT',
         );

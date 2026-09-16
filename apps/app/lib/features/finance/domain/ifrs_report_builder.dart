@@ -3,6 +3,11 @@ import 'finance_snapshot.dart';
 
 /// Stateless utility that takes raw finance data and produces
 /// structured IFRS-style financial report data for the drill-down panel.
+///
+/// Klasifikasi di sini sengaja BUKAN `IfrsCategory`: laporan memakai alias
+/// bentuk pendek (`fuel`, `crew`, `maintenance`, `aircraft_lease_idle`) dan
+/// bucket arus kas berbasis tanda/transactionType, yaitu semantik laporan, bukan
+/// pengelompokan tampilan. Menyatukannya akan mengubah angka yang dilaporkan.
 class IfrsReportBuilder {
   const IfrsReportBuilder._();
 

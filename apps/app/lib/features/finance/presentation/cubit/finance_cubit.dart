@@ -14,6 +14,7 @@ import '../../../bank/domain/bank_transaction_model.dart';
 import '../../../simulation/presentation/cubit/simulation_cubit.dart';
 import '../../data/finance_gateway.dart';
 import '../../domain/finance_snapshot.dart';
+import '../../domain/ifrs_category.dart';
 import 'finance_state.dart';
 
 class FinanceCubit extends Cubit<FinanceState>
@@ -25,19 +26,6 @@ class FinanceCubit extends Cubit<FinanceState>
   Future<void>? _activeSnapshotRefresh;
   int _consecutiveSnapshotFailures = 0;
   static const int _maxSilentFailures = 2;
-
-  static const _leaseSubcategories = {
-    'aircraft_lease',
-    'aircraft_lease_init',
-    'aircraft_lease_exit',
-  };
-
-  static const _repairSubcategories = {'aircraft_repair'};
-
-  static const _purchaseSubcategories = {
-    'aircraft_purchase',
-    'aircraft_purchase_deposit',
-  };
 
   FinanceCubit({FinanceGateway? gateway})
     : _gateway = gateway ?? GatewayFactory.createFinanceGateway(),
@@ -86,19 +74,19 @@ class FinanceCubit extends Cubit<FinanceState>
       final category = txn.ifrsCategory ?? '';
       final subcategory = txn.ifrsSubcategory ?? '';
 
-      if (_isTicketSales(category, subcategory)) {
+      if (IfrsCategory.isTicketSales(category, subcategory)) {
         totalTicketSales += absAmt;
       }
-      if (_isOperationsExpense(category, subcategory) && !isRevenue) {
+      if (IfrsCategory.isOperationsExpense(category, subcategory) && !isRevenue) {
         totalOperations += absAmt;
       }
-      if (_isLeaseExpense(category, subcategory) && !isRevenue) {
+      if (IfrsCategory.isLeaseExpense(category, subcategory) && !isRevenue) {
         totalLease += absAmt;
       }
-      if (_isRepairExpense(category, subcategory) && !isRevenue) {
+      if (IfrsCategory.isRepairExpense(category, subcategory) && !isRevenue) {
         totalRepair += absAmt;
       }
-      if (_isPurchaseExpense(category, subcategory) && !isRevenue) {
+      if (IfrsCategory.isPurchaseExpense(category, subcategory) && !isRevenue) {
         totalPurchase += absAmt;
       }
     }
@@ -173,37 +161,6 @@ class FinanceCubit extends Cubit<FinanceState>
       return state as FinanceDataState;
     }
     return const FinanceLoaded(metrics: FinanceMetrics.empty());
-  }
-
-  bool _isTicketSales(String category, String subcategory) {
-    return category == 'revenue' ||
-        subcategory == 'ticket_revenue' ||
-        subcategory == 'route_revenue' ||
-        subcategory == 'cargo_revenue';
-  }
-
-  bool _isOperationsExpense(String category, String subcategory) {
-    return category == 'cogs' ||
-        category == 'opex' ||
-        subcategory == 'fuel_cost' ||
-        subcategory == 'crew_cost' ||
-        subcategory == 'maintenance_cost' ||
-        subcategory == 'airport_fees';
-  }
-
-  bool _isLeaseExpense(String category, String subcategory) {
-    return _leaseSubcategories.contains(category) ||
-        _leaseSubcategories.contains(subcategory);
-  }
-
-  bool _isRepairExpense(String category, String subcategory) {
-    return _repairSubcategories.contains(category) ||
-        _repairSubcategories.contains(subcategory);
-  }
-
-  bool _isPurchaseExpense(String category, String subcategory) {
-    return _purchaseSubcategories.contains(category) ||
-        _purchaseSubcategories.contains(subcategory);
   }
 
   void setupReactivity(SimulationCubit simCubit, String userId) {

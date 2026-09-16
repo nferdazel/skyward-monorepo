@@ -21,6 +21,7 @@ import '../../../bank/domain/bank_transaction_model.dart';
 import '../../../bank/presentation/cubit/bank_cubit.dart';
 import '../../../bank/presentation/cubit/bank_state.dart';
 import '../../../bank/presentation/widgets/bank_panel.dart';
+import '../../domain/ifrs_category.dart';
 import '../cubit/finance_cubit.dart';
 import '../cubit/finance_state.dart';
 import '../widgets/finance_ledger_filters.dart';
@@ -639,37 +640,26 @@ class _FinanceViewState extends State<FinanceView>
 
   Widget _buildCategoryPill(String category, String subcategory) {
     final effectiveKey = subcategory.isNotEmpty ? subcategory : category;
-    switch (effectiveKey) {
-      case 'route_revenue':
-      case 'cargo_revenue':
-        return AppBadge.success(label: AppStrings.ticketSalesBadge);
-      case 'fuel_cost':
-      case 'crew_cost':
-      case 'maintenance_cost':
-      case 'airport_fees':
-        return AppBadge.warning(label: AppStrings.operationsBadge);
-      case 'aircraft_lease':
-      case 'aircraft_lease_init':
-      case 'aircraft_lease_exit':
+    // Grupnya datang dari IfrsCategory; label tetap milik layar ini, termasuk
+    // dua label mentah (`revenue`, `cogs`/`opex`) yang memang beda dari badge
+    // bernama di layar ini.
+    switch (IfrsCategory.groupFor(effectiveKey)) {
+      case IfrsGroup.ticketSales:
+        return effectiveKey == 'revenue'
+            ? AppBadge.success(label: effectiveKey.replaceAll('_', ' '))
+            : AppBadge.success(label: AppStrings.ticketSalesBadge);
+      case IfrsGroup.operations:
+        return effectiveKey == 'cogs' || effectiveKey == 'opex'
+            ? AppBadge.warning(label: effectiveKey.replaceAll('_', ' '))
+            : AppBadge.warning(label: AppStrings.operationsBadge);
+      case IfrsGroup.lease:
         return AppBadge.error(label: AppStrings.aircraftLeaseBadge);
-      case 'aircraft_repair':
+      case IfrsGroup.repair:
         return AppBadge.error(label: AppStrings.aircraftRepairBadge);
-      case 'aircraft_purchase':
-      case 'aircraft_purchase_deposit':
+      case IfrsGroup.purchase:
         return AppBadge.primary(label: AppStrings.aircraftPurchaseBadge);
-      case 'revenue':
-        return AppBadge.success(label: effectiveKey.replaceAll('_', ' '));
-      case 'cogs':
-      case 'opex':
-        return AppBadge.warning(label: effectiveKey.replaceAll('_', ' '));
-      case 'investing':
-      case 'financing':
-      case 'loan_payment':
-      case 'loan_disbursement':
-      case 'loan_refinance':
-      case 'financing_payment':
-        return AppBadge.secondary(label: effectiveKey.replaceAll('_', ' '));
-      default:
+      case IfrsGroup.financing:
+      case IfrsGroup.other:
         return AppBadge.secondary(label: effectiveKey.replaceAll('_', ' '));
     }
   }

@@ -5,6 +5,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../presentation/theme/app_spacing.dart';
 import '../../../../presentation/theme/app_typography.dart';
 import '../../../bank/domain/bank_transaction_model.dart';
+import '../../domain/ifrs_category.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Ledger filter model & pure filter function
@@ -19,27 +20,6 @@ enum LedgerFilter {
   repairs,
   purchases,
 }
-
-/// Subcategory sets — kept in sync with FinanceCubit classification logic.
-const _leaseSubcategories = {
-  'aircraft_lease',
-  'aircraft_lease_init',
-  'aircraft_lease_exit',
-};
-
-const _operationsSubcategories = {
-  'fuel_cost',
-  'crew_cost',
-  'maintenance_cost',
-  'airport_fees',
-};
-
-const _repairSubcategories = {'aircraft_repair'};
-
-const _purchaseSubcategories = {
-  'aircraft_purchase',
-  'aircraft_purchase_deposit',
-};
 
 /// Pure function: filters [transactions] by [filter] category and
 /// [searchQuery] substring match on description.
@@ -62,22 +42,26 @@ List<BankTransaction> applyLedgerFilter(
       break;
     case LedgerFilter.leasing:
       filtered = filtered
-          .where((t) => _leaseSubcategories.contains(t.ifrsSubcategory))
+          .where((t) => IfrsCategory.leaseSubcategories.contains(t.ifrsSubcategory))
           .toList();
       break;
     case LedgerFilter.fuelOps:
       filtered = filtered
-          .where((t) => _operationsSubcategories.contains(t.ifrsSubcategory))
+          .where(
+              (t) => IfrsCategory.operationsSubcategories.contains(
+                t.ifrsSubcategory,
+              ),
+            )
           .toList();
       break;
     case LedgerFilter.repairs:
       filtered = filtered
-          .where((t) => _repairSubcategories.contains(t.ifrsSubcategory))
+          .where((t) => IfrsCategory.repairSubcategories.contains(t.ifrsSubcategory))
           .toList();
       break;
     case LedgerFilter.purchases:
       filtered = filtered
-          .where((t) => _purchaseSubcategories.contains(t.ifrsSubcategory))
+          .where((t) => IfrsCategory.purchaseSubcategories.contains(t.ifrsSubcategory))
           .toList();
       break;
   }
