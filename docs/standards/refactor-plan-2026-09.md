@@ -507,8 +507,19 @@ Each needs a short written proposal (blast radius + migration path + test plan).
       CGK-DOH pools 160.34 passengers/day, 70.15 per flight on a 230-seat
       A321neo (30.5% load factor) — the arithmetic is faithful, so the band is
       `weak` for every long-haul route in the current world. Still to do:
-      Steps 2-4 (client DTO + dev side-by-side diff, switch over and delete the
-      ~269 LOC + dashboard KPI, docs).
+      Steps 3-4 (switch over, delete the ~269 LOC + dashboard KPI, docs).
+      **Step 2 (client, inert) landed in `7ca721a`:** `RouteAssessResultDto`
+      (+ wear/viability/multipliers/inputs_used) parsing the server JSON,
+      `RoutesGateway.assessRoute` + Go implementation, `RoutesCubit.assessRoute`
+      with "last successful result is kept on failure" (owner answer 5), and a
+      pure client-vs-server comparator logged only in debug. 20 new tests (461
+      total, from 441). The DTO is tested against a **real** payload captured
+      from `GET /routes/assess` against prod, including re-checkable invariants
+      and the live event multipliers (fuel 0.795, maintenance 1.125). One more
+      client/server mismatch surfaced here: the client model stores
+      `expectedPassengersPerFlight` as an `int` (truncating 70.15), while the
+      server returns a double. Deliberate: the view still shows the old
+      numbers, so the switchover in Step 3 can be validated first.
 - [ ] **3.2** Unified mutation pipeline (`MutationRunner`) + push DTO knowledge
       out of cubits into gateways.
 - [ ] **3.3** Decompose the five god views; shrink backend god files.
@@ -536,6 +547,21 @@ Each needs a short written proposal (blast radius + migration path + test plan).
       is out of scope here; separate decision.
 - [x] **D5** Answered 2026-09-16: disable RLS to match prod. Done in
       `21_disable_rls_to_match_prod.sql`; verified 14 tables/15 policies → 0/0.
+- [x] **D6** Answered 2026-09-16 (3.1): **keep the viability thresholds as they
+      are.** Real long-haul routes load at ~30% (CGK-DOH: 160.34 passengers/day
+      on a 230-seat A321neo), so most will show `weak` — that is the economy
+      being honestly reported, not a display bug. Lowering the bands to make the
+      UI look better was rejected. The root cause (world demand tuning —
+      `demand_pool_scale` / `airports.demand_index`) is tracked separately as
+      item 3.8 below, deliberately outside 3.1.
+
+## Roadmap items raised during Phase 3
+
+- [ ] **3.8** World demand tuning (`demand_pool_scale`, `airports.demand_index`).
+      Raised by 3.1's D6: long-haul routes load at ~30%, so the planner labels
+      almost everything `weak`. The planner is faithful to the tick, so the
+      question is whether the world's demand values are the intended balance.
+      Needs its own analysis of the demand curve before any number moves.
 
 ## Deliberately out of scope (protect from churn)
 
