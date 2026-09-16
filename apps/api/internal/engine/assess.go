@@ -141,10 +141,11 @@ type RouteAssessment struct {
 
 // AssessResult — hasil untuk satu rute yang diusulkan.
 type AssessResult struct {
-	Origin, Destination   string
-	DistanceKM            float64
-	HasCompatibleAircraft bool
-	Aircraft              []RouteAssessment
+	Origin                string            `json:"origin"`
+	Destination           string            `json:"destination"`
+	DistanceKM            float64           `json:"distance_km"`
+	HasCompatibleAircraft bool              `json:"has_compatible_aircraft"`
+	Aircraft              []RouteAssessment `json:"aircraft"`
 }
 
 // assessConfig — nilai yang diambil dari config. Dipisah dari TickSnapshot

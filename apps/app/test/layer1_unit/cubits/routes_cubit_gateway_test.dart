@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bloc_test/bloc_test.dart';
+import 'package:skyward/features/routes/data/route_assessment_dto.dart';
 import 'package:skyward/features/routes/data/routes_gateway.dart';
+import 'package:skyward/features/routes/domain/route_models.dart';
 import 'package:skyward/features/routes/presentation/cubit/routes_cubit.dart';
 import 'package:skyward/features/routes/presentation/cubit/routes_state.dart';
 
@@ -85,6 +87,25 @@ class MockRoutesGateway implements RoutesGateway {
     return rpcToReturn;
   }
 
+  RouteAssessResultDto? assessToReturn;
+  bool assessShouldThrow = false;
+
+  @override
+  Future<RouteAssessResultDto> assessRoute({
+    required String originIata,
+    required String destinationIata,
+    required double ticketPrice,
+    required int flightsPerWeek,
+    String? aircraftId,
+  }) async {
+    if (assessShouldThrow) {
+      throw const RoutesGatewayException('Test assess error', 'assessRoute');
+    }
+    return assessToReturn ??
+        RouteAssessResultDto.fromJson(const <String, dynamic>{});
+  }
+
+  @override
   @override
   Future<List<dynamic>> getOwnerRouteOptimizer(String userId) async {
     if (shouldThrow) throw Exception('Test optimizer error');
@@ -899,6 +920,89 @@ void main() {
 
         expect(result, isTrue);
         expect(cubit.state, isA<RoutesLoaded>());
+
+        await cubit.close();
+      });
+    });
+    // =========================================================================
+    // assessRoute
+    // =========================================================================
+
+    group('assessRoute', () {
+      RouteAssessResultDto serverResult() => RouteAssessResultDto.fromJson({
+        'origin': 'CGK',
+        'destination': 'SIN',
+        'distance_km': 895.34,
+        'has_compatible_aircraft': true,
+        'aircraft': [
+          {'aircraft_id': 'fleet-1', 'weekly_contribution': 12345.0},
+        ],
+      });
+
+      test('sukses: menyimpan hasil dan mengosongkan error', () async {
+        gateway.assessToReturn = serverResult();
+        final cubit = RoutesCubit(gateway: gateway);
+
+        final result = await cubit.assessRoute(
+          origin: Airport.fromMap(_mockAirportCgk),
+          destination: Airport.fromMap(_mockAirportSin),
+          distanceKm: 895.34,
+          ticketPrice: 120.0,
+          flightsPerWeek: 14,
+        );
+
+        expect(result, isNotNull);
+        expect(cubit.lastRouteAssessment?.best?.aircraftId, 'fleet-1');
+        expect(cubit.routeAssessmentError, isNull);
+
+        await cubit.close();
+      });
+
+      test('gagal: mengembalikan null dan menyimpan pesan error', () async {
+        gateway.assessShouldThrow = true;
+        final cubit = RoutesCubit(gateway: gateway);
+
+        final result = await cubit.assessRoute(
+          origin: Airport.fromMap(_mockAirportCgk),
+          destination: Airport.fromMap(_mockAirportSin),
+          distanceKm: 895.34,
+          ticketPrice: 120.0,
+          flightsPerWeek: 14,
+        );
+
+        expect(result, isNull);
+        expect(cubit.routeAssessmentError, contains('Test assess error'));
+        expect(cubit.lastRouteAssessment, isNull);
+
+        await cubit.close();
+      });
+
+      test('gagal setelah sukses: hasil terakhir tetap tersimpan', () async {
+        gateway.assessToReturn = serverResult();
+        final cubit = RoutesCubit(gateway: gateway);
+
+        await cubit.assessRoute(
+          origin: Airport.fromMap(_mockAirportCgk),
+          destination: Airport.fromMap(_mockAirportSin),
+          distanceKm: 895.34,
+          ticketPrice: 120.0,
+          flightsPerWeek: 14,
+        );
+        expect(cubit.lastRouteAssessment, isNotNull);
+
+        gateway.assessShouldThrow = true;
+        final second = await cubit.assessRoute(
+          origin: Airport.fromMap(_mockAirportCgk),
+          destination: Airport.fromMap(_mockAirportSin),
+          distanceKm: 895.34,
+          ticketPrice: 120.0,
+          flightsPerWeek: 14,
+        );
+
+        expect(second, isNull);
+        expect(cubit.routeAssessmentError, isNotNull);
+        // Hasil terakhir tidak dihapus — UI boleh menandainya "perkiraan terakhir".
+        expect(cubit.lastRouteAssessment?.best?.aircraftId, 'fleet-1');
 
         await cubit.close();
       });

@@ -138,6 +138,95 @@ void main() {
       expect(res.isNotEmpty, true);
     });
 
+    test('assessRoute calls GET /routes/assess with query params', () async {
+      final gateway = GoRoutesGateway(
+        apiClient: ApiClient(
+          baseUrl: 'https://api.example.com/skyward',
+          httpClient: MockClient((request) async {
+            expect(request.method, 'GET');
+            expect(request.url.path, '/skyward/routes/assess');
+            expect(request.url.queryParameters['origin_iata'], 'CGK');
+            expect(request.url.queryParameters['destination_iata'], 'DOH');
+            expect(request.url.queryParameters['ticket_price'], '700.0');
+            expect(request.url.queryParameters['flights_per_week'], '16');
+            expect(
+              request.url.queryParameters.containsKey('aircraft_id'),
+              isFalse,
+            );
+            return _json({
+              'origin': 'CGK',
+              'destination': 'DOH',
+              'distance_km': 6893.5,
+              'has_compatible_aircraft': true,
+              'aircraft': [
+                {
+                  'aircraft_id': 'ac-1',
+                  'aircraft_model': 'A321neo',
+                  'weekly_contribution': 275567.7,
+                },
+              ],
+            }, 200);
+          }),
+        ),
+      );
+
+      final res = await gateway.assessRoute(
+        originIata: 'CGK',
+        destinationIata: 'DOH',
+        ticketPrice: 700.0,
+        flightsPerWeek: 16,
+      );
+
+      expect(res.hasCompatibleAircraft, isTrue);
+      expect(res.aircraft.single.aircraftId, 'ac-1');
+      expect(res.best?.weeklyContribution, closeTo(275567.7, 1e-6));
+    });
+
+    test('assessRoute mengirim aircraft_id bila diberikan', () async {
+      final gateway = GoRoutesGateway(
+        apiClient: ApiClient(
+          baseUrl: 'https://api.example.com/skyward',
+          httpClient: MockClient((request) async {
+            expect(request.url.queryParameters['aircraft_id'], 'ac-9');
+            return _json({'aircraft': []}, 200);
+          }),
+        ),
+      );
+
+      final res = await gateway.assessRoute(
+        originIata: 'CGK',
+        destinationIata: 'DOH',
+        ticketPrice: 700.0,
+        flightsPerWeek: 16,
+        aircraftId: 'ac-9',
+      );
+
+      expect(res.best, isNull);
+    });
+
+    test('assessRoute error throws RoutesGatewayException', () async {
+      final gateway = GoRoutesGateway(
+        apiClient: ApiClient(
+          baseUrl: 'https://api.example.com/skyward',
+          httpClient: MockClient((request) async {
+            return _json({
+              'error': {'code': 'not_found', 'message': 'airport not found'},
+            }, 404);
+          }),
+        ),
+      );
+
+      expect(
+        () => gateway.assessRoute(
+          originIata: 'XXX',
+          destinationIata: 'DOH',
+          ticketPrice: 700.0,
+          flightsPerWeek: 16,
+        ),
+        throwsA(isA<RoutesGatewayException>()),
+      );
+    });
+
     test('error throws RoutesGatewayException', () async {
       final gateway = GoRoutesGateway(
         apiClient: ApiClient(

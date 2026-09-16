@@ -1,4 +1,5 @@
 import '../../../core/api/api_client.dart';
+import 'route_assessment_dto.dart';
 import 'routes_gateway.dart';
 
 /// Routes operations via skyward-api (Go REST).
@@ -144,6 +145,33 @@ class GoRoutesGateway implements RoutesGateway {
       throw RoutesGatewayException(e.message, 'deleteRoute');
     } catch (e) {
       throw RoutesGatewayException(e.toString(), 'deleteRoute');
+    }
+  }
+
+  @override
+  Future<RouteAssessResultDto> assessRoute({
+    required String originIata,
+    required String destinationIata,
+    required double ticketPrice,
+    required int flightsPerWeek,
+    String? aircraftId,
+  }) async {
+    try {
+      final res = await _api.get(
+        '/routes/assess',
+        query: {
+          'origin_iata': originIata,
+          'destination_iata': destinationIata,
+          'ticket_price': ticketPrice,
+          'flights_per_week': flightsPerWeek,
+          'aircraft_id': aircraftId,
+        },
+      );
+      return RouteAssessResultDto.fromJson(res);
+    } on ApiException catch (e) {
+      throw RoutesGatewayException(e.message, 'assessRoute');
+    } catch (e) {
+      throw RoutesGatewayException(e.toString(), 'assessRoute');
     }
   }
 

@@ -1,3 +1,5 @@
+import 'route_assessment_dto.dart';
+
 class RoutesGatewayException implements Exception {
   final String message;
   final String operation;
@@ -41,4 +43,16 @@ abstract class RoutesGateway {
     required String routeId,
   });
   Future<List<dynamic>> getOwnerRouteOptimizer(String userId);
+
+  /// Penilaian rute dari server (`GET /routes/assess`).
+  ///
+  /// Ini satu-satunya sumber angka ekonomi yang benar-benar dipakai tick;
+  /// rumus di [RoutePlanningAssessment] hanya untuk perbandingan di dev.
+  Future<RouteAssessResultDto> assessRoute({
+    required String originIata,
+    required String destinationIata,
+    required double ticketPrice,
+    required int flightsPerWeek,
+    String? aircraftId,
+  });
 }

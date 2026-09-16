@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants/app_strings.dart';
@@ -17,7 +18,9 @@ import '../../../../core/utils/perf_debug.dart';
 import '../../../../core/utils/safe_cast.dart';
 import '../../../fleet/domain/fleet_models.dart';
 import '../../../simulation/presentation/cubit/simulation_cubit.dart';
+import '../../data/route_assessment_dto.dart';
 import '../../data/routes_gateway.dart';
+import '../../domain/route_assessment_diff.dart';
 import '../../domain/route_models.dart';
 import 'routes_state.dart';
 
@@ -34,6 +37,8 @@ class RoutesCubit extends Cubit<RoutesState>
   List<UserFleetAircraft> _cachedAvailableAircraft = [];
   RouteMaintenancePreview? _plannerMaintenancePreview;
   RouteMaintenancePreview? _adjustmentMaintenancePreview;
+  RouteAssessResultDto? _lastRouteAssessment;
+  String? _routeAssessmentError;
   double _effectiveGroundingThreshold =
       GameConstants.defaultAutoGroundingThreshold;
   Timer? _realtimeRefreshDebounce;
@@ -184,6 +189,99 @@ class RoutesCubit extends Cubit<RoutesState>
     _plannerMaintenancePreview = null;
     if (state is RoutesDataState) {
       _emitLoaded();
+    }
+  }
+
+  /// Hasil penilaian server yang terakhir berhasil, dipakai sebagai
+  /// "perkiraan terakhir" bila permintaan berikutnya gagal.
+  RouteAssessResultDto? get lastRouteAssessment => _lastRouteAssessment;
+
+  /// Pesan kegagalan penilaian terakhir, `null` bila yang terakhir berhasil.
+  String? get routeAssessmentError => _routeAssessmentError;
+
+  /// Ambil penilaian rute dari server (angka yang sama dengan tick).
+  ///
+  /// Mengembalikan `null` bila gagal; kegagalan TIDAK menghapus
+  /// [lastRouteAssessment] supaya UI bisa menampilkan hasil terakhir sambil
+  /// menandainya sebagai perkiraan.
+  Future<RouteAssessResultDto?> assessRoute({
+    required Airport origin,
+    required Airport destination,
+    required double distanceKm,
+    required double ticketPrice,
+    required int flightsPerWeek,
+    String? aircraftId,
+    List<UserFleetAircraft>? aircraftOverride,
+  }) async {
+    try {
+      final result = await _gateway.assessRoute(
+        originIata: origin.iata,
+        destinationIata: destination.iata,
+        ticketPrice: ticketPrice,
+        flightsPerWeek: flightsPerWeek,
+        aircraftId: aircraftId,
+      );
+      _lastRouteAssessment = result;
+      _routeAssessmentError = null;
+      _logAssessmentDiff(
+        result: result,
+        origin: origin,
+        destination: destination,
+        distanceKm: distanceKm,
+        ticketPrice: ticketPrice,
+        flightsPerWeek: flightsPerWeek,
+        aircraftOverride: aircraftOverride,
+      );
+      return result;
+    } on RoutesGatewayException catch (e) {
+      _routeAssessmentError = e.message;
+      AppLogger.logError('routes.assessRoute', e);
+      return null;
+    } catch (e) {
+      _routeAssessmentError = e.toString();
+      AppLogger.logError('routes.assessRoute', e);
+      return null;
+    }
+  }
+
+  /// Bandingkan angka klien dengan angka server — hanya di debug, dan hanya
+  /// selama migrasi 3.1 (lihat [diffRouteAssessment]). Tidak pernah
+  /// memengaruhi state atau tampilan.
+  void _logAssessmentDiff({
+    required RouteAssessResultDto result,
+    required Airport origin,
+    required Airport destination,
+    required double distanceKm,
+    required double ticketPrice,
+    required int flightsPerWeek,
+    List<UserFleetAircraft>? aircraftOverride,
+  }) {
+    if (!kDebugMode) return;
+    final server = result.best;
+    if (server == null) return;
+    final fleet = aircraftOverride ?? _cachedAvailableAircraft;
+    if (fleet.isEmpty) return;
+    try {
+      final client = UserRoute.buildPlanningAssessment(
+        origin: origin,
+        destination: destination,
+        distanceKm: distanceKm,
+        ticketPrice: ticketPrice,
+        flightsPerWeek: flightsPerWeek,
+        availableAircraft: fleet,
+        autoGroundingThreshold: _effectiveGroundingThreshold,
+      );
+      final lines = diffRouteAssessment(client: client, server: server);
+      if (lines.isEmpty) {
+        debugPrint('[routes.assessDiff] klien dan server identik');
+        return;
+      }
+      debugPrint(
+        '[routes.assessDiff] ${origin.iata}-${destination.iata}:\n'
+        '${lines.join('\n')}',
+      );
+    } catch (e) {
+      AppLogger.logError('routes.assessDiff', e);
     }
   }
 

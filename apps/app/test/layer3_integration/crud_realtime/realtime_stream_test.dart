@@ -8,6 +8,7 @@ import 'package:skyward/features/simulation/presentation/cubit/simulation_cubit.
 import 'package:skyward/features/fleet/data/fleet_gateway.dart';
 import 'package:skyward/features/fleet/presentation/cubit/fleet_cubit.dart';
 import 'package:skyward/features/fleet/presentation/cubit/fleet_state.dart';
+import 'package:skyward/features/routes/data/route_assessment_dto.dart';
 import 'package:skyward/features/routes/data/routes_gateway.dart';
 import 'package:skyward/features/routes/presentation/cubit/routes_cubit.dart';
 import 'package:skyward/features/routes/presentation/cubit/routes_state.dart';
@@ -190,6 +191,15 @@ class _MockRoutesGateway implements RoutesGateway {
     required String userId,
     required String routeId,
   }) async => const [];
+  @override
+  Future<RouteAssessResultDto> assessRoute({
+    required String originIata,
+    required String destinationIata,
+    required double ticketPrice,
+    required int flightsPerWeek,
+    String? aircraftId,
+  }) async => RouteAssessResultDto.fromJson(const <String, dynamic>{});
+
   @override
   Future<List<dynamic>> getOwnerRouteOptimizer(String userId) async =>
       const [];
