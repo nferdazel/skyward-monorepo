@@ -143,15 +143,21 @@ Every item below must fail-then-pass with a DB-backed test once 0.4 lands.
       back to `slog.Default()` and `main` calls `slog.SetDefault(logger)`, so
       those records land in the same sink as the rest of the app. Tests cover the
       logged case and assert client errors are not logged.
-- [ ] **1.8b** *Needs a decision (client-visible).* `WriteError` echoes
-      `he.Message` into the 500 response body, so server-side text reaches the
-      client — e.g. `main.go` returns `Internal("tick failed: " + err.Error())`
-      and the database's own error text would be shown to the user. Genericising
-      the 500 message (log the cause, return "internal error") changes what
-      clients display, so it needs an explicit call.
-- [ ] **1.9** Auth: stop exposing `hq_airport_iata` in public insights
-      (password-recovery factor) and add a per-username login limiter.
-      *Breaking: removes a public response field — coordinate with the FE intel pane.*
+- [x] **1.8b** 500 responses now carry a generic `internal error` message; the cause
+      stays in the log. Client errors (400/404/409) keep their curated messages,
+      and there are tests for both. Decided with the user (client-visible change).
+- [x] **1.9** `hq_airport_iata` no longer appears in the public competitor-insights
+      payload (struct field, SELECT and Scan all dropped) — it is one of the three
+      password-recovery factors, so exposing it publicly handed attackers a third
+      of the reset secret. The FE needed **no** change: the leaderboard model never
+      read the field (grep-verified). Regression test asserts the marshalled
+      payload contains no `hq_airport_iata`; before the fix it leaked `"CGK"`.
+- [x] **1.9b** `/auth/login` gained the same `WindowLimiter` guard as
+      reset-password: 30 attempts/15 min per IP plus 10 per username, counted
+      before the user lookup so attempts on unknown usernames still cost the
+      attacker, and cleared on a successful login. Wired in `main`. DB-backed test
+      drives ten 401s and asserts the eleventh is 429 with code
+      `too_many_requests`, and that a different username is unaffected.
 - [x] **1.10** Dead code deleted: `internal/domain` (7 model types, zero
       references anywhere including tests), `Store.Tx` (no callers; the engine
       opens its own transactions), and `LedgerService.DebitAccount` /

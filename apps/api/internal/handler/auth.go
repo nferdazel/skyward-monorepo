@@ -30,6 +30,9 @@ type AuthHandler struct {
 	// ResetLimiter — brute-force guard /auth/reset-password (AUDIT-01).
 	// Boleh nil = tanpa guard extra (dev/test); jangan nil di prod.
 	ResetLimiter *middleware.WindowLimiter
+	// LoginLimiter — brute-force/stuffing guard /auth/login (1.9b), pola sama
+	// dengan ResetLimiter. Boleh nil di dev/test.
+	LoginLimiter *middleware.WindowLimiter
 }
 
 func (h *AuthHandler) logger() *slog.Logger {
@@ -161,6 +164,20 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Brute-force guard (1.9b). Dihitung sebelum lookup user supaya percobaan
+	// terhadap username tak dikenal pun ikut membebani penyerang.
+	if h.LoginLimiter != nil {
+		ip := middleware.ClientIP(r)
+		attempted := strings.TrimSpace(body.Username)
+		okIP := h.LoginLimiter.Allow("login:ip:"+ip, 30)
+		okUser := h.LoginLimiter.Allow("login:u:"+attempted, 10)
+		if !okIP || !okUser {
+			h.logger().Warn("login: attempt limit exceeded", "ip", ip, "username", attempted)
+			httperr.WriteError(w, nil, httperr.TooManyRequests("too many login attempts, try again in 15 minutes"))
+			return
+		}
+	}
+
 	u, err := h.Store.GetUserByUsername(r.Context(), strings.TrimSpace(body.Username))
 	if err != nil {
 		// Hindari user enumeration: response sama untuk user tak dikenal & password salah
@@ -181,6 +198,11 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		httperr.WriteError(w, nil, httperr.Internal("token signing failed"))
 		return
+	}
+	// Login sukses = pemilik akun; bersihkan hitungan agar percobaan berikutnya
+	// tidak mewarisi kesalahan ketik sebelumnya.
+	if h.LoginLimiter != nil {
+		h.LoginLimiter.Clear("login:u:" + strings.TrimSpace(body.Username))
 	}
 	httperr.WriteJSON(w, http.StatusOK, authResponse{Token: token, User: toUserJSON(u)})
 }

@@ -149,6 +149,7 @@ func registerRoutes(ctx context.Context, mux *http.ServeMux, logger *slog.Logger
 		JWTSecret:    []byte(cfg.JWTSecret),
 		Logger:       logger,
 		ResetLimiter: middleware.NewWindowLimiter(15*time.Minute, 0), // AUDIT-01
+		LoginLimiter: middleware.NewWindowLimiter(15*time.Minute, 0), // 1.9b
 	}
 	mux.Handle("POST /auth/register", http.HandlerFunc(authHandler.Register))
 	mux.Handle("POST /auth/login", http.HandlerFunc(authHandler.Login))
