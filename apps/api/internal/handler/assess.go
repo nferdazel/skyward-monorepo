@@ -16,6 +16,7 @@ import (
 // cukup satu metode untuk diuji end-to-end dengan fake.
 type routeAssessor interface {
 	AssessRoute(ctx context.Context, userID string, p engine.AssessRouteParams) (*engine.AssessResult, error)
+	AssessPlayerRoutes(ctx context.Context, userID string) ([]engine.AssessResult, error)
 }
 
 // RouteAssessHandler — diisi `*engine.Engine` oleh main.go.
@@ -64,4 +65,23 @@ func (h *RouteAssessHandler) RouteAssess(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	httperr.WriteJSON(w, http.StatusOK, res)
+}
+
+// RouteAssessBatch — GET /routes/assess/batch. Menilai semua rute aktif pemain
+// dengan pesawat yang memang di-assign ke masing-masing rute. Dipakai dashboard
+// yang butuh angka seluruh rute sekaligus (mis. KPI top yield).
+func (h *RouteAssessHandler) RouteAssessBatch(w http.ResponseWriter, r *http.Request) {
+	uid, ok := userID(w, r)
+	if !ok {
+		return
+	}
+	res, err := h.Assessor.AssessPlayerRoutes(r.Context(), uid)
+	if err != nil {
+		httperr.WriteError(w, nil, httperr.Internal("assess routes failed"))
+		return
+	}
+	if res == nil {
+		res = []engine.AssessResult{}
+	}
+	httperr.WriteJSON(w, http.StatusOK, map[string]any{"routes": res})
 }

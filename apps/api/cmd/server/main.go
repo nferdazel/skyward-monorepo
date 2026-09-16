@@ -170,6 +170,7 @@ func registerRoutes(ctx context.Context, mux *http.ServeMux, logger *slog.Logger
 	mux.Handle("GET /aircraft-models", guard(read.AircraftModels))
 	mux.Handle("GET /routes", guard(read.Routes))
 	mux.Handle("GET /routes/assess", guard(assess.RouteAssess))
+	mux.Handle("GET /routes/assess/batch", guard(assess.RouteAssessBatch))
 	mux.Handle("GET /airports", guard(read.Airports))
 	mux.Handle("GET /finance/snapshot", guard(read.FinanceSnapshot))
 	mux.Handle("GET /finance/transactions", guard(read.FinanceTransactions))

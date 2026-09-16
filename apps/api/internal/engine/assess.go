@@ -141,6 +141,9 @@ type RouteAssessment struct {
 
 // AssessResult — hasil untuk satu rute yang diusulkan.
 type AssessResult struct {
+	// RouteID hanya diisi oleh `AssessPlayerRoutes` (penilaian rute yang sudah
+	// ada); penilaian rute usulan belum punya id.
+	RouteID               string            `json:"route_id,omitempty"`
 	Origin                string            `json:"origin"`
 	Destination           string            `json:"destination"`
 	DistanceKM            float64           `json:"distance_km"`
@@ -453,6 +456,20 @@ func (e *Engine) AssessRoute(ctx context.Context, userID string, p AssessRoutePa
 	}
 
 	// Kandidat: pesawat pemain (atau satu pesawat bila klien menyebut id-nya).
+	fleet, err := e.loadAssessAircraft(ctx, userID, p.AircraftID, snap)
+	if err != nil {
+		return nil, err
+	}
+	in.Aircraft = fleet
+
+	res := e.AssessRoutes(snap, in)
+	return &res, nil
+}
+
+// loadAssessAircraft — pesawat pemain yang ikut dinilai, dengan basis keausan
+// per siklus dari config (dipegang di sini supaya pemanggil tidak perlu tahu).
+// `onlyID` kosong berarti seluruh armada.
+func (e *Engine) loadAssessAircraft(ctx context.Context, userID, onlyID string, snap *TickSnapshot) ([]AssessAircraft, error) {
 	rows, err := e.Pool.Query(ctx, `
 		SELECT f.id, m.model_name, m.range_km, m.fuel_burn_per_km, m.speed_kmh,
 		       m.maintenance_cost_per_hour, m.capacity, m.turnaround_hours,
@@ -467,11 +484,12 @@ func (e *Engine) AssessRoute(ctx context.Context, userID string, p AssessRoutePa
 		userID,
 		snap.num("leased_wear_per_flight_cycle", 0.70),
 		snap.num("owned_wear_per_flight_cycle", 0.50),
-		p.AircraftID)
+		onlyID)
 	if err != nil {
 		return nil, fmt.Errorf("assess route: fleet: %w", err)
 	}
 	defer rows.Close()
+	var out []AssessAircraft
 	for rows.Next() {
 		var ac AssessAircraft
 		if err := rows.Scan(&ac.ID, &ac.ModelName, &ac.RangeKM, &ac.FuelBurnPerKM, &ac.SpeedKMH,
@@ -481,14 +499,12 @@ func (e *Engine) AssessRoute(ctx context.Context, userID string, p AssessRoutePa
 			&ac.WearPerFlightCycle); err != nil {
 			return nil, fmt.Errorf("assess route: fleet scan: %w", err)
 		}
-		in.Aircraft = append(in.Aircraft, ac)
+		out = append(out, ac)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("assess route: fleet iteration: %w", err)
 	}
-
-	res := e.AssessRoutes(snap, in)
-	return &res, nil
+	return out, nil
 }
 
 // ErrAssessInvalid — permintaan tidak valid (dipetakan handler ke 400).
@@ -496,3 +512,97 @@ var ErrAssessInvalid = errors.New("assess route: invalid request")
 
 // ErrAssessAirportNotFound — bandara tidak dikenal (dipetakan handler ke 404).
 var ErrAssessAirportNotFound = errors.New("assess route: airport not found")
+
+// AssessPlayerRoutes — nilai semua rute aktif pemain dalam satu panggilan.
+//
+// Dipakai dashboard, yang butuh kontribusi mingguan seluruh rute sekaligus
+// (mis. KPI "top yield"). Berbeda dari `AssessRoute` yang menjawab "kalau saya
+// pakai pesawat mana pun", di sini setiap rute dinilai dengan pesawat yang
+// MEMANG di-assign ke rute itu — itulah angka yang akan dijalankan tick.
+//
+// Query-nya tetap lima terlepas dari jumlah rute: config + event (snapshot),
+// ambang grounding, armada, dan rute.
+func (e *Engine) AssessPlayerRoutes(ctx context.Context, userID string) ([]AssessResult, error) {
+	gameTime, err := e.Ledger.GetUserGameTime(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("assess routes: game time: %w", err)
+	}
+	snap, err := e.LoadTickSnapshot(ctx, gameTime)
+	if err != nil {
+		return nil, fmt.Errorf("assess routes: snapshot: %w", err)
+	}
+
+	var threshold *float64
+	if err := e.Pool.QueryRow(ctx,
+		`SELECT auto_grounding_threshold FROM users WHERE id=$1`, userID).Scan(&threshold); err != nil && err != pgx.ErrNoRows {
+		return nil, fmt.Errorf("assess routes: grounding threshold: %w", err)
+	}
+	autoGrounding := 0.0
+	if threshold != nil {
+		autoGrounding = *threshold
+	}
+
+	fleet, err := e.loadAssessAircraft(ctx, userID, "", snap)
+	if err != nil {
+		return nil, err
+	}
+	byID := make(map[string]AssessAircraft, len(fleet))
+	for _, ac := range fleet {
+		byID[ac.ID] = ac
+	}
+
+	rows, err := e.Pool.Query(ctx, `
+		SELECT r.id, r.origin_iata, r.destination_iata, r.distance_km,
+		       r.ticket_price, r.flights_per_week, COALESCE(r.assigned_aircraft_id::text,''),
+		       o.demand_index, d.demand_index,
+		       o.latitude, o.longitude, d.latitude, d.longitude
+		FROM route_assignments r
+		JOIN airports o ON o.iata = r.origin_iata
+		JOIN airports d ON d.iata = r.destination_iata
+		WHERE r.user_id=$1::uuid AND r.status='active'
+		ORDER BY r.origin_iata, r.destination_iata`, userID)
+	if err != nil {
+		return nil, fmt.Errorf("assess routes: routes: %w", err)
+	}
+	defer rows.Close()
+
+	var out []AssessResult
+	for rows.Next() {
+		var (
+			routeID, origin, dest, assignedID string
+			distance, price                   float64
+			flights, oDemand, dDemand         int
+			oLat, oLon, dLat, dLon            float64
+		)
+		if err := rows.Scan(&routeID, &origin, &dest, &distance, &price, &flights,
+			&assignedID, &oDemand, &dDemand, &oLat, &oLon, &dLat, &dLon); err != nil {
+			return nil, fmt.Errorf("assess routes: route scan: %w", err)
+		}
+		if distance <= 0 {
+			distance = haversine(oLat, oLon, dLat, dLon)
+		}
+		in := AssessInput{
+			Origin:                 origin,
+			Destination:            dest,
+			DistanceKM:             distance,
+			TicketPrice:            price,
+			FlightsPerWeek:         flights,
+			OriginDemand:           oDemand,
+			DestDemand:             dDemand,
+			AutoGroundingThreshold: autoGrounding,
+		}
+		// Hanya pesawat yang benar-benar terbang di rute ini. Rute tanpa pesawat
+		// tetap dikembalikan (tanpa entri) supaya dashboard bisa menghitungnya
+		// sebagai "butuh assignment".
+		if ac, ok := byID[assignedID]; ok && assignedID != "" {
+			in.Aircraft = []AssessAircraft{ac}
+		}
+		res := e.AssessRoutes(snap, in)
+		res.RouteID = routeID
+		out = append(out, res)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("assess routes: route iteration: %w", err)
+	}
+	return out, nil
+}
