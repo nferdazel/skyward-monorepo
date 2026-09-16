@@ -2,7 +2,9 @@ package httperr
 
 import (
 	"bytes"
+	"errors"
 	"log/slog"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -92,3 +94,28 @@ func TestWriteErrorLogsUnknownErrors(t *testing.T) {
 type errString string
 
 func (e errString) Error() string { return string(e) }
+
+// TestWriteErrorWrapKeepsCauseOutOfBody — jalur yang dipakai handler saat engine
+// mengembalikan kegagalan infra (2.1): penyebab asli harus tercatat di log, tapi
+// tidak boleh muncul di body respons.
+func TestWriteErrorWrapKeepsCauseOutOfBody(t *testing.T) {
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&buf, nil))
+	w := httptest.NewRecorder()
+
+	WriteError(w, logger, Wrap(CodeInternal, "take loan failed",
+		errors.New("pq: deadlock detected on relation loans")))
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want 500", w.Code)
+	}
+	if !strings.Contains(buf.String(), "deadlock detected") {
+		t.Fatalf("cause tidak tercatat di log: %q", buf.String())
+	}
+	if strings.Contains(w.Body.String(), "deadlock") {
+		t.Fatalf("cause bocor ke body respons: %s", w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), "internal error") {
+		t.Fatalf("body 500 harus generik: %s", w.Body.String())
+	}
+}

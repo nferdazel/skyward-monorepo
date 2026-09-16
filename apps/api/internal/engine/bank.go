@@ -3,7 +3,10 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"fmt"
+
+	"github.com/jackc/pgx/v5"
 )
 
 // BankService — bank & credit mutations.
@@ -38,7 +41,7 @@ func (b *BankService) TakeLoan(ctx context.Context, userID string, p TakeLoanPar
 
 	tx, err := b.engine.Pool.Begin(ctx)
 	if err != nil {
-		return &MutationResult{Success: false, Message: "transaction error"}, nil
+		return nil, fmt.Errorf("take loan: begin tx: %w", err)
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
 
@@ -50,7 +53,7 @@ func (b *BankService) TakeLoan(ctx context.Context, userID string, p TakeLoanPar
 	var activeLoans int
 	err = tx.QueryRow(ctx, `SELECT COUNT(*) FROM loans WHERE user_id=$1 AND status='active'`, userID).Scan(&activeLoans)
 	if err != nil {
-		return &MutationResult{Success: false, Message: "failed to query active loans"}, nil
+		return nil, fmt.Errorf("take loan: count active loans: %w", err)
 	}
 	if activeLoans >= maxActive {
 		return &MutationResult{Success: false, Message: "Maximum active loans reached."}, nil
@@ -70,15 +73,15 @@ func (b *BankService) TakeLoan(ctx context.Context, userID string, p TakeLoanPar
 		RETURNING id`,
 		userID, loanType, p.Principal, rate, weekly, monthly, p.TermWeeks, gameTime).Scan(&loanID)
 	if err != nil {
-		return &MutationResult{Success: false, Message: "insert loan failed"}, nil
+		return nil, fmt.Errorf("take loan: insert loan: %w", err)
 	}
 	newCash, err := b.engine.Ledger.CreditTx(ctx, tx, userID, p.Principal, "financing", "loan_disbursement",
 		fmt.Sprintf("Loan disbursement (%s)", loanType), gameTime)
 	if err != nil {
-		return &MutationResult{Success: false, Message: "disbursement failed"}, nil
+		return nil, fmt.Errorf("take loan: disburse: %w", err)
 	}
 	if err := tx.Commit(ctx); err != nil {
-		return &MutationResult{Success: false, Message: "commit failed"}, nil
+		return nil, fmt.Errorf("take loan: commit: %w", err)
 	}
 	return &MutationResult{Success: true, Message: "Loan approved and funds disbursed.", NewCash: newCash}, nil
 }
@@ -87,7 +90,7 @@ func (b *BankService) TakeLoan(ctx context.Context, userID string, p TakeLoanPar
 func (b *BankService) Repay(ctx context.Context, userID, loanID string, amount *float64) (*MutationResult, error) {
 	tx, err := b.engine.Pool.Begin(ctx)
 	if err != nil {
-		return &MutationResult{Success: false, Message: "transaction error"}, nil
+		return nil, fmt.Errorf("repay: begin tx: %w", err)
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
 
@@ -98,7 +101,11 @@ func (b *BankService) Repay(ctx context.Context, userID, loanID string, amount *
 		`SELECT remaining_balance, loan_type, collateral_aircraft_id FROM loans WHERE id=$1 AND user_id=$2 AND status='active' FOR UPDATE`,
 		loanID, userID).Scan(&remaining, &loanType, &collateral)
 	if err != nil {
-		return &MutationResult{Success: false, Message: "Loan not found or already paid off."}, nil
+		// Tidak ketemu = penolakan bisnis (400); error DB lain = infra (500).
+		if errors.Is(err, pgx.ErrNoRows) {
+			return &MutationResult{Success: false, Message: "Loan not found or already paid off."}, nil
+		}
+		return nil, fmt.Errorf("repay: load loan: %w", err)
 	}
 	payment := remaining
 	if amount != nil {
@@ -113,7 +120,9 @@ func (b *BankService) Repay(ctx context.Context, userID, loanID string, amount *
 	var cash float64
 	err = tx.QueryRow(ctx, `SELECT balance FROM bank_accounts WHERE user_id=$1 AND account_type='operating' FOR UPDATE`, userID).Scan(&cash)
 	if err != nil {
-		return &MutationResult{Success: false, Message: "failed to fetch balance"}, nil
+		// Setiap user punya operating account (dibuat saat registrasi); absennya
+		// berarti data rusak, bukan permintaan buruk.
+		return nil, fmt.Errorf("repay: load balance: %w", err)
 	}
 	if cash < payment {
 		return &MutationResult{Success: false, Message: fmt.Sprintf("Insufficient cash. Need $%.2f, have $%.2f.", payment, cash), NewCash: cash}, nil
@@ -127,20 +136,20 @@ func (b *BankService) Repay(ctx context.Context, userID, loanID string, amount *
 	}
 	newCash, err := b.engine.Ledger.DebitTx(ctx, tx, userID, payment, "financing", "loan_repayment", desc, gameTime)
 	if err != nil {
-		return &MutationResult{Success: false, Message: "ledger debit failed", NewCash: cash}, nil
+		return nil, fmt.Errorf("repay: ledger debit: %w", err)
 	}
 	_, err = tx.Exec(ctx, `
 		UPDATE loans SET remaining_balance = GREATEST(0, remaining_balance - $1),
 		       status = CASE WHEN remaining_balance - $1 <= $3 THEN 'paid_off'::varchar ELSE status END
 		WHERE id=$2`, payment, loanID, moneyEpsilon)
 	if err != nil {
-		return &MutationResult{Success: false, Message: "update loan failed", NewCash: cash}, nil
+		return nil, fmt.Errorf("repay: update loan: %w", err)
 	}
 	if paidOff && loanType == "aircraft_financing" && collateral != nil {
 		_, _ = tx.Exec(ctx, `UPDATE fleet_aircraft SET acquisition_type='purchase' WHERE id=$1 AND user_id=$2 AND acquisition_type='finance'`, *collateral, userID)
 	}
 	if err := tx.Commit(ctx); err != nil {
-		return &MutationResult{Success: false, Message: "commit failed", NewCash: cash}, nil
+		return nil, fmt.Errorf("repay: commit: %w", err)
 	}
 	msg := "Payment applied."
 	if paidOff {
@@ -155,7 +164,7 @@ func (b *BankService) Repay(ctx context.Context, userID, loanID string, amount *
 func (b *BankService) Refinance(ctx context.Context, userID, loanID string) (*MutationResult, error) {
 	tx, err := b.engine.Pool.Begin(ctx)
 	if err != nil {
-		return &MutationResult{false, "transaction error", 0}, nil
+		return nil, fmt.Errorf("refinance: begin tx: %w", err)
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
 
@@ -166,7 +175,10 @@ func (b *BankService) Refinance(ctx context.Context, userID, loanID string) (*Mu
 		FROM loans WHERE id=$1 AND user_id=$2 AND status='active' FOR UPDATE`, loanID, userID).
 		Scan(&loanType, &rate, &remaining, &weeklyPay, &monthlyPay)
 	if err != nil {
-		return &MutationResult{false, "Loan not found or not active.", 0}, nil
+		if errors.Is(err, pgx.ErrNoRows) {
+			return &MutationResult{false, "Loan not found or not active.", 0}, nil
+		}
+		return nil, fmt.Errorf("refinance: load loan: %w", err)
 	}
 	// tier rate
 	var tier string
@@ -197,10 +209,10 @@ func (b *BankService) Refinance(ctx context.Context, userID, loanID string) (*Mu
 		UPDATE loans SET interest_rate=$1, remaining_balance=$2, weekly_payment=$3, monthly_payment=$4
 		WHERE id=$5 AND user_id=$6`,
 		newRate, newTotal, newWeekly, newMonthly, loanID, userID); err != nil {
-		return &MutationResult{false, "refinance failed", 0}, nil
+		return nil, fmt.Errorf("refinance: update loan: %w", err)
 	}
 	if err := tx.Commit(ctx); err != nil {
-		return &MutationResult{false, "commit failed", 0}, nil
+		return nil, fmt.Errorf("refinance: commit: %w", err)
 	}
 	savings := maxf(0, remaining-newTotal)
 	return &MutationResult{true, fmt.Sprintf("Loan refinanced successfully (savings $%.2f).", savings), 0}, nil
@@ -240,7 +252,10 @@ func (b *BankService) FinanceAircraft(ctx context.Context, userID string, p Fina
 	err := b.engine.Pool.QueryRow(ctx, `SELECT purchase_price, capacity, model_name, min_credit_tier FROM aircraft_models WHERE id=$1`, p.ModelID).
 		Scan(&purchasePrice, &capacity, &modelName, &minTier)
 	if err != nil {
-		return &MutationResult{false, "Aircraft model not found.", 0}, nil
+		if errors.Is(err, pgx.ErrNoRows) {
+			return &MutationResult{false, "Aircraft model not found.", 0}, nil
+		}
+		return nil, fmt.Errorf("finance aircraft: load model: %w", err)
 	}
 	// tier
 	var tier string
@@ -286,23 +301,23 @@ func (b *BankService) FinanceAircraft(ctx context.Context, userID string, p Fina
 	var hq *string
 	gameTime, err := b.engine.Ledger.GetUserGameTime(ctx, userID)
 	if err != nil {
-		return &MutationResult{false, "User not found.", 0}, nil
+		return nil, fmt.Errorf("finance aircraft: game time: %w", err)
 	}
 	b.engine.Pool.QueryRow(ctx, `SELECT hq_airport_iata FROM users WHERE id=$1`, userID).Scan(&hq)
 	tail, err := b.engine.Ledger.GenerateTailNumber(ctx, deref(hq, "CGK"))
 	if err != nil {
-		return &MutationResult{false, "tail number generation failed", cash}, nil
+		return nil, fmt.Errorf("finance aircraft: tail number: %w", err)
 	}
 
 	tx, txErr := b.engine.Pool.Begin(ctx)
 	if txErr != nil {
-		return &MutationResult{false, "transaction error", cash}, nil
+		return nil, fmt.Errorf("finance aircraft: begin tx: %w", txErr)
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
 	_, lerr := b.engine.Ledger.DebitTx(ctx, tx, userID, down, "investing", "aircraft_purchase_deposit",
 		fmt.Sprintf("Aircraft financing down payment — %s", modelName), gameTime)
 	if lerr != nil {
-		return &MutationResult{false, "ledger debit failed", cash}, nil
+		return nil, fmt.Errorf("finance aircraft: down payment: %w", lerr)
 	}
 	var fleetID string
 	err = tx.QueryRow(ctx, `
@@ -310,18 +325,18 @@ func (b *BankService) FinanceAircraft(ctx context.Context, userID string, p Fina
 		VALUES ($1,$2,$3,$4,'finance',100.00,'active',FLOOR($5*0.80),FLOOR($5*0.15),$5-FLOOR($5*0.80)-FLOOR($5*0.15))
 		RETURNING id`, userID, p.ModelID, modelName, tail, capacity).Scan(&fleetID)
 	if err != nil {
-		return &MutationResult{false, "insert aircraft failed", cash}, nil
+		return nil, fmt.Errorf("finance aircraft: insert aircraft: %w", err)
 	}
 	_, err = tx.Exec(ctx, `
 		INSERT INTO loans (user_id, principal, interest_rate, remaining_balance, weekly_payment, status, loan_type, collateral_aircraft_id, term_months, monthly_payment, originated_game_date)
 		VALUES ($1,$2,$3,$4,$5,'active','aircraft_financing',$6,$7,$8,$9)`,
 		userID, principal, rate, totalRepayable, weekly, fleetID, p.TermMonths, monthly, gameTime)
 	if err != nil {
-		return &MutationResult{false, "insert loan failed", cash}, nil
+		return nil, fmt.Errorf("finance aircraft: insert loan: %w", err)
 	}
 	if err := tx.Commit(ctx); err != nil {
 		// Commit gagal = tidak ada pesawat maupun pinjaman; jangan bilang sukses.
-		return &MutationResult{false, "commit failed", cash}, nil
+		return nil, fmt.Errorf("finance aircraft: commit: %w", err)
 	}
 	newCash, _ := b.engine.Ledger.GetBalance(ctx, userID)
 	return &MutationResult{true, "Aircraft financed successfully.", newCash}, nil

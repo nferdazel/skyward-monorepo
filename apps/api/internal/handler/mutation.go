@@ -205,7 +205,9 @@ func (h *MutationHandler) BankTakeLoan(w http.ResponseWriter, r *http.Request) {
 	}
 	res, err := h.Engine.Bank.TakeLoan(r.Context(), uid, p)
 	if err != nil {
-		httperr.WriteError(w, nil, httperr.Internal("take loan failed"))
+		// Cause ikut dikirim: sejak 1.8b body 500 selalu generik, jadi tanpa ini
+		// penyebab kegagalan infra tidak terlihat di mana pun.
+		httperr.WriteError(w, nil, httperr.Wrap(httperr.CodeInternal, "take loan failed", err))
 		return
 	}
 	h.respondChannel(w, res, "loans", "INSERT")
@@ -228,7 +230,9 @@ func (h *MutationHandler) BankRepayLoan(w http.ResponseWriter, r *http.Request) 
 	}
 	res, err := h.Engine.Bank.Repay(r.Context(), uid, r.PathValue("id"), p.Amount)
 	if err != nil {
-		httperr.WriteError(w, nil, httperr.Internal("repay loan failed"))
+		// Cause ikut dikirim: sejak 1.8b body 500 selalu generik, jadi tanpa ini
+		// penyebab kegagalan infra tidak terlihat di mana pun.
+		httperr.WriteError(w, nil, httperr.Wrap(httperr.CodeInternal, "repay loan failed", err))
 		return
 	}
 	h.respondChannel(w, res, "loans", "UPDATE")
@@ -319,7 +323,9 @@ func (h *MutationHandler) BankRefinanceLoan(w http.ResponseWriter, r *http.Reque
 	}
 	res, err := h.Engine.Bank.Refinance(r.Context(), uid, r.PathValue("id"))
 	if err != nil {
-		httperr.WriteError(w, nil, httperr.Internal("refinance loan failed"))
+		// Cause ikut dikirim: sejak 1.8b body 500 selalu generik, jadi tanpa ini
+		// penyebab kegagalan infra tidak terlihat di mana pun.
+		httperr.WriteError(w, nil, httperr.Wrap(httperr.CodeInternal, "refinance loan failed", err))
 		return
 	}
 	h.respondChannel(w, res, "loans", "UPDATE")
@@ -337,7 +343,9 @@ func (h *MutationHandler) BankFinanceAircraft(w http.ResponseWriter, r *http.Req
 	}
 	res, err := h.Engine.Bank.FinanceAircraft(r.Context(), uid, p)
 	if err != nil {
-		httperr.WriteError(w, nil, httperr.Internal("finance aircraft failed"))
+		// Cause ikut dikirim: sejak 1.8b body 500 selalu generik, jadi tanpa ini
+		// penyebab kegagalan infra tidak terlihat di mana pun.
+		httperr.WriteError(w, nil, httperr.Wrap(httperr.CodeInternal, "finance aircraft failed", err))
 		return
 	}
 	h.respondChannel(w, res, "loans", "INSERT")

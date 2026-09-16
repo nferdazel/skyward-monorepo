@@ -195,8 +195,19 @@ Every item below must fail-then-pass with a DB-backed test once 0.4 lands.
 
 ## Phase 2 — Consistency & robustness
 
-- [ ] **2.1** Unified error model: `MutationResult.Success=false` only for business
-      rejections; infra failures return wrapped errors (start with `BankService`).
+- [x] **2.1** `BankService` returns wrapped errors for infra failures instead of
+      `MutationResult{Success:false}` with a nil error, which the handler turned into
+      a 400 whose message was "transaction error" / "ledger debit failed" — and
+      which, after 1.8b, would have reached the player as nothing useful at all.
+      22 sites in `bank.go` converted (take loan, repay, refinance, finance
+      aircraft — Begin/Commit, ledger calls, inserts); genuine rejections
+      (insufficient cash, active-loan cap, tier gates, bad amount/term) keep
+      `Success:false` + 400. Single-row loads now split on `pgx.ErrNoRows`: no row =
+      business rejection, anything else = infra, so a DB failure is no longer
+      reported as "Loan not found". The four bank handlers pass the cause through
+      `httperr.Wrap`, so even with 1.8b's generic 500 body the real error stays in
+      the log (`TestWriteErrorWrapKeepsCauseOutOfBody`, verified fail-then-pass).
+      Still on the old shape: `fleet`, `routes`, `settings`, `bankruptcy`.
 - [ ] **2.2** Shared `coalescedLoad` helper adopted by
       fleet/routes/finance/leaderboard cubits; data-preserving `BankActionLoading`.
 - [ ] **2.3** Config: route hardcoded values through `getConfigNum`
