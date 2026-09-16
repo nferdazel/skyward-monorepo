@@ -45,23 +45,30 @@ commit (same convention as `docs/product/roadmap.md`).
       `APP_DB_PASSWORD` and sends it over stdin. Applied to prod (no-op except the
       4 new default ACLs; grants unchanged, `/readyz` 200).
       **Blocker found:** a fresh cluster still cannot log in — see 0.2d.
-- [ ] **0.2d** **Schema reconciliation — needs approval (found by 0.3b's first run).**
-      Prod and "what the migrations produce" differ in four ways:
-      (a) **`users.password_hash` exists in prod but is created by no migration**, so
-      a fresh cluster cannot log in at all (the API reads that column). Unambiguous
-      bug in the baseline.
-      (b) three FK constraints declared by `00_baseline.sql` are missing in prod
+- [x] **0.2d** Schema reconciliation — approved and done 2026-09-16. All four
+      divergences closed; drift check exits 0 on both comparisons:
+      **(a)** `00_baseline.sql` gained `"password_hash" "text"` directly after
+      `actor_type` — prod's position — so a fresh apply matches prod *and* column
+      order stays identical (an `ADD COLUMN` migration would have appended it and
+      left a permanent ordering diff). This was the real blocker: no migration
+      created that column and the API reads it for login.
+      **(b)** `23_reconcile_fk_constraints.sql` adds prod's three missing FKs
       (`users.hq_airport_iata → airports`, `users.season_id → season_clock`,
-      `world_tick_log.season_id → season_clock`); prod data violates none of them
-      (0 bad rows), so adding them is safe.
-      (c) six `starting_cash` fallbacks read 15,000,000 in prod but 25,000,000 in the
-      baseline. **Inert in practice**: `game_config.starting_cash` = 25,000,000 in
-      prod, so the `COALESCE` never falls through.
-      (d) `finance_snapshots` money columns are `numeric(20,2)` in prod, plain
-      `numeric` in the baseline.
-      Direction to settle (prod is authoritative for (a); the baseline looks
-      authoritative for (b)) — item 0.2d as agreed, then regenerate the snapshot so
-      the drift check goes green.
+      `world_tick_log.season_id → season_clock`), idempotent via `pg_constraint`;
+      applied to prod, re-run reports "tidak ada migrasi pending", `/readyz` 200.
+      Prod data violated none of them (0 bad rows).
+      **(c)** seven `starting_cash` / `net_worth` literals in `00_baseline.sql`
+      moved 25,000,000 → 15,000,000 to match prod. Inert either way:
+      `game_config.starting_cash` = 25,000,000 supplies the value, so the `COALESCE`
+      never falls through.
+      **(d)** `15_finance_snapshots_retention.sql` money columns became
+      `numeric(20,2)`, matching prod (whose version came from the hosted DB).
+      Snapshot regenerated (4,799 lines).
+      *The in-place edits are deliberate:* `00_baseline.sql` and `15_*.sql` have
+      **NULL** checksums in prod's ledger (the 19 backfill recorded filenames
+      without verifying content) and prod never re-runs them — they define the
+      fresh-apply path only. That is an exception to append-only, recorded here so
+      a later reader does not mistake it for drift.
 
 - [x] **0.3** Migration ledger + `make migrate`. `migrations/19_schema_migrations.sql`
       creates `schema_migrations` and backfills 00–18; `scripts/migrate.sh` applies
@@ -298,7 +305,7 @@ Each needs a short written proposal (blast radius + migration path + test plan).
 - [ ] **3.4** Per-tick config injection replacing ~30 `getConfigNum` call sites.
 - [ ] **3.5** Money boundary: round at the Ledger, then migrate float64 →
       int64 cents / decimal inside the engine.
-- [ ] **3.6** ~~Clean-room baseline v2~~ — **dropped.** D1 answered 2026-09-16:
+- [x] **3.6** ~~Clean-room baseline v2~~ — **dropped.** D1 answered 2026-09-16:
       no rewrite; 0.2c/0.2d made the existing dump self-sufficient and the drift
       check now proves a fresh apply matches prod.
 - [ ] **3.7** Real deploy pipeline: versioned artifacts, gated migration step,
