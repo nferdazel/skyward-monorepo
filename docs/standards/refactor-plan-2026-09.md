@@ -55,9 +55,10 @@ commit (same convention as `docs/product/roadmap.md`).
 - [x] **0.8** Docs sweep: migration index now covers 16–18, `docs/README.md`
       range, `maintainer-standard.md` §5 range, root `README.md` (Go floor,
       deploy description, Makefile targets), runbook retired-function status.
-- [ ] **0.9** Seed reference data (`airports`, `aircraft_models`) via migration so
-      a fresh env is actually usable (`INSERT … ON CONFLICT DO NOTHING` +
-      `make dump-reference-data` exporter).
+- [x] **0.9** Seed reference data via `migrations/20_reference_data_seed.sql`
+      (446 `airports` + 65 `aircraft_models`, `ON CONFLICT DO NOTHING`) so a fresh
+      env is actually usable; `scripts/dump-reference-data.sh` regenerates it from
+      a live database. Applied to prod/`skyward_test` as a no-op (446/65 unchanged).
 
 ## Phase 1 — Correctness & security (small diffs; each fix gets a regression test)
 

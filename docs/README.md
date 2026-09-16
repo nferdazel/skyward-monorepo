@@ -25,7 +25,7 @@ docs/
 │   ├── overview.md      system shape, tick/season clock, auth, realtime
 │   ├── backend.md       Go API: engine domains, routes, worker, config
 │   ├── frontend.md      Flutter: cubits, gateways, sync, test layers
-│   └── database.md      schema groups + migrations 00–19 index
+│   └── database.md      schema groups + migrations 00–20 index
 ├── product/
 │   ├── design-system.md token & component spec verified against code
 │   └── roadmap.md       living backlog + open questions + eng debt
