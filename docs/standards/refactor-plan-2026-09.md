@@ -393,21 +393,29 @@ Every item below must fail-then-pass with a DB-backed test once 0.4 lands.
       *One notification-refresh helper — done.* The dashboard's five BlocListeners
       each rebuilt the same six-argument `refreshNotifications` call; each now hands
       only the state that changed to `_refreshNotifications`.
-      *44 dp tap targets — partly done.* Raised the hit area without touching the
-      visible size for `AppTableIconAction` (eleven call sites ask for a 32 dp chip;
-      it now centres that chip in a 44 dp box), the HUD notification bell (~28x24),
-      the notification panel's mark-all-read and close, the sonner dismiss, the IFRS
-      report close, and a routes dialog close that was pinned to 32. Still open,
-      because each of these changes layout rather than just the hit area:
-      `AppButton` defaults to height 40 and `TactileButton` to 36 with ~30 call sites
-      at or below that; the 20-26 dp text chips (finance ledger filter, leaderboard
-      sort, fleet's down-payment preset and CLEAR FILTERS, auth's LOGIN/REGISTER
-      toggle); and the `dense: true` + `VisualDensity(horizontal: -4, vertical: -4)`
-      `CheckboxListTile` in `app_multi_select_field`.
-      Separate finding while loading the antislop UI rules: 26 non-comment em dashes
-      in user-facing copy (`app_strings.dart`, the notification messages, the credit
-      tier descriptions, the `'—'` empty-value placeholders) violate that filter's
-      R-02; replacing them is a copy pass, so it is reported rather than folded in.
+      *44 dp tap targets — icon-only controls done.* Raised the hit area without
+      touching the visible size for `AppTableIconAction` (eleven call sites ask for a
+      32 dp chip; it now centres that chip in a 44 dp box), the HUD notification bell
+      (~28x24), the notification panel's mark-all-read and close, the sonner dismiss,
+      the IFRS report close, and a routes dialog close that was pinned to 32.
+      **Owner decision (2026-09-16): the rest stays as it is.** Raising the shared
+      buttons and the text chips would grow ~30 call sites' row heights, so
+      `AppButton` (height 40), `TactileButton` (36), the 20-26 dp text chips and the
+      `dense: true` + `VisualDensity(horizontal: -4, vertical: -4)`
+      `CheckboxListTile` in `app_multi_select_field` are a recorded exception rather
+      than an open item.
+      *Em dashes in user-facing copy — done.* The antislop filter's R-02 forbids
+      them. Fixed all 26 outside code comments (24 in the app: `app_strings.dart`,
+      the notification messages, the credit tier descriptions, the `'—'`
+      empty-value placeholders in the bank, dashboard and route tables; plus the Go
+      API's `Aircraft financing down payment` ledger description in `bank.go`, which
+      is UI text because it lands in `bank_transactions.description`). Verified in
+      prod that no existing row needs migrating: 0 of 1,810,024 descriptions
+      contain an em dash (or any other non-ASCII character). The superseded SQL body
+      in `00_baseline.sql` keeps its em dash on purpose: editing that function body
+      would register as schema drift, since `pg_dump -s` includes function bodies
+      and prod still runs the old one. Indonesian em dashes inside `//` comments are
+      left alone; R-02 governs UI text, not comments.
 - [x] **2.7** `applyBankruptcy` now runs in one transaction with every step checked.
       It was four bare `Exec` calls with the errors dropped, so a failure mid-way
       left the player half-bankrupt — status `Bankrupt` while loans stayed `active`

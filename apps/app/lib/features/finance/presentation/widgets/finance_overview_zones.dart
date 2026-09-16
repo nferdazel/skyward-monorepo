@@ -157,7 +157,7 @@ class FinanceHealthHero extends StatelessWidget {
         value: AppFormatters.currency.format(snapshot.cash),
         valueColor: AppTheme.textPrimary,
         valueStyle: AppTypography.largeKpi,
-        help: 'Canonical bank cash — the money available right now.',
+        help: 'Canonical bank cash: the money available right now.',
         sub: SizedBox(
           height: 22,
           child: AppSparkline(

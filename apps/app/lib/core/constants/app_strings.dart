@@ -107,7 +107,7 @@ class AppStrings {
   static const String bankruptcyWarning =
       'Cash is negative. Restore profitability or the airline will be shut down.';
   static const String bankruptcyCritical =
-      'BANKRUPTCY IMMINENT — sell assets, cut routes, or take an emergency loan now.';
+      'BANKRUPTCY IMMINENT: sell assets, cut routes, or take an emergency loan now.';
 
   // GAME-07 — "While you were away" digest
   static const String whileAwayTitle = 'WHILE YOU WERE AWAY';
@@ -122,7 +122,7 @@ class AppStrings {
   // GAME-08 — first-route guidance
   static const String firstRouteSuggestionAction = 'USE ROUTE';
   static String firstRouteSuggestion(String from, String to, String city) =>
-      'First route tip: fly $from to $to ($city) — a short, safe hop while you build up.';
+      'First route tip: fly $from to $to ($city), a short, safe hop while you build up.';
 
   // GAME-06 — credit-tier aircraft gates
   static String requiresCreditTier(String tier) => '$tier TIER REQUIRED';
@@ -319,7 +319,7 @@ class AppStrings {
   // Fleet status
   static const String earningStatus = 'EARNING';
   static const String idleStatus = 'IDLE';
-  static const String minimalRepairTooltip = 'Minimal wear — repair not recommended';
+  static const String minimalRepairTooltip = 'Minimal wear, repair not recommended';
   static const String aircraftSubtitlePrefix = 'AIRCRAFT';
   static const String capacitySubtitlePrefix = 'CAPACITY';
   static const String slotsExceededPrefix = 'SLOTS EXCEEDED! Over-capacity by ';
@@ -484,7 +484,7 @@ class AppStrings {
   static const String revenuePerAircraft = 'REV/AIRCRAFT';
   static const String netWorthPerAircraft = 'NW/AIRCRAFT';
   static const String efficiencyMetricsLabel = 'EFFICIENCY METRICS';
-  static const String rankTrendStable = '—';
+  static const String rankTrendStable = '-';
 
   // Routes Screen
   static const String flightConnectionsTab = 'FLIGHT CONNECTIONS';
@@ -651,8 +651,8 @@ class AppStrings {
   static const String routePricingWatchWeak =
       'Fare is suppressing bookings harder than the network can absorb.';
 
-  static String originSelected(String iata, String name) => 'Origin: $iata — $name';
-  static String destinationSelected(String iata, String name) => 'Destination: $iata — $name';
+  static String originSelected(String iata, String name) => 'Origin: $iata, $name';
+  static String destinationSelected(String iata, String name) => 'Destination: $iata, $name';
 
   // Finance Screen
   static const String financeOverviewTab = 'OVERVIEW';
@@ -770,7 +770,7 @@ class AppStrings {
   static const String noNotifications = 'No notifications';
 
   // Network error recovery
-  static const String connectionLost = 'Connection lost — retrying automatically';
+  static const String connectionLost = 'Connection lost, retrying automatically';
   static const String retryNow = 'RETRY NOW';
   static const String syncFailed = 'Sync failed';
   static const String reconnecting = 'Reconnecting...';
@@ -778,7 +778,7 @@ class AppStrings {
   // Help tooltips
   static const String helpKpiFleetReady = 'Aircraft ready to fly (not grounded or in maintenance)';
   static const String helpKpiNetworkHealth = 'Percentage of routes with assigned aircraft';
-  static const String helpKpiCondition = 'Average fleet condition — repair aircraft before they ground';
+  static const String helpKpiCondition = 'Average fleet condition: repair aircraft before they ground';
   static const String helpKpiRunway = 'Days of cash remaining at current burn rate';
   static const String helpSeatSlots = 'Economy: 1 slot, Business: 2 slots, First: 3 slots';
   static const String helpPricing = 'Price above base fare reduces demand. Optimal: 0.95-1.05x base.';

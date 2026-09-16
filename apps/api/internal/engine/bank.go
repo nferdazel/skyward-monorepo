@@ -381,7 +381,7 @@ func (b *BankService) FinanceAircraft(ctx context.Context, userID string, p Fina
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
 	_, lerr := b.engine.Ledger.DebitTx(ctx, tx, userID, down, "investing", "aircraft_purchase_deposit",
-		fmt.Sprintf("Aircraft financing down payment — %s", modelName), gameTime)
+		fmt.Sprintf("Aircraft financing down payment: %s", modelName), gameTime)
 	if lerr != nil {
 		return nil, fmt.Errorf("finance aircraft: down payment: %w", lerr)
 	}

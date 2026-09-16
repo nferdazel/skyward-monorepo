@@ -85,7 +85,7 @@ class _OnboardingOverlayState extends State<OnboardingOverlay> {
       title: 'Step 1: Acquire Aircraft',
       description:
           'Navigate to the Fleet tab and acquire your first aircraft. '
-          'You can buy or lease — leasing requires less upfront capital.',
+          'You can buy or lease: leasing requires less upfront capital.',
       icon: Icons.airplanemode_active,
       actionLabel: 'Go to Fleet',
     ),
@@ -108,7 +108,7 @@ class _OnboardingOverlayState extends State<OnboardingOverlay> {
       title: "You're Ready!",
       description:
           'Monitor your finances, expand your fleet, and climb the '
-          'leaderboard. The simulation ticks every minute — your airline '
+          'leaderboard. The simulation ticks every minute, your airline '
           'is always running.',
       icon: Icons.emoji_events_outlined,
       actionLabel: 'Start Playing',

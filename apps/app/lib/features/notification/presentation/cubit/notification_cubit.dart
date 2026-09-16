@@ -54,7 +54,7 @@ class NotificationCubit extends Cubit<NotificationState> {
         if (aircraft.condition < 40) {
           final title = 'FLEET CONDITION CRITICAL';
           final message =
-              '${aircraft.nickname} (${aircraft.model.modelName}) at ${aircraft.condition.toStringAsFixed(0)}% — immediate repair needed.';
+              '${aircraft.nickname} (${aircraft.model.modelName}) at ${aircraft.condition.toStringAsFixed(0)}%, immediate repair needed.';
           final identity = 'FLEET CONDITION CRITICAL|${aircraft.id}';
           final isRead = existingMap[identity] ?? false;
           newNotifications.add(
@@ -70,7 +70,7 @@ class NotificationCubit extends Cubit<NotificationState> {
         } else if (aircraft.condition < 60) {
           final title = 'FLEET CONDITION WARNING';
           final message =
-              '${aircraft.nickname} (${aircraft.model.modelName}) at ${aircraft.condition.toStringAsFixed(0)}% — schedule maintenance.';
+              '${aircraft.nickname} (${aircraft.model.modelName}) at ${aircraft.condition.toStringAsFixed(0)}%, schedule maintenance.';
           final identity = 'FLEET CONDITION WARNING|${aircraft.id}';
           final isRead = existingMap[identity] ?? false;
           newNotifications.add(
@@ -242,8 +242,8 @@ class NotificationCubit extends Cubit<NotificationState> {
             ? '${(hoursLeft / 24).toStringAsFixed(1)}d'
             : (hoursLeft >= 1 ? '${hoursLeft}h' : 'expiring soon');
         final message = event.description.isEmpty
-            ? 'Active — $eta remaining.'
-            : '${event.description} — $eta remaining.';
+            ? 'Active, $eta remaining.'
+            : '${event.description}, $eta remaining.';
         final identity = 'WORLD EVENT|${event.id}';
         final isRead = existingMap[identity] ?? false;
         newNotifications.add(

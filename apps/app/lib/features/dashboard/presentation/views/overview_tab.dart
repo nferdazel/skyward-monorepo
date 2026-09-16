@@ -664,7 +664,7 @@ class OverviewTab extends StatelessWidget {
                       _S.slackLabel,
                       overview.totalSlackHours > 0
                           ? '${overview.totalSlackHours.toStringAsFixed(0)}h'
-                          : '—',
+                          : '-',
                       AppTheme.textSecondary,
                     ),
                   ),

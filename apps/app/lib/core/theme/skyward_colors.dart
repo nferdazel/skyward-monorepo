@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 /* ═══════════════════════════════════════════════════════
-   SKYWARD OPS — Color Token System v5.0
-   Aviation Command theme — PFD/ATC-inspired cockpit UI.
+   SKYWARD OPS, Color Token System v5.0
+   Aviation Command theme, PFD/ATC-inspired cockpit UI.
    Monochrome base, color encodes operational meaning only.
 ══════════════════════════════════════════════════════ */
 

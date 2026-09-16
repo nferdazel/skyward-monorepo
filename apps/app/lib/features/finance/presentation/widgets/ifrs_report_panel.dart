@@ -167,7 +167,7 @@ class IfrsReportBody extends StatelessWidget {
               _lineItem(
                 'Retained Earnings',
                 bs.netWorth,
-                help: 'Assets minus liabilities — the residual stake.',
+                help: 'Assets minus liabilities: the residual stake.',
               ),
               const SizedBox(height: AppSpacing.xs),
               _divider(),

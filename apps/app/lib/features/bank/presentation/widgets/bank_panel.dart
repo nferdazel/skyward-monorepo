@@ -738,7 +738,7 @@ class _BankPanelState extends State<BankPanel> {
             vertical: AppSpacing.sm,
           ),
           child: Text(
-            gameDate != null ? AppFormatters.shortGameDateTime(gameDate) : '—',
+            gameDate != null ? AppFormatters.shortGameDateTime(gameDate) : '-',
             style: AppTypography.captionLight.copyWith(
               color: AppTheme.textMuted,
             ),
@@ -897,15 +897,15 @@ class _BankPanelState extends State<BankPanel> {
   static String _tierDescription(String tier) {
     switch (tier) {
       case 'Platinum':
-        return 'Platinum credit — best rates and highest loan limits available.';
+        return 'Platinum credit: best rates and highest loan limits available.';
       case 'Gold':
-        return 'Gold credit — excellent rates with high borrowing capacity.';
+        return 'Gold credit: excellent rates with high borrowing capacity.';
       case 'Silver':
-        return 'Silver credit — competitive rates and solid loan limits.';
+        return 'Silver credit: competitive rates and solid loan limits.';
       case 'Standard':
-        return 'Standard credit — base rates apply. Improve your score for better terms.';
+        return 'Standard credit: base rates apply. Improve your score for better terms.';
       case 'Subprime':
-        return 'Subprime credit — limited borrowing capacity. Focus on profitability to improve.';
+        return 'Subprime credit: limited borrowing capacity. Focus on profitability to improve.';
       default:
         return '';
     }

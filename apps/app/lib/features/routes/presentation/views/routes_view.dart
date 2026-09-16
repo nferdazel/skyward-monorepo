@@ -1805,7 +1805,7 @@ class _RoutesViewState extends State<RoutesView> {
                       icon: Icons.flight,
                       iconColor: AppTheme.primary,
                       title:
-                          '${aircraft.tailNumber} — ${aircraft.model.modelName}',
+                          '${aircraft.tailNumber}, ${aircraft.model.modelName}',
                       subtitle:
                           '${AppStrings.conditionLabel}: ${conditionPct.toStringAsFixed(0)}%',
                       trailing: Container(
