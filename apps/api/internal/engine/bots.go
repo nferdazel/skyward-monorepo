@@ -507,13 +507,22 @@ func (e *Engine) botHandlePricing(ctx context.Context, botID string, gameTime ti
 	for rows.Next() {
 		var id, origin, dest string
 		var price, distance float64
-		rows.Scan(&id, &price, &distance, &origin, &dest)
+		if err := rows.Scan(&id, &price, &distance, &origin, &dest); err != nil {
+			// Scan gagal meninggalkan price di nilai nol; harga nol membuat rute ini
+			// terbaca "termurah" lalu dinaikkan berdasarkan angka palsu.
+			e.log().Error("bot pricing: scan rute gagal", "error", err, "bot", botID)
+			continue
+		}
 		var compCount int
 		var avgComp float64
-		e.Pool.QueryRow(ctx, `
+		if err := e.Pool.QueryRow(ctx, `
 			SELECT COUNT(*), COALESCE(AVG(r2.ticket_price),0) FROM route_assignments r2
 			WHERE r2.origin_iata=$1 AND r2.destination_iata=$2 AND r2.user_id<>$3 AND r2.status='active'`,
-			origin, dest, botID).Scan(&compCount, &avgComp)
+			origin, dest, botID).Scan(&compCount, &avgComp); err != nil {
+			// Tanpa data kompetitor, perbandingan harga tidak bisa dipercaya.
+			e.log().Error("bot pricing: query kompetitor gagal", "error", err, "bot", botID)
+			continue
+		}
 
 		if compCount > 0 || rand.Float64() < 0.20 {
 			base := baseFare + distance*perKM
@@ -521,6 +530,11 @@ func (e *Engine) botHandlePricing(ctx context.Context, botID string, gameTime ti
 				compThreshold, archetype, distress)
 			e.Pool.Exec(ctx, `UPDATE route_assignments SET ticket_price=$1 WHERE id=$2`, round2(newPrice), id)
 		}
+	}
+	if err := rows.Err(); err != nil {
+		// Iterasi berhenti di tengah: jangan tandai review selesai, biar dicoba lagi.
+		e.log().Error("bot pricing: iterasi rute berhenti", "error", err, "bot", botID)
+		return
 	}
 	e.Pool.Exec(ctx, `UPDATE bot_profiles SET last_pricing_review_at=$1 WHERE user_id=$2`, gameTime, botID)
 }

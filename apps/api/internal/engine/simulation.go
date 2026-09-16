@@ -472,11 +472,37 @@ func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime ti
 	}, nil
 }
 
+// Satu transaksi, dan setiap langkah diperiksa. Dulu empat Exec terpisah dengan
+// error yang dibuang: kegagalan di tengah meninggalkan pemain setengah-bangkrut
+// (mis. sudah berstatus Bankrupt tapi pinjamannya masih aktif dan tetap ditagih,
+// atau rutenya masih beroperasi).
 func (e *Engine) applyBankruptcy(ctx context.Context, userID string) {
-	e.Pool.Exec(ctx, `UPDATE users SET operational_status='Bankrupt' WHERE id=$1`, userID)
-	e.Pool.Exec(ctx, `UPDATE fleet_aircraft SET status='grounded' WHERE user_id=$1`, userID)
-	e.Pool.Exec(ctx, `UPDATE loans SET status='defaulted', remaining_balance=0 WHERE user_id=$1 AND status='active'`, userID)
-	e.Pool.Exec(ctx, `UPDATE route_assignments SET status='cancelled' WHERE user_id=$1 AND status='active'`, userID)
+	tx, err := e.Pool.Begin(ctx)
+	if err != nil {
+		e.log().Error("bankruptcy: begin tx gagal", "user", userID, "error", err)
+		return
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+
+	if _, err := tx.Exec(ctx, `UPDATE users SET operational_status='Bankrupt' WHERE id=$1`, userID); err != nil {
+		e.log().Error("bankruptcy: update users gagal, dibatalkan", "user", userID, "error", err)
+		return
+	}
+	if _, err := tx.Exec(ctx, `UPDATE fleet_aircraft SET status='grounded' WHERE user_id=$1`, userID); err != nil {
+		e.log().Error("bankruptcy: grounding fleet gagal, dibatalkan", "user", userID, "error", err)
+		return
+	}
+	if _, err := tx.Exec(ctx, `UPDATE loans SET status='defaulted', remaining_balance=0 WHERE user_id=$1 AND status='active'`, userID); err != nil {
+		e.log().Error("bankruptcy: default pinjaman gagal, dibatalkan", "user", userID, "error", err)
+		return
+	}
+	if _, err := tx.Exec(ctx, `UPDATE route_assignments SET status='cancelled' WHERE user_id=$1 AND status='active'`, userID); err != nil {
+		e.log().Error("bankruptcy: pembatalan rute gagal, dibatalkan", "user", userID, "error", err)
+		return
+	}
+	if err := tx.Commit(ctx); err != nil {
+		e.log().Error("bankruptcy: commit gagal", "user", userID, "error", err)
+	}
 }
 
 func (e *Engine) processDayBoundary(ctx context.Context, userID string, gameDate time.Time, elapsedDays float64) {
@@ -496,16 +522,28 @@ func (e *Engine) processDayBoundary(ctx context.Context, userID string, gameDate
 	}
 	threshold := int(e.getConfigNum(ctx, "bankruptcy_negative_days_threshold", 30.0))
 	if cashAfter < 0 {
-		e.Pool.Exec(ctx, `UPDATE users SET consecutive_negative_days = COALESCE(consecutive_negative_days, 0) + 1,
-			recovery_streak_days = 0 WHERE id=$1`, userID)
+		if _, err := e.Pool.Exec(ctx, `UPDATE users SET consecutive_negative_days = COALESCE(consecutive_negative_days, 0) + 1,
+			recovery_streak_days = 0 WHERE id=$1`, userID); err != nil {
+			e.log().Error("sim: gagal menaikkan hari negatif", "user", userID, "error", err)
+			return
+		}
 		var consecNeg int
-		e.Pool.QueryRow(ctx, `SELECT COALESCE(consecutive_negative_days, 0) FROM users WHERE id=$1`, userID).Scan(&consecNeg)
+		if err := e.Pool.QueryRow(ctx, `SELECT COALESCE(consecutive_negative_days, 0) FROM users WHERE id=$1`, userID).Scan(&consecNeg); err != nil {
+			// Tidak tahu hitungannya: mengarang 0 akan menunda kebangkrutan tanpa
+			// batas, dan memicu kebangkrutan tanpa bukti sama buruknya.
+			e.log().Error("sim: gagal membaca hari negatif", "user", userID, "error", err)
+			return
+		}
 		if shouldBankruptOnNegativeDays(consecNeg, threshold) {
 			e.applyBankruptcy(ctx, userID)
 		}
 	} else {
-		e.Pool.Exec(ctx, `UPDATE users SET consecutive_negative_days = 0,
-			recovery_streak_days = COALESCE(recovery_streak_days, 0) + 1 WHERE id=$1`, userID)
+		if _, err := e.Pool.Exec(ctx, `UPDATE users SET consecutive_negative_days = 0,
+			recovery_streak_days = COALESCE(recovery_streak_days, 0) + 1 WHERE id=$1`, userID); err != nil {
+			// Reset yang gagal berarti hari negatif lama tetap menumpuk, dan pemain
+			// bisa dibangkrutkan beberapa hari kemudian atas data basi.
+			e.log().Error("sim: gagal mereset hari negatif", "user", userID, "error", err)
+		}
 	}
 }
 

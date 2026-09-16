@@ -236,8 +236,22 @@ Every item below must fail-then-pass with a DB-backed test once 0.4 lands.
       in 2.5's scope; the rest are unaudited.
 - [ ] **2.6** FE: one IFRS category classifier; single notification-refresh
       helper; 44 px tap targets.
-- [ ] **2.7** BE: wrap `applyBankruptcy` in one tx; guard bot-pricing nil rows;
-      small swallow fixes (`bots.go:483`, `simulation.go:471`).
+- [x] **2.7** `applyBankruptcy` now runs in one transaction with every step checked.
+      It was four bare `Exec` calls with the errors dropped, so a failure mid-way
+      left the player half-bankrupt — status `Bankrupt` while loans stayed `active`
+      and kept being serviced, or routes still operating. Failure now logs and rolls
+      back instead of half-applying. The day-boundary negative-day block got the same
+      treatment: increment, read-back and reset are checked; a failed read-back skips
+      the decision instead of inventing 0 (which would postpone bankruptcy forever or
+      trigger it without evidence); a failed reset is logged because stale negative
+      days would bankrupt the player days later.
+      `botHandlePricing` no longer ignores its two `Scan`s — a failed row scan leaves
+      `price=0`, which reads as "cheapest by a wide margin" and would raise a fare
+      from a phantom number, so the row is skipped; a failed competitor query also
+      skips rather than comparing against zeros; `rows.Err()` ends the loop before
+      stamping the review so a truncated iteration is retried. (The discarded query
+      error at `bots.go:483` was already fixed in 1.1b.) Statements re-run inside a
+      rolled-back transaction against prod to confirm they are valid as a set.
 
 ## Phase 3 — Structural refactors (breaking; one approved batch at a time)
 
