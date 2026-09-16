@@ -146,12 +146,13 @@ Every item below must fail-then-pass with a DB-backed test once 0.4 lands.
 - [x] **1.8b** 500 responses now carry a generic `internal error` message; the cause
       stays in the log. Client errors (400/404/409) keep their curated messages,
       and there are tests for both. Decided with the user (client-visible change).
-- [x] **1.9** `hq_airport_iata` no longer appears in the public competitor-insights
-      payload (struct field, SELECT and Scan all dropped) — it is one of the three
-      password-recovery factors, so exposing it publicly handed attackers a third
-      of the reset secret. The FE needed **no** change: the leaderboard model never
-      read the field (grep-verified). Regression test asserts the marshalled
-      payload contains no `hq_airport_iata`; before the fix it leaked `"CGK"`.
+- [x] **1.9** `hq_airport_iata` no longer appears in the competitor-insights payload
+      (struct field, SELECT and Scan all dropped) — `GET /leaderboard/competitors/{id}`
+      only requires a bearer token, so any logged-in player could read any
+      competitor's HQ airport, and that value is one of the three password-recovery
+      factors. The FE needed **no** change: the leaderboard model never read the
+      field (grep-verified). Regression test asserts the marshalled payload contains
+      no `hq_airport_iata`; before the fix it leaked `"CGK"`.
 - [x] **1.9b** `/auth/login` gained the same `WindowLimiter` guard as
       reset-password: 30 attempts/15 min per IP plus 10 per username, counted
       before the user lookup so attempts on unknown usernames still cost the

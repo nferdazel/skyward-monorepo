@@ -412,12 +412,12 @@ type CompetitorInsight struct {
 	RouteCount     int     `json:"route_count"`
 	MonthlyRevenue float64 `json:"monthly_revenue"`
 	OperStatus     string  `json:"operational_status"`
-	// HQAirportIATA SENGAJA tidak ada di sini. Endpoint ini publik (leaderboard),
+	// HQAirportIATA SENGAJA tidak ada di sini. Endpoint ini hanya butuh bearer
+	// token, jadi pemain mana pun yang login bisa membaca HQ kompetitor mana pun,
 	// sementara `hq_airport_iata` dipakai sebagai salah satu faktor pemulihan
-	// password (`validateRecoveryCredentials`, AUDIT-01). Selama ia ikut terkirim,
-	// satu dari tiga faktor rahasia itu bisa dibaca siapa pun. FE tidak pernah
-	// membaca field ini (model leaderboard hanya memakai monthly_revenue,
-	// fleet_breakdown, network_routes).
+	// password (`validateRecoveryCredentials`, AUDIT-01). FE tidak pernah membaca
+	// field ini (model leaderboard hanya memakai monthly_revenue, fleet_breakdown,
+	// network_routes).
 	DistressStage  *string `json:"distress_stage,omitempty"`
 	ConsecNegDays  *int    `json:"consecutive_negative_days,omitempty"`
 	RecoveryStreak *int    `json:"recovery_streak_days,omitempty"`
