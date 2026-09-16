@@ -89,7 +89,15 @@ func (e *Engine) ProcessLoanPayments(ctx context.Context, userID string, gameDat
 	if actorType == "" {
 		return
 	}
-	cash, _ := e.Ledger.GetBalance(ctx, userID)
+	cash, err := e.Ledger.GetBalance(ctx, userID)
+	if err != nil {
+		// Saldo tidak terbaca bukan berarti saldo nol. Dulu error ini dibuang:
+		// cash=0 membuat SEMUA pinjaman dianggap menunggak — denda, missed_payments
+		// naik, sampai default/grounding — hanya karena satu error baca.
+		e.log().Error("day boundary: gagal membaca saldo, servis pinjaman dilewati",
+			"error", err, "user", userID)
+		return
+	}
 
 	type loanRow struct {
 		ID               string
@@ -169,7 +177,14 @@ func (e *Engine) ProcessLoanPayments(ctx context.Context, userID string, gameDat
 
 // ProcessAircraftFinancingPayments — mirror process_aircraft_financing_payments.
 func (e *Engine) ProcessAircraftFinancingPayments(ctx context.Context, userID string, gameDate time.Time) {
-	cash, _ := e.Ledger.GetBalance(ctx, userID)
+	cash, err := e.Ledger.GetBalance(ctx, userID)
+	if err != nil {
+		// Lihat ProcessLoanPayments: error baca saldo tidak boleh berubah jadi
+		// tagihan menunggak.
+		e.log().Error("day boundary: gagal membaca saldo, servis financing dilewati",
+			"error", err, "user", userID)
+		return
+	}
 	type finRow struct {
 		ID               string
 		WeeklyPayment    float64

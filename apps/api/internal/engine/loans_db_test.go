@@ -163,6 +163,34 @@ func TestProcessLoanPayments_ProcessesEveryLoanDespiteNullMonthlyPayment(t *test
 	}
 }
 
+// TestProcessLoanPayments_SkipsServicingWhenBalanceUnreadable — regresi: saldo
+// tidak terbaca dulu diperlakukan seperti saldo nol (`cash, _ := GetBalance`),
+// sehingga SEMUA pinjaman user dianggap menunggak: denda 10%, `missed_payments`
+// naik, dan pada akhirnya default beserta grounding collateral.
+func TestProcessLoanPayments_SkipsServicingWhenBalanceUnreadable(t *testing.T) {
+	pool := testsupport.NewTestPool(t)
+	testsupport.Reset(t, pool)
+	ctx := context.Background()
+
+	user := testsupport.SeedUser(t, pool, "No Account Air", "CEO")
+	loan := seedLoan(t, pool, user, 1000, 500, 1)
+	// Tanpa akun operasi, GetBalance mengembalikan error — bukan saldo 0.
+	if _, err := pool.Exec(ctx, `DELETE FROM bank_accounts WHERE user_id=$1`, user); err != nil {
+		t.Fatalf("delete bank account: %v", err)
+	}
+
+	eng := New(pool, store.New(pool))
+	eng.ProcessLoanPayments(ctx, user, time.Now())
+
+	remaining, missed, _ := loanState(t, pool, loan)
+	if missed != 0 {
+		t.Fatalf("missed_payments = %d, want 0 (error baca saldo bukan tunggakan)", missed)
+	}
+	if remaining != 1000 {
+		t.Fatalf("remaining = %v, want 1000 (tidak boleh kena denda)", remaining)
+	}
+}
+
 // TestProcessLoanPayments_FailedPaymentDoesNotPenalizeNextLoan — regresi: dulu
 // error dari `UPDATE loans` diabaikan dan penanda `cash` lokal tetap dikurangi.
 // Postgres membatalkan seluruh transaksi begitu satu statement gagal, jadi
