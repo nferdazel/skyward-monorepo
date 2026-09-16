@@ -90,7 +90,7 @@ func main() {
 	defer wk.Stop()
 
 	mux := http.NewServeMux()
-	registerRoutes(ctx, mux, logger, cfg, pool, st, wk, hub)
+	registerRoutes(ctx, mux, logger, cfg, pool, st, wk, hub, eng)
 
 	// Middleware chain: recover (luar) → request-id → logging → CORS → rate limit → mux.
 	var h http.Handler = mux
@@ -128,7 +128,7 @@ func main() {
 }
 
 // registerRoutes — routing REST + middleware chain.
-func registerRoutes(ctx context.Context, mux *http.ServeMux, logger *slog.Logger, cfg config.Config, pool *pgxpool.Pool, st *store.Store, wk *worker.Worker, hub *realtime.Hub) {
+func registerRoutes(ctx context.Context, mux *http.ServeMux, logger *slog.Logger, cfg config.Config, pool *pgxpool.Pool, st *store.Store, wk *worker.Worker, hub *realtime.Hub, eng *engine.Engine) {
 	health := &handler.HealthHandler{Pool: pool, Worker: wk}
 	mux.Handle("GET /healthz", http.HandlerFunc(health.Healthz))
 	mux.Handle("GET /health", http.HandlerFunc(health.Healthz))
@@ -170,8 +170,10 @@ func registerRoutes(ctx context.Context, mux *http.ServeMux, logger *slog.Logger
 	mux.Handle("GET /bank/loans", guard(read.BankLoans))
 
 	// Mutasi (Fase 5) — fleet/routes/settings/bank writes.
-	eng := engine.New(pool, st)
-	eng.Logger = logger
+	// Memakai instance engine yang sama dengan worker: dua `engine.New` berarti
+	// masing-masing punya `tickMu` sendiri (guard AUDIT-09 jadi tidak menutup
+	// apa-apa untuk POST /admin/world/tick vs worker tick) dan instance mutasi
+	// kehilangan Hub yang sudah dipasang di instance worker.
 	mut := &handler.MutationHandler{Engine: eng, Hub: hub}
 	mux.Handle("POST /fleet/purchase", guard(mut.FleetPurchase))
 	mux.Handle("POST /fleet/lease", guard(mut.FleetLease))

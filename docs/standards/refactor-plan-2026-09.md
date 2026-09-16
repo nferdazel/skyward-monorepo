@@ -76,12 +76,33 @@ commit (same convention as `docs/product/roadmap.md`).
 
 Every item below must fail-then-pass with a DB-backed test once 0.4 lands.
 
-- [ ] **1.1** P0 — loan payment: check the `UPDATE loans` error inside the tx and
-      roll back; propagate servicing errors (`dayboundary.go:124,184`).
-- [ ] **1.2** Worker: `ticker.Reset(w.interval)` on the success path (prevents
-      permanent world-time acceleration) (`worker.go:140`).
-- [ ] **1.3** Single `*engine.Engine` in `main`, passed into `registerRoutes`
-      (restores the AUDIT-09 tick mutex) (`main.go:81,173`).
+- [x] **1.1** Loan servicing in `ProcessLoanPayments` / `ProcessAircraftFinancingPayments`
+      (`dayboundary.go`). The audit called the ignored `UPDATE loans` error a P0
+      fund-loss bug; **that framing is wrong** — Postgres aborts the whole
+      transaction when a statement fails, so `COMMIT` rolls back and no money
+      moves. Two real defects were found while proving it with a test:
+      (a) the ignored error also left the local `cash` counter decremented, so a
+      later loan for the same user was wrongly treated as unaffordable and took a
+      late fee; (b) **`rows.Scan` errors were ignored and `monthly_payment` is
+      nullable** — one NULL row made the scan fail, pgx closed the rows, and every
+      remaining loan for that user was silently skipped: never paid, never
+      penalised, never defaulted. Fixed by scanning into `*float64`, checking the
+      scan error, checking the `UPDATE` error (rollback + log) and logging
+      `rows.Err()`. Verified with four DB tests that fail-then-pass; prod has 2
+      active loans, 0 with NULL `monthly_payment`, so (b) was latent, not active.
+- [ ] **1.1b** Same class as 1.1: `bots.go` has 4 unchecked `rows.Scan` calls
+      (lines ~55, 151, 488, 732) over nullable columns; audit them for the same
+      silent iteration truncation.
+- [x] **1.2** Worker: `ticker.Reset` now happens on the success path too, via
+      `tickInterval(base, errors)` (`worker.go`). Previously the reset only ran in
+      the error branch, so the last backoff stuck permanently after recovery and
+      the world tick ran far faster than `tick_interval_seconds`. Unit-tested
+      (`tickInterval` is pure: base when healthy, exponential backoff capped at
+      60s when failing).
+- [x] **1.3** Single `*engine.Engine` in `main`, passed into `registerRoutes`
+      (`main.go`). Two `engine.New` calls meant two `tickMu` mutexes, so
+      `POST /admin/world/tick` could overlap the worker tick (AUDIT-09 guard was
+      a no-op), and the mutation engine never received `Hub`.
 - [ ] **1.4** Check `tx.Commit` in the fleet/bank financing paths
       (`fleet.go:360`, `bank.go:322`).
 - [ ] **1.5** Repay: malformed body must be 400, not "repay the whole loan"
