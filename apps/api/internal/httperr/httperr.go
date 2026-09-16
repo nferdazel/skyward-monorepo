@@ -73,16 +73,19 @@ var statusByCode = map[Code]int{
 
 // WriteError menulis error envelope JSON. Error non-httperr → 500.
 func WriteError(w http.ResponseWriter, logger *slog.Logger, err error) {
+	if logger == nil {
+		// Fallback: seluruh call site di handler mengirim nil, jadi sebelumnya
+		// 500 tidak pernah tercatat di mana pun — pesan generiknya sampai ke
+		// klien tanpa jejak di server. main.go memasang slog.SetDefault ke logger
+		// aplikasi, sehingga ini mengalir ke file log/journal yang sama.
+		logger = slog.Default()
+	}
 	var he *Error
 	if !asError(err, &he) {
-		if logger != nil {
-			logger.Error("unhandled error", "error", err)
-		}
+		logger.Error("unhandled error", "error", err)
 		he = Internal("internal error")
 	} else if he.Code == CodeInternal || he.Code == CodeDatabase {
-		if logger != nil {
-			logger.Error("server error", "code", he.Code, "message", he.Message, "cause", he.Err)
-		}
+		logger.Error("server error", "code", he.Code, "message", he.Message, "cause", he.Err)
 	}
 	status := statusByCode[he.Code]
 	if status == 0 {

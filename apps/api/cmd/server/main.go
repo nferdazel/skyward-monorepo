@@ -61,6 +61,10 @@ func main() {
 	logger := slog.New(slog.NewTextHandler(logOut, &slog.HandlerOptions{
 		Level: parseLogLevel(cfg.LogLevel),
 	}))
+	// Jadikan logger aplikasi sebagai default proses, supaya kode yang memakai
+	// slog.Default() (mis. httperr.WriteError saat handler mengirim logger nil)
+	// menulis ke tujuan yang sama, bukan stderr terpisah.
+	slog.SetDefault(logger)
 	if logCloser != nil {
 		defer func() { _ = logCloser() }()
 	}
