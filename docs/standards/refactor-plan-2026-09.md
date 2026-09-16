@@ -470,6 +470,16 @@ Each needs a short written proposal (blast radius + migration path + test plan).
 
 - [ ] **3.1** Server-owned route assessment (`GET /routes/assess`); delete the
       ~300 LOC of client-side economics in the planner.
+      **Proposal written 2026-09-16:**
+      [proposal-3.1-route-assess.md](proposal-3.1-route-assess.md). Verified
+      against code: 269 LOC measured (not estimated), 12+ `GameConstants` in the
+      planner are each labelled a fallback for an authoritative `game_config` key,
+      the client already fetches `/game-config` (and uses it for the HUD fuel
+      price) while the planner ignores it, and the server already owns the
+      GAME-25 model (`routeDailyDemand`, `allocateCabins`, `routeWeeklyProfit`,
+      `TickSnapshot`) with a hermetic test to copy. Awaiting approval; 5 open
+      questions, including whether the HTTP layer gets an interface for a fake
+      store (it has none today, and the DB-backed handler tests are gone).
 - [ ] **3.2** Unified mutation pipeline (`MutationRunner`) + push DTO knowledge
       out of cubits into gateways.
 - [ ] **3.3** Decompose the five god views; shrink backend god files.
