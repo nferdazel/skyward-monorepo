@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 
 import '../../../fleet/domain/fleet_models.dart';
 import '../../data/route_assessment_dto.dart';
+import '../../domain/route_assessment_mapping.dart';
 import '../../domain/route_models.dart';
 
 abstract class RoutesState {
@@ -12,8 +13,10 @@ abstract class RoutesDataState extends RoutesState {
   final List<UserRoute> routes;
   final List<Airport> airports;
   final List<UserFleetAircraft> availableAircraft;
-  final RouteMaintenancePreview? plannerMaintenancePreview;
-  final RouteMaintenancePreview? adjustmentMaintenancePreview;
+
+  /// Penilaian server untuk rute yang sedang disesuaikan di dialog adjustment.
+  /// `idle` berarti dialog belum meminta apa pun.
+  final RouteAssessmentView adjustmentAssessment;
 
   /// Penilaian server untuk rute yang sudah ada, dikunci per `route_id`
   /// (`GET /routes/assess/batch`). Ini angka yang dijalankan tick, jadi
@@ -26,8 +29,7 @@ abstract class RoutesDataState extends RoutesState {
     required this.routes,
     required this.airports,
     required this.availableAircraft,
-    this.plannerMaintenancePreview,
-    this.adjustmentMaintenancePreview,
+    this.adjustmentAssessment = const RouteAssessmentView.idle(),
     this.routeAssessments = const {},
   });
 }
@@ -51,8 +53,7 @@ class RoutesLoaded extends RoutesDataState with Equatable {
     required super.routes,
     required super.airports,
     required super.availableAircraft,
-    super.plannerMaintenancePreview,
-    super.adjustmentMaintenancePreview,
+    super.adjustmentAssessment,
     super.routeAssessments,
   }) : super();
 
@@ -61,8 +62,7 @@ class RoutesLoaded extends RoutesDataState with Equatable {
     routes,
     airports,
     availableAircraft,
-    plannerMaintenancePreview,
-    adjustmentMaintenancePreview,
+    adjustmentAssessment,
     routeAssessments,
   ];
 }
@@ -72,8 +72,7 @@ class RoutesActionLoading extends RoutesDataState with Equatable {
     required super.routes,
     required super.airports,
     required super.availableAircraft,
-    super.plannerMaintenancePreview,
-    super.adjustmentMaintenancePreview,
+    super.adjustmentAssessment,
     super.routeAssessments,
   });
 
@@ -82,8 +81,7 @@ class RoutesActionLoading extends RoutesDataState with Equatable {
     routes,
     airports,
     availableAircraft,
-    plannerMaintenancePreview,
-    adjustmentMaintenancePreview,
+    adjustmentAssessment,
     routeAssessments,
   ];
 }
@@ -96,8 +94,7 @@ class RoutesActionSuccess extends RoutesDataState with Equatable {
     required super.routes,
     required super.airports,
     required super.availableAircraft,
-    super.plannerMaintenancePreview,
-    super.adjustmentMaintenancePreview,
+    super.adjustmentAssessment,
     super.routeAssessments,
   });
 
@@ -106,8 +103,7 @@ class RoutesActionSuccess extends RoutesDataState with Equatable {
     routes,
     airports,
     availableAircraft,
-    plannerMaintenancePreview,
-    adjustmentMaintenancePreview,
+    adjustmentAssessment,
     routeAssessments,
     message,
   ];
@@ -124,8 +120,7 @@ class RoutesError extends RoutesDataState with Equatable {
     super.routes = const [],
     super.airports = const [],
     super.availableAircraft = const [],
-    super.plannerMaintenancePreview,
-    super.adjustmentMaintenancePreview,
+    super.adjustmentAssessment,
     super.routeAssessments,
   });
 
@@ -134,8 +129,7 @@ class RoutesError extends RoutesDataState with Equatable {
     routes,
     airports,
     availableAircraft,
-    plannerMaintenancePreview,
-    adjustmentMaintenancePreview,
+    adjustmentAssessment,
     routeAssessments,
     message,
     hasData,

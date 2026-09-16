@@ -22,7 +22,6 @@ import '../../../../presentation/widgets/app_info_strip.dart';
 import '../../../../presentation/widgets/app_labeled_value.dart';
 import '../../../../presentation/widgets/app_snackbar.dart';
 import '../../../../presentation/widgets/app_table_icon_action.dart';
-import '../../../../presentation/widgets/app_stat_text.dart';
 import '../../../../presentation/widgets/help_tooltip.dart';
 import '../../../../presentation/widgets/searchable_airport_dropdown.dart';
 import '../../../../presentation/widgets/tactile_button.dart';
@@ -35,6 +34,9 @@ import '../../../fleet/domain/fleet_models.dart';
 import '../../../fleet/presentation/cubit/fleet_cubit.dart';
 import '../../../fleet/presentation/cubit/fleet_state.dart';
 import '../../../simulation/presentation/cubit/simulation_cubit.dart';
+import '../../data/route_assessment_dto.dart';
+import '../../domain/route_assessment_mapping.dart';
+import '../widgets/route_adjustment_dialog.dart';
 import '../../domain/route_models.dart';
 import '../cubit/routes_cubit.dart';
 import '../cubit/routes_state.dart';
@@ -141,6 +143,7 @@ class _RoutesViewState extends State<RoutesView> {
         final routes = _getRoutes(state);
         final airports = _getAirports(state);
         final availableFleet = _getAvailableFleet(state);
+        final routeAssessments = _getRouteAssessments(state);
 
         return Stack(
           children: [
@@ -161,6 +164,7 @@ class _RoutesViewState extends State<RoutesView> {
                   availableFleet,
                   userId,
                   autoGroundingThreshold,
+                  routeAssessments,
                 ),
               ),
 
@@ -415,6 +419,7 @@ class _RoutesViewState extends State<RoutesView> {
     List<UserFleetAircraft> availableFleet,
     String userId,
     double autoGroundingThreshold,
+    Map<String, RoutePlanAssessmentDto> routeAssessments,
   ) {
     return Container(
       width: 260,
@@ -524,6 +529,7 @@ class _RoutesViewState extends State<RoutesView> {
                     isSelected,
                     autoGroundingThreshold,
                     userId,
+                    routeAssessments[route.id],
                   ),
                 );
               },
@@ -540,11 +546,13 @@ class _RoutesViewState extends State<RoutesView> {
     bool isSelected,
     double autoGroundingThreshold,
     String userId,
+    RoutePlanAssessmentDto? serverAssessment,
   ) {
     final hasAircraft = route.assignedAircraft != null;
     final isGrounded = !hasAircraft ||
         route.assignedAircraft!.isMaintenanceGrounded(autoGroundingThreshold);
-    final maintenance = route.buildMaintenancePreview(autoGroundingThreshold);
+    // Keausan datang dari server; tanpa data, rute tidak diklaim "PRESSURED".
+    final netWear = serverAssessment?.wear.netPerWeek ?? 0.0;
     final idealPrice = route.baseTicketPrice;
     final pricingRatio = route.ticketPrice / idealPrice;
 
@@ -553,7 +561,7 @@ class _RoutesViewState extends State<RoutesView> {
     if (isGrounded) {
       statusColor = AppTheme.error;
       statusLabel = AppStrings.groundedLabel;
-    } else if (maintenance.netHealthImpactPercent > 0) {
+    } else if (netWear > 0) {
       statusColor = AppTheme.warning;
       statusLabel = 'PRESSURED';
     } else {
@@ -573,6 +581,7 @@ class _RoutesViewState extends State<RoutesView> {
           route,
           AppFormatters.currency,
           autoGroundingThreshold,
+          serverAssessment,
         );
       },
       child: Container(
@@ -662,6 +671,7 @@ class _RoutesViewState extends State<RoutesView> {
                       route,
                       AppFormatters.currency,
                       autoGroundingThreshold,
+                      serverAssessment,
                     ),
                     color: AppTheme.textSecondary,
                     size: 32,
@@ -1223,18 +1233,36 @@ class _RoutesViewState extends State<RoutesView> {
     UserRoute route,
     NumberFormat currencyFormat,
     double autoGroundingThreshold,
+    RoutePlanAssessmentDto? serverAssessment,
   ) {
-    final maintenance = route.buildMaintenancePreview(autoGroundingThreshold);
-    final assessment = route.assignedAircraft == null
+    final aircraft = route.assignedAircraft;
+    final isGrounded =
+        aircraft != null &&
+        aircraft.isMaintenanceGrounded(autoGroundingThreshold);
+    // Tanpa data server, tampilkan sebagai belum diketahui: jam idle 0 dan
+    // dampak '--' lewat jalur requiresAircraftAssignment. Angka tidak dikarang.
+    final maintenance = serverAssessment == null
+        ? RouteMaintenancePreview(
+            allocatedFlightsPerWeek: 0,
+            maxFlightsPerWeek: 0,
+            maintenanceHoursPerWeek: 0,
+            grossDamagePercent: 0,
+            selfHealingCreditPercent: 0,
+            netHealthImpactPercent: 0,
+            isGrounded: isGrounded,
+            requiresAircraftAssignment: true,
+          )
+        : maintenancePreviewFromServer(
+            dto: serverAssessment,
+            isGrounded: isGrounded,
+            requiresAircraftAssignment: aircraft == null,
+          );
+    final assessment = serverAssessment == null || aircraft == null
         ? null
-        : UserRoute.buildPlanningAssessment(
-            origin: route.origin,
-            destination: route.destination,
-            distanceKm: route.distanceKm,
-            ticketPrice: route.ticketPrice,
-            flightsPerWeek: route.flightsPerWeek,
-            availableAircraft: [route.assignedAircraft!],
-            autoGroundingThreshold: autoGroundingThreshold,
+        : planningAssessmentFromServer(
+            dto: serverAssessment,
+            recommendedAircraft: aircraft,
+            isGrounded: isGrounded,
           );
 
     showDialog(
@@ -1388,308 +1416,16 @@ class _RoutesViewState extends State<RoutesView> {
     NumberFormat currencyFormat,
     double autoGroundingThreshold,
   ) {
-    final priceController = TextEditingController(
-      text: route.ticketPrice.toStringAsFixed(0),
-    );
     final routesCubit = context.read<RoutesCubit>();
-    routesCubit.startAdjustmentMaintenancePreview(
-      route: route,
-      autoGroundingThreshold: autoGroundingThreshold,
-    );
-
     showDialog(
       context: context,
-      builder: (dialogCtx) {
-        return AppDialogShell(
-          title: AppStrings.adjustConnectionParameters,
-          content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${AppStrings.routePricingGuidance}${currencyFormat.format(route.baseTicketPrice)}\n${AppStrings.routePricingGuidanceSuffix}',
-                  style: AppTypography.captionRegular.copyWith(height: 1.4),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                if (route.assignedAircraft != null) ...[
-                  _buildAdjustmentAssessmentCard(
-                    route: route,
-                    autoGroundingThreshold: autoGroundingThreshold,
-                    currencyFormat: currencyFormat,
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                ],
-                TextField(
-                  controller: priceController,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: false,
-                  ),
-                  style: AppTypography.badgeText.copyWith(
-                    color: AppTheme.textPrimary,
-                    letterSpacing: AppTypography.spacingNone,
-                  ),
-                  decoration: InputDecoration(
-                    labelText: AppStrings.ticketPriceInputLabel,
-                    labelStyle: AppTypography.captionRegular,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.md,
-                      vertical: AppSpacing.md,
-                    ),
-                    isDense: true,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                BlocBuilder<RoutesCubit, RoutesState>(
-                  bloc: routesCubit,
-                  buildWhen: (prev, cur) {
-                    final p = prev is RoutesDataState
-                        ? prev.adjustmentMaintenancePreview
-                        : null;
-                    final c = cur is RoutesDataState
-                        ? cur.adjustmentMaintenancePreview
-                        : null;
-                    return p != c;
-                  },
-                  builder: (context, routesState) {
-                    final preview = routesState is RoutesDataState
-                        ? routesState.adjustmentMaintenancePreview
-                        : null;
-                    final sliderValue =
-                        preview?.allocatedFlightsPerWeek.toDouble() ??
-                        route.flightsPerWeek.toDouble();
-                    final maxFlights =
-                        preview?.maxFlightsPerWeek ??
-                        route.getMaximumWeeklyFlights();
-                    final effectiveMax = maxFlights > 0
-                        ? maxFlights.toDouble()
-                        : GameConstants.absoluteMaxWeeklyFlights.toDouble();
-
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          AppStrings.weeklyFlightFrequencyLabel,
-                          style: AppTypography.captionRegular,
-                        ),
-                        const SizedBox(height: AppSpacing.xs),
-                        Container(
-                          decoration: BoxDecoration(
-                            color: AppTheme.background,
-                            border: Border.all(
-                              color: AppTheme.border,
-                              width: 0.5,
-                            ),
-                            borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
-                          ),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.sm,
-                            vertical: AppSpacing.sm,
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    AppStrings.weeklyFrequencyHint,
-                                    style: AppTypography.captionRegular
-                                        .copyWith(
-                                          color: AppTheme.textSecondary,
-                                        ),
-                                  ),
-                                  Text(
-                                    '${sliderValue.round()}',
-                                    style: AppTypography.buttonText.copyWith(
-                                      color: AppTheme.primary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Slider(
-                                value: sliderValue.clamp(1, effectiveMax),
-                                min: 1,
-                                max: effectiveMax,
-                                divisions: effectiveMax > 1
-                                    ? effectiveMax.round() - 1
-                                    : 1,
-                                label: sliderValue.round().toString(),
-                                onChanged: (value) {
-                                  routesCubit
-                                      .updateAdjustmentMaintenancePreview(
-                                        route: route,
-                                        flightsPerWeek: value.round(),
-                                        autoGroundingThreshold:
-                                            autoGroundingThreshold,
-                                      );
-                                },
-                              ),
-                              Text(
-                                _buildAdjustmentMaintenanceCopy(
-                                  preview,
-                                  maxFlights,
-                                ),
-                                style: AppTypography.captionRegular.copyWith(
-                                  color: AppTheme.textSecondary,
-                                  height: 1.35,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ],
-            ),
-          actions: Row(
-            children: [
-              Expanded(
-                child: AppButton(
-                  text: AppStrings.cancelLabel,
-                  onPressed: () => Navigator.pop(dialogCtx),
-                  type: AppButtonType.secondary,
-                  height: 40,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: AppButton(
-                  text: AppStrings.saveAdjustments,
-                  onPressed: () async {
-                    final priceText = priceController.text.trim();
-                    final price = double.tryParse(priceText);
-                    if (price == null || price <= 0) {
-                      AppSnackBar.showError(
-                        context,
-                        AppStrings.invalidTicketPriceError,
-                      );
-                      return;
-                    }
-
-                    final preview = routesCubit.state is RoutesDataState
-                        ? (routesCubit.state as RoutesDataState)
-                              .adjustmentMaintenancePreview
-                        : null;
-                    final freq =
-                        preview?.allocatedFlightsPerWeek ??
-                        route.flightsPerWeek;
-
-                    final maxFreq = route.getMaximumWeeklyFlights();
-                    if (maxFreq > 0 && freq > maxFreq) {
-                      AppSnackBar.showError(
-                        context,
-                        '${AppStrings.frequencyExceedsPhysicalLimitPrefix}$maxFreq${AppStrings.frequencyExceedsPhysicalLimitMiddle}${GameConstants.totalWeeklyHoursCap.toStringAsFixed(0)}${AppStrings.frequencyExceedsPhysicalLimitSuffix}',
-                      );
-                      return;
-                    }
-
-                    Navigator.pop(dialogCtx);
-                    await routesCubit.updateRouteFrequencyAndPrice(
-                      routeId: route.id,
-                      ticketPrice: price,
-                      flightsPerWeek: freq,
-                      userId: userId,
-                    );
-                  },
-                  height: 40,
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    ).then((_) => routesCubit.clearAdjustmentMaintenancePreview());
-  }
-
-  String _buildAdjustmentMaintenanceCopy(
-    RouteMaintenancePreview? preview,
-    int maxFlights,
-  ) {
-    if (preview == null || preview.requiresAircraftAssignment) {
-      final capLabel = maxFlights > 0 ? '$maxFlights' : 'N/A';
-      return '${AppStrings.weeklyFrequencyHelperPrefix}$capLabel${AppStrings.weeklyFrequencyHelperSuffix} ${AppStrings.maintenancePreviewNeedsAssignment}';
-    }
-    if (preview.isGrounded) {
-      return AppStrings.maintenancePreviewGrounded;
-    }
-    return '${AppStrings.maintenancePreviewPrefix}${preview.maintenanceHoursPerWeek.toStringAsFixed(1)}'
-        '${AppStrings.maintenancePreviewMiddle}${preview.netHealthImpactPercent.toStringAsFixed(1)}%';
-  }
-
-  Widget _buildAdjustmentAssessmentCard({
-    required UserRoute route,
-    required double autoGroundingThreshold,
-    required NumberFormat currencyFormat,
-  }) {
-    final assessment = UserRoute.buildPlanningAssessment(
-      origin: route.origin,
-      destination: route.destination,
-      distanceKm: route.distanceKm,
-      ticketPrice: route.ticketPrice,
-      flightsPerWeek: route.flightsPerWeek,
-      availableAircraft: route.assignedAircraft == null
-          ? const []
-          : [route.assignedAircraft!],
-      autoGroundingThreshold: autoGroundingThreshold,
-    );
-
-    return AppCard(
-      backgroundColor: AppTheme.background,
-      borderColor: _viabilityColor(assessment.viability).withValues(alpha: 0.22),
-      padding: const EdgeInsets.all(AppSpacing.sm),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            AppStrings.plannerAdjustmentBoard,
-            style: AppTypography.badgeText.copyWith(
-              color: _viabilityColor(assessment.viability),
-              letterSpacing: AppTypography.spacingSection,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Wrap(
-            spacing: AppSpacing.lg,
-            runSpacing: AppSpacing.xs,
-            children: [
-              AppStatText(
-                label: AppStrings.viableRouteLabel,
-                value: _viabilityLabel(assessment.viability),
-                valueColor: _viabilityColor(assessment.viability),
-              ),
-              AppStatText(
-                label: AppStrings.projectedContributionLabel,
-                value: currencyFormat.format(assessment.weeklyContribution),
-                valueColor: assessment.weeklyContribution > 0
-                    ? AppTheme.success
-                    : AppTheme.error,
-              ),
-              AppStatText(
-                label: AppStrings.targetScheduleCapLabel,
-                value:
-                    '${assessment.weeklyFlights}/${assessment.maxWeeklyFlights > 0 ? assessment.maxWeeklyFlights : GameConstants.absoluteMaxWeeklyFlights}${AppStrings.perWeekSuffix}',
-                valueColor:
-                    assessment.maxWeeklyFlights > 0 &&
-                        assessment.weeklyFlights >=
-                            (assessment.maxWeeklyFlights * 0.9)
-                    ? AppTheme.warning
-                    : AppTheme.textPrimary,
-              ),
-              AppStatText(
-                label: AppStrings.maintenanceImpactLabel,
-                value: '${assessment.netWearPerWeek.toStringAsFixed(1)}%',
-                valueColor: assessment.netWearPerWeek > 0
-                    ? AppTheme.warning
-                    : AppTheme.success,
-              ),
-            ],
-          ),
-        ],
+      builder: (_) => RouteAdjustmentDialog(
+        route: route,
+        userId: userId,
+        currencyFormat: currencyFormat,
+        autoGroundingThreshold: autoGroundingThreshold,
       ),
-    );
+    ).then((_) => routesCubit.clearAdjustmentAssessment());
   }
 
   void _confirmCloseRoute(
@@ -1949,17 +1685,11 @@ class _RoutesViewState extends State<RoutesView> {
     return [];
   }
 
-  Color _viabilityColor(RouteViabilityBand viability) {
-    switch (viability) {
-      case RouteViabilityBand.strong:
-        return AppTheme.success;
-      case RouteViabilityBand.workable:
-        return AppTheme.warning;
-      case RouteViabilityBand.weak:
-        return AppTheme.error;
-      case RouteViabilityBand.blocked:
-        return AppTheme.error;
-    }
+  /// Penilaian server per `route_id` (`GET /routes/assess/batch`). Kosong
+  /// berarti belum diketahui, dan UI tidak boleh mengarang angkanya.
+  Map<String, RoutePlanAssessmentDto> _getRouteAssessments(RoutesState state) {
+    if (state is RoutesDataState) return state.routeAssessments;
+    return const {};
   }
 
   Color _getRouteColor(UserRoute route) {
@@ -1970,19 +1700,6 @@ class _RoutesViewState extends State<RoutesView> {
     if (priceRatio <= 1.05) return AppTheme.success;
     if (priceRatio <= 1.20) return AppTheme.warning;
     return AppTheme.error;
-  }
-
-  String _viabilityLabel(RouteViabilityBand viability) {
-    switch (viability) {
-      case RouteViabilityBand.strong:
-        return AppStrings.viabilityStrongLabel;
-      case RouteViabilityBand.workable:
-        return AppStrings.viabilityWorkableLabel;
-      case RouteViabilityBand.weak:
-        return AppStrings.viabilityWeakLabel;
-      case RouteViabilityBand.blocked:
-        return AppStrings.viabilityBlockedLabel;
-    }
   }
 
   List<Polyline> _buildPreviewLine(int arcSteps) {

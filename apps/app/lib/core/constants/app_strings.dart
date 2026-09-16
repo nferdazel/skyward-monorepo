@@ -589,6 +589,9 @@ class AppStrings {
       'Aircraft Grounded: Self-healing disabled. Paid maintenance required.';
   static const String maintenancePreviewNeedsAssignment =
       'Assign an aircraft to preview maintenance slot recovery.';
+  static const String assessmentUnavailableLabel = 'Assessment unavailable.';
+  static const String assessmentEstimateLabel =
+      'Showing the last result while this one is checked.';
   static const String invalidTicketPriceError =
       'Please enter a valid ticket price greater than 0.';
   static const String invalidWeeklyFrequencyPrefix =

@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:skyward/features/routes/data/route_assessment_dto.dart';
 import 'package:skyward/features/routes/data/routes_gateway.dart';
+import 'package:skyward/features/routes/domain/route_assessment_mapping.dart';
 import 'package:skyward/features/routes/domain/route_models.dart';
 import 'package:skyward/features/routes/presentation/cubit/routes_cubit.dart';
 import 'package:skyward/features/routes/presentation/cubit/routes_state.dart';
@@ -89,6 +90,7 @@ class MockRoutesGateway implements RoutesGateway {
 
   RouteAssessResultDto? assessToReturn;
   bool assessShouldThrow = false;
+  int assessCalls = 0;
   Map<String, RoutePlanAssessmentDto> assessmentsToReturn = const {};
   bool assessmentsShouldThrow = false;
 
@@ -97,7 +99,10 @@ class MockRoutesGateway implements RoutesGateway {
     String userId,
   ) async {
     if (assessmentsShouldThrow) {
-      throw const RoutesGatewayException('Test batch error', 'loadRouteAssessments');
+      throw const RoutesGatewayException(
+        'Test batch error',
+        'loadRouteAssessments',
+      );
     }
     return assessmentsToReturn;
   }
@@ -110,6 +115,7 @@ class MockRoutesGateway implements RoutesGateway {
     required int flightsPerWeek,
     String? aircraftId,
   }) async {
+    assessCalls++;
     if (assessShouldThrow) {
       throw const RoutesGatewayException('Test assess error', 'assessRoute');
     }
@@ -1016,6 +1022,143 @@ void main() {
         // Hasil terakhir tidak dihapus — UI boleh menandainya "perkiraan terakhir".
         expect(cubit.lastRouteAssessment?.best?.aircraftId, 'fleet-1');
 
+        await cubit.close();
+      });
+    });
+
+    // =========================================================================
+    // adjustment assessment (async, dari server)
+    // =========================================================================
+
+    group('adjustmentAssessment', () {
+      RouteAssessResultDto result(double contribution) =>
+          RouteAssessResultDto.fromJson({
+            'origin': 'CGK',
+            'destination': 'SIN',
+            'aircraft': [
+              {
+                'aircraft_id': 'fleet-1',
+                'allocated_flights_per_week': 14,
+                'max_weekly_flights': 20,
+                'weekly_contribution': contribution,
+              },
+            ],
+          });
+
+      UserRoute routeWithAircraft() => UserRoute.fromMap({
+        'id': 'route-1',
+        'origin_iata': 'CGK',
+        'destination_iata': 'SIN',
+        'distance_km': 895.34,
+        'ticket_price': 150.0,
+        'assigned_aircraft_id': 'fleet-1',
+        'flights_per_week': 14,
+        'origin': _mockAirportCgk,
+        'destination': _mockAirportSin,
+        'fleet_aircraft': _mockFleetEntry,
+      });
+
+      test('start mengambil penilaian server dan menyimpannya', () async {
+        gateway.assessToReturn = result(275567.7);
+        final cubit = RoutesCubit(gateway: gateway);
+
+        cubit.startAdjustmentAssessment(
+          route: routeWithAircraft(),
+          flightsPerWeek: 14,
+          ticketPrice: 150.0,
+        );
+        expect(cubit.adjustmentAssessment.status, AssessmentStatus.loading);
+
+        // Beri kesempatan future gateway selesai.
+        await Future<void>.delayed(Duration.zero);
+
+        expect(cubit.adjustmentAssessment.status, AssessmentStatus.ready);
+        expect(
+          cubit.adjustmentAssessment.assessment!.weeklyContribution,
+          closeTo(275567.7, 1e-6),
+        );
+        await cubit.close();
+      });
+
+      test('gagal: status unavailable dan hasil lama jadi perkiraan', () async {
+        gateway.assessToReturn = result(100.0);
+        final cubit = RoutesCubit(gateway: gateway);
+
+        cubit.startAdjustmentAssessment(
+          route: routeWithAircraft(),
+          flightsPerWeek: 14,
+          ticketPrice: 150.0,
+        );
+        await Future<void>.delayed(Duration.zero);
+        expect(cubit.adjustmentAssessment.isEstimate, isFalse);
+
+        gateway.assessShouldThrow = true;
+        cubit.startAdjustmentAssessment(
+          route: routeWithAircraft(),
+          flightsPerWeek: 16,
+          ticketPrice: 150.0,
+        );
+        await Future<void>.delayed(Duration.zero);
+
+        final view = cubit.adjustmentAssessment;
+        expect(view.status, AssessmentStatus.unavailable);
+        expect(view.isEstimate, isTrue);
+        expect(view.hasNumbers, isTrue);
+        expect(view.error, contains('Test assess error'));
+        await cubit.close();
+      });
+
+      test('gagal tanpa hasil lama adalah kegagalan kosong', () async {
+        gateway.assessShouldThrow = true;
+        final cubit = RoutesCubit(gateway: gateway);
+
+        cubit.startAdjustmentAssessment(
+          route: routeWithAircraft(),
+          flightsPerWeek: 14,
+          ticketPrice: 150.0,
+        );
+        await Future<void>.delayed(Duration.zero);
+
+        expect(cubit.adjustmentAssessment.isBlankFailure, isTrue);
+        await cubit.close();
+      });
+
+      test('schedule menunda permintaan: geseran cepat jadi satu panggilan',
+          () async {
+        gateway.assessToReturn = result(1.0);
+        final cubit = RoutesCubit(gateway: gateway);
+
+        for (final f in [15, 16, 17, 18]) {
+          cubit.scheduleAdjustmentAssessment(
+            route: routeWithAircraft(),
+            flightsPerWeek: f,
+            ticketPrice: 150.0,
+          );
+        }
+
+        // Selama jeda debounce belum lewat, belum ada panggilan.
+        expect(gateway.assessCalls, 0);
+
+        await Future<void>.delayed(const Duration(milliseconds: 400));
+        expect(gateway.assessCalls, 1);
+        await cubit.close();
+      });
+
+      test('clear mengembalikan ke idle dan membatalkan permintaan tertunda',
+          () async {
+        gateway.assessToReturn = result(1.0);
+        final cubit = RoutesCubit(gateway: gateway);
+
+        cubit.scheduleAdjustmentAssessment(
+          route: routeWithAircraft(),
+          flightsPerWeek: 15,
+          ticketPrice: 150.0,
+        );
+        cubit.clearAdjustmentAssessment();
+
+        expect(cubit.adjustmentAssessment.status, AssessmentStatus.idle);
+        await Future<void>.delayed(const Duration(milliseconds: 400));
+        expect(gateway.assessCalls, 0);
         await cubit.close();
       });
     });

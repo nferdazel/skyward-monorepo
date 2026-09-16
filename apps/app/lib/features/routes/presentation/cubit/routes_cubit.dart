@@ -21,6 +21,7 @@ import '../../../simulation/presentation/cubit/simulation_cubit.dart';
 import '../../data/route_assessment_dto.dart';
 import '../../data/routes_gateway.dart';
 import '../../domain/route_assessment_diff.dart';
+import '../../domain/route_assessment_mapping.dart';
 import '../../domain/route_models.dart';
 import 'routes_state.dart';
 
@@ -35,8 +36,8 @@ class RoutesCubit extends Cubit<RoutesState>
   List<Airport> _cachedAirports = [];
   bool _airportsLoaded = false;
   List<UserFleetAircraft> _cachedAvailableAircraft = [];
-  RouteMaintenancePreview? _plannerMaintenancePreview;
-  RouteMaintenancePreview? _adjustmentMaintenancePreview;
+  RouteAssessmentView _adjustmentAssessment = const RouteAssessmentView.idle();
+  Timer? _adjustmentDebounce;
   RouteAssessResultDto? _lastRouteAssessment;
   String? _routeAssessmentError;
   Map<String, RoutePlanAssessmentDto> _routeAssessments = const {};
@@ -53,8 +54,7 @@ class RoutesCubit extends Cubit<RoutesState>
       routes: List<UserRoute>.from(_cachedRoutes),
       airports: List<Airport>.from(_cachedAirports),
       availableAircraft: List<UserFleetAircraft>.from(_cachedAvailableAircraft),
-      plannerMaintenancePreview: _plannerMaintenancePreview,
-      adjustmentMaintenancePreview: _adjustmentMaintenancePreview,
+      adjustmentAssessment: _adjustmentAssessment,
       routeAssessments: _routeAssessments,
     );
   }
@@ -68,8 +68,7 @@ class RoutesCubit extends Cubit<RoutesState>
         availableAircraft: List<UserFleetAircraft>.from(
           _cachedAvailableAircraft,
         ),
-        plannerMaintenancePreview: _plannerMaintenancePreview,
-        adjustmentMaintenancePreview: _adjustmentMaintenancePreview,
+        adjustmentAssessment: _adjustmentAssessment,
         routeAssessments: _routeAssessments,
       ),
     );
@@ -98,8 +97,7 @@ class RoutesCubit extends Cubit<RoutesState>
         routes: snapshot.routes,
         airports: snapshot.airports,
         availableAircraft: snapshot.availableAircraft,
-        plannerMaintenancePreview: snapshot.plannerMaintenancePreview,
-        adjustmentMaintenancePreview: snapshot.adjustmentMaintenancePreview,
+        adjustmentAssessment: snapshot.adjustmentAssessment,
         routeAssessments: snapshot.routeAssessments,
       ),
       action: rpcCall,
@@ -124,8 +122,7 @@ class RoutesCubit extends Cubit<RoutesState>
               availableAircraft: List<UserFleetAircraft>.from(
                 _cachedAvailableAircraft,
               ),
-              plannerMaintenancePreview: _plannerMaintenancePreview,
-              adjustmentMaintenancePreview: _adjustmentMaintenancePreview,
+              adjustmentAssessment: _adjustmentAssessment,
               routeAssessments: _routeAssessments,
             ),
           );
@@ -141,8 +138,7 @@ class RoutesCubit extends Cubit<RoutesState>
                 routes: snapshot.routes,
                 airports: snapshot.airports,
                 availableAircraft: snapshot.availableAircraft,
-                plannerMaintenancePreview: snapshot.plannerMaintenancePreview,
-                adjustmentMaintenancePreview: snapshot.adjustmentMaintenancePreview,
+                adjustmentAssessment: snapshot.adjustmentAssessment,
                 routeAssessments: snapshot.routeAssessments,
               ),
             );
@@ -157,46 +153,11 @@ class RoutesCubit extends Cubit<RoutesState>
         routes: snapshot.routes,
         airports: snapshot.airports,
         availableAircraft: snapshot.availableAircraft,
-        plannerMaintenancePreview: snapshot.plannerMaintenancePreview,
-        adjustmentMaintenancePreview: snapshot.adjustmentMaintenancePreview,
+        adjustmentAssessment: snapshot.adjustmentAssessment,
         routeAssessments: snapshot.routeAssessments,
       ),
       onAfterError: _emitLoaded,
     );
-  }
-
-  void updatePlannerMaintenancePreview({
-    required double distanceKm,
-    int? flightsPerWeek,
-    required double autoGroundingThreshold,
-  }) {
-    final currentFlights =
-        flightsPerWeek ??
-        _plannerMaintenancePreview?.allocatedFlightsPerWeek ??
-        GameConstants.defaultWeeklyFlights;
-    final nextPreview = UserRoute.buildMaintenancePreviewForSchedule(
-      distanceKm: distanceKm,
-      flightsPerWeek: currentFlights,
-      aircraft: null,
-      autoGroundingThreshold: autoGroundingThreshold,
-    );
-    if (_samePreview(_plannerMaintenancePreview, nextPreview)) {
-      return;
-    }
-    _plannerMaintenancePreview = nextPreview;
-    if (state is RoutesDataState) {
-      _emitLoaded();
-    }
-  }
-
-  void clearPlannerMaintenancePreview() {
-    if (_plannerMaintenancePreview == null) {
-      return;
-    }
-    _plannerMaintenancePreview = null;
-    if (state is RoutesDataState) {
-      _emitLoaded();
-    }
   }
 
   /// Hasil penilaian server yang terakhir berhasil, dipakai sebagai
@@ -292,57 +253,96 @@ class RoutesCubit extends Cubit<RoutesState>
     }
   }
 
-  bool _samePreview(
-    RouteMaintenancePreview? left,
-    RouteMaintenancePreview? right,
-  ) {
-    if (identical(left, right)) return true;
-    if (left == null || right == null) return false;
-    return left.allocatedFlightsPerWeek == right.allocatedFlightsPerWeek &&
-        left.maxFlightsPerWeek == right.maxFlightsPerWeek &&
-        left.maintenanceHoursPerWeek == right.maintenanceHoursPerWeek &&
-        left.grossDamagePercent == right.grossDamagePercent &&
-        left.selfHealingCreditPercent == right.selfHealingCreditPercent &&
-        left.netHealthImpactPercent == right.netHealthImpactPercent &&
-        left.isGrounded == right.isGrounded &&
-        left.requiresAircraftAssignment == right.requiresAircraftAssignment;
-  }
+  /// Penilaian rute yang sedang disesuaikan, dari server.
+  RouteAssessmentView get adjustmentAssessment => _adjustmentAssessment;
 
-  void startAdjustmentMaintenancePreview({
-    required UserRoute route,
-    required double autoGroundingThreshold,
-  }) {
-    _adjustmentMaintenancePreview =
-        UserRoute.buildMaintenancePreviewForSchedule(
-          distanceKm: route.distanceKm,
-          flightsPerWeek: route.flightsPerWeek,
-          aircraft: route.assignedAircraft,
-          autoGroundingThreshold: autoGroundingThreshold,
-        );
-    if (state is RoutesDataState) {
-      _emitLoaded();
-    }
-  }
-
-  void updateAdjustmentMaintenancePreview({
+  /// Buka dialog adjustment: nilai jadwal saat ini.
+  void startAdjustmentAssessment({
     required UserRoute route,
     required int flightsPerWeek,
-    required double autoGroundingThreshold,
+    required double ticketPrice,
   }) {
-    _adjustmentMaintenancePreview =
-        UserRoute.buildMaintenancePreviewForSchedule(
-          distanceKm: route.distanceKm,
-          flightsPerWeek: flightsPerWeek,
-          aircraft: route.assignedAircraft,
-          autoGroundingThreshold: autoGroundingThreshold,
-        );
+    _adjustmentDebounce?.cancel();
+    _requestAdjustmentAssessment(
+      route: route,
+      flightsPerWeek: flightsPerWeek,
+      ticketPrice: ticketPrice,
+    );
+  }
+
+  /// Slider bergerak: tunda sebentar supaya geseran cepat tidak menghasilkan
+  /// satu permintaan per frame. Angka lama tetap tampil sambil ditandai
+  /// perkiraan, jadi UI tidak berkedip ke kosong.
+  void scheduleAdjustmentAssessment({
+    required UserRoute route,
+    required int flightsPerWeek,
+    required double ticketPrice,
+  }) {
+    _adjustmentDebounce?.cancel();
+    _adjustmentAssessment = RouteAssessmentView.loading(
+      previous: _adjustmentAssessment.assessment,
+    );
+    if (state is RoutesDataState) {
+      _emitLoaded();
+    }
+    _adjustmentDebounce = Timer(const Duration(milliseconds: 300), () {
+      _requestAdjustmentAssessment(
+        route: route,
+        flightsPerWeek: flightsPerWeek,
+        ticketPrice: ticketPrice,
+      );
+    });
+  }
+
+  void clearAdjustmentAssessment() {
+    _adjustmentDebounce?.cancel();
+    _adjustmentAssessment = const RouteAssessmentView.idle();
     if (state is RoutesDataState) {
       _emitLoaded();
     }
   }
 
-  void clearAdjustmentMaintenancePreview() {
-    _adjustmentMaintenancePreview = null;
+  Future<void> _requestAdjustmentAssessment({
+    required UserRoute route,
+    required int flightsPerWeek,
+    required double ticketPrice,
+  }) async {
+    final previous = _adjustmentAssessment.assessment;
+    _adjustmentAssessment = RouteAssessmentView.loading(previous: previous);
+    if (state is RoutesDataState) {
+      _emitLoaded();
+    }
+
+    RouteAssessmentView next;
+    try {
+      final result = await _gateway.assessRoute(
+        originIata: route.originIata,
+        destinationIata: route.destinationIata,
+        ticketPrice: ticketPrice,
+        flightsPerWeek: flightsPerWeek,
+        aircraftId: route.assignedAircraftId,
+      );
+      final best = result.best;
+      next = best == null
+          ? RouteAssessmentView.unavailable(
+              lastSuccessful: previous,
+              error: AppStrings.maintenancePreviewNeedsAssignment,
+            )
+          : RouteAssessmentView.ready(best);
+    } on RoutesGatewayException catch (e) {
+      next = RouteAssessmentView.unavailable(
+        lastSuccessful: previous,
+        error: e.message,
+      );
+    } catch (e) {
+      next = RouteAssessmentView.unavailable(
+        lastSuccessful: previous,
+        error: e.toString(),
+      );
+    }
+
+    if (isClosed) return;
+    _adjustmentAssessment = next;
     if (state is RoutesDataState) {
       _emitLoaded();
     }
@@ -360,6 +360,7 @@ class RoutesCubit extends Cubit<RoutesState>
   @override
   Future<void> close() async {
     disposeReactivity();
+    _adjustmentDebounce?.cancel();
     _realtimeRefreshDebounce?.cancel();
     disposeRealtime();
     return super.close();
@@ -477,8 +478,7 @@ class RoutesCubit extends Cubit<RoutesState>
           routes: routes,
           airports: airports,
           availableAircraft: availableAircraft,
-          plannerMaintenancePreview: _plannerMaintenancePreview,
-          adjustmentMaintenancePreview: _adjustmentMaintenancePreview,
+          adjustmentAssessment: _adjustmentAssessment,
           routeAssessments: _routeAssessments,
         ),
       );
@@ -499,8 +499,7 @@ class RoutesCubit extends Cubit<RoutesState>
           availableAircraft: List<UserFleetAircraft>.from(
             _cachedAvailableAircraft,
           ),
-          plannerMaintenancePreview: _plannerMaintenancePreview,
-          adjustmentMaintenancePreview: _adjustmentMaintenancePreview,
+          adjustmentAssessment: _adjustmentAssessment,
           routeAssessments: _routeAssessments,
         ),
       );

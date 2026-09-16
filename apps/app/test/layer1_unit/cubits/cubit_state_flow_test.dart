@@ -19,6 +19,7 @@ import 'package:skyward/features/bank/domain/bank_transaction_model.dart';
 import 'package:skyward/features/fleet/domain/fleet_models.dart';
 import 'package:skyward/features/leaderboard/domain/leaderboard_models.dart';
 import 'package:skyward/features/leaderboard/presentation/cubit/leaderboard_state.dart';
+import 'package:skyward/features/routes/domain/route_assessment_mapping.dart';
 import 'package:skyward/features/routes/domain/route_models.dart';
 
 /// Minimal no-network gateway stub for fleet state-flow tests.
@@ -385,29 +386,27 @@ void main() {
       });
 
       test(
-        'maintenance preview state is preserved inside data-bearing route states',
+        'assessment states are preserved inside data-bearing route states',
         () {
-          const preview = RouteMaintenancePreview(
-            allocatedFlightsPerWeek: 14,
-            maxFlightsPerWeek: 70,
-            maintenanceHoursPerWeek: 134.4,
-            grossDamagePercent: 7.0,
-            selfHealingCreditPercent: 134.4,
-            netHealthImpactPercent: 0.0,
-            isGrounded: false,
-            requiresAircraftAssignment: false,
-          );
+          final dto = RoutePlanAssessmentDto.fromJson(const <String, dynamic>{
+            'aircraft_id': 'ac-1',
+            'allocated_flights_per_week': 14,
+            'max_weekly_flights': 70,
+            'weekly_contribution': 1234.0,
+          });
 
           final state = RoutesLoaded(
             routes: const [],
             airports: const [],
             availableAircraft: const [],
-            plannerMaintenancePreview: preview,
+            adjustmentAssessment: RouteAssessmentView.ready(dto),
+            routeAssessments: {'route-1': dto},
           );
 
-          expect(state.plannerMaintenancePreview, isNotNull);
-          expect(state.plannerMaintenancePreview!.allocatedFlightsPerWeek, 14);
-          expect(state.plannerMaintenancePreview!.maxFlightsPerWeek, 70);
+          expect(state.adjustmentAssessment.hasNumbers, isTrue);
+          expect(state.adjustmentAssessment.isEstimate, isFalse);
+          expect(state.adjustmentAssessment.assessment!.maxWeeklyFlights, 70);
+          expect(state.routeAssessments['route-1']!.allocatedFlightsPerWeek, 14);
         },
       );
     });
