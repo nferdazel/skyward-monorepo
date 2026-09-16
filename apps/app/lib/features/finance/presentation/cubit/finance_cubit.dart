@@ -7,6 +7,7 @@ import '../../../../core/di/gateway_factory.dart';
 import '../../../../core/mixins/simulation_reactive_mixin.dart';
 import '../../../../core/realtime/go_realtime_mixin.dart';
 import '../../../../core/utils/app_error.dart';
+import '../../../../core/utils/coalesced_load.dart';
 import '../../../../core/utils/perf_debug.dart';
 import '../../../../core/utils/safe_cast.dart';
 import '../../../bank/domain/bank_transaction_model.dart';
@@ -16,12 +17,11 @@ import '../../domain/finance_snapshot.dart';
 import 'finance_state.dart';
 
 class FinanceCubit extends Cubit<FinanceState>
-    with SimulationReactiveMixin, GoRealtimeMixin {
+    with SimulationReactiveMixin, GoRealtimeMixin, CoalescedLoad<FinanceState> {
   final FinanceGateway _gateway;
   FinanceSnapshot _cachedSnapshot = const FinanceSnapshot.empty();
   List<BankTransaction> _cachedTransactions = [];
   List<FinanceDailySnapshot> _cachedFinancialSnapshots = [];
-  Future<void>? _activeTransactionLoad;
   Future<void>? _activeSnapshotRefresh;
   int _consecutiveSnapshotFailures = 0;
   static const int _maxSilentFailures = 2;
@@ -223,17 +223,10 @@ class FinanceCubit extends Cubit<FinanceState>
   }
 
   /// Fetch bank transactions and compile financial metrics.
-  Future<void> loadLedger(String userId, {bool silent = false}) async {
-    if (_activeTransactionLoad != null) {
-      await _activeTransactionLoad;
-      return;
-    }
-    _activeTransactionLoad = _loadTransactionsInternal(userId, silent: silent);
-    try {
-      await _activeTransactionLoad;
-    } finally {
-      _activeTransactionLoad = null;
-    }
+  Future<void> loadLedger(String userId, {bool silent = false}) {
+    return coalescedLoad(
+      () => _loadTransactionsInternal(userId, silent: silent),
+    );
   }
 
   Future<void> _loadTransactionsInternal(

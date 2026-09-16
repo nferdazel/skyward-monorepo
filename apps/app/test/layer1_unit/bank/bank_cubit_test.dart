@@ -268,7 +268,7 @@ void main() {
       },
       act: (cubit) => cubit.takeLoan(250000.0, 52),
       expect: () => [
-        const BankLoading(),
+        const BankActionLoading(loans: []),
         isA<BankLoanSuccess>()
             .having((s) => s.message, 'message', 'Loan approved.')
             .having((s) => s.newCash, 'newCash', 18250000.0)
@@ -290,7 +290,7 @@ void main() {
       },
       act: (cubit) => cubit.takeLoan(99999999.0, 52),
       expect: () => [
-        const BankLoading(),
+        const BankActionLoading(loans: []),
         isA<BankError>()
             .having((s) => s.message, 'message', 'Loan limit exceeded.')
             .having((s) => s.hasData, 'hasData', false),
@@ -308,7 +308,7 @@ void main() {
       },
       act: (cubit) => cubit.repayLoan('loan-1', amount: 50000.0),
       expect: () => [
-        const BankLoading(),
+        const BankActionLoading(loans: []),
         isA<BankLoanSuccess>()
             .having((s) => s.message, 'message', 'Repayment processed.')
             .having(
@@ -333,7 +333,7 @@ void main() {
       },
       act: (cubit) => cubit.refinanceLoan('loan-1'),
       expect: () => [
-        const BankLoading(),
+        const BankActionLoading(loans: []),
         isA<BankRefinanceSuccess>()
             .having((s) => s.message, 'message', 'Refinance approved.')
             .having((s) => s.loans.length, 'loans length', 1)
@@ -359,7 +359,7 @@ void main() {
       },
       act: (cubit) => cubit.financeAircraft('model-1', 0.20, 36),
       expect: () => [
-        const BankLoading(),
+        const BankActionLoading(loans: []),
         isA<BankLoaded>()
             .having(
               (s) => s.aircraftFinancing.length,
@@ -406,6 +406,36 @@ void main() {
               'initial transactions length',
               1,
             ),
+      ],
+    );
+
+    blocTest<BankCubit, BankState>(
+      'takeLoan keeps the loaded bank data on screen while the action runs',
+      build: () {
+        final gateway = MockBankGateway()
+          ..takeLoanResponse = [
+            {
+              'success': true,
+              'message': 'Loan approved.',
+              'new_cash': 18250000.0,
+            },
+          ]
+          ..loansToReturn = [_loanMap]
+          ..creditReportToReturn = _creditReportMap
+          ..bankAccountsToReturn = [_bankAccount]
+          ..bankTransactionsToReturn = [_bankTransaction];
+        return BankCubit(gateway: gateway);
+      },
+      act: (cubit) async {
+        await cubit.loadBankData('user-1');
+        await cubit.takeLoan(250000.0, 52);
+      },
+      skip: 2, // BankLoading, BankLoaded dari load awal
+      expect: () => [
+        isA<BankActionLoading>()
+            .having((s) => s.loans.length, 'cached loans kept', 1)
+            .having((s) => s.accounts.length, 'cached accounts kept', 1),
+        isA<BankLoanSuccess>(),
       ],
     );
   });

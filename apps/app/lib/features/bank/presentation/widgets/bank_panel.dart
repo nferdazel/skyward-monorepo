@@ -1262,7 +1262,9 @@ class _TakeLoanDialogState extends State<_TakeLoanDialog> {
         ],
       ),
       actions: BlocConsumer<BankCubit, BankState>(
-        buildWhen: (prev, cur) => (prev is BankLoading) != (cur is BankLoading),
+        buildWhen: (prev, cur) =>
+            (prev is BankLoading) != (cur is BankLoading) ||
+            (prev is BankActionLoading) != (cur is BankActionLoading),
         listenWhen: (prev, cur) => cur is BankLoanSuccess,
         listener: (context, state) {
           if (state is BankLoanSuccess) {
@@ -1270,7 +1272,9 @@ class _TakeLoanDialogState extends State<_TakeLoanDialog> {
           }
         },
         builder: (context, state) {
-          final isLoading = state is BankLoading;
+          // Aksi tetap menampilkan spinner di tombol, tapi data di belakang
+          // panel tidak lagi hilang (BankActionLoading membawa BankLoaded).
+          final isLoading = state is BankLoading || state is BankActionLoading;
 
           return Row(
             children: [

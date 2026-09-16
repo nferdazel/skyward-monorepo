@@ -98,6 +98,24 @@ class BankLoaded extends BankState with Equatable {
   ];
 }
 
+/// Loading state for an in-flight bank ACTION (take loan, repay, refinance,
+/// finance aircraft).
+///
+/// Extends [BankLoaded] on purpose: an action happens with data already on
+/// screen, so the panel keeps rendering those balances and loans instead of
+/// collapsing into the dataless [BankLoading] spinner and back. Every existing
+/// `is BankLoaded` branch therefore keeps working unchanged.
+class BankActionLoading extends BankLoaded {
+  const BankActionLoading({
+    required super.loans,
+    super.creditReport,
+    super.creditHistory,
+    super.aircraftFinancing,
+    super.accounts,
+    super.transactions,
+  });
+}
+
 class BankError extends BankState with Equatable {
   final String message;
   final bool hasData;

@@ -7,6 +7,7 @@ import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/game_constants.dart';
 import '../../../../core/mixins/simulation_reactive_mixin.dart';
 import '../../../../core/utils/app_error.dart';
+import '../../../../core/utils/coalesced_load.dart';
 import '../../../../core/utils/perf_debug.dart';
 import '../../../../core/utils/safe_cast.dart';
 import '../../../../core/di/gateway_factory.dart';
@@ -16,7 +17,7 @@ import '../../domain/leaderboard_models.dart';
 import 'leaderboard_state.dart';
 
 class LeaderboardCubit extends Cubit<LeaderboardState>
-    with SimulationReactiveMixin {
+    with SimulationReactiveMixin, CoalescedLoad<LeaderboardState> {
   static const Duration _backgroundInsightsRefreshInterval = Duration(
     seconds: 20,
   );
@@ -31,7 +32,6 @@ class LeaderboardCubit extends Cubit<LeaderboardState>
   String? _lastInsightsRefreshId;
   DateTime? _lastRankingsRefreshAt;
   bool _lastRefreshHadActivity = false;
-  Future<void>? _activeRankingsLoad;
 
   LeaderboardCubit({
     LeaderboardGateway? gateway,
@@ -81,26 +81,19 @@ class LeaderboardCubit extends Cubit<LeaderboardState>
     int humanFleetSize = 0,
     double humanMonthlyRevenue = 0.0,
     bool silent = false,
-  }) async {
-    if (_activeRankingsLoad != null) {
-      await _activeRankingsLoad;
-      return;
-    }
-    _activeRankingsLoad = _loadRankingsInternal(
-      humanUserId: humanUserId,
-      humanCompanyName: humanCompanyName,
-      humanCeoName: humanCeoName,
-      humanCash: humanCash,
-      humanNetWorth: humanNetWorth,
-      humanFleetSize: humanFleetSize,
-      humanMonthlyRevenue: humanMonthlyRevenue,
-      silent: silent,
+  }) {
+    return coalescedLoad(
+      () => _loadRankingsInternal(
+        humanUserId: humanUserId,
+        humanCompanyName: humanCompanyName,
+        humanCeoName: humanCeoName,
+        humanCash: humanCash,
+        humanNetWorth: humanNetWorth,
+        humanFleetSize: humanFleetSize,
+        humanMonthlyRevenue: humanMonthlyRevenue,
+        silent: silent,
+      ),
     );
-    try {
-      await _activeRankingsLoad;
-    } finally {
-      _activeRankingsLoad = null;
-    }
   }
 
   Future<void> _loadRankingsInternal({

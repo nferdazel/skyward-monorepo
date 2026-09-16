@@ -248,8 +248,29 @@ Every item below must fail-then-pass with a DB-backed test once 0.4 lands.
       `httperr.Wrap`, so even with 1.8b's generic 500 body the real error stays in
       the log (`TestWriteErrorWrapKeepsCauseOutOfBody`, verified fail-then-pass).
       Still on the old shape: `fleet`, `routes`, `settings`, `bankruptcy`.
-- [ ] **2.2** Shared `coalescedLoad` helper adopted by
-      fleet/routes/finance/leaderboard cubits; data-preserving `BankActionLoading`.
+- [x] **2.2** New `core/utils/coalesced_load.dart` holds the load-coalescing guard
+      as a `CoalescedLoad<S>` mixin (one in-flight slot: a second call awaits the
+      running load and drops its arguments). Fleet, routes, finance's ledger load
+      and leaderboard each replaced their hand-rolled `Future<void>? _activeLoad`
+      field with it. Left alone on purpose: `BankCubit`'s own coalescer (it also
+      queues a trailing re-run instead of dropping it, AUDIT-19), finance's
+      `_activeSnapshotRefresh` (a different refresh path), leaderboard's per-competitor
+      insights in-flight flag, and the events/achievements cubits (no guard at all).
+      **Data-preserving `BankActionLoading`:** the four money actions (take loan,
+      finance aircraft, repay, refinance) used to `emit(const BankLoading())`, a
+      state with no fields, so the panel collapsed to an empty spinner and back on
+      every action. `BankActionLoading extends BankLoaded` carries the cached
+      loans/accounts/transactions, so every existing `is BankLoaded` branch keeps
+      rendering (the `bank_panel` switch, the dashboard notification refresh,
+      `finance_view`, `ifrs_report_panel`) while `bank_panel`'s dialog button still
+      shows its spinner through an extended `buildWhen` and
+      `isLoading = state is BankLoading || state is BankActionLoading`.
+      Tests: five action expectations updated to `const BankActionLoading(loans: [])`
+      plus one new test proving the loaded data survives the action, verified
+      fail-then-pass (reverting the `takeLoan` emit to `const BankLoading()` fails
+      it). `flutter analyze` clean, all 405 app tests pass.
+      No manual click-through was performed: this environment runs the test suite,
+      not the desktop app.
 - [x] **2.3** Config routing + the loan gates the port had dropped.
       **The notable find:** `TakeLoan` never ported `take_loan`'s gates. It had no
       loan-type whitelist, no `min_loan`, **no principal cap at all**, and read its

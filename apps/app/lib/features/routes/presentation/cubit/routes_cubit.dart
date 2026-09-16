@@ -11,6 +11,7 @@ import '../../../../core/sync/domain_events.dart';
 import '../../../../core/sync/sync_coordinator.dart';
 import '../../../../core/utils/app_error.dart';
 import '../../../../core/utils/app_logger.dart';
+import '../../../../core/utils/coalesced_load.dart';
 import '../../../../core/utils/cubit_action_runner.dart';
 import '../../../../core/utils/perf_debug.dart';
 import '../../../../core/utils/safe_cast.dart';
@@ -21,7 +22,11 @@ import '../../domain/route_models.dart';
 import 'routes_state.dart';
 
 class RoutesCubit extends Cubit<RoutesState>
-    with SimulationReactiveMixin, CubitActionRunner<RoutesState>, GoRealtimeMixin {
+    with
+        SimulationReactiveMixin,
+        CubitActionRunner<RoutesState>,
+        CoalescedLoad<RoutesState>,
+        GoRealtimeMixin {
   final RoutesGateway _gateway;
   List<UserRoute> _cachedRoutes = [];
   List<Airport> _cachedAirports = [];
@@ -32,7 +37,6 @@ class RoutesCubit extends Cubit<RoutesState>
   double _effectiveGroundingThreshold =
       GameConstants.defaultAutoGroundingThreshold;
   Timer? _realtimeRefreshDebounce;
-  Future<void>? _activeLoad;
 
   RoutesCubit({RoutesGateway? gateway})
     : _gateway = gateway ?? GatewayFactory.createRoutesGateway(),
@@ -257,17 +261,10 @@ class RoutesCubit extends Cubit<RoutesState>
   }
 
   // Load routes, airports catalog, and available (unassigned) aircraft
-  Future<void> loadRoutesAndData(String userId, {bool silent = false}) async {
-    if (_activeLoad != null) {
-      await _activeLoad;
-      return;
-    }
-    _activeLoad = _loadRoutesAndDataInternal(userId, silent: silent);
-    try {
-      await _activeLoad;
-    } finally {
-      _activeLoad = null;
-    }
+  Future<void> loadRoutesAndData(String userId, {bool silent = false}) {
+    return coalescedLoad(
+      () => _loadRoutesAndDataInternal(userId, silent: silent),
+    );
   }
 
   Future<void> _loadRoutesAndDataInternal(

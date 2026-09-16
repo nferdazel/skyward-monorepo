@@ -176,7 +176,7 @@ class BankCubit extends Cubit<BankState>
     String? collateralAircraftId,
   }) async {
     await _executeBankAction(() async {
-      emit(const BankLoading());
+      emit(_actionLoading());
 
       try {
         final response = await _gateway.takeLoan(
@@ -279,7 +279,7 @@ class BankCubit extends Cubit<BankState>
     int termMonths,
   ) async {
     return await _executeBankAction(() async {
-      emit(const BankLoading());
+      emit(_actionLoading());
 
       try {
         final response = await _gateway.financeAircraft(
@@ -407,7 +407,7 @@ class BankCubit extends Cubit<BankState>
   /// Repay an existing loan (full or partial).
   Future<void> repayLoan(String loanId, {double? amount}) async {
     await _executeBankAction(() async {
-      emit(const BankLoading());
+      emit(_actionLoading());
 
       try {
         final result = toSafeMap(await _gateway.repayLoan(loanId, amount));
@@ -478,7 +478,7 @@ class BankCubit extends Cubit<BankState>
   /// Refinance an existing loan.
   Future<void> refinanceLoan(String loanId) async {
     await _executeBankAction(() async {
-      emit(const BankLoading());
+      emit(_actionLoading());
 
       try {
         final result = toSafeMap(await _gateway.refinanceLoan(loanId));
@@ -564,6 +564,17 @@ class BankCubit extends Cubit<BankState>
       );
     }
   }
+
+  /// Loading state for an action: carries whatever is already cached, so the
+  /// panel does not flicker to an empty spinner while the RPC is in flight.
+  BankActionLoading _actionLoading() => BankActionLoading(
+    loans: _cachedLoans,
+    creditReport: _cachedCreditReport,
+    creditHistory: _cachedCreditHistory,
+    aircraftFinancing: _cachedFinancing,
+    accounts: _cachedAccounts,
+    transactions: _cachedTransactions,
+  );
 
   void _emitLoaded() {
     if (isClosed) return;

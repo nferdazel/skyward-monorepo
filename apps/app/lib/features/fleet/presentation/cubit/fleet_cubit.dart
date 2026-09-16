@@ -10,6 +10,7 @@ import '../../../../core/sync/domain_events.dart';
 import '../../../../core/sync/sync_coordinator.dart';
 import '../../../../core/utils/app_error.dart';
 import '../../../../core/utils/app_logger.dart';
+import '../../../../core/utils/coalesced_load.dart';
 import '../../../../core/utils/cubit_action_runner.dart';
 import '../../../../core/utils/perf_debug.dart';
 import '../../../../core/utils/safe_cast.dart';
@@ -21,7 +22,11 @@ import 'fleet_state.dart';
 typedef FleetBalanceCallback = FutureOr<void> Function(double newCashBalance);
 
 class FleetCubit extends Cubit<FleetState>
-    with SimulationReactiveMixin, CubitActionRunner<FleetState>, GoRealtimeMixin {
+    with
+        SimulationReactiveMixin,
+        CubitActionRunner<FleetState>,
+        CoalescedLoad<FleetState>,
+        GoRealtimeMixin {
   // Local cache to maintain state during action loads
   List<UserFleetAircraft> _cachedFleet = [];
   List<AircraftModel> _cachedCatalog = [];
@@ -31,7 +36,6 @@ class FleetCubit extends Cubit<FleetState>
   List<String> _selectedRangeBrackets = [];
   String _sortBy = 'price_asc';
   Timer? _realtimeRefreshDebounce;
-  Future<void>? _activeLoad;
   final FleetGateway _gateway;
 
   FleetCubit({FleetGateway? gateway})
@@ -158,17 +162,10 @@ class FleetCubit extends Cubit<FleetState>
   }
 
   // Load available aircraft catalog and user owned/leased fleet
-  Future<void> loadFleetAndCatalog(String userId, {bool silent = false}) async {
-    if (_activeLoad != null) {
-      await _activeLoad;
-      return;
-    }
-    _activeLoad = _loadFleetAndCatalogInternal(userId, silent: silent);
-    try {
-      await _activeLoad;
-    } finally {
-      _activeLoad = null;
-    }
+  Future<void> loadFleetAndCatalog(String userId, {bool silent = false}) {
+    return coalescedLoad(
+      () => _loadFleetAndCatalogInternal(userId, silent: silent),
+    );
   }
 
   Future<void> _loadFleetAndCatalogInternal(
