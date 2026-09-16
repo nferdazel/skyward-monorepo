@@ -212,7 +212,11 @@ func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime ti
 	// user data (read under the per-user lock)
 	var userGameTime time.Time
 	var autoThreshold float64
-	if err := tx.QueryRow(ctx, `SELECT game_current_time, auto_grounding_threshold FROM users WHERE id=$1`, userID).Scan(&userGameTime, &autoThreshold); err != nil {
+	// `auto_grounding_threshold` nullable: tanpa COALESCE, satu user ber-NULL
+	// gagal memuat barisnya dan SELURUH simulasi user itu di-rollback di setiap
+	// tick — tanpa revenue, biaya, maupun kemajuan jam. Default-nya mengikuti
+	// default kolom (40.0), sama seperti COALESCE di routes.go.
+	if err := tx.QueryRow(ctx, `SELECT game_current_time, COALESCE(auto_grounding_threshold, 40.0) FROM users WHERE id=$1`, userID).Scan(&userGameTime, &autoThreshold); err != nil {
 		return PlayerProcessResult{}, fmt.Errorf("process %s: load user: %w", userID, err)
 	}
 

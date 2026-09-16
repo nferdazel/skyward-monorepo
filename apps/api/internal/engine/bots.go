@@ -29,9 +29,17 @@ func (e *Engine) ProcessBots(ctx context.Context, targetTime time.Time) (int, er
 	var seasonID string
 	e.Pool.QueryRow(ctx, `SELECT id FROM season_clock WHERE status='active' LIMIT 1`).Scan(&seasonID)
 
+	// Setiap kolom yang bisa NULL wajib di-COALESCE: `bot_profiles` masuk lewat
+	// LEFT JOIN sehingga semua kolomnya bisa NULL walau kolomnya NOT NULL, dan
+	// `hq_airport_iata` / `auto_grounding_threshold` memang nullable. Dulu satu
+	// baris NULL membuat scan gagal, pgx menutup rows, lalu bot-bot setelahnya
+	// tidak pernah disimulasikan sama sekali.
+	// `auto_grounding_threshold` bertipe numeric (di-scan sebagai string), jadi
+	// default-nya harus literal numerik, bukan ''.
 	rows, err := e.Pool.Query(ctx, `
-		SELECT u.id, u.hq_airport_iata, u.auto_grounding_threshold,
-		       COALESCE(bp.archetype,'Balanced'), bp.consecutive_loss_days, bp.recovery_loan_taken,
+		SELECT u.id, COALESCE(u.hq_airport_iata,''), COALESCE(u.auto_grounding_threshold, 40.0)::text,
+		       COALESCE(bp.archetype,'Balanced'), COALESCE(bp.consecutive_loss_days,0),
+		       COALESCE(bp.recovery_loan_taken,false),
 		       COALESCE(bp.distress_stage,'stable')
 		FROM users u LEFT JOIN bot_profiles bp ON bp.user_id=u.id
 		WHERE u.actor_type='AI' AND COALESCE(u.operational_status,'Active') != 'Bankrupt'
@@ -52,11 +60,17 @@ func (e *Engine) ProcessBots(ctx context.Context, targetTime time.Time) (int, er
 	bots := []botRow{}
 	for rows.Next() {
 		var b botRow
-		rows.Scan(&b.ID, &b.HQ, &b.AutoThreshold,
-			&b.Archetype, &b.LossDays, &b.RecoveryLoanTaken, &b.Distress)
+		if err := rows.Scan(&b.ID, &b.HQ, &b.AutoThreshold,
+			&b.Archetype, &b.LossDays, &b.RecoveryLoanTaken, &b.Distress); err != nil {
+			e.log().Error("baris bot tidak terbaca, dilewati", "error", err)
+			continue
+		}
 		bots = append(bots, b)
 	}
 	rows.Close()
+	if err := rows.Err(); err != nil {
+		e.log().Error("daftar bot berhenti lebih awal", "error", err)
+	}
 
 	// Pass 1 — simulate every bot's economics forward to the season time,
 	// matching process_all_bots_simulation_to_time. This posts route
@@ -480,7 +494,15 @@ func (e *Engine) botHandlePricing(ctx context.Context, botID string, gameTime ti
 	baseFare := e.getConfigNum(ctx, "ticket_base_fare", 50.0)
 	perKM := e.getConfigNum(ctx, "ticket_per_km_rate", 0.12)
 
-	rows, _ := e.Pool.Query(ctx, `SELECT id, ticket_price, distance_km, origin_iata, destination_iata FROM route_assignments WHERE user_id=$1 AND status='active'`, botID)
+	rows, err := e.Pool.Query(ctx, `SELECT id, ticket_price, distance_km, origin_iata, destination_iata FROM route_assignments WHERE user_id=$1 AND status='active'`, botID)
+	if err != nil {
+		// Dulu error ini dibuang tanpa jejak: review harga untuk bot ini
+		// dilewati diam-diam, tanpa log apa pun.
+		// (Tidak panic walau `rows` error — pgxpool melaporkan error lewat
+		// Next/Err — jadi ini soal observability, bukan crash.)
+		e.log().Error("bot pricing: query rute gagal", "error", err, "bot", botID)
+		return
+	}
 	defer rows.Close()
 	for rows.Next() {
 		var id, origin, dest string

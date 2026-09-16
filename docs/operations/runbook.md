@@ -533,8 +533,13 @@ Point it at the **clone**, never at prod: `Reset` truncates `users CASCADE`.
 # local run over an SSH tunnel (port 15432 -> server 127.0.0.1:5432)
 cd apps/api
 PGPASSWORD='…' TEST_DATABASE_URL='postgres://qouver@127.0.0.1:15432/skyward_test' \
-  go test ./... -count=1
+  go test -p 1 -count=1 ./...
 ```
+
+- **`-p 1` is required.** `go test` runs package binaries in parallel, and several
+  packages share this one database while `testsupport.Reset` runs
+  `TRUNCATE users CASCADE` — without `-p 1` the packages delete each other's
+  fixtures (symptom: `read game_current_time: no rows in result set`).
 
 - The test database must have **all migrations applied** (`make migrate` against
   it); helper seeds assume the current schema and the

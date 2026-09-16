@@ -48,8 +48,11 @@ commit (same convention as `docs/product/roadmap.md`).
       bank account/config/transaction) skips unless `TEST_DATABASE_URL` is set, so
       `go test ./...` stays hermetic. Its own smoke test proves connect + seed +
       reset against a real schema. CI runs a `postgres:18` service, applies
-      migrations with `make migrate`, and exports `TEST_DATABASE_URL`. Runbook §6
-      documents the tunnel workflow.
+      migrations with `make migrate`, and exports `TEST_DATABASE_URL` for the Go test
+      step. DB-backed runs need `go test -p 1`: packages execute in parallel and
+      several share the test database while `Reset` truncates `users`, so without
+      it they delete each other's fixtures. Runbook §6 documents the tunnel
+      workflow.
 - [ ] **0.5** Deploy hardening in `deploy/deploy-vps.sh`: keep
       `bin/skyward-api.prev`, gate restart on `/readyz` with rollback, atomic web
       swap (build to `web.new/` then rename), skip the API restart when only
@@ -90,9 +93,22 @@ Every item below must fail-then-pass with a DB-backed test once 0.4 lands.
       scan error, checking the `UPDATE` error (rollback + log) and logging
       `rows.Err()`. Verified with four DB tests that fail-then-pass; prod has 2
       active loans, 0 with NULL `monthly_payment`, so (b) was latent, not active.
-- [ ] **1.1b** Same class as 1.1: `bots.go` has 4 unchecked `rows.Scan` calls
-      (lines ~55, 151, 488, 732) over nullable columns; audit them for the same
-      silent iteration truncation.
+- [x] **1.1b** Same class as 1.1, audited across `bots.go` and `simulation.go`. Two
+      real defects fixed: (a) the bot-list query selected nullable columns
+      (`users.hq_airport_iata`, `users.auto_grounding_threshold`) plus
+      `bot_profiles.*` through a LEFT JOIN while ignoring the `rows.Scan` error —
+      one NULL row closed the rows and every remaining bot was skipped, never
+      simulated; (b) `simulation.go` scanned the nullable
+      `auto_grounding_threshold` into a plain `float64`, so one NULL user had
+      their entire simulation transaction rolled back every tick (no revenue, no
+      costs, no clock advance). `botHandlePricing`'s discarded query error is now
+      logged — observability only: the suspected nil-rows panic did **not**
+      reproduce (pgxpool returns non-nil rows and reports the error via
+      `Next`/`Err`). Other sites audited: `reapBankruptBots` and
+      `routePerformance` scan only NOT NULL columns → safe. Prod has 0 NULLs in
+      every affected column, so both defects were latent.
+      **Lesson:** two audit "P0"s in this batch (1.1, 1.1b) did not hold up when
+      reproduced; label findings P0 only after a failing test exists.
 - [x] **1.2** Worker: `ticker.Reset` now happens on the success path too, via
       `tickInterval(base, errors)` (`worker.go`). Previously the reset only ran in
       the error branch, so the last backoff stuck permanently after recovery and
