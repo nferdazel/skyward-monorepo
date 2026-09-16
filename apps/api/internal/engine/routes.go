@@ -131,7 +131,8 @@ func (r *RoutesService) Assign(ctx context.Context, userID, routeID, aircraftID 
 		return &MutationResult{false, "Aircraft range is insufficient for this route.", 0}, nil
 	}
 	// weekly capacity — use the assigned model's real turnaround (AVIATION-13)
-	maxWeekly := calcMaxWeeklyFlights(routeDist, speedKMH, turnaroundHours)
+	maxWeekly := calcMaxWeeklyFlights(routeDist, speedKMH, turnaroundHours,
+		r.engine.getConfigNum(ctx, "max_weekly_flights", 168.0))
 	if maxWeekly > 0 && routeFreq > maxWeekly {
 		return &MutationResult{false, "Route frequency exceeds this aircraft's weekly operating capacity.", 0}, nil
 	}
@@ -182,7 +183,8 @@ func (r *RoutesService) UpdateFreqPrice(ctx context.Context, userID, routeID str
 		if float64(rangeKM) < ceil(routeDist) {
 			return &MutationResult{false, "Assigned aircraft range is insufficient for this route.", 0}, nil
 		}
-		maxWeekly := calcMaxWeeklyFlights(routeDist, speedKMH, turnaroundHours)
+		maxWeekly := calcMaxWeeklyFlights(routeDist, speedKMH, turnaroundHours,
+			r.engine.getConfigNum(ctx, "max_weekly_flights", 168.0))
 		if maxWeekly > 0 && freq > maxWeekly {
 			return &MutationResult{false, "Route frequency exceeds the assigned aircraft's weekly operating capacity.", 0}, nil
 		}
@@ -202,7 +204,7 @@ func ceil(v float64) float64 {
 	return f
 }
 
-func calcMaxWeeklyFlights(distance float64, speed int, turnaround float64) int {
+func calcMaxWeeklyFlights(distance float64, speed int, turnaround, maxWeekly float64) int {
 	if distance <= 0 || speed <= 0 {
 		return 0
 	}
@@ -210,6 +212,5 @@ func calcMaxWeeklyFlights(distance float64, speed int, turnaround float64) int {
 	if flightTime <= 0 {
 		return 0
 	}
-	maxWeekly := 168.0 // max_weekly_flights from game_config
 	return int(maxWeekly / flightTime)
 }

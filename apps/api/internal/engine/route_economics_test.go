@@ -39,8 +39,8 @@ func TestCalcMaxWeeklyFlightsUsesTurnaround(t *testing.T) {
 	const dist = 1000.0
 	const speed = 800
 
-	fast := calcMaxWeeklyFlights(dist, speed, 0.5)
-	slow := calcMaxWeeklyFlights(dist, speed, 2.0)
+	fast := calcMaxWeeklyFlights(dist, speed, 0.5, 168.0)
+	slow := calcMaxWeeklyFlights(dist, speed, 2.0, 168.0)
 	if fast <= slow {
 		t.Fatalf("shorter turnaround must allow more weekly flights: fast=%d slow=%d", fast, slow)
 	}
@@ -52,7 +52,7 @@ func TestCalcMaxWeeklyFlightsUsesTurnaround(t *testing.T) {
 	if slow != 51 {
 		t.Fatalf("expected 51 weekly flights, got %d", slow)
 	}
-	if calcMaxWeeklyFlights(dist, 0, 1.0) != 0 {
+	if calcMaxWeeklyFlights(dist, 0, 1.0, 168.0) != 0 {
 		t.Fatalf("zero speed must yield 0")
 	}
 }

@@ -325,7 +325,8 @@ func (f *FleetService) Lease(ctx context.Context, userID string, p LeaseParams) 
 	if err := validateSeats(int(econ), p.BusinessSeats, p.FirstClassSeats, int(capacity)); err != nil {
 		return &MutationResult{false, err.Error(), 0}, nil
 	}
-	deposit := calcLeaseDeposit(purchasePrice, leasePrice)
+	deposit := calcLeaseDeposit(purchasePrice, leasePrice,
+		f.engine.getConfigNum(ctx, "base_lease_deposit_percentage", 0.10))
 	cash, _ := f.engine.Ledger.GetBalance(ctx, userID)
 	if cash < deposit {
 		return &MutationResult{false, fmt.Sprintf("Insufficient funds for lease deposit of %s. Required: $%.2f", modelName, deposit), cash}, nil
@@ -413,8 +414,10 @@ func (f *FleetService) TerminateLease(ctx context.Context, userID, fleetID strin
 	return &MutationResult{true, "Lease terminated successfully!", newCash}, nil
 }
 
-func calcLeaseDeposit(purchasePrice, leasePrice float64) float64 {
-	basePct := 0.10 // base_lease_deposit_percentage from game_config
+// basePct = `base_lease_deposit_percentage` dari game_config; bracket persentase
+// aset tetap hardcoded karena versi SQL-nya (calculate_required_lease_deposit)
+// juga hardcoded.
+func calcLeaseDeposit(purchasePrice, leasePrice, basePct float64) float64 {
 	monthlyFloor := leasePrice * maxf(2.0, basePct*20.0)
 	var assetPct float64
 	switch {

@@ -250,10 +250,34 @@ Every item below must fail-then-pass with a DB-backed test once 0.4 lands.
       Still on the old shape: `fleet`, `routes`, `settings`, `bankruptcy`.
 - [ ] **2.2** Shared `coalescedLoad` helper adopted by
       fleet/routes/finance/leaderboard cubits; data-preserving `BankActionLoading`.
-- [ ] **2.3** Config: route hardcoded values through `getConfigNum`
-      (`routes.go:213`, `fleet.go:413`, credit-tier policy), enforce
-      `max_unsecured_loan`/tier gates in `TakeLoan`, add a config-contract test
-      (every key read is seeded, and vice versa).
+- [x] **2.3** Config routing + the loan gates the port had dropped.
+      **The notable find:** `TakeLoan` never ported `take_loan`'s gates. It had no
+      loan-type whitelist, no `min_loan`, **no principal cap at all**, and read its
+      rate from a hardcoded `Standard` tier — so any player could borrow any amount
+      at the Standard rate regardless of credit. Ported faithfully from the SQL:
+      type whitelist (`unsecured`/`secured`/`credit_line`), tier resolved from
+      `credit_scores.tier` (the day-boundary result; new players default to score
+      500 → Standard, as in SQL), per-type cap and rate from `credit_tier_config`
+      (unsecured → `max_unsecured`/`rate_unsecured`; credit_line → half the cap and
+      `rate_unsecured + 0.02`; secured → the SQL's "requires collateral" rejection,
+      since AUDIT-12 still refuses collateral outright), `min_loan`, and the SQL's
+      own rejection texts. Config JSON paths verified against prod
+      (`{Standard,max_unsecured}`=5,000,000, `{Standard,rate_unsecured}`=0.12,
+      `{Platinum,max_unsecured}`=15,000,000, `{min_loan}`=100,000).
+      `calcMaxWeeklyFlights` and `calcLeaseDeposit` no longer hardcode 168 and 0.10 —
+      callers pass `max_weekly_flights` / `base_lease_deposit_percentage`. Both were
+      deviations: the SQL's `calculate_route_max_weekly_flights` reads the config and
+      `calculate_required_lease_deposit` reads `base_lease_deposit_percentage` (the
+      asset-percentage brackets stay hardcoded because the SQL hardcodes them too).
+      **Config contract test** (`internal/engine/config_contract_test.go`, hermetic —
+      reads files only): every key the Go code reads must be seeded in
+      `17_game_config_seed.sql`, and every seeded key must be referenced by code or
+      SQL. Verified fail-then-pass in both directions. It surfaced two **dead keys**
+      nobody reads (not even the SQL): `bot_distress_cash_threshold` and
+      `bot_route_optimization_cooldown_hours` — listed explicitly in the test so a
+      *new* dead key still fails. Not wired here: the Go code deliberately computes
+      bot reserves per archetype and uses its own 4-hour cooldown, so wiring them
+      would change game balance and needs a product call.
 - [ ] **2.4** Snapshot `game_config` + active events once per `WorldTick`
       (removes ~16N + 2NR queries/tick).
 - [x] **2.5** `GetAirports` no longer uses `SELECT *` — `pgx.RowToStructByPos` maps by

@@ -433,7 +433,8 @@ func (e *Engine) botHandleRouteCreation(ctx context.Context, botID string, gameT
 	}
 	baseFare := e.getConfigNum(ctx, "ticket_base_fare", 50.0) + destDist*e.getConfigNum(ctx, "ticket_per_km_rate", 0.12)
 	ticketPrice := baseFare * d.PriceMult
-	maxFlights := calcMaxWeeklyFlights(destDist, int(modelSpeed), modelTurnaround)
+	maxFlights := calcMaxWeeklyFlights(destDist, int(modelSpeed), modelTurnaround,
+		e.getConfigNum(ctx, "max_weekly_flights", 168.0))
 	targetFlights := int(math.Max(4, float64(maxFlights)*d.SchedRatio))
 
 	// buat rute + assign

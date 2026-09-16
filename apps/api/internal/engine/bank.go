@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -56,11 +57,57 @@ func (b *BankService) TakeLoan(ctx context.Context, userID string, p TakeLoanPar
 		return nil, fmt.Errorf("take loan: count active loans: %w", err)
 	}
 	if activeLoans >= maxActive {
-		return &MutationResult{Success: false, Message: "Maximum active loans reached."}, nil
+		return &MutationResult{Success: false, Message: fmt.Sprintf("Maximum %d active loans allowed.", maxActive)}, nil
 	}
 
-	var rate float64 = 0.12
-	tx.QueryRow(ctx, `SELECT COALESCE((value#>>'{Standard,rate_unsecured}')::numeric, 0.12) FROM game_config WHERE key='credit_tier_config'`).Scan(&rate)
+	// Tier kredit pemain. SQL `take_loan` me-resolve dari total_score hasil
+	// calculate_credit_score(); Go menyimpan hasil yang sama di
+	// credit_scores.tier pada day boundary, jadi baris itu yang dipakai. Pemain
+	// baru tanpa baris = skor 500, sama seperti SQL.
+	tier := "Standard"
+	{
+		var stored string
+		switch err := tx.QueryRow(ctx, `SELECT tier FROM credit_scores WHERE user_id=$1`, userID).Scan(&stored); {
+		case err == nil && stored != "":
+			tier = stored
+		case err != nil && !errors.Is(err, pgx.ErrNoRows):
+			return nil, fmt.Errorf("take loan: load credit tier: %w", err)
+		default:
+			tier = resolveCreditTier(500)
+		}
+	}
+
+	// Whitelist jenis pinjaman, seperti SQL.
+	if loanType != "unsecured" && loanType != "secured" && loanType != "credit_line" {
+		return &MutationResult{Success: false, Message: "Invalid loan type."}, nil
+	}
+
+	// Plafon dan rate per jenis dari kebijakan tier (credit_tier_config).
+	var maxPrincipal, rate float64
+	switch loanType {
+	case "unsecured":
+		maxPrincipal = b.tierRate(ctx, tier, "max_unsecured", 5000000)
+		rate = b.tierRate(ctx, tier, "rate_unsecured", 0.07)
+	case "secured":
+		// AUDIT-12: collateral sudah ditolak di atas karena secured lending belum
+		// ada, jadi jalur ini hanya tercapai bila pemain meminta `secured` tanpa
+		// collateral — persis yang SQL tolak.
+		return &MutationResult{Success: false, Message: "Secured loans require collateral aircraft."}, nil
+	default: // credit_line
+		maxPrincipal = b.tierRate(ctx, tier, "max_unsecured", 5000000) * 0.5
+		rate = b.tierRate(ctx, tier, "rate_unsecured", 0.07) + 0.02
+	}
+
+	var minLoan float64
+	if err := tx.QueryRow(ctx, `SELECT COALESCE((value#>>'{min_loan}')::numeric, 100000) FROM game_config WHERE key='credit_tier_config'`).Scan(&minLoan); err != nil {
+		minLoan = 100000
+	}
+	if p.Principal < minLoan {
+		return &MutationResult{Success: false, Message: fmt.Sprintf("Minimum loan amount is $%s.", numText(minLoan))}, nil
+	}
+	if p.Principal > maxPrincipal {
+		return &MutationResult{Success: false, Message: fmt.Sprintf("Maximum for %s tier %s loan is $%s.", tier, loanType, numText(maxPrincipal))}, nil
+	}
 
 	weekly := p.Principal * (1 + rate) / float64(p.TermWeeks)
 	monthly := weekly * 4.33
@@ -217,6 +264,10 @@ func (b *BankService) Refinance(ctx context.Context, userID, loanID string) (*Mu
 	savings := maxf(0, remaining-newTotal)
 	return &MutationResult{true, fmt.Sprintf("Loan refinanced successfully (savings $%.2f).", savings), 0}, nil
 }
+
+// numText memformat angka seperti `numeric::TEXT` di Postgres: tanpa nol ekor,
+// dipakai untuk pesan penolakan supaya teksnya sama dengan versi SQL.
+func numText(v float64) string { return strconv.FormatFloat(v, 'f', -1, 64) }
 
 func (b *BankService) tierRate(ctx context.Context, tier, field string, fallback float64) float64 {
 	var r float64
