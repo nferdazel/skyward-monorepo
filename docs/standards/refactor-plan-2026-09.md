@@ -309,13 +309,50 @@ Every item below must fail-then-pass with a DB-backed test once 0.4 lands.
       history was reported as 30-day revenue/expense — a wrong number served as 200.
       Statements re-run read-only against prod: column counts match the scan
       destinations (5/1/1/2).
-- [ ] **2.8** Backlog from the 2.5 survey. A heuristic pass over `internal/` flagged
-      ~79 `Scan` calls with no visible error check (includes false positives from
-      multi-line statements). Spot-checking showed most are deliberate best-effort
-      reads — bot behaviour degrading gracefully, `credit_scores` tier falling back
-      to `Standard`, config rates falling back to a default — but each still needs an
-      explicit call: intentional-with-comment, or a bug. Only the snapshot sites were
-      in 2.5's scope; the rest are unaudited.
+- [x] **2.8** Triaged the 2.5 survey backlog with an exact AST probe (a bare
+      `.Scan` call as a statement, i.e. the error is structurally discarded) instead
+      of the line-window heuristic: **64** such sites, **0** `_ =` discards, 69 more
+      assign the error to a variable (previously audited). Split by consequence:
+      *Fixed — an ignored read error opened a gate or corrupted state:* the
+      `actor_type` read in `checkTierGate` (`fleet.go`) and `FinanceAircraft`
+      (`bank.go`) returned `""` ≠ `"REAL"`, **skipping the GAME-06 tier gate
+      entirely**; the `FinanceAircraft`/`Refinance` tier reads silently became
+      `Standard`, which picks both the financing cap and the rate; `routes.go`
+      `Assign` read `threshold` as 0, disabling the safety grounding gate, and
+      `UpdateFreqPrice` read the assigned aircraft as speed 0, making
+      `calcMaxWeeklyFlights` return 0 and silently skipping the frequency-capacity
+      check; `ProcessLoanPayments` read `actor_type` as `""` and returned, skipping
+      all loan servicing for that day without a trace; the `missed_payments`
+      re-read after the late fee swallowed both the `UPDATE` and the read error, so
+      a failed read (0) postponed default/repossess forever — now one
+      `UPDATE … RETURNING missed_payments` with the error logged and the row
+      skipped; `calculateCreditScore` computed from zeroed components and the
+      zeroed `totalDebt` actually took the **best** branch (`totalDebt<=0 → 180`),
+      i.e. a read error *raised* the score — all five component reads now share the
+      function's existing 500-placeholder fallback; `routePerformance` appended a
+      half-scanned row to the bot's worst-route ranking, and `TerminateLease`
+      lacked the AUDIT-08 in-tx row lock + assignment re-check that `Sell` has,
+      so a failed pre-read deleted an aircraft still assigned to a route (FK is
+      `ON DELETE SET NULL` → ghost route) — now mirrors `Sell`.
+      *Deliberate best-effort, left as is:* `fleet.go` pre-read assignment in
+      `Sell` (authoritative re-check inside the tx), the `hq_airport_iata` reads
+      feeding `deref(hq, "CGK")` tail-number prefixes, `reapBankruptBots`' id scan
+      (`""` deletes nothing), the ~28 bot-heuristic reads (degrade conservatively;
+      where they could over-borrow, `Bank.TakeLoan` re-validates
+      `max_active_loans`), the duplicate-route `EXISTS` (covered by the
+      `unique_human_route` unique index), `settings.Save`'s airport `EXISTS`
+      (covered by the FK), `GenerateTailNumber`'s uniqueness probe (covered by the
+      column constraint), `GenerateGameEvents`' duplicate probe, and the six
+      achievement prerequisites (a failed read scores 0, i.e. the award is not
+      granted — fails closed).
+      **Not covered:** no automated test can reach these paths (the DB-backed
+      tests were deleted at the owner's request), so verification was
+      build + vet + the hermetic suite plus a manual check in `skyward_test` that
+      `UPDATE … RETURNING` yields the post-increment value in one round trip and
+      returns 0 rows for a missing id (→ `ErrNoRows` → log + skip).
+      Related, still open: `fleet.go` `Sell`/`TerminateLease` discard the error
+      from `Ledger.GetUserGameTime`, which stamps ledger rows with a zero
+      game date — out of this item's scope, but now on the record.
 - [ ] **2.6** FE: one IFRS category classifier; single notification-refresh
       helper; 44 px tap targets.
 - [x] **2.7** `applyBankruptcy` now runs in one transaction with every step checked.

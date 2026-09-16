@@ -227,9 +227,13 @@ func (b *BankService) Refinance(ctx context.Context, userID, loanID string) (*Mu
 		}
 		return nil, fmt.Errorf("refinance: load loan: %w", err)
 	}
-	// tier rate
+	// tier rate. Baris credit_scores boleh belum ada (pemain baru → Standard),
+	// tapi error baca sungguhan tidak boleh jadi Standard: tier inilah yang
+	// menentukan rate refinance.
 	var tier string
-	b.engine.Pool.QueryRow(ctx, `SELECT tier FROM credit_scores WHERE user_id=$1`, userID).Scan(&tier)
+	if err := b.engine.Pool.QueryRow(ctx, `SELECT tier FROM credit_scores WHERE user_id=$1`, userID).Scan(&tier); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("refinance: load credit tier: %w", err)
+	}
 	if tier == "" {
 		tier = "Standard"
 	}
@@ -308,16 +312,27 @@ func (b *BankService) FinanceAircraft(ctx context.Context, userID string, p Fina
 		}
 		return nil, fmt.Errorf("finance aircraft: load model: %w", err)
 	}
-	// tier
+	// tier: baris credit_scores boleh belum ada (pemain baru → Standard), tapi
+	// error baca sungguhan tidak boleh jadi Standard — tier ini yang dipakai
+	// untuk gate GAME-06 dan plafon pembiayaan.
 	var tier string
-	b.engine.Pool.QueryRow(ctx, `SELECT tier FROM credit_scores WHERE user_id=$1`, userID).Scan(&tier)
+	if err := b.engine.Pool.QueryRow(ctx, `SELECT tier FROM credit_scores WHERE user_id=$1`, userID).Scan(&tier); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("finance aircraft: load credit tier: %w", err)
+	}
 	if tier == "" {
 		tier = "Standard"
 	}
 	// GAME-06: financing an aircraft also requires its minimum credit tier.
 	// Bots are exempt (the gate is a player-progression mechanic).
+	// actor_type di-COALESCE, jadi hasil kosong = user tidak ada. Dulu error
+	// baca di sini menghasilkan "" yang != "REAL" — gate tier dilewati penuh.
 	var actorType string
-	b.engine.Pool.QueryRow(ctx, `SELECT COALESCE(actor_type, 'REAL') FROM users WHERE id=$1`, userID).Scan(&actorType)
+	if err := b.engine.Pool.QueryRow(ctx, `SELECT COALESCE(actor_type, 'REAL') FROM users WHERE id=$1`, userID).Scan(&actorType); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return &MutationResult{false, "User not found.", 0}, nil
+		}
+		return nil, fmt.Errorf("finance aircraft: load actor type: %w", err)
+	}
 	if actorType == "REAL" {
 		if msg := tierGateMessage(tier, minTier, modelName); msg != "" {
 			return &MutationResult{false, msg, 0}, nil

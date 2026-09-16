@@ -101,9 +101,13 @@ func (r *RoutesService) Assign(ctx context.Context, userID, routeID, aircraftID 
 	}
 	// safety threshold = max(auto_grounding_threshold, absolute_minimum_safety_limit)
 	var threshold float64
-	r.engine.Pool.QueryRow(ctx, `
+	if err := r.engine.Pool.QueryRow(ctx, `
 		SELECT GREATEST(COALESCE(u.auto_grounding_threshold,40.0), COALESCE(get_config_numeric('absolute_minimum_safety_limit'),30.0))
-		FROM users u WHERE u.id=$1`, userID).Scan(&threshold)
+		FROM users u WHERE u.id=$1`, userID).Scan(&threshold); err != nil {
+		// threshold 0 berarti tidak ada pesawat yang bisa kena grounding — gate
+		// keselamatan terlewat. Gagal baca = tolak.
+		return &MutationResult{false, "Aircraft is unavailable or below the safety threshold.", 0}, nil
+	}
 	// AUDIT-08: lock the aircraft row and perform check+update inside ONE tx,
 	// serialized against Fleet.Sell — previously an aircraft could be sold
 	// between guard and update (ghost route with NULL aircraft via FK SET NULL)
@@ -177,9 +181,14 @@ func (r *RoutesService) UpdateFreqPrice(ctx context.Context, userID, routeID str
 	if assigned != nil {
 		var rangeKM, speedKMH int
 		var turnaroundHours float64
-		r.engine.Pool.QueryRow(ctx, `
+		if err := r.engine.Pool.QueryRow(ctx, `
 			SELECT m.range_km, m.speed_kmh, COALESCE(m.turnaround_hours, 1.0) FROM fleet_aircraft f JOIN aircraft_models m ON m.id=f.aircraft_model_id
-			WHERE f.id=$1 AND f.user_id=$2`, *assigned, userID).Scan(&rangeKM, &speedKMH, &turnaroundHours)
+			WHERE f.id=$1 AND f.user_id=$2`, *assigned, userID).Scan(&rangeKM, &speedKMH, &turnaroundHours); err != nil {
+			// speed/turnaround 0 membuat calcMaxWeeklyFlights mengembalikan 0,
+			// dan 0 melewati cek kapasitas (maxWeekly > 0) — batas frekuensi
+			// hilang. Gagal baca = tolak.
+			return &MutationResult{false, "Assigned aircraft is unavailable.", 0}, nil
+		}
 		if float64(rangeKM) < ceil(routeDist) {
 			return &MutationResult{false, "Assigned aircraft range is insufficient for this route.", 0}, nil
 		}

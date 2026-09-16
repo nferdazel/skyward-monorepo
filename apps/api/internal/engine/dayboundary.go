@@ -85,7 +85,13 @@ func (e *Engine) DeactivateExpiredEvents(ctx context.Context, gameTime time.Time
 // ProcessLoanPayments — mirror process_loan_payments (non-financing loans).
 func (e *Engine) ProcessLoanPayments(ctx context.Context, userID string, gameDate time.Time) {
 	var actorType string
-	e.Pool.QueryRow(ctx, `SELECT actor_type FROM users WHERE id=$1`, userID).Scan(&actorType)
+	if err := e.Pool.QueryRow(ctx, `SELECT actor_type FROM users WHERE id=$1`, userID).Scan(&actorType); err != nil {
+		// Dulu error ini dibuang: actorType kosong membuat servis pinjaman
+		// dilewati tanpa jejak. Tetap dilewati (menagih berdasarkan asumsi
+		// lebih buruk), tapi sekarang tercatat.
+		e.log().Error("day boundary: gagal membaca actor_type, servis pinjaman dilewati", "error", err, "user", userID)
+		return
+	}
 	if actorType == "" {
 		return
 	}
@@ -159,9 +165,14 @@ func (e *Engine) ProcessLoanPayments(ctx context.Context, userID string, gameDat
 			}
 		} else {
 			lateFee := payment * 0.10
-			e.Pool.Exec(ctx, `UPDATE loans SET remaining_balance = remaining_balance + $1, missed_payments = missed_payments + 1 WHERE id=$2`, lateFee, l.ID)
+			// Denda dan hitungan keterlambatan dalam satu statement: dulu keduanya
+			// terpisah dan sama-sama mengabaikan error, sehingga hitungan yang
+			// gagal dibaca (0) menunda default tanpa batas.
 			var missed int
-			e.Pool.QueryRow(ctx, `SELECT missed_payments FROM loans WHERE id=$1`, l.ID).Scan(&missed)
+			if err := e.Pool.QueryRow(ctx, `UPDATE loans SET remaining_balance = remaining_balance + $1, missed_payments = missed_payments + 1 WHERE id=$2 RETURNING missed_payments`, lateFee, l.ID).Scan(&missed); err != nil {
+				e.log().Error("day boundary: gagal mencatat denda keterlambatan", "error", err, "loan", l.ID, "user", userID)
+				continue
+			}
 			if missed >= 4 {
 				e.Pool.Exec(ctx, `UPDATE loans SET status='defaulted' WHERE id=$1`, l.ID)
 				if l.Collateral != nil {
@@ -243,9 +254,14 @@ func (e *Engine) ProcessAircraftFinancingPayments(ctx context.Context, userID st
 			}
 		} else {
 			lateFee := payment * 0.05
-			e.Pool.Exec(ctx, `UPDATE loans SET remaining_balance = remaining_balance + $1, missed_payments = missed_payments + 1 WHERE id=$2`, lateFee, l.ID)
+			// Denda dan hitungan keterlambatan dalam satu statement: dulu keduanya
+			// terpisah dan sama-sama mengabaikan error, sehingga hitungan yang
+			// gagal dibaca (0) menunda repossess tanpa batas.
 			var missed int
-			e.Pool.QueryRow(ctx, `SELECT missed_payments FROM loans WHERE id=$1`, l.ID).Scan(&missed)
+			if err := e.Pool.QueryRow(ctx, `UPDATE loans SET remaining_balance = remaining_balance + $1, missed_payments = missed_payments + 1 WHERE id=$2 RETURNING missed_payments`, lateFee, l.ID).Scan(&missed); err != nil {
+				e.log().Error("day boundary: gagal mencatat denda keterlambatan", "error", err, "loan", l.ID, "user", userID)
+				continue
+			}
 			if missed >= 3 {
 				e.Pool.Exec(ctx, `UPDATE loans SET status='repossessed' WHERE id=$1`, l.ID)
 				if l.Collateral != nil {
@@ -294,21 +310,31 @@ type creditScore struct {
 
 // calculateCreditScore — mirror calculate_credit_score.
 func (e *Engine) calculateCreditScore(ctx context.Context, userID string) (*creditScore, bool) {
+	// Skor placeholder saat salah satu komponen tidak terbaca. Dulu hanya baris
+	// users ini yang punya fallback; komponen lain dibiarkan terisi nol lalu ikut
+	// dihitung — dan nol itu justru nilai TERBAIK untuk debt ratio
+	// (totalDebt<=0 → 180), jadi error baca menaikkan skor.
+	fallback := func(what string, err error) (*creditScore, bool) {
+		e.log().Error("credit score: "+what+", pakai skor fallback", "error", err, "user", userID)
+		return &creditScore{500, 100, 100, 100, 100, 100}, true
+	}
 	var netWorth float64
 	var gameTime time.Time
 	err := e.Pool.QueryRow(ctx, `SELECT net_worth, game_current_time FROM users WHERE id=$1`, userID).Scan(&netWorth, &gameTime)
 	if err != nil {
-		return &creditScore{500, 100, 100, 100, 100, 100}, true // fallback
+		return fallback("gagal membaca net_worth/game time", err)
 	}
 	cash, _ := e.Ledger.GetBalance(ctx, userID)
 	startingCash := e.getConfigNum(ctx, "starting_cash", 25000000.0)
 
 	var fleetCount int
 	var avgCondition, groundedRatio float64
-	e.Pool.QueryRow(ctx, `
+	if err := e.Pool.QueryRow(ctx, `
 		SELECT COUNT(*), COALESCE(AVG(condition),100.0),
 		       COALESCE(COUNT(*) FILTER (WHERE status='grounded')::numeric / NULLIF(COUNT(*),0), 0.0)
-		FROM fleet_aircraft WHERE user_id=$1`, userID).Scan(&fleetCount, &avgCondition, &groundedRatio)
+		FROM fleet_aircraft WHERE user_id=$1`, userID).Scan(&fleetCount, &avgCondition, &groundedRatio); err != nil {
+		return fallback("gagal membaca kondisi armada", err)
+	}
 
 	fleetHealth := 70.0
 	if fleetCount > 0 {
@@ -320,11 +346,13 @@ func (e *Engine) calculateCreditScore(ctx context.Context, userID string) (*cred
 	// yang bikin Postgres men-infer `$2` sebagai interval → error tipe.
 	cutoff := gameTime.AddDate(0, 0, -30)
 	var revStddev, revAvg float64
-	e.Pool.QueryRow(ctx, `
+	if err := e.Pool.QueryRow(ctx, `
 		SELECT COALESCE(STDDEV(daily_revenue),0), COALESCE(AVG(daily_revenue),0)
 		FROM (SELECT SUM(amount) AS daily_revenue FROM bank_transactions
 		      WHERE user_id=$1 AND ifrs_category='revenue' AND game_date >= $2
-		      GROUP BY (game_date AT TIME ZONE 'UTC')::DATE) daily`, userID, cutoff).Scan(&revStddev, &revAvg)
+		      GROUP BY (game_date AT TIME ZONE 'UTC')::DATE) daily`, userID, cutoff).Scan(&revStddev, &revAvg); err != nil {
+		return fallback("gagal membaca stabilitas pendapatan 30 hari", err)
+	}
 
 	revenueStability := 60.0
 	if revAvg > 0 {
@@ -333,15 +361,19 @@ func (e *Engine) calculateCreditScore(ctx context.Context, userID string) (*cred
 
 	// 30d revenue/expense
 	var totalRev30d, totalExp30d float64
-	e.Pool.QueryRow(ctx, `
+	if err := e.Pool.QueryRow(ctx, `
 		SELECT COALESCE(SUM(CASE WHEN transaction_type='credit' THEN amount ELSE 0 END),0),
 		       ABS(COALESCE(SUM(CASE WHEN transaction_type='debit' THEN amount ELSE 0 END),0))
 		FROM bank_transactions WHERE user_id=$1 AND game_date >= $2 AND ifrs_category IN ('revenue','cogs','opex')`,
-		userID, cutoff).Scan(&totalRev30d, &totalExp30d)
+		userID, cutoff).Scan(&totalRev30d, &totalExp30d); err != nil {
+		return fallback("gagal membaca pendapatan/biaya 30 hari", err)
+	}
 
 	// debt ratio
 	var totalDebt float64
-	e.Pool.QueryRow(ctx, `SELECT COALESCE(SUM(remaining_balance),0) FROM loans WHERE user_id=$1 AND status='active'`, userID).Scan(&totalDebt)
+	if err := e.Pool.QueryRow(ctx, `SELECT COALESCE(SUM(remaining_balance),0) FROM loans WHERE user_id=$1 AND status='active'`, userID).Scan(&totalDebt); err != nil {
+		return fallback("gagal membaca total utang", err)
+	}
 	debtRatio := 130.0
 	switch {
 	case totalDebt <= 0:

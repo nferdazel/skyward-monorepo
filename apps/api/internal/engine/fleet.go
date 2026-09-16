@@ -60,7 +60,12 @@ func (f *FleetService) checkTierGate(ctx context.Context, userID, minTier, model
 		return ""
 	}
 	var actorType string
-	f.engine.Pool.QueryRow(ctx, `SELECT COALESCE(actor_type, 'REAL') FROM users WHERE id=$1`, userID).Scan(&actorType)
+	if err := f.engine.Pool.QueryRow(ctx, `SELECT COALESCE(actor_type, 'REAL') FROM users WHERE id=$1`, userID).Scan(&actorType); err != nil {
+		// Gagal baca actor_type tidak boleh berarti "bot": itu melewati gate
+		// tier sepenuhnya. COALESCE berarti baris kosong = user tidak ada —
+		// dua-duanya ditolak.
+		return "Credit tier could not be verified. Please try again."
+	}
 	if actorType != "REAL" {
 		return ""
 	}
@@ -398,6 +403,21 @@ func (f *FleetService) TerminateLease(ctx context.Context, userID, fleetID strin
 		return &MutationResult{false, "transaction error", cash}, nil
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
+	// AUDIT-08 (jalur terminate): kunci baris pesawat lalu cek assignment DI
+	// DALAM tx, seperti Fleet.Sell. FK-nya ON DELETE SET NULL, jadi menghapus
+	// pesawat yang masih dipakai meninggalkan route hantu tanpa pesawat — dan
+	// pre-check di atas mengabaikan error bacanya.
+	var lockedID string
+	if err := tx.QueryRow(ctx, `SELECT id FROM fleet_aircraft WHERE id=$1 AND user_id=$2 FOR UPDATE`, fleetID, userID).Scan(&lockedID); err != nil {
+		return &MutationResult{false, "Aircraft not found.", cash}, nil
+	}
+	var stillAssigned bool
+	if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM route_assignments WHERE user_id=$1 AND assigned_aircraft_id=$2)`, userID, fleetID).Scan(&stillAssigned); err != nil {
+		return &MutationResult{false, "assignment check failed", cash}, nil
+	}
+	if stillAssigned {
+		return &MutationResult{false, "Aircraft is still assigned to a route.", cash}, nil
+	}
 	gameTime, _ := f.engine.Ledger.GetUserGameTime(ctx, userID)
 	newCash, debitErr := f.engine.Ledger.DebitTx(ctx, tx, userID, exitFee, "opex", "lease_termination",
 		fmt.Sprintf("Terminated leased aircraft %s [%s]", modelName, deref(tail, "NO-TAIL")), gameTime)

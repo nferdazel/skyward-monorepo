@@ -766,11 +766,17 @@ func (e *Engine) routePerformance(ctx context.Context, userID string) []routePer
 	for rows.Next() {
 		var id string
 		var p routePerfParams
-		rows.Scan(&id, &p.DistanceKM, &p.TicketPrice, &p.FlightsPerWeek,
+		if err := rows.Scan(&id, &p.DistanceKM, &p.TicketPrice, &p.FlightsPerWeek,
 			&p.FuelBurnPerKM, &p.SpeedKMH, &p.MaintCostHr, &p.Capacity,
 			&p.OriginDemand, &p.DestDemand, &p.EconomySeats, &p.BusinessSeats, &p.FirstClassSeats,
-			&p.AcqType, &p.LeasePriceMonth, &p.TurnaroundHours)
+			&p.AcqType, &p.LeasePriceMonth, &p.TurnaroundHours); err != nil {
+			e.log().Error("route performance: baris tidak terbaca, dilewati", "error", err)
+			continue
+		}
 		out = append(out, routePerf{id, routeWeeklyProfit(p, cfg)})
+	}
+	if err := rows.Err(); err != nil {
+		e.log().Error("route performance: iterasi berhenti lebih awal", "error", err)
 	}
 	return out
 }
