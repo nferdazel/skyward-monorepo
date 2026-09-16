@@ -19,11 +19,20 @@ commit (same convention as `docs/product/roadmap.md`).
 
 - [x] **0.1** Restore the missing `migrations/18_retire_pgcron_scheduler_health.sql`
       (recovered from unreferenced object `153074e`) so the migration set matches prod.
-- [ ] **0.2** Fix `00_baseline.sql` so a fresh DB can be bootstrapped:
-      remove the two raw dump-output lines, replace Supabase-only roles/grants
-      (`authenticated`, `service_role`), resolve the `pg_cron` dependency
-      (`CREATE EXTENSION` or justify removal). Prefer a clean-room baseline
-      regenerated from a verified apply of 00–18. *Breaking for fresh-apply only.*
+- [x] **0.2** Make `00_baseline.sql` bootstrap-able. Removed the two raw
+      dump-output lines, added a role preamble creating `anon`/`authenticated`/
+      `service_role` as NOLOGIN groups when absent, added a minimal unused
+      `auth.uid()` stub (one legacy helper keeps a DEFAULT on it), and removed the
+      Supabase-only `users_auth_user_id_fkey` → `auth.users` plus the 16 baseline
+      RLS enables + 16 policies (prod has none). Verified: `00–18` apply cleanly
+      to a scratch DB. *Breaking for fresh-apply only; prod untouched.*
+- [ ] **0.2b** Converge RLS. `01_security_phase5_rls.sql` re-enables RLS on 14
+      tables with `auth.uid()`-scoped policies (no `TO` clause → applies to
+      PUBLIC), yet prod has RLS **disabled** (`rls_enabled_tables=0`, 0 policies)
+      and the API connects as `skyward_app` while tables are owned by `postgres`.
+      A fresh env therefore applies migrations successfully but the API is
+      **non-functional** (every user-table access is denied). Add a migration
+      that disables RLS and drops the obsolete policies to match prod — pending D5.
 - [ ] **0.3** Add a `schema_migrations` ledger + `make migrate` + `make drift-check`
       (normalized `pg_dump -s` vs a committed snapshot); standardize the
       `BEGIN;/COMMIT;` vs `psql -1` convention (migrations 01–06 lack `BEGIN`;
@@ -126,6 +135,9 @@ Each needs a short written proposal (blast radius + migration path + test plan).
       or defer to Phase 3?
 - [ ] **D4** Re-introducing any of the force-reverted work (GAME-01/GAME-10 et al.)
       is out of scope here; separate decision.
+- [ ] **D5** RLS posture for self-hosted: disable RLS to match prod (recommended —
+      the Go API is the sole writer and already scopes ownership in SQL), or keep
+      RLS and grant the app role appropriately?
 
 ## Deliberately out of scope (protect from churn)
 

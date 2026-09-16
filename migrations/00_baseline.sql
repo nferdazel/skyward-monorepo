@@ -9,13 +9,15 @@
 --
 -- Previous migrations are archived in migrations_old/ for reference.
 --
--- Extensions required: pg_cron, pgcrypto, uuid-ossp
+-- Extensions required: none. `gen_random_uuid()` is core since PostgreSQL 13
+-- and the target is PostgreSQL 18; `plpgsql` ships by default. `pg_cron` is NOT
+-- installed and NOT required — the dead `get_world_tick_scheduler_health()`
+-- created further down is dropped again by `18_retire_pgcron_scheduler_health.sql`.
 --
-
-Initialising login role...
-Dumping schemas from remote database...
-
-
+-- The grants in this file target the roles the live Supabase project used
+-- (`anon` / `authenticated` / `service_role`). They are created as NOLOGIN
+-- groups immediately below when absent, so a fresh self-hosted cluster can
+-- apply this baseline unchanged. `pg_database_owner` is a built-in role (PG14+).
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -27,6 +29,36 @@ SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
+
+-- Self-hosted bring-up: the GRANTs below reference these Supabase-era roles.
+-- Create them as no-login groups if this cluster does not have them yet; a
+-- Supabase-managed cluster already has them, so the block is a no-op there.
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+    CREATE ROLE anon NOLOGIN;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+    CREATE ROLE authenticated NOLOGIN;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+    CREATE ROLE service_role NOLOGIN;
+  END IF;
+END
+$$;
+
+
+-- Self-hosted bring-up: the live Supabase project provided an `auth` schema.
+-- The app no longer uses Supabase auth, but one legacy helper function keeps a
+-- DEFAULT referencing `auth.uid()`, so provide a minimal, unused stub. The
+-- Supabase FKs / RLS policies that also referenced `auth` are intentionally
+-- absent to match production (verified 2026-09-12: rls_enabled_tables=0, no
+-- policies, no `auth.users`).
+CREATE SCHEMA IF NOT EXISTS "auth";
+
+CREATE OR REPLACE FUNCTION "auth"."uid"() RETURNS "uuid"
+    LANGUAGE "sql" STABLE
+    AS $$ SELECT NULL::uuid $$;
 
 
 CREATE SCHEMA IF NOT EXISTS "public";
@@ -6203,8 +6235,6 @@ ALTER TABLE ONLY "public"."route_assignments"
 
 
 
-ALTER TABLE ONLY "public"."users"
-    ADD CONSTRAINT "users_auth_user_id_fkey" FOREIGN KEY ("auth_user_id") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
 
 
 
@@ -6223,124 +6253,84 @@ ALTER TABLE ONLY "public"."world_tick_log"
 
 
 
-CREATE POLICY "Bot profiles viewable by everyone" ON "public"."bot_profiles" FOR SELECT TO "authenticated" USING (true);
 
 
 
-CREATE POLICY "Game config viewable by everyone" ON "public"."game_config" FOR SELECT TO "authenticated" USING (true);
 
 
 
-ALTER TABLE "public"."achievements" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "achievements_select_own" ON "public"."achievements" FOR SELECT TO "authenticated" USING (("user_id" = ( SELECT "users"."id"
-   FROM "public"."users"
-  WHERE ("users"."auth_user_id" = "auth"."uid"()))));
 
 
 
-ALTER TABLE "public"."aircraft_models" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "aircraft_models_select_authenticated" ON "public"."aircraft_models" FOR SELECT TO "authenticated" USING (true);
 
 
 
-ALTER TABLE "public"."airports" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "airports_select_authenticated" ON "public"."airports" FOR SELECT TO "authenticated" USING (true);
 
 
 
-ALTER TABLE "public"."bank_accounts" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "bank_accounts_select_own" ON "public"."bank_accounts" FOR SELECT TO "authenticated" USING (("user_id" = "public"."get_current_user_id"()));
 
 
 
-ALTER TABLE "public"."bank_transactions" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "bank_transactions_select_own" ON "public"."bank_transactions" FOR SELECT TO "authenticated" USING (("user_id" = "public"."get_current_user_id"()));
 
 
 
-ALTER TABLE "public"."bot_profiles" ENABLE ROW LEVEL SECURITY;
 
 
-ALTER TABLE "public"."credit_score_history" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "credit_score_history_select_own" ON "public"."credit_score_history" FOR SELECT TO "authenticated" USING (("user_id" = ( SELECT "users"."id"
-   FROM "public"."users"
-  WHERE ("users"."auth_user_id" = "auth"."uid"()))));
 
 
 
-ALTER TABLE "public"."credit_scores" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "credit_scores_select_own" ON "public"."credit_scores" FOR SELECT TO "authenticated" USING (("user_id" = ( SELECT "users"."id"
-   FROM "public"."users"
-  WHERE ("users"."auth_user_id" = "auth"."uid"()))));
 
 
 
-ALTER TABLE "public"."fleet_aircraft" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "fleet_aircraft_select_own" ON "public"."fleet_aircraft" FOR SELECT TO "authenticated" USING (("user_id" = "public"."get_current_user_id"()));
 
 
 
-ALTER TABLE "public"."game_config" ENABLE ROW LEVEL SECURITY;
 
 
-ALTER TABLE "public"."game_events" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "game_events_select_authenticated" ON "public"."game_events" FOR SELECT TO "authenticated" USING (true);
 
 
 
-ALTER TABLE "public"."loans" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "loans_select_own" ON "public"."loans" FOR SELECT TO "authenticated" USING (("user_id" = ( SELECT "users"."id"
-   FROM "public"."users"
-  WHERE ("users"."auth_user_id" = "auth"."uid"()))));
 
 
 
-ALTER TABLE "public"."route_assignments" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "route_assignments_select_own" ON "public"."route_assignments" FOR SELECT TO "authenticated" USING (("user_id" = "public"."get_current_user_id"()));
 
 
 
-ALTER TABLE "public"."season_clock" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "season_clock_select_authenticated" ON "public"."season_clock" FOR SELECT TO "authenticated" USING (true);
 
 
 
-ALTER TABLE "public"."users" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "users_select_own" ON "public"."users" FOR SELECT TO "authenticated" USING ((("auth"."uid"() IS NOT NULL) AND ("auth"."uid"() = "auth_user_id")));
 
 
 
-CREATE POLICY "users_update_own" ON "public"."users" FOR UPDATE TO "authenticated" USING ((("auth"."uid"() IS NOT NULL) AND ("auth"."uid"() = "auth_user_id"))) WITH CHECK ((("auth"."uid"() IS NOT NULL) AND ("auth"."uid"() = "auth_user_id")));
 
 
 
-ALTER TABLE "public"."world_tick_log" ENABLE ROW LEVEL SECURITY;
 
 
 GRANT USAGE ON SCHEMA "public" TO "postgres";
