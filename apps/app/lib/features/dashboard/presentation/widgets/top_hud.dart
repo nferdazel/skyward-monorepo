@@ -217,57 +217,65 @@ class TopHud extends StatelessWidget {
       button: true,
       child: GestureDetector(
         onTap: onNotificationTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 6,
-            vertical: 4,
-          ),
+        // 44 dp tap target; pil latarnya tetap seukuran ikon + padding.
+        child: SizedBox(
+          width: 44,
+          height: 44,
+          child: Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 6,
+                vertical: 4,
+              ),
           decoration: BoxDecoration(
             color: unreadCount > 0
                 ? AppTheme.accentSubtle
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(AppSpacing.radiusTight),
           ),
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Icon(
-                Icons.notifications_outlined,
-                size: 16,
-                color: unreadCount > 0
-                    ? AppTheme.primary
-                    : AppTheme.textSecondary,
-              ),
-              if (unreadCount > 0)
-                Positioned(
-                  top: -3,
-                  right: -5,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 3,
-                      vertical: 1,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppTheme.error,
-                      borderRadius:
-                          BorderRadius.circular(AppSpacing.radiusSoft),
-                    ),
-                    constraints: const BoxConstraints(
-                      minWidth: 12,
-                      minHeight: 12,
-                    ),
-                    child: Text(
-                      unreadCount > 9 ? '9+' : '$unreadCount',
-                      style: AppTypography.captionLight.copyWith(
-                        color: AppTheme.textPrimary,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 8,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Icon(
+                    Icons.notifications_outlined,
+                    size: 16,
+                    color: unreadCount > 0
+                        ? AppTheme.primary
+                        : AppTheme.textSecondary,
                   ),
-                ),
-            ],
+                  if (unreadCount > 0)
+                    Positioned(
+                      top: -3,
+                      right: -5,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 3,
+                          vertical: 1,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppTheme.error,
+                          borderRadius: BorderRadius.circular(
+                            AppSpacing.radiusSoft,
+                          ),
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 12,
+                          minHeight: 12,
+                        ),
+                        child: Text(
+                          unreadCount > 9 ? '9+' : '$unreadCount',
+                          style: AppTypography.captionLight.copyWith(
+                            color: AppTheme.textPrimary,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 8,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
           ),
         ),
       ),

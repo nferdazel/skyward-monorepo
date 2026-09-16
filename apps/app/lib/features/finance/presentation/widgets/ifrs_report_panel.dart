@@ -545,9 +545,12 @@ class IfrsReportPanel extends StatelessWidget {
               onTap: onClose,
               borderRadius: BorderRadius.circular(AppSpacing.radiusDefault),
               hoverColor: AppTheme.textMuted.withValues(alpha: 0.08),
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.xs),
-                child: Icon(Icons.close, size: 18, color: AppTheme.textMuted),
+              child: const SizedBox(
+                width: 44,
+                height: 44,
+                child: Center(
+                  child: Icon(Icons.close, size: 18, color: AppTheme.textMuted),
+                ),
               ),
             ),
           ),

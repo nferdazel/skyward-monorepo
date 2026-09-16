@@ -1248,8 +1248,9 @@ class _RoutesViewState extends State<RoutesView> {
             onPressed: () {
               Navigator.pop(context);
             },
+            // 44 dp tap target (ikon tetap 16).
             padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(maxWidth: 32, maxHeight: 32),
+            constraints: const BoxConstraints(maxWidth: 44, maxHeight: 44),
           ),
           content: Column(
               mainAxisSize: MainAxisSize.min,

@@ -374,8 +374,40 @@ Every item below must fail-then-pass with a DB-backed test once 0.4 lands.
       Related, still open: `fleet.go` `Sell`/`TerminateLease` discard the error
       from `Ledger.GetUserGameTime`, which stamps ledger rows with a zero
       game date — out of this item's scope, but now on the record.
-- [ ] **2.6** FE: one IFRS category classifier; single notification-refresh
-      helper; 44 px tap targets.
+- [ ] **2.6** FE consolidation: three parts, two done.
+      *One IFRS category classifier — done.* `features/finance/domain/ifrs_category.dart`
+      owns the subcategory sets, the metrics predicates and `groupFor(key)`, shared
+      by the metrics cubit, the ledger filters and the two category badges (the
+      filters' "kept in sync with FinanceCubit" comment is gone). The mapping is
+      bit-compatible with the old switches, and a test pins it against the keys that
+      actually exist in production (`bank_transactions`, 1.8M rows, 5 categories).
+      That query also surfaced gaps that are left as they were, because closing them
+      changes displayed copy or reported figures: `ticket_revenue` (320k rows of
+      revenue), `maintenance` (cogs), `loan_repayment` (financing),
+      `aircraft_lease_idle` (opex) and `aircraft_lease_deposit` (investing) have no
+      display rule, so their badge falls back to CREDIT/DEBIT; and the metrics count
+      `aircraft_lease_idle` as operations while the income statement puts the same
+      row into fleet leasing. `ifrs_report_builder` keeps its own statement rules on
+      purpose (short-form aliases, sign-based cash-flow buckets), with a comment
+      saying why.
+      *One notification-refresh helper — done.* The dashboard's five BlocListeners
+      each rebuilt the same six-argument `refreshNotifications` call; each now hands
+      only the state that changed to `_refreshNotifications`.
+      *44 dp tap targets — partly done.* Raised the hit area without touching the
+      visible size for `AppTableIconAction` (eleven call sites ask for a 32 dp chip;
+      it now centres that chip in a 44 dp box), the HUD notification bell (~28x24),
+      the notification panel's mark-all-read and close, the sonner dismiss, the IFRS
+      report close, and a routes dialog close that was pinned to 32. Still open,
+      because each of these changes layout rather than just the hit area:
+      `AppButton` defaults to height 40 and `TactileButton` to 36 with ~30 call sites
+      at or below that; the 20-26 dp text chips (finance ledger filter, leaderboard
+      sort, fleet's down-payment preset and CLEAR FILTERS, auth's LOGIN/REGISTER
+      toggle); and the `dense: true` + `VisualDensity(horizontal: -4, vertical: -4)`
+      `CheckboxListTile` in `app_multi_select_field`.
+      Separate finding while loading the antislop UI rules: 26 non-comment em dashes
+      in user-facing copy (`app_strings.dart`, the notification messages, the credit
+      tier descriptions, the `'—'` empty-value placeholders) violate that filter's
+      R-02; replacing them is a copy pass, so it is reported rather than folded in.
 - [x] **2.7** `applyBankruptcy` now runs in one transaction with every step checked.
       It was four bare `Exec` calls with the errors dropped, so a failure mid-way
       left the player half-bankrupt — status `Bankrupt` while loans stayed `active`

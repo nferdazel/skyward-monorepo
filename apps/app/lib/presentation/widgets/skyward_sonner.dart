@@ -194,10 +194,16 @@ class _ToastCard extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
               GestureDetector(
                 onTap: onDismiss,
-                child: const Icon(
-                  Icons.close,
-                  size: 14,
-                  color: AppTheme.textMuted,
+                child: const SizedBox(
+                  width: 44,
+                  height: 44,
+                  child: Center(
+                    child: Icon(
+                      Icons.close,
+                      size: 14,
+                      color: AppTheme.textMuted,
+                    ),
+                  ),
                 ),
               ),
             ],
