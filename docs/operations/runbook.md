@@ -425,11 +425,19 @@ to the Go hardcoded defaults. `aircraft_models` and `airports` reference data
 are still **not** captured by migrations; restore those from a live data dump
 (`pg_dump --data-only -t aircraft_models -t airports …`) until they are seeded.
 
-- Schema baseline: apply `migrations/00_baseline.sql` first, then
-  `01_…` through `18_…` sequentially.
-- Migrations are applied directly with `psql` against the target database, e.g.
-  `psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -1 -f migrations/15_finance_snapshots_retention.sql`.
-  Each migration header names its apply command.
+- Schema baseline: apply `migrations/00_baseline.sql` first, then `01_…` through
+  `19_…` sequentially — or run `make migrate`, which applies pending migrations
+  in order and records each filename + checksum in `schema_migrations`.
+- `schema_migrations` (added by `migrations/19_schema_migrations.sql`) is the
+  applied-migrations ledger; it backfills `00`–`18` because every known
+  environment already has them. A database created **before** the ledger existed
+  must apply `19_schema_migrations.sql` manually once. `scripts/migrate.sh`
+  refuses to run against a non-empty database with no ledger, so it can never
+  re-apply already-applied migrations.
+- Individual migrations can still be applied by hand, e.g.
+  `psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f migrations/<file>.sql`. Files from
+  `07_` onward wrap themselves in `BEGIN;/COMMIT;`, so the legacy `-1` flag in
+  older headers is unnecessary (and produces a harmless double-wrap warning).
 - Player airline reset is a normal in-app mutation
   (`POST /settings/reset`, `SettingsReset` in
   `apps/api/internal/handler/mutation.go`), not a SQL console routine. It is

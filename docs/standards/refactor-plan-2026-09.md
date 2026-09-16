@@ -33,10 +33,13 @@ commit (same convention as `docs/product/roadmap.md`).
       A fresh env therefore applies migrations successfully but the API is
       **non-functional** (every user-table access is denied). Add a migration
       that disables RLS and drops the obsolete policies to match prod — pending D5.
-- [ ] **0.3** Add a `schema_migrations` ledger + `make migrate` + `make drift-check`
-      (normalized `pg_dump -s` vs a committed snapshot); standardize the
-      `BEGIN;/COMMIT;` vs `psql -1` convention (migrations 01–06 lack `BEGIN`;
-      headers say `-1` while files also `COMMIT`).
+- [x] **0.3** Migration ledger + `make migrate`. `migrations/19_schema_migrations.sql`
+      creates `schema_migrations` and backfills 00–18; `scripts/migrate.sh` applies
+      pending files in order, records filename+checksum, verifies checksums of
+      previously-recorded files, and refuses to run against a non-empty database
+      that has no ledger. Runbook §5 updated (`-1` noted as legacy).
+- [ ] **0.3b** `make drift-check`: normalized `pg_dump -s` snapshot committed and
+      compared against a scratch apply, so schema drift is caught in CI.
 - [ ] **0.4** DB-backed test harness (`TEST_DATABASE_URL`, schema from migrations)
       + a CI service-Postgres step. Depends on 0.2.
 - [ ] **0.5** Deploy hardening in `deploy/deploy-vps.sh`: keep

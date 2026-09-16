@@ -1,6 +1,6 @@
 # Skyward Database Design
 
-Status: current | Last verified against code: 2026-09-11
+Status: current | Last verified against code: 2026-09-16
 
 This is the current schema reference for the PostgreSQL database behind
 `skyward-api`. For the runtime owner of writes see [backend.md](backend.md);
@@ -10,7 +10,7 @@ for the client see [frontend.md](frontend.md) and the system shape in
 ## Canonical notes
 
 - **Migrations are sequential**: `migrations/00_baseline.sql` …
-  `migrations/18_retire_pgcron_scheduler_health.sql`.
+  `migrations/19_schema_migrations.sql`. Apply pending ones with `make migrate`.
 - `00_baseline.sql` is a consolidated dump of the live schema (310 KB) that
   **replaced 58 older migration files on 2026-07-22**. It is the baseline, not
   a numbered feature migration.
@@ -215,6 +215,7 @@ Files are applied in numeric order.
 | `16_loans_money_scale.sql` | Align every money column in `loans` to `numeric(20,2)` so comparisons and rounding are deterministic (AUDIT-11) | `loans` |
 | `17_game_config_seed.sql` | Seed the 39 live `game_config` keys (fuel/crew/wear/fares/bot knobs/`credit_tier_config`) with `ON CONFLICT (key) DO NOTHING` so a fresh env stops falling back to Go hardcoded defaults (AUDIT-10) | `game_config` |
 | `18_retire_pgcron_scheduler_health.sql` | Drop the broken `get_world_tick_scheduler_health()` (references the removed `cron.job`; `pg_cron` not installed). Keeps the working `get_world_tick_guardrail_report()` | `get_world_tick_scheduler_health` |
+| `19_schema_migrations.sql` | Applied-migrations ledger: `schema_migrations` (filename, checksum, applied_at), backfilled with 00–18. Lets `scripts/migrate.sh` apply only pending files and detect edits to applied ones | `schema_migrations` |
 
 ## Schema truths to keep straight
 

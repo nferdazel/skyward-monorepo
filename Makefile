@@ -1,4 +1,4 @@
-.PHONY: help analyze test test-app test-api dev-api dev-app clean
+.PHONY: help analyze test test-app test-api dev-api dev-app clean migrate
 
 help:
 	@echo "Skyward Monorepo Commands:"
@@ -8,6 +8,7 @@ help:
 	@echo "  make test-api  - Run Go backend tests"
 	@echo "  make dev-api   - Run Go backend API locally"
 	@echo "  make dev-app   - Run Flutter app locally"
+	@echo "  make migrate   - Apply pending DB migrations (needs DATABASE_URL or PSQL)"
 
 analyze:
 	@echo "==> Running Flutter analyze..."
@@ -30,6 +31,10 @@ dev-api:
 dev-app:
 	@echo "==> Starting Flutter app..."
 	cd apps/app && flutter run
+
+migrate:
+	@echo "==> Applying pending DB migrations..."
+	@bash scripts/migrate.sh
 
 clean:
 	cd apps/app && flutter clean
