@@ -518,39 +518,3 @@ If a reset leaves a player in a bad ledger state, prefer the in-app reset;
 only if no valid post-reset progress must be preserved, delete the phantom
 `bank_transactions` rows and re-align `users.game_current_time` to
 `season_clock.current_game_time`.
-
-## 6. Integration Test Database
-
-`apps/api/internal/testsupport` provides DB-backed test helpers
-(`NewTestPool`, `Reset`, `SeedUser`, `SeedActiveSeason`, `SeedAircraftModel`,
-`SeedFleetAircraft`, `SeedLeasedFleetAircraft`, `SeedGameConfig`,
-`SeedBankAccount`, `SeedBankTransaction`). Tests skip themselves unless
-`TEST_DATABASE_URL` is set, so plain `go test ./...` stays hermetic.
-
-Point it at the **clone**, never at prod: `Reset` truncates `users CASCADE`.
-
-```bash
-# local run over an SSH tunnel (port 15432 -> server 127.0.0.1:5432)
-cd apps/api
-PGPASSWORD='…' TEST_DATABASE_URL='postgres://qouver@127.0.0.1:15432/skyward_test' \
-  go test -p 1 -count=1 ./...
-```
-
-- **`-p 1` is required.** `go test` runs package binaries in parallel, and several
-  packages share this one database while `testsupport.Reset` runs
-  `TRUNCATE users CASCADE` — without `-p 1` the packages delete each other's
-  fixtures (symptom: `read game_current_time: no rows in result set`).
-
-- The test database must have **all migrations applied** (`make migrate` against
-  it); helper seeds assume the current schema and the
-  `create_default_bank_account` trigger.
-- CI does **no** database work: no service container, no `make migrate`, no
-  `TEST_DATABASE_URL`. CI therefore takes the hermetic path and the DB-backed
-  tests skip there. Run them from a machine that can reach the clone, as above.
-  (An earlier CI attempt ran a `postgres:18` service + `make migrate`; it failed
-  with `role "postgres" does not exist`, because the image makes `POSTGRES_USER`
-  the superuser instead of `postgres`, while the Supabase-dump baseline has many
-  `OWNER TO "postgres"` statements.)
-- `TRUNCATE users CASCADE` clears player tables only; reference data
-  (`airports`, `aircraft_models`) and global tables (`game_config`,
-  `season_clock`) survive, and helper seeds upsert to stay idempotent.

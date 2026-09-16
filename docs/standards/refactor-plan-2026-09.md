@@ -43,20 +43,22 @@ commit (same convention as `docs/product/roadmap.md`).
       that has no ledger. Runbook §5 updated (`-1` noted as legacy).
 - [ ] **0.3b** `make drift-check`: normalized `pg_dump -s` snapshot committed and
       compared against a scratch apply, so schema drift is caught in CI.
-- [x] **0.4** DB-backed test harness. `apps/api/internal/testsupport` (`NewTestPool`,
-      `Reset` via `TRUNCATE users CASCADE`, seeds for user/season/model/aircraft/
-      bank account/config/transaction) skips unless `TEST_DATABASE_URL` is set, so
-      `go test ./...` stays hermetic. Its own smoke test proves connect + seed +
-      reset against a real schema. DB-backed runs need `go test -p 1`: packages
-      execute in parallel and several share the test database while `Reset`
-      truncates `users`, so without it they delete each other's fixtures. Runbook
-      §6 documents the tunnel workflow. **CI does no database work** — an earlier
-      pass wired a `postgres:18` service plus `make migrate`, which failed
-      (`role "postgres" does not exist`: the image creates `POSTGRES_USER` as the
-      superuser and never a `postgres` role, while the Supabase-dump baseline has
-      hundreds of `OWNER TO "postgres"` / `DEFAULT PRIVILEGES FOR ROLE "postgres"`
-      statements). Removed on request: `make migrate` is an operator-run step, CI
-      stays hermetic, and the DB-backed tests skip there.
+- [x] **0.4** DB-backed test harness — built, then **removed on request** (2026-09-16).
+      It was `apps/api/internal/testsupport` (`NewTestPool`, `Reset` via
+      `TRUNCATE users CASCADE`, seeders) plus 11 regression tests across
+      engine/handler/store, all skipping unless `TEST_DATABASE_URL` was set. Two CI
+      attempts to run it were dropped first: a `postgres:18` service plus
+      `make migrate` failed with `role "postgres" does not exist` (the image makes
+      `POSTGRES_USER` the superuser and never creates `postgres`, while the
+      Supabase-dump baseline has hundreds of `OWNER TO "postgres"` /
+      `DEFAULT PRIVILEGES FOR ROLE "postgres"` statements), and the user then asked
+      for the DB tests themselves to go. Harness, tests and runbook §6 are deleted.
+      `make migrate` stays an operator-run step against the real database; CI is
+      hermetic (vet + `go test ./...` + Flutter). **Consequence to remember:** the
+      Phase-1 regressions (loan rows silently skipped, phantom late fee, bot
+      NULL-column skips, login brute force, insights HQ leak) no longer have
+      automated coverage — each was verified fail-then-pass when it was fixed, and
+      manual checks go through the runbook §2 audit queries.
 - [x] **0.5** Deploy hardening in `deploy/deploy-vps.sh`: keep
       `bin/skyward-api.prev`, gate restart on `/readyz` with rollback, atomic web
       swap (build to `web.new/` then rename), skip the API restart when only
