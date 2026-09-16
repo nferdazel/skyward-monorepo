@@ -156,13 +156,40 @@ Risks, named honestly:
 - Manual end to end: assess a route in the planner, then compare against the
   player's actual tick result in the bank ledger.
 
-## Open questions (owner input needed)
+## Open questions — answered 2026-09-16
 
-1. Per-aircraft or ranked list? v1 proposes `aircraft_id` optional: omitted, return
-   one entry per compatible aircraft so the client keeps "recommended aircraft".
-2. Include the maintenance/wear preview in v1 (58 of the LOC)? The server has the
-   model, so it is nearly free in the same response. Recommend yes.
+1. Per-aircraft or ranked list? **One entry per compatible aircraft** when
+   `aircraft_id` is omitted, so the client keeps "recommended aircraft".
+2. Include the maintenance/wear preview in v1 (58 of the LOC)? **Yes.** The
+   server's wear model differs from the client's anyway (see the divergences
+   below), so shipping the client preview would ship a known-wrong number.
 3. Return `multipliers` always, or only when at least one differs from 1.0?
-4. Keep `weeklyASK` / `weeklyRPK` client-side (recommended) or move them too?
-5. If the assessment is unavailable, is a degraded client estimate acceptable, or
-   should the planner show an explicit unavailable state (risk 2)?
+   **Always**, including 1.0, so the planner can show "no active events"
+   without inferring it from a missing field.
+4. Keep `weeklyASK` / `weeklyRPK` client-side? **Yes**, they are pure
+   presentation aggregates over data the client already has.
+5. If the assessment is unavailable, is a degraded client estimate acceptable?
+   **No.** Show an explicit "assessment unavailable" state with a retry, and
+   label the last successful result as an estimate ("perkiraan terakhir").
+   (There is also a 6th, added during implementation: the HTTP layer gets a
+   narrow interface so the handler is testable with a fake — approved.)
+
+### Divergences confirmed against the tick while implementing Step 1
+
+The planner's numbers do not merely use stale constants; its model differs in
+four places. Listed so the client deletion is justified by evidence:
+
+1. **Crew cost is not charged at all.** The tick adds
+   `flights x flightHours x crewCostFor(crew_cost_per_hour, capacity)`; the
+   client's `calculateDirectOperatingCostPerFlight` has only fuel +
+   maintenance.
+2. **Maintenance basis includes turnaround.** Client:
+   `flightDurationHours x maintCostPerHour` where `flightDurationHours`
+   includes turnaround. Tick: `flights x distance x maintCostHr / speed`.
+3. **Self-heal model differs.** Client: `unusedHours x
+   maintenanceAutoRepairRatePerHour`. Tick: `grossDamage x
+   maintenance_auto_repair_rate` (0.85, a fraction of damage, not hours).
+4. **Flight cap differs.** Client: `totalWeeklyHoursCap / cycleDurationHours`
+   (plus `absoluteMaxWeeklyFlights`). Tick:
+   `int(max_weekly_flights / flightHours)`.
+

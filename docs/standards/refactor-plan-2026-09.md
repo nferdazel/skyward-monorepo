@@ -477,9 +477,38 @@ Each needs a short written proposal (blast radius + migration path + test plan).
       the client already fetches `/game-config` (and uses it for the HUD fuel
       price) while the planner ignores it, and the server already owns the
       GAME-25 model (`routeDailyDemand`, `allocateCabins`, `routeWeeklyProfit`,
-      `TickSnapshot`) with a hermetic test to copy. Awaiting approval; 5 open
-      questions, including whether the HTTP layer gets an interface for a fake
-      store (it has none today, and the DB-backed handler tests are gone).
+      `TickSnapshot`) with a hermetic test to copy.
+      **Approved 2026-09-16** (owner answered all 5 questions: optional
+      `aircraft_id` returns one entry per compatible aircraft; include the
+      wear preview in v1; always send multipliers including 1.0; keep load
+      factor/ASK/RPK client-side; show an explicit "assessment unavailable" +
+      retry and label the last result as an estimate; add a narrow interface so
+      the handler is testable with a fake).
+      **Three further divergences confirmed while implementing Step 1** — the
+      client's planner does not charge crew cost at all; its maintenance basis
+      uses `distance/speed + turnaround` where the tick uses `distance/speed`;
+      and its self-heal model is `idle hours x rate` where the tick is
+      `gross damage x maintenance_auto_repair_rate`. Its flight cap differs too
+      (`totalWeeklyHoursCap / cycleDuration` vs the tick's
+      `max_weekly_flights / flightHours`). These are the concrete justification
+      for the endpoint, not stylistic preferences.
+      **Step 1 (Go, inert) landed in `6aa87a3`:** `Engine.AssessRoutes` (pure,
+      reuses the tick helpers, reads config + event multipliers from
+      `TickSnapshot`) and `Engine.AssessRoute` (haversine distance and
+      `demand_index` from `airports`, player grounding threshold, candidates
+      from `fleet_aircraft`, incompatible aircraft filtered), plus
+      `RouteAssessHandler` on the narrow `routeAssessor` interface and
+      `GET /routes/assess` behind AuthGuard. Parameters are query-string, not
+      a body, because the client's `ApiClient.get` only sends `query`. Tests:
+      8 hermetic engine + 4 handler (401 / malformed query / 400-404-500
+      mapping / success); fail-then-pass checked for crew, self-heal, lease and
+      error mapping; `ServeMux` precedence for `/routes` vs `/routes/assess`
+      confirmed by an experiment, not assumed. Validated against prod data:
+      CGK-DOH pools 160.34 passengers/day, 70.15 per flight on a 230-seat
+      A321neo (30.5% load factor) — the arithmetic is faithful, so the band is
+      `weak` for every long-haul route in the current world. Still to do:
+      Steps 2-4 (client DTO + dev side-by-side diff, switch over and delete the
+      ~269 LOC + dashboard KPI, docs).
 - [ ] **3.2** Unified mutation pipeline (`MutationRunner`) + push DTO knowledge
       out of cubits into gateways.
 - [ ] **3.3** Decompose the five god views; shrink backend god files.
