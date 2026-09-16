@@ -142,8 +142,13 @@ class IfrsReportBuilder {
     for (final txn in transactions) {
       final sub = txn.ifrsSubcategory ?? '';
       final amt = txn.amount.abs();
+      // `aircraft_lease_deposit` juga uang keluar untuk aset, bukan beban
+      // operasional. 40 baris produksi (31,5 juta) sebelumnya tidak masuk
+      // bucket mana pun sehingga hilang dari arus kas.
       if (txn.transactionType == 'debit' &&
-          (sub == 'aircraft_purchase' || sub == 'aircraft_purchase_deposit')) {
+          (sub == 'aircraft_purchase' ||
+              sub == 'aircraft_purchase_deposit' ||
+              sub == 'aircraft_lease_deposit')) {
         capitalExpenditure += amt;
       } else if (txn.transactionType == 'credit' && sub == 'aircraft_sale') {
         aircraftSales += amt;
@@ -158,9 +163,17 @@ class IfrsReportBuilder {
       final sub = txn.ifrsSubcategory ?? '';
       final txnType = txn.transactionType;
       final amt = txn.amount.abs();
+      // `loan_repayment` adalah nama subkategori yang dipakai backend untuk
+      // pelunasan (843 baris produksi, 286 juta). Dulu tidak cocok bucket mana
+      // pun, sehingga netCashChange mengklaim kas naik lebih banyak daripada
+      // kenyataan. Bandingan lama `txnType == 'late_fee'` selalu false: kolom
+      // transaction_type berisi 'credit'/'debit', dan produksi tidak punya baris
+      // ber-subkategori late_fee sama sekali, jadi cabang itu dihapus.
       if (sub == 'loan_disbursement' && txnType == 'credit') {
         loanProceeds += amt;
-      } else if ((sub == 'loan_payment' || sub == 'financing_payment' || txnType == 'late_fee') &&
+      } else if ((sub == 'loan_payment' ||
+              sub == 'loan_repayment' ||
+              sub == 'financing_payment') &&
           txnType == 'debit') {
         loanRepayments += amt;
       }
