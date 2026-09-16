@@ -278,8 +278,26 @@ Every item below must fail-then-pass with a DB-backed test once 0.4 lands.
       *new* dead key still fails. Not wired here: the Go code deliberately computes
       bot reserves per archetype and uses its own 4-hour cooldown, so wiring them
       would change game balance and needs a product call.
-- [ ] **2.4** Snapshot `game_config` + active events once per `WorldTick`
-      (removes ~16N + 2NR queries/tick).
+- [x] **2.4** `TickSnapshot` (`internal/engine/snapshot.go`) reads the 17 tick
+      `game_config` keys in **one** query and the active `game_events` rows in
+      **one** query per `WorldTick`; `ProcessPlayer`/`ProcessBots` take it as a
+      parameter and the single-player sync endpoint passes nil, loading its own.
+      Per-player queries inside `ProcessPlayer` went from 18 (16 config + 2 events)
+      to 3, and the two per-route event lookups (2NR) are now in-memory. Event
+      selection reproduces the replaced queries exactly — newest matching
+      `start_game_time`, `effect_type` filter only where the old query had one, and
+      1.0 on no match (the old code ignored `ErrNoRows` with the variable already
+      initialised to 1.0). Verified two ways: a hermetic unit test
+      (`snapshot_test.go`) and an equivalence run in `skyward_test` with synthetic
+      events, old query vs new query+filter for each event type (fuel 1.20/1.20,
+      demand 1.40/1.40, capacity 0.80/0.80, no-match → 1.0/1.0).
+      **Deliberate behaviour change:** a failed config/events read now fails the tick
+      instead of each `getConfigNum` silently falling back to Go defaults — that
+      silent divergence is what AUDIT-10 complained about, and the worker retries
+      with backoff.
+      Not covered here: the bots' decision-phase `getConfigNum` reads (~11, once per
+      tick rather than per bot), `dayboundary.go`'s two keys (per player per day),
+      and `GenerateGameEvents`' per-candidate `EXISTS` check.
 - [x] **2.5** `GetAirports` no longer uses `SELECT *` — `pgx.RowToStructByPos` maps by
       position, so adding a column to `airports` would have broken the endpoint at
       runtime with no compile-time warning. Column order verified against the

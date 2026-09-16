@@ -3,12 +3,9 @@ package engine
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math"
 	"time"
-
-	"github.com/jackc/pgx/v5"
 )
 
 // financeSnapshotRetentionDays caps how many daily finance_snapshots rows are
@@ -52,6 +49,15 @@ func (e *Engine) WorldTick(ctx context.Context) (*WorldTickResult, error) {
 	e.GenerateGameEvents(ctx, gameTimeAfter)
 	e.DeactivateExpiredEvents(ctx, gameTimeAfter)
 
+	// 2b. Snapshot konfigurasi + event aktif sekali untuk seluruh tick. Dulu
+	// setiap pemain membaca 16 key (16N query) dan setiap rutenya dua query event
+	// (2NR). Gagal di sini menggagalkan tick — bukan fallback senyap — dan player
+	// yang belum diproses akan dicoba lagi di tick berikutnya.
+	snap, serr := e.LoadTickSnapshot(ctx, gameTimeAfter)
+	if serr != nil {
+		return nil, fmt.Errorf("world tick: %w", serr)
+	}
+
 	// 3. Process REAL players (AUDIT-06: error per player dicatat, tick jalan
 	// terus; player yang gagal tidak maju clock-nya dan retry di tick berikut).
 	players := 0
@@ -70,7 +76,7 @@ func (e *Engine) WorldTick(ctx context.Context) (*WorldTickResult, error) {
 			e.log().Error("world tick: players scan", "error", serr)
 			break
 		}
-		if _, perr := e.ProcessPlayer(ctx, uid, gameTimeAfter); perr != nil {
+		if _, perr := e.ProcessPlayer(ctx, uid, gameTimeAfter, snap); perr != nil {
 			failed++
 			e.log().Error("world tick: process player failed", "user", uid, "error", perr)
 			continue
@@ -84,7 +90,7 @@ func (e *Engine) WorldTick(ctx context.Context) (*WorldTickResult, error) {
 
 	// 4. Process bots (Fase 7 — engine bot): decisions gated on the new season
 	//    time, then advanced through the shared player simulation.
-	bots, berr := e.ProcessBots(ctx, gameTimeAfter)
+	bots, berr := e.ProcessBots(ctx, gameTimeAfter, snap)
 	if berr != nil {
 		failed++
 		e.log().Error("world tick: bots", "error", berr)
@@ -167,33 +173,37 @@ type PlayerProcessResult struct {
 // senyap. Operating cost (fuel/crew/maintenance/lease) memakai
 // DebitTxAllowNegative: cash tidak cukup ⇒ saldo jadi negatif (mesin
 // bankruptcy berjalan), bukan debit dilewati.
-func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime time.Time) (PlayerProcessResult, error) {
-	// load config constants
-	fuelPrice := e.getConfigNum(ctx, "fuel_price_per_liter", 0.85)
-	crewCost := e.getConfigNum(ctx, "crew_cost_per_hour", 350.0)
-	ownedWear := e.getConfigNum(ctx, "owned_wear_per_flight_cycle", 0.50)
-	leasedWear := e.getConfigNum(ctx, "leased_wear_per_flight_cycle", 0.70)
-	autoRepair := e.getConfigNum(ctx, "maintenance_auto_repair_rate", 0.85)
-	bankruptcyThreshold := e.getConfigNum(ctx, "bankruptcy_cash_threshold", -5000000.0)
-	cargoPct := e.getConfigNum(ctx, "cargo_revenue_percentage", 0.05)
-	ticketBase := e.getConfigNum(ctx, "ticket_base_fare", 50.0)
-	ticketKM := e.getConfigNum(ctx, "ticket_per_km_rate", 0.12)
-	maxWeekly := e.getConfigNum(ctx, "max_weekly_flights", 168.0)
-	demandPoolScale := e.getConfigNum(ctx, "demand_pool_scale", 290.0)
-	businessFareMult := e.getConfigNum(ctx, "business_fare_multiplier", 1.5)
-	firstFareMult := e.getConfigNum(ctx, "first_fare_multiplier", 2.5)
-	economyWilling := e.getConfigNum(ctx, "economy_willing_share", 0.80)
-	businessWilling := e.getConfigNum(ctx, "business_willing_share", 0.15)
-	firstWilling := e.getConfigNum(ctx, "first_willing_share", 0.05)
+func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime time.Time, snap *TickSnapshot) (PlayerProcessResult, error) {
+	// Snapshot konfigurasi + event untuk tick ini. Pemanggil dari jalur tick
+	// (WorldTick/ProcessBots) sudah menyiapkannya sekali untuk semua pemain;
+	// endpoint sync satu-pemain mengirim nil dan memuatnya sendiri di sini.
+	if snap == nil {
+		var serr error
+		snap, serr = e.LoadTickSnapshot(ctx, targetTime)
+		if serr != nil {
+			return PlayerProcessResult{}, fmt.Errorf("process %s: %w", userID, serr)
+		}
+	}
 
-	// fuel multiplier from events
-	var fuelMult, maintMult float64 = 1.0, 1.0
-	if err := e.Pool.QueryRow(ctx, `SELECT COALESCE(effect_value, 1.0) FROM game_events WHERE event_type='fuel_shock' AND is_active=true AND effect_type='fuel_price' AND start_game_time<=$1 AND end_game_time>$1 ORDER BY start_game_time DESC LIMIT 1`, targetTime).Scan(&fuelMult); err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return PlayerProcessResult{}, fmt.Errorf("process %s: fuel event lookup: %w", userID, err)
-	}
-	if err := e.Pool.QueryRow(ctx, `SELECT COALESCE(effect_value, 1.0) FROM game_events WHERE event_type='maintenance_shock' AND is_active=true AND effect_type='maintenance_cost' AND start_game_time<=$1 AND end_game_time>$1 ORDER BY start_game_time DESC LIMIT 1`, targetTime).Scan(&maintMult); err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return PlayerProcessResult{}, fmt.Errorf("process %s: maintenance event lookup: %w", userID, err)
-	}
+	fuelPrice := snap.num("fuel_price_per_liter", 0.85)
+	crewCost := snap.num("crew_cost_per_hour", 350.0)
+	ownedWear := snap.num("owned_wear_per_flight_cycle", 0.50)
+	leasedWear := snap.num("leased_wear_per_flight_cycle", 0.70)
+	autoRepair := snap.num("maintenance_auto_repair_rate", 0.85)
+	bankruptcyThreshold := snap.num("bankruptcy_cash_threshold", -5000000.0)
+	cargoPct := snap.num("cargo_revenue_percentage", 0.05)
+	ticketBase := snap.num("ticket_base_fare", 50.0)
+	ticketKM := snap.num("ticket_per_km_rate", 0.12)
+	maxWeekly := snap.num("max_weekly_flights", 168.0)
+	demandPoolScale := snap.num("demand_pool_scale", 290.0)
+	businessFareMult := snap.num("business_fare_multiplier", 1.5)
+	firstFareMult := snap.num("first_fare_multiplier", 2.5)
+	economyWilling := snap.num("economy_willing_share", 0.80)
+	businessWilling := snap.num("business_willing_share", 0.15)
+	firstWilling := snap.num("first_willing_share", 0.05)
+
+	fuelMult := snap.fuelMult()
+	maintMult := snap.maintMult()
 
 	// Serialize concurrent processing for the same user (POST /simulation/sync
 	// vs the world-tick worker). Without this, both calls read the same
@@ -229,7 +239,7 @@ func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime ti
 		return PlayerProcessResult{}, nil
 	}
 	timeFraction := math.Min(elapsed/7.0, 1.0)
-	safetyThreshold := math.Max(autoThreshold, e.getConfigNum(ctx, "absolute_minimum_safety_limit", 30.0))
+	safetyThreshold := math.Max(autoThreshold, snap.num("absolute_minimum_safety_limit", 30.0))
 
 	// Route loop
 	type routeRow struct {
@@ -283,15 +293,9 @@ func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime ti
 	totalExpense := 0.0
 
 	for _, r := range routes {
-		// event multipliers (from cached fuelMult, maintMult)
-		demandEvent := 1.0
-		if err := e.Pool.QueryRow(ctx, `SELECT COALESCE(effect_value,1.0) FROM game_events WHERE event_type='demand_surge' AND is_active=true AND effect_target IN ($1,$2) AND start_game_time<=$3 AND end_game_time>$3 ORDER BY start_game_time DESC LIMIT 1`, r.OriginIATA, r.DestIATA, targetTime).Scan(&demandEvent); err != nil && !errors.Is(err, pgx.ErrNoRows) {
-			return PlayerProcessResult{}, fmt.Errorf("process %s: demand surge lookup: %w", userID, err)
-		}
-		capacityEvent := 1.0
-		if err := e.Pool.QueryRow(ctx, `SELECT COALESCE(effect_value,1.0) FROM game_events WHERE event_type='weather_disruption' AND is_active=true AND effect_target IN ($1,$2) AND start_game_time<=$3 AND end_game_time>$3 ORDER BY start_game_time DESC LIMIT 1`, r.OriginIATA, r.DestIATA, targetTime).Scan(&capacityEvent); err != nil && !errors.Is(err, pgx.ErrNoRows) {
-			return PlayerProcessResult{}, fmt.Errorf("process %s: weather lookup: %w", userID, err)
-		}
+		// Event multiplier dari snapshot (dulu dua query per rute per pemain).
+		demandEvent := snap.demandMult(r.OriginIATA, r.DestIATA)
+		capacityEvent := snap.capacityMult(r.OriginIATA, r.DestIATA)
 
 		flightHours := r.DistanceKM/r.SpeedKMH + r.TurnaroundHours
 		if flightHours <= 0 {

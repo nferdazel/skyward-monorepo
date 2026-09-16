@@ -366,7 +366,9 @@ func (h *MutationHandler) SimulationSync(w http.ResponseWriter, r *http.Request)
 		httperr.WriteError(w, nil, httperr.Internal("no active season for simulation sync"))
 		return
 	}
-	result, err := h.Engine.ProcessPlayer(r.Context(), uid, seasonTime)
+	// nil: jalur sync satu-pemain memuat snapshot-nya sendiri (1 query config +
+	// 1 query event, bukan 16 + 2 per rute).
+	result, err := h.Engine.ProcessPlayer(r.Context(), uid, seasonTime, nil)
 	if err != nil {
 		// AUDIT-06: sync gagal = 500; clock player tidak maju, client retry aman.
 		httperr.WriteError(w, nil, httperr.Internal("simulation sync failed"))

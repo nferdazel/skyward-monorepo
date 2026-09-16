@@ -14,7 +14,7 @@ import (
 // process_all_bots_simulation_to_time). targetTime is the season clock; bot
 // decisions are gated on it and each bot is then advanced through the shared
 // player simulation so bot economics match the player model by construction.
-func (e *Engine) ProcessBots(ctx context.Context, targetTime time.Time) (int, error) {
+func (e *Engine) ProcessBots(ctx context.Context, targetTime time.Time, snap *TickSnapshot) (int, error) {
 	startingCash := e.getConfigNum(ctx, "starting_cash", 25000000.0)
 	bankruptcyThreshold := e.getConfigNum(ctx, "bankruptcy_cash_threshold", -5000000.0)
 	repairReserve := e.getConfigNum(ctx, "bot_repair_cash_reserve", 500000.0)
@@ -79,7 +79,7 @@ func (e *Engine) ProcessBots(ctx context.Context, targetTime time.Time) (int, er
 	// before any decisions keeps same-tick pricing/route effects from feeding
 	// back into another bot's revenue within the same tick.
 	for _, b := range bots {
-		if _, perr := e.ProcessPlayer(ctx, b.ID, targetTime); perr != nil {
+		if _, perr := e.ProcessPlayer(ctx, b.ID, targetTime, snap); perr != nil {
 			e.log().Error("bot sim: process player failed", "bot", b.ID, "error", perr)
 		}
 	}
