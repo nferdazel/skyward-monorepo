@@ -33,10 +33,25 @@ func TestWriteErrorLogsWithNilLogger(t *testing.T) {
 	if !strings.Contains(buf.String(), "database exploded") {
 		t.Fatalf("500 tidak tercatat: %q", buf.String())
 	}
-	// Catatan: body 500 saat ini memuat `he.Message` apa adanya, jadi teks
-	// server-side ikut terkirim ke klien (mis. main.go mengirim
-	// Internal("tick failed: "+err.Error())). Itu isu terpisah dan client-visible,
-	// dicatat sebagai 1.8b di refactor-plan — bukan bagian dari perbaikan logging.
+	// 1.8b: pesan server-side tidak boleh ikut terkirim ke klien.
+	if strings.Contains(w.Body.String(), "database exploded") {
+		t.Fatalf("detail server bocor ke body respons: %s", w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), "internal error") {
+		t.Fatalf("body 500 harus memakai pesan generik: %s", w.Body.String())
+	}
+}
+
+// TestWriteErrorKeepsClientErrorMessages — 400/404/409 tetap memakai pesan yang
+// dikurasi; hanya kelas 500 yang digeneralisasi.
+func TestWriteErrorKeepsClientErrorMessages(t *testing.T) {
+	w := httptest.NewRecorder()
+
+	WriteError(w, nil, Validation("password must be at least 6 characters"))
+
+	if !strings.Contains(w.Body.String(), "password must be at least 6 characters") {
+		t.Fatalf("pesan validasi hilang dari body: %s", w.Body.String())
+	}
 }
 
 // TestWriteErrorDoesNotLogClientErrors — 400/validation tidak boleh membanjiri

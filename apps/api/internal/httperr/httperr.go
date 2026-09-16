@@ -91,11 +91,18 @@ func WriteError(w http.ResponseWriter, logger *slog.Logger, err error) {
 	if status == 0 {
 		status = http.StatusInternalServerError
 	}
+	// Detail server-side sudah dicatat di atas; klien cukup menerima kodenya.
+	// Dulu `he.Message` dikirim apa adanya, jadi teks internal (mis. pesan DB dari
+	// `Internal("tick failed: " + err.Error())`) sampai ke pemain.
+	message := he.Message
+	if he.Code == CodeInternal || he.Code == CodeDatabase {
+		message = "internal error"
+	}
 	if he.Code == CodeTooMany {
 		w.Header().Set("Retry-After", "1")
 	}
 	WriteJSON(w, status, map[string]any{
-		"error": map[string]string{"code": string(he.Code), "message": he.Message},
+		"error": map[string]string{"code": string(he.Code), "message": message},
 	})
 }
 
