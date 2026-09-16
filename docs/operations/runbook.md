@@ -395,7 +395,11 @@ curl -s -X POST -H "Authorization: Bearer $SKYWARD_ADMIN_TOKEN" \
 Deployment manifests and Caddy snippets live under [`deploy/`](../../deploy).
 `deploy/deploy-vps.sh` is the active webhook-driven deploy path; the API runs
 as a native systemd user unit at `/srv/qouver/apps/skyward/bin/skyward-api`
-(not a container — `skyward-api.container` is aspirational). `scripts/deploy.sh`
+(not a container — `skyward-api.container` is aspirational). The script keeps
+the previous binary at `bin/skyward-api.prev`, gates the restart on
+`GET /readyz` and rolls back automatically if it fails, swaps the web build
+atomically via `web.new` → `web` (keeping `web.prev`), and skips the API restart
+entirely when `apps/api/` did not change. `scripts/deploy.sh`
 is deprecated for updates but its `setup` mode still installs the quadlet unit:
 
 ```bash

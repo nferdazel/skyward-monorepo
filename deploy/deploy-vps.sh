@@ -29,6 +29,10 @@ apps/app/"
     IS_FIRST=1
   fi
 
+  API_DEPLOYED=0
+  BIN_DIR=/srv/qouver/apps/skyward/bin
+  BIN="$BIN_DIR/skyward-api"
+
   # Deploy API jika folder apps/api/ berubah atau first run
   if echo "$CHANGED_FILES" | grep -q "^apps/api/" || [ "$IS_FIRST" -eq 1 ]; then
     echo "==> [skyward-monorepo] deploying API (apps/api)" | tee -a "$LOG"
@@ -44,16 +48,49 @@ apps/app/"
         --build-arg COMMIT="$GIT_COMMIT" \
         --build-arg DATE="$GIT_DATE" \
         -t localhost/skyward-api:local . 2>&1 | tail -20 | tee -a "$LOG"
-      mkdir -p /srv/qouver/apps/skyward/bin
+      mkdir -p "$BIN_DIR"
+      # Simpan binary sebelumnya supaya rollout yang gagal bisa di-rollback.
+      if [ -f "$BIN" ]; then
+        cp -f "$BIN" "$BIN.prev"
+      fi
       CONTAINER_ID=$(podman create localhost/skyward-api:local)
-      podman cp "$CONTAINER_ID:/usr/local/bin/skyward-api" /srv/qouver/apps/skyward/bin/skyward-api
+      podman cp "$CONTAINER_ID:/usr/local/bin/skyward-api" "$BIN"
       podman rm "$CONTAINER_ID" >/dev/null
+      API_DEPLOYED=1
     fi
   fi
-  systemctl --user daemon-reload 2>&1 | tee -a "$LOG"
-  systemctl --user restart skyward-api 2>&1 | tee -a "$LOG"
-  sleep 2
-  systemctl --user is-active skyward-api 2>&1 | tee -a "$LOG"
+
+  if [ "$API_DEPLOYED" -eq 1 ]; then
+    systemctl --user daemon-reload 2>&1 | tee -a "$LOG"
+    systemctl --user restart skyward-api 2>&1 | tee -a "$LOG"
+    # Health gate: binary yang "booted but broken" tidak boleh dilaporkan sukses.
+    healthy=0
+    for _ in $(seq 1 15); do
+      if curl -fsS --max-time 3 http://127.0.0.1:8090/readyz >/dev/null 2>&1; then
+        healthy=1
+        break
+      fi
+      sleep 2
+    done
+    if [ "$healthy" -ne 1 ]; then
+      echo "==> ERROR: /readyz tidak sehat setelah restart" | tee -a "$LOG"
+      if [ -f "$BIN.prev" ]; then
+        echo "==> rollback ke binary sebelumnya" | tee -a "$LOG"
+        cp -f "$BIN.prev" "$BIN"
+        systemctl --user restart skyward-api 2>&1 | tee -a "$LOG"
+        sleep 2
+        systemctl --user is-active skyward-api 2>&1 | tee -a "$LOG"
+      else
+        systemctl --user is-active skyward-api 2>&1 | tee -a "$LOG" || true
+      fi
+      exit 1
+    fi
+    echo "==> API sehat (/readyz OK)" | tee -a "$LOG"
+  else
+    # apps/api tidak berubah: jangan restart API (menghindari downtime tick
+    # dan gangguan world-clock yang tidak perlu).
+    echo "==> apps/api tidak berubah; melewati restart API" | tee -a "$LOG"
+  fi
 
   # Deploy Web jika folder apps/app/ berubah atau first run
   if echo "$CHANGED_FILES" | grep -q "^apps/app/" || [ "$IS_FIRST" -eq 1 ]; then
@@ -75,12 +112,19 @@ apps/app/"
       --build-arg SUPABASE_KEY="$SUPABASE_KEY" \
       --build-arg SKYWARD_API_URL="$SKYWARD_API_URL" \
       -t localhost/skyward-web:local -f Dockerfile.web . 2>&1 | tail -20 | tee -a "$LOG"
-    mkdir -p /srv/qouver/apps/skyward/web
-    rm -rf /srv/qouver/apps/skyward/web/*
+    WEB_ROOT=/srv/qouver/apps/skyward/web
+    # Build ke direktori staging lalu swap atomik: kalau `podman cp` gagal,
+    # webroot lama tetap utuh (disimpan juga sebagai web.prev).
+    rm -rf "${WEB_ROOT}.new" && mkdir -p "${WEB_ROOT}.new"
     CONTAINER_ID=$(podman create localhost/skyward-web:local)
-    podman cp "$CONTAINER_ID:/var/www/html/." /srv/qouver/apps/skyward/web/
+    podman cp "$CONTAINER_ID:/var/www/html/." "${WEB_ROOT}.new/"
     podman rm "$CONTAINER_ID" >/dev/null
-    restorecon -RF /srv/qouver/apps/skyward/web/ 2>&1 | tee -a "$LOG" || true
+    rm -rf "${WEB_ROOT}.prev"
+    if [ -d "$WEB_ROOT" ]; then
+      mv "$WEB_ROOT" "${WEB_ROOT}.prev"
+    fi
+    mv "${WEB_ROOT}.new" "$WEB_ROOT"
+    restorecon -RF "$WEB_ROOT" 2>&1 | tee -a "$LOG" || true
     # Catatan: Caddy file_server membaca direktori per-request — file baru langsung
     # ke-serve tanpa reload. Perubahan /etc/caddy/Caddyfile = manual via sudo
     # (caddy validate && systemctl reload caddy), bukan bagian deploy ini.
