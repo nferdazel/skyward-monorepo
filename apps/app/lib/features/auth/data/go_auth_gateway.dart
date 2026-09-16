@@ -40,7 +40,7 @@ class GoAuthGateway implements AuthGateway {
         await _tokenStore?.clear();
         return null;
       }
-      throw AuthGatewayException(e.message);
+      throw AuthGatewayException(e.message, null, e.code);
     } catch (e, stack) {
       throw AuthGatewayException(e.toString(), stack);
     }
@@ -62,7 +62,7 @@ class GoAuthGateway implements AuthGateway {
       });
       return await _sessionFromResponse(data);
     } on ApiException catch (e) {
-      throw AuthGatewayException(e.message);
+      throw AuthGatewayException(e.message, null, e.code);
     } catch (e, stack) {
       throw AuthGatewayException(e.toString(), stack);
     }
@@ -84,7 +84,7 @@ class GoAuthGateway implements AuthGateway {
       });
       return await _sessionFromResponse(data);
     } on ApiException catch (e) {
-      throw AuthGatewayException(e.message);
+      throw AuthGatewayException(e.message, null, e.code);
     } catch (e, stack) {
       throw AuthGatewayException(e.toString(), stack);
     }
@@ -112,7 +112,7 @@ class GoAuthGateway implements AuthGateway {
         'hqAirportIata': hqAirportIata,
       });
     } on ApiException catch (e) {
-      throw AuthGatewayException(e.message);
+      throw AuthGatewayException(e.message, null, e.code);
     } catch (e, stack) {
       throw AuthGatewayException(e.toString(), stack);
     }

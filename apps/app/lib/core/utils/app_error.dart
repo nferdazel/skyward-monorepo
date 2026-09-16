@@ -44,7 +44,7 @@ class AppError {
   /// Returns `true` when [error] represents a 401 Unauthorized response.
   static bool isUnauthorizedError(Object error) {
     if (error is AuthGatewayException) {
-      return error.message.contains('401');
+      return error.code == 'unauthorized' || error.message.contains('401');
     }
     return false;
   }

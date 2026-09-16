@@ -2,9 +2,15 @@ import '../domain/user_model.dart';
 
 class AuthGatewayException implements Exception {
   final String message;
+
+  /// Kode error terstruktur dari API Go (`unauthorized`, `validation_error`,
+  /// `conflict`, `too_many_requests`, `internal`, …). Dipakai cubit untuk memilih
+  /// pesan yang ditampilkan — dulu pemetaan dilakukan dengan mencocokkan
+  /// substring `toString()`, yang rapuh dan bisa membocorkan teks internal.
+  final String code;
   final StackTrace? stackTrace;
 
-  const AuthGatewayException(this.message, [this.stackTrace]);
+  const AuthGatewayException(this.message, [this.stackTrace, this.code = 'internal']);
 
   @override
   String toString() => message;

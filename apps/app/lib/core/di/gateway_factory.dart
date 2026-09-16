@@ -59,6 +59,11 @@ class GatewayFactory {
         baseUrl: AppEnv.apiBaseUrl,
       );
 
+  /// Client realtime yang sudah ada, tanpa memaksa pembuatannya. Dipakai jalur
+  /// auth (logout/login) supaya tidak meng-instansiasi koneksi hanya untuk
+  /// memutusnya ketika app belum pernah memakai realtime.
+  static GoRealtimeClient? get existingRealtimeClient => _sharedRealtime;
+
   @visibleForTesting
   static void overrideRealtimeClient(GoRealtimeClient client) =>
       _sharedRealtime = client;
