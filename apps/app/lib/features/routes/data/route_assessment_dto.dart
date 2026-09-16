@@ -10,6 +10,9 @@ import '../../../core/utils/safe_cast.dart';
 /// (`ProcessPlayer`), jadi `weekly_*` adalah biaya yang benar-benar dibebankan,
 /// bukan perkiraan klien.
 class RouteAssessResultDto {
+  /// Diisi oleh `GET /routes/assess/batch`; kosong pada penilaian rute usulan
+  /// yang belum punya id.
+  final String routeId;
   final String origin;
   final String destination;
   final double distanceKm;
@@ -17,6 +20,7 @@ class RouteAssessResultDto {
   final List<RoutePlanAssessmentDto> aircraft;
 
   const RouteAssessResultDto({
+    this.routeId = '',
     required this.origin,
     required this.destination,
     required this.distanceKm,
@@ -27,6 +31,7 @@ class RouteAssessResultDto {
   factory RouteAssessResultDto.fromJson(dynamic json) {
     final map = toSafeMap(json);
     return RouteAssessResultDto(
+      routeId: _str(map['route_id']),
       origin: _str(map['origin']),
       destination: _str(map['destination']),
       distanceKm: _dbl(map['distance_km']),

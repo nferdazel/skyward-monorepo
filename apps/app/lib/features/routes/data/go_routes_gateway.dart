@@ -1,4 +1,5 @@
 import '../../../core/api/api_client.dart';
+import '../../../core/utils/safe_cast.dart';
 import 'route_assessment_dto.dart';
 import 'routes_gateway.dart';
 
@@ -145,6 +146,27 @@ class GoRoutesGateway implements RoutesGateway {
       throw RoutesGatewayException(e.message, 'deleteRoute');
     } catch (e) {
       throw RoutesGatewayException(e.toString(), 'deleteRoute');
+    }
+  }
+
+  @override
+  Future<Map<String, RoutePlanAssessmentDto>> loadRouteAssessments(
+    String userId,
+  ) async {
+    try {
+      final res = await _api.get('/routes/assess/batch');
+      final out = <String, RoutePlanAssessmentDto>{};
+      for (final raw in toSafeList(toSafeMap(res)['routes'])) {
+        final dto = RouteAssessResultDto.fromJson(raw);
+        final best = dto.best;
+        if (dto.routeId.isEmpty || best == null) continue;
+        out[dto.routeId] = best;
+      }
+      return out;
+    } on ApiException catch (e) {
+      throw RoutesGatewayException(e.message, 'loadRouteAssessments');
+    } catch (e) {
+      throw RoutesGatewayException(e.toString(), 'loadRouteAssessments');
     }
   }
 

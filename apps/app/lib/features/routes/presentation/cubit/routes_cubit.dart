@@ -39,6 +39,7 @@ class RoutesCubit extends Cubit<RoutesState>
   RouteMaintenancePreview? _adjustmentMaintenancePreview;
   RouteAssessResultDto? _lastRouteAssessment;
   String? _routeAssessmentError;
+  Map<String, RoutePlanAssessmentDto> _routeAssessments = const {};
   double _effectiveGroundingThreshold =
       GameConstants.defaultAutoGroundingThreshold;
   Timer? _realtimeRefreshDebounce;
@@ -54,6 +55,7 @@ class RoutesCubit extends Cubit<RoutesState>
       availableAircraft: List<UserFleetAircraft>.from(_cachedAvailableAircraft),
       plannerMaintenancePreview: _plannerMaintenancePreview,
       adjustmentMaintenancePreview: _adjustmentMaintenancePreview,
+      routeAssessments: _routeAssessments,
     );
   }
 
@@ -68,6 +70,7 @@ class RoutesCubit extends Cubit<RoutesState>
         ),
         plannerMaintenancePreview: _plannerMaintenancePreview,
         adjustmentMaintenancePreview: _adjustmentMaintenancePreview,
+        routeAssessments: _routeAssessments,
       ),
     );
   }
@@ -97,6 +100,7 @@ class RoutesCubit extends Cubit<RoutesState>
         availableAircraft: snapshot.availableAircraft,
         plannerMaintenancePreview: snapshot.plannerMaintenancePreview,
         adjustmentMaintenancePreview: snapshot.adjustmentMaintenancePreview,
+        routeAssessments: snapshot.routeAssessments,
       ),
       action: rpcCall,
       onSuccess: (response) async {
@@ -122,6 +126,7 @@ class RoutesCubit extends Cubit<RoutesState>
               ),
               plannerMaintenancePreview: _plannerMaintenancePreview,
               adjustmentMaintenancePreview: _adjustmentMaintenancePreview,
+              routeAssessments: _routeAssessments,
             ),
           );
           await loadRoutesAndData(userId, silent: true);
@@ -138,6 +143,7 @@ class RoutesCubit extends Cubit<RoutesState>
                 availableAircraft: snapshot.availableAircraft,
                 plannerMaintenancePreview: snapshot.plannerMaintenancePreview,
                 adjustmentMaintenancePreview: snapshot.adjustmentMaintenancePreview,
+                routeAssessments: snapshot.routeAssessments,
               ),
             );
             _emitLoaded();
@@ -153,6 +159,7 @@ class RoutesCubit extends Cubit<RoutesState>
         availableAircraft: snapshot.availableAircraft,
         plannerMaintenancePreview: snapshot.plannerMaintenancePreview,
         adjustmentMaintenancePreview: snapshot.adjustmentMaintenancePreview,
+        routeAssessments: snapshot.routeAssessments,
       ),
       onAfterError: _emitLoaded,
     );
@@ -441,6 +448,15 @@ class RoutesCubit extends Cubit<RoutesState>
           )
           .toList();
 
+      // 4. Penilaian server untuk rute yang sudah ada. Gagal di sini tidak
+      // boleh menggagalkan halaman: angka lama dipertahankan dan dicatat,
+      // supaya dashboard menampilkan "belum diketahui" alih-alih nol.
+      try {
+        _routeAssessments = await _gateway.loadRouteAssessments(userId);
+      } catch (e) {
+        AppLogger.logError('routes.loadAssessments', e);
+      }
+
       _cachedRoutes = routes;
       _cachedAirports = airports;
       _cachedAvailableAircraft = availableAircraft;
@@ -463,6 +479,7 @@ class RoutesCubit extends Cubit<RoutesState>
           availableAircraft: availableAircraft,
           plannerMaintenancePreview: _plannerMaintenancePreview,
           adjustmentMaintenancePreview: _adjustmentMaintenancePreview,
+          routeAssessments: _routeAssessments,
         ),
       );
     } catch (e, stack) {
@@ -484,6 +501,7 @@ class RoutesCubit extends Cubit<RoutesState>
           ),
           plannerMaintenancePreview: _plannerMaintenancePreview,
           adjustmentMaintenancePreview: _adjustmentMaintenancePreview,
+          routeAssessments: _routeAssessments,
         ),
       );
     }

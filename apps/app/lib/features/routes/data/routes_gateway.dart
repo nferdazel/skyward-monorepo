@@ -48,6 +48,14 @@ abstract class RoutesGateway {
   ///
   /// Ini satu-satunya sumber angka ekonomi yang benar-benar dipakai tick;
   /// rumus di [RoutePlanningAssessment] hanya untuk perbandingan di dev.
+  /// Penilaian seluruh rute aktif pemain (`GET /routes/assess/batch`),
+  /// dikunci per `route_id` dan berisi pesawat yang memang di-assign ke rute
+  /// itu. Rute tanpa pesawat tidak muncul — pemanggil memperlakukannya sebagai
+  /// "belum diketahui", bukan nol.
+  Future<Map<String, RoutePlanAssessmentDto>> loadRouteAssessments(
+    String userId,
+  );
+
   Future<RouteAssessResultDto> assessRoute({
     required String originIata,
     required String destinationIata,

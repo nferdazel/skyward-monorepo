@@ -10,6 +10,7 @@ import '../../fleet/domain/fleet_models.dart';
 import '../../fleet/presentation/cubit/fleet_state.dart';
 import '../../leaderboard/domain/leaderboard_models.dart';
 import '../../leaderboard/presentation/cubit/leaderboard_state.dart';
+import '../../routes/data/route_assessment_dto.dart';
 import '../../routes/domain/route_models.dart';
 import '../../routes/presentation/cubit/routes_state.dart';
 import '../../simulation/presentation/cubit/simulation_state.dart';
@@ -165,6 +166,14 @@ class OverviewSnapshot {
         ? 100.0
         : fleet.map((f) => f.condition).reduce((a, b) => a + b) / fleet.length;
 
+    // Angka ekonomi dan keausan datang dari server (`/routes/assess/batch`),
+    // yang memakai model tick yang sama. "Grounded" tetap predikat lokal karena
+    // itu hanya perbandingan kondisi pesawat dengan ambang pemain, bukan
+    // ekonomi.
+    final assessments = routesState is RoutesDataState
+        ? routesState.routeAssessments
+        : const <String, RoutePlanAssessmentDto>{};
+
     double slackHours = 0.0;
     int riskyRoutes = 0;
     double totalFlights = 0.0;
@@ -174,34 +183,32 @@ class OverviewSnapshot {
     double topYieldValue = -999999999.0;
     for (final route in routes) {
       totalFlights += route.flightsPerWeek;
-      final preview = route.buildMaintenancePreview(
-        user.autoGroundingThreshold,
-      );
-      final assessment = route.assignedAircraft == null
-          ? null
-          : UserRoute.buildPlanningAssessment(
-              origin: route.origin,
-              destination: route.destination,
-              distanceKm: route.distanceKm,
-              ticketPrice: route.ticketPrice,
-              flightsPerWeek: route.flightsPerWeek,
-              availableAircraft: [route.assignedAircraft!],
-              autoGroundingThreshold: user.autoGroundingThreshold,
-            );
-      if (!preview.requiresAircraftAssignment) {
-        slackHours += preview.maintenanceHoursPerWeek;
-        if (preview.isGrounded || preview.netHealthImpactPercent > 0.0) {
+      final aircraft = route.assignedAircraft;
+      final requiresAssignment = aircraft == null;
+      final isGrounded =
+          aircraft != null &&
+          aircraft.isMaintenanceGrounded(user.autoGroundingThreshold);
+      final assessment = assessments[route.id];
+
+      if (!requiresAssignment && assessment != null) {
+        // Jam idle = penerbangan yang tidak terpakai x durasi satu siklus.
+        final unused =
+            assessment.maxWeeklyFlights - assessment.allocatedFlightsPerWeek;
+        slackHours +=
+            (unused > 0 ? unused : 0) * assessment.flightDurationHours;
+        if (isGrounded || assessment.wear.netPerWeek > 0.0) {
           riskyRoutes += 1;
         }
       } else {
+        // Butuh pesawat, atau angka server belum tersedia.
         riskyRoutes += 1;
       }
 
       final riskScore =
-          (preview.requiresAircraftAssignment ? 200.0 : 0.0) +
-          (preview.isGrounded ? 150.0 : 0.0) +
-          preview.netHealthImpactPercent +
-          (route.assignedAircraft == null ? 50.0 : 0.0);
+          (requiresAssignment ? 200.0 : 0.0) +
+          (isGrounded ? 150.0 : 0.0) +
+          (assessment?.wear.netPerWeek ?? 0.0) +
+          (requiresAssignment ? 50.0 : 0.0);
       if (riskScore > topRiskScore) {
         topRiskScore = riskScore;
         topRiskRoute = route;

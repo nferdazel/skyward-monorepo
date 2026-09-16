@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 
 import '../../../fleet/domain/fleet_models.dart';
+import '../../data/route_assessment_dto.dart';
 import '../../domain/route_models.dart';
 
 abstract class RoutesState {
@@ -14,12 +15,20 @@ abstract class RoutesDataState extends RoutesState {
   final RouteMaintenancePreview? plannerMaintenancePreview;
   final RouteMaintenancePreview? adjustmentMaintenancePreview;
 
+  /// Penilaian server untuk rute yang sudah ada, dikunci per `route_id`
+  /// (`GET /routes/assess/batch`). Ini angka yang dijalankan tick, jadi
+  /// dashboard tidak lagi menghitung ekonominya sendiri. Kosong berarti belum
+  /// sempat dimuat atau gagal — pemanggil harus memperlakukannya sebagai
+  /// "belum diketahui", bukan nol.
+  final Map<String, RoutePlanAssessmentDto> routeAssessments;
+
   const RoutesDataState({
     required this.routes,
     required this.airports,
     required this.availableAircraft,
     this.plannerMaintenancePreview,
     this.adjustmentMaintenancePreview,
+    this.routeAssessments = const {},
   });
 }
 
@@ -44,6 +53,7 @@ class RoutesLoaded extends RoutesDataState with Equatable {
     required super.availableAircraft,
     super.plannerMaintenancePreview,
     super.adjustmentMaintenancePreview,
+    super.routeAssessments,
   }) : super();
 
   @override
@@ -53,6 +63,7 @@ class RoutesLoaded extends RoutesDataState with Equatable {
     availableAircraft,
     plannerMaintenancePreview,
     adjustmentMaintenancePreview,
+    routeAssessments,
   ];
 }
 
@@ -63,6 +74,7 @@ class RoutesActionLoading extends RoutesDataState with Equatable {
     required super.availableAircraft,
     super.plannerMaintenancePreview,
     super.adjustmentMaintenancePreview,
+    super.routeAssessments,
   });
 
   @override
@@ -72,6 +84,7 @@ class RoutesActionLoading extends RoutesDataState with Equatable {
     availableAircraft,
     plannerMaintenancePreview,
     adjustmentMaintenancePreview,
+    routeAssessments,
   ];
 }
 
@@ -85,6 +98,7 @@ class RoutesActionSuccess extends RoutesDataState with Equatable {
     required super.availableAircraft,
     super.plannerMaintenancePreview,
     super.adjustmentMaintenancePreview,
+    super.routeAssessments,
   });
 
   @override
@@ -94,6 +108,7 @@ class RoutesActionSuccess extends RoutesDataState with Equatable {
     availableAircraft,
     plannerMaintenancePreview,
     adjustmentMaintenancePreview,
+    routeAssessments,
     message,
   ];
 }
@@ -111,6 +126,7 @@ class RoutesError extends RoutesDataState with Equatable {
     super.availableAircraft = const [],
     super.plannerMaintenancePreview,
     super.adjustmentMaintenancePreview,
+    super.routeAssessments,
   });
 
   @override
@@ -120,6 +136,7 @@ class RoutesError extends RoutesDataState with Equatable {
     availableAircraft,
     plannerMaintenancePreview,
     adjustmentMaintenancePreview,
+    routeAssessments,
     message,
     hasData,
   ];

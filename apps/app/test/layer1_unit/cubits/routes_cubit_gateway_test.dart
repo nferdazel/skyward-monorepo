@@ -89,6 +89,18 @@ class MockRoutesGateway implements RoutesGateway {
 
   RouteAssessResultDto? assessToReturn;
   bool assessShouldThrow = false;
+  Map<String, RoutePlanAssessmentDto> assessmentsToReturn = const {};
+  bool assessmentsShouldThrow = false;
+
+  @override
+  Future<Map<String, RoutePlanAssessmentDto>> loadRouteAssessments(
+    String userId,
+  ) async {
+    if (assessmentsShouldThrow) {
+      throw const RoutesGatewayException('Test batch error', 'loadRouteAssessments');
+    }
+    return assessmentsToReturn;
+  }
 
   @override
   Future<RouteAssessResultDto> assessRoute({

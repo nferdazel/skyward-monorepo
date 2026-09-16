@@ -192,6 +192,11 @@ class _MockRoutesGateway implements RoutesGateway {
     required String routeId,
   }) async => const [];
   @override
+  Future<Map<String, RoutePlanAssessmentDto>> loadRouteAssessments(
+    String userId,
+  ) async => const {};
+
+  @override
   Future<RouteAssessResultDto> assessRoute({
     required String originIata,
     required String destinationIata,

@@ -591,14 +591,21 @@ func (e *Engine) AssessPlayerRoutes(ctx context.Context, userID string) ([]Asses
 			DestDemand:             dDemand,
 			AutoGroundingThreshold: autoGrounding,
 		}
-		// Hanya pesawat yang benar-benar terbang di rute ini. Rute tanpa pesawat
-		// tetap dikembalikan (tanpa entri) supaya dashboard bisa menghitungnya
-		// sebagai "butuh assignment".
-		if ac, ok := byID[assignedID]; ok && assignedID != "" {
-			in.Aircraft = []AssessAircraft{ac}
+		// Hanya pesawat yang benar-benar terbang di rute ini, dan TANPA saringan
+		// range/grounding: untuk rute yang sudah ada, angka tetap dibutuhkan
+		// supaya dashboard bisa menilainya, sedangkan "grounded" adalah predikat
+		// yang sudah dipegang klien dari kondisi pesawatnya. Rute tanpa pesawat
+		// tetap dikembalikan tanpa entri.
+		res := AssessResult{
+			RouteID:     routeID,
+			Origin:      origin,
+			Destination: dest,
+			DistanceKM:  distance,
 		}
-		res := e.AssessRoutes(snap, in)
-		res.RouteID = routeID
+		if ac, ok := byID[assignedID]; ok && assignedID != "" {
+			res.Aircraft = []RouteAssessment{assessRouteFor(in, ac, assessConfigFrom(snap), snap)}
+			res.HasCompatibleAircraft = true
+		}
 		out = append(out, res)
 	}
 	if err := rows.Err(); err != nil {
