@@ -412,7 +412,12 @@ type CompetitorInsight struct {
 	RouteCount     int     `json:"route_count"`
 	MonthlyRevenue float64 `json:"monthly_revenue"`
 	OperStatus     string  `json:"operational_status"`
-	HQAirportIATA  *string `json:"hq_airport_iata"`
+	// HQAirportIATA SENGAJA tidak ada di sini. Endpoint ini publik (leaderboard),
+	// sementara `hq_airport_iata` dipakai sebagai salah satu faktor pemulihan
+	// password (`validateRecoveryCredentials`, AUDIT-01). Selama ia ikut terkirim,
+	// satu dari tiga faktor rahasia itu bisa dibaca siapa pun. FE tidak pernah
+	// membaca field ini (model leaderboard hanya memakai monthly_revenue,
+	// fleet_breakdown, network_routes).
 	DistressStage  *string `json:"distress_stage,omitempty"`
 	ConsecNegDays  *int    `json:"consecutive_negative_days,omitempty"`
 	RecoveryStreak *int    `json:"recovery_streak_days,omitempty"`
@@ -432,7 +437,7 @@ func (s *Store) GetCompetitorInsights(ctx context.Context, id string, isBot bool
 		       (SELECT COUNT(*)::int FROM fleet_aircraft f WHERE f.user_id=u.id),
 		       (SELECT COUNT(*)::int FROM route_assignments r WHERE r.user_id=u.id),
 		       COALESCE((SELECT SUM(bt.amount) FROM bank_transactions bt WHERE bt.user_id=u.id AND bt.transaction_type='credit' AND bt.game_date >= u.game_current_time - INTERVAL '30 days'), 0),
-		       COALESCE(u.operational_status,'Active'), u.hq_airport_iata,
+		       COALESCE(u.operational_status,'Active'),
 		       bp.distress_stage, bp.consecutive_loss_days, u.recovery_streak_days,
 		       COALESCE((SELECT jsonb_object_agg(model, qty) FROM (
 		           SELECT m.manufacturer || ' ' || m.model_name ||
@@ -455,7 +460,7 @@ func (s *Store) GetCompetitorInsights(ctx context.Context, id string, isBot bool
 		LEFT JOIN bot_profiles bp ON bp.user_id = u.id
 		WHERE u.id = $1`, id).Scan(
 		&ci.CompanyName, &ci.CeoName, &ci.NetWorth, &ci.FleetSize, &ci.RouteCount,
-		&ci.MonthlyRevenue, &ci.OperStatus, &ci.HQAirportIATA,
+		&ci.MonthlyRevenue, &ci.OperStatus,
 		&ci.DistressStage, &ci.ConsecNegDays, &ci.RecoveryStreak,
 		&ci.FleetBreakdown, &ci.NetworkRoutes)
 	if err != nil {
