@@ -31,18 +31,51 @@ commit (same convention as `docs/product/roadmap.md`).
       policies, then raises if any RLS/policy remains. Verified: a scratch DB went
       14 tables/15 policies → 0/0, a fresh `00–21` apply ends at 0/0 with 22 ledger
       rows, and prod/`skyward_test` took it as a no-op with data unchanged.
-- [ ] **0.2c** Role provisioning. `00_baseline.sql` creates `anon`,
-      `authenticated`, `service_role` (Supabase-era) but the API connects as
-      **`skyward_app`** (present in prod, `login=true`), which no migration
-      creates or grants to. A fresh env therefore still needs the role + grants
-      set up by hand.
+- [x] **0.2c** Role provisioning. `migrations/22_role_provisioning.sql` creates
+      role `postgres` (NOLOGIN) when the cluster lacks it — the baseline is full of
+      `OWNER TO "postgres"` / `DEFAULT PRIVILEGES FOR ROLE "postgres"`, and the
+      official image never creates that role once `POSTGRES_USER` is set to another
+      name (this is what killed the CI migrate step). It also creates `skyward_app`
+      as a LOGIN role and grants exactly prod's shape: 7 privileges x 17 tables =
+      119 grants (verified equal on a fresh apply), `USAGE, SELECT` on sequences,
+      plus default privileges so tables created by *future* migrations are covered —
+      prod had **zero** default ACLs, which is why `schema_migrations` was the only
+      table without grants. `schema_migrations` is deliberately excluded. The role
+      password stays out of git: `scripts/set-app-role-password.sh` reads
+      `APP_DB_PASSWORD` and sends it over stdin. Applied to prod (no-op except the
+      4 new default ACLs; grants unchanged, `/readyz` 200).
+      **Blocker found:** a fresh cluster still cannot log in — see 0.2d.
+- [ ] **0.2d** **Schema reconciliation — needs approval (found by 0.3b's first run).**
+      Prod and "what the migrations produce" differ in four ways:
+      (a) **`users.password_hash` exists in prod but is created by no migration**, so
+      a fresh cluster cannot log in at all (the API reads that column). Unambiguous
+      bug in the baseline.
+      (b) three FK constraints declared by `00_baseline.sql` are missing in prod
+      (`users.hq_airport_iata → airports`, `users.season_id → season_clock`,
+      `world_tick_log.season_id → season_clock`); prod data violates none of them
+      (0 bad rows), so adding them is safe.
+      (c) six `starting_cash` fallbacks read 15,000,000 in prod but 25,000,000 in the
+      baseline. **Inert in practice**: `game_config.starting_cash` = 25,000,000 in
+      prod, so the `COALESCE` never falls through.
+      (d) `finance_snapshots` money columns are `numeric(20,2)` in prod, plain
+      `numeric` in the baseline.
+      Direction to settle (prod is authoritative for (a); the baseline looks
+      authoritative for (b)) — item 0.2d as agreed, then regenerate the snapshot so
+      the drift check goes green.
+
 - [x] **0.3** Migration ledger + `make migrate`. `migrations/19_schema_migrations.sql`
       creates `schema_migrations` and backfills 00–18; `scripts/migrate.sh` applies
       pending files in order, records filename+checksum, verifies checksums of
       previously-recorded files, and refuses to run against a non-empty database
       that has no ledger. Runbook §5 updated (`-1` noted as legacy).
-- [ ] **0.3b** `make drift-check`: normalized `pg_dump -s` snapshot committed and
-      compared against a scratch apply, so schema drift is caught in CI.
+- [x] **0.3b** `scripts/drift-check.sh` (not a `make` target, and **not in CI** —
+      CI does no database work). It rebuilds a scratch DB from every migration, then
+      compares two ways: live DB vs migration output (catches hand-applied DDL) and
+      migration output vs the committed snapshot
+      `docs/operations/schema-snapshot.sql` (catches a stale snapshot). Owner/ACL are
+      ignored (`postgres` vs `qouver` ownership is legitimate); role *grants* are
+      also outside the comparison — this tool judges schema shape. Exit 1 = drift.
+      First run found 10 hunks / 98 lines of real drift: 0.2d.
 - [x] **0.4** DB-backed test harness — built, then **removed on request** (2026-09-16).
       It was `apps/api/internal/testsupport` (`NewTestPool`, `Reset` via
       `TRUNCATE users CASCADE`, seeders) plus 11 regression tests across
@@ -271,18 +304,19 @@ Each needs a short written proposal (blast radius + migration path + test plan).
 
 ## Owner decisions
 
-- [ ] **D1** Approve a clean-room `00_baseline.sql` (breaking for the fresh-apply
-      path; prod untouched).
-- [ ] **D2** Auth recovery hardening: remove `hq_airport_iata` from the public
-      insights response (breaks the FE intel pane) **or** switch recovery to a
-      server-issued secret.
+- [x] **D1** Answered 2026-09-16: **no clean-room rewrite.** The additive patch in
+      0.2c makes the existing dump self-sufficient for a fresh cluster. The dump stays
+      as the record of prod's lineage, so `3.6` (clean-room baseline v2) is not
+      planned. (a) under 0.2d may still need a one-line change to the baseline.
+- [x] **D2** Answered 2026-09-16: remove the field. Done in 1.9 — the FE needed no
+      change (the leaderboard model never read it), so the "breaks the FE intel pane"
+      caveat did not hold. The server-issued-secret alternative was not needed.
 - [ ] **D3** WebSocket token transport out of the query string — do it in Phase 1
       or defer to Phase 3?
 - [ ] **D4** Re-introducing any of the force-reverted work (GAME-01/GAME-10 et al.)
       is out of scope here; separate decision.
-- [ ] **D5** RLS posture for self-hosted: disable RLS to match prod (recommended —
-      the Go API is the sole writer and already scopes ownership in SQL), or keep
-      RLS and grant the app role appropriately?
+- [x] **D5** Answered 2026-09-16: disable RLS to match prod. Done in
+      `21_disable_rls_to_match_prod.sql`; verified 14 tables/15 policies → 0/0.
 
 ## Deliberately out of scope (protect from churn)
 

@@ -518,3 +518,57 @@ If a reset leaves a player in a bad ledger state, prefer the in-app reset;
 only if no valid post-reset progress must be preserved, delete the phantom
 `bank_transactions` rows and re-align `users.game_current_time` to
 `season_clock.current_game_time`.
+
+## 6. Fresh Environment Bring-up & Drift Check
+
+### Fresh cluster
+
+```bash
+# 1. Role + grant. Sudah ditangani migrasi: 22_role_provisioning.sql membuat
+#    role `postgres` (NOLOGIN) bila cluster belum punya, role `skyward_app`
+#    (LOGIN) bila belum ada, 119 grant (7 privilege x 17 tabel), dan default
+#    privileges supaya tabel yang dibuat migrasi berikutnya ikut ter-grant.
+DATABASE_URL=postgres://<superuser>@<host>:5432/<db> make migrate
+
+# 2. Password app role — sengaja di luar file migrasi (tidak ada kredensial di git).
+APP_DB_PASSWORD='…' DATABASE_URL=postgres://<superuser>@<host>:5432/<db> \
+  scripts/set-app-role-password.sh
+
+# 3. Arahkan API ke cluster itu sebagai `skyward_app`.
+```
+
+`skyward_app` adalah role login non-super tanpa keanggotaan role; otorisasi
+sepenuhnya ada di Go (JWT + predikat `user_id` di query), bukan di RLS —
+lihat migrasi `21_disable_rls_to_match_prod.sql`.
+
+**Gap yang diketahui (2026-09-16):** `00_baseline.sql` **tidak** membuat kolom
+`users.password_hash` (tidak ada migrasi mana pun yang membuatnya), padahal API
+memerlukannya untuk login. Cluster baru dari repo karena itu belum bisa dipakai
+login sampai ini diperbaiki — dilacak sebagai item 0.2d di plan refactor.
+
+### Drift check
+
+`scripts/drift-check.sh` menjawab: **apakah schema DB hidup masih sama dengan
+yang dihasilkan migrasi?**
+
+```bash
+DATABASE_URL=postgres://qouver@127.0.0.1:15432/skyward scripts/drift-check.sh
+DATABASE_URL=… scripts/drift-check.sh --update   # segarkan snapshot
+```
+
+- Membuat ulang scratch DB (`SCRATCH_DB`, default `skyward_drift`), menerapkan
+  **seluruh** migrasi ke sana, lalu membandingkan dua arah: DB hidup vs hasil
+  migrasi (menangkap DDL yang di-apply tangan) dan hasil migrasi vs snapshot
+  yang di-commit (menangkap snapshot basi).
+- Snapshot: `docs/operations/schema-snapshot.sql` (normalisasi `pg_dump -s`).
+- Perbandingan mengabaikan owner dan ACL (`--no-owner --no-acl`): owner sah
+  berbeda antar cluster (`postgres` vs `qouver`). **Grant role juga tidak ikut
+  dibandingkan** — tool ini menilai bentuk schema, bukan hak akses.
+- Exit code 1 = ada drift. Scratch DB ditinggalkan untuk diperiksa; jalankan
+  ulang akan membuatnya dari nol.
+- Dijalankan manual oleh operator. CI tidak menyentuh database.
+
+Temuan pertama (2026-09-16, 10 hunk / 98 baris) ada di item **0.2d** plan
+refactor: `users.password_hash` hilang dari baseline, 3 FK ada di baseline tapi
+tidak di prod, 6 fallback `starting_cash` 15 juta vs 25 juta, dan
+`finance_snapshots` `numeric(20,2)` vs `numeric`.
