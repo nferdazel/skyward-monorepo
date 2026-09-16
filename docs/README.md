@@ -25,14 +25,15 @@ docs/
 │   ├── overview.md      system shape, tick/season clock, auth, realtime
 │   ├── backend.md       Go API: engine domains, routes, worker, config
 │   ├── frontend.md      Flutter: cubits, gateways, sync, test layers
-│   └── database.md      schema groups + migrations 00–15 index
+│   └── database.md      schema groups + migrations 00–18 index
 ├── product/
 │   ├── design-system.md token & component spec verified against code
 │   └── roadmap.md       living backlog + open questions + eng debt
 ├── operations/
 │   └── runbook.md       audit SQL, troubleshooting, admin tools, deploy
 ├── standards/
-│   └── maintainer-standard.md
+│   ├── maintainer-standard.md
+│   └── refactor-plan-2026-09.md  audit-driven refactor backlog (phases + decisions)
 └── reviews/             dated historical audits (not living docs; gitignored, local-only)
     ├── aviation-realism-review-2026-09.md
     └── game-design-review-2026-09.md

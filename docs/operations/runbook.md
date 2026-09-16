@@ -226,15 +226,15 @@ These functions exist in `00_baseline.sql` and are read-only audit surfaces.
 They are still callable via `psql`; they are not exposed as HTTP endpoints
 except the worker status route below.
 
-> ⚠️ **Caveat (2026-09-12):** `get_world_tick_scheduler_health()` and
-> `get_world_tick_guardrail_report()` predate the Go world-tick worker and
-> still look at the pg_cron scheduler era. They may return stale or
-> meaningless values now that the worker is in-process — verify before
-> trusting, or retire them.
+> ⚠️ **Caveat (2026-09-12, updated):** `get_world_tick_scheduler_health()` is
+> **retired** — `migrations/18_retire_pgcron_scheduler_health.sql` drops it
+> because it references `cron.job` and `pg_cron` is not installed (it always
+> errored). `get_world_tick_guardrail_report()` still works (verified
+> 2026-09-12) and is the remaining read-only audit surface; `GET
+> /admin/worker/status` covers tick health.
 
 ```sql
 select * from get_world_tick_guardrail_report();
-select * from get_world_tick_scheduler_health();
 select * from prune_bank_transactions(true);   -- dry-run: rows that would be pruned
 ```
 
@@ -422,7 +422,7 @@ are still **not** captured by migrations; restore those from a live data dump
 (`pg_dump --data-only -t aircraft_models -t airports …`) until they are seeded.
 
 - Schema baseline: apply `migrations/00_baseline.sql` first, then
-  `01_…` through `17_…` sequentially.
+  `01_…` through `18_…` sequentially.
 - Migrations are applied directly with `psql` against the target database, e.g.
   `psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -1 -f migrations/15_finance_snapshots_retention.sql`.
   Each migration header names its apply command.

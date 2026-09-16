@@ -17,16 +17,16 @@ skyward-monorepo/
 │   └── api/                # Go HTTP API & simulation worker
 ├── docs/                   # Architecture, product, operations, standards, reviews
 ├── migrations/             # Sequential DB migrations (00_baseline … NN_name.sql)
-├── deploy/                 # Docker Compose, VPS Podman Quadlet / Caddy / systemd manifests
+├── deploy/                 # Webhook deploy script, Caddy snippets, prod env example
 ├── scripts/                # Deployment tools
 ├── AGENTS.md               # Agent/repo working rules
-└── Makefile                # Root task runner (make dev, make test, make analyze)
+└── Makefile                # Root task runner (make test, make analyze, make dev-api, make dev-app)
 ```
 
 ## Quick Start
 
 ### Prerequisites
-- Go 1.22+
+- Go 1.26.5+ (see `apps/api/go.mod`)
 - Flutter SDK 3.24+
 - PostgreSQL 18
 

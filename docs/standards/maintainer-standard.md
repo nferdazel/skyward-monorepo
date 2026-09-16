@@ -96,7 +96,7 @@ migration or engine code, not in an unrepeatable manual `UPDATE`.
 ## 5. Migration Convention
 
 - Migrations are sequential and named `NN_name.sql`, applied in order:
-  `00_baseline.sql` first, then `01_…` through the current `15_…`.
+  `00_baseline.sql` first, then `01_…` through the current `18_…`.
 - Never edit a migration that has been applied. Add a new file instead.
 - Each migration should state its apply command in the header
   (`psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -1 -f <file>`).
