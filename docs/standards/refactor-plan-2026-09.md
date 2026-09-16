@@ -40,8 +40,13 @@ commit (same convention as `docs/product/roadmap.md`).
       that has no ledger. Runbook §5 updated (`-1` noted as legacy).
 - [ ] **0.3b** `make drift-check`: normalized `pg_dump -s` snapshot committed and
       compared against a scratch apply, so schema drift is caught in CI.
-- [ ] **0.4** DB-backed test harness (`TEST_DATABASE_URL`, schema from migrations)
-      + a CI service-Postgres step. Depends on 0.2.
+- [x] **0.4** DB-backed test harness. `apps/api/internal/testsupport` (`NewTestPool`,
+      `Reset` via `TRUNCATE users CASCADE`, seeds for user/season/model/aircraft/
+      bank account/config/transaction) skips unless `TEST_DATABASE_URL` is set, so
+      `go test ./...` stays hermetic. Its own smoke test proves connect + seed +
+      reset against a real schema. CI runs a `postgres:18` service, applies
+      migrations with `make migrate`, and exports `TEST_DATABASE_URL`. Runbook §6
+      documents the tunnel workflow.
 - [ ] **0.5** Deploy hardening in `deploy/deploy-vps.sh`: keep
       `bin/skyward-api.prev`, gate restart on `/readyz` with rollback, atomic web
       swap (build to `web.new/` then rename), skip the API restart when only

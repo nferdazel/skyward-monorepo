@@ -472,18 +472,20 @@ Prod API base: `https://api.qouver.com/skyward`; dev defaults to
 
 ## 5. Reset / Reseed Operations
 
-`scripts/` contains only `deploy.sh`; there are **no standalone seeders** in
-the repo.
+`scripts/` holds `deploy.sh` (deprecated for updates), `migrate.sh`,
+`backup-db.sh`, and `dump-reference-data.sh`. There are **no player-seeding**
+scripts — player state is created through the app.
 
-**Bootstrap reality (corrected 2026-09-12; seed migration landed):** the
-migrations capture *schema* plus `game_config` rows: `09`/`11` seeded 3 keys and
-`17_game_config_seed.sql` (AUDIT-10) seeds the 39 live keys read by the engine
-and workers (fuel price, crew cost, wear rates, ticket base/km, all bot knobs,
-`credit_tier_config`) via `ON CONFLICT (key) DO NOTHING`. A fresh environment
-that runs migrations now gets the live economy instead of silently falling back
-to the Go hardcoded defaults. `aircraft_models` and `airports` reference data
-are still **not** captured by migrations; restore those from a live data dump
-(`pg_dump --data-only -t aircraft_models -t airports …`) until they are seeded.
+**Bootstrap reality (corrected 2026-09-16; reference data landed):** the
+migrations capture *schema* plus the seeded rows a fresh environment needs:
+`09`/`11`/`17_game_config_seed.sql` seed the 39 live `game_config` keys read by
+the engine and workers (fuel price, crew cost, wear rates, ticket base/km, all
+bot knobs, `credit_tier_config`) via `ON CONFLICT (key) DO NOTHING`, and
+`20_reference_data_seed.sql` (0.9) seeds the 446 `airports` + 65
+`aircraft_models` rows that previously only existed in the live database. A
+fresh environment that runs migrations now gets the live economy and usable
+reference data instead of falling back to Go hardcoded defaults and empty
+lookups. Regenerate the latter with `scripts/dump-reference-data.sh`.
 
 - Schema baseline: apply `migrations/00_baseline.sql` first, then `01_…` through
   `19_…` sequentially — or run `make migrate`, which applies pending migrations
@@ -512,3 +514,30 @@ If a reset leaves a player in a bad ledger state, prefer the in-app reset;
 only if no valid post-reset progress must be preserved, delete the phantom
 `bank_transactions` rows and re-align `users.game_current_time` to
 `season_clock.current_game_time`.
+
+## 6. Integration Test Database
+
+`apps/api/internal/testsupport` provides DB-backed test helpers
+(`NewTestPool`, `Reset`, `SeedUser`, `SeedActiveSeason`, `SeedAircraftModel`,
+`SeedFleetAircraft`, `SeedLeasedFleetAircraft`, `SeedGameConfig`,
+`SeedBankAccount`, `SeedBankTransaction`). Tests skip themselves unless
+`TEST_DATABASE_URL` is set, so plain `go test ./...` stays hermetic.
+
+Point it at the **clone**, never at prod: `Reset` truncates `users CASCADE`.
+
+```bash
+# local run over an SSH tunnel (port 15432 -> server 127.0.0.1:5432)
+cd apps/api
+PGPASSWORD='…' TEST_DATABASE_URL='postgres://qouver@127.0.0.1:15432/skyward_test' \
+  go test ./... -count=1
+```
+
+- The test database must have **all migrations applied** (`make migrate` against
+  it); helper seeds assume the current schema and the
+  `create_default_bank_account` trigger.
+- CI (`.github/workflows/ci.yml`) runs a `postgres:18` service container, applies
+  migrations through `make migrate`, and exports `TEST_DATABASE_URL`, so the
+  DB-backed tests actually execute there rather than skipping.
+- `TRUNCATE users CASCADE` clears player tables only; reference data
+  (`airports`, `aircraft_models`) and global tables (`game_config`,
+  `season_clock`) survive, and helper seeds upsert to stay idempotent.

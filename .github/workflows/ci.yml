@@ -17,6 +17,25 @@ jobs:
   analyze-and-test:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: skyward
+          POSTGRES_PASSWORD: skyward
+          POSTGRES_DB: skyward_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U skyward"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
+    env:
+      # DB-backed tests in apps/api skip unless this is set.
+      TEST_DATABASE_URL: postgres://skyward:skyward@localhost:5432/skyward_test
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -25,6 +44,14 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: apps/api/go.mod
+
+      - name: Ensure psql is available
+        run: command -v psql || (sudo apt-get update && sudo apt-get install -y postgresql-client)
+
+      - name: Apply migrations to the test database
+        env:
+          DATABASE_URL: postgres://skyward:skyward@localhost:5432/skyward_test
+        run: make migrate
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
