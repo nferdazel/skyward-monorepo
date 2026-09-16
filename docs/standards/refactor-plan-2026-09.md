@@ -507,7 +507,7 @@ Each needs a short written proposal (blast radius + migration path + test plan).
       CGK-DOH pools 160.34 passengers/day, 70.15 per flight on a 230-seat
       A321neo (30.5% load factor) — the arithmetic is faithful, so the band is
       `weak` for every long-haul route in the current world. Still to do:
-      Steps 3-4 (switch over, delete the ~269 LOC + dashboard KPI, docs).
+      Steps 3-4 (switch over, delete the ~269 LOC, docs).
       **Step 2 (client, inert) landed in `7ca721a`:** `RouteAssessResultDto`
       (+ wear/viability/multipliers/inputs_used) parsing the server JSON,
       `RoutesGateway.assessRoute` + Go implementation, `RoutesCubit.assessRoute`
@@ -520,6 +520,29 @@ Each needs a short written proposal (blast radius + migration path + test plan).
       `expectedPassengersPerFlight` as an `int` (truncating 70.15), while the
       server returns a double. Deliberate: the view still shows the old
       numbers, so the switchover in Step 3 can be validated first.
+      **Step 3 (dashboard half) landed in `04ecaa9` + `2bc6760`.** D6 needed a
+      decision first: the dashboard's "top yield" needs `weeklyContribution` for
+      every route, and `/routes/assess` serves one. Owner chose a **batch
+      endpoint** over leaving the dashboard on client math (which would have
+      kept two sources of truth — the exact thing 3.1 exists to remove) and over
+      deferring it. `GET /routes/assess/batch` assesses each active route with
+      the aircraft actually assigned to it, in five queries regardless of route
+      count; the dashboard KPI now reads it. Two things worth remembering:
+      (a) the batch path deliberately does **not** filter range/grounding for the
+      assigned aircraft — for an existing route the numbers are still needed and
+      "grounded" is a client-owned predicate; (b) the batch path uses the stored
+      `route_assignments.distance_km` just like the tick, while the single-route
+      path uses haversine, so the two differ in the 13th digit (measured
+      max relative deviation 6.3e-15) — not a model difference.
+      **Remaining in Step 3 (interactive half + deletion):** the planner and the
+      route-detail dialog still call the client math, and
+      `buildMaintenancePreview*` is still used by them and by the routes list
+      (`routes_view.dart` 547, 1227/1230, 1627; `routes_cubit.dart` 177, 316,
+      333). Switching them needs debounce + the answer-5 states (explicit
+      "assessment unavailable" + retry, last result labelled as an estimate),
+      because the planner is interactive (price/frequency sliders) and no longer
+      instant. Only after that can the ~269 LOC and
+      `aviation_logic_test.dart` be deleted.
 - [ ] **3.2** Unified mutation pipeline (`MutationRunner`) + push DTO knowledge
       out of cubits into gateways.
 - [ ] **3.3** Decompose the five god views; shrink backend god files.
