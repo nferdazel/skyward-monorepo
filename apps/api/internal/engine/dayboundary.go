@@ -94,7 +94,7 @@ func (e *Engine) ProcessLoanPayments(ctx context.Context, userID string, gameDat
 	type loanRow struct {
 		ID               string
 		WeeklyPayment    float64
-		MonthlyPayment   float64
+		MonthlyPayment   *float64
 		RemainingBalance float64
 		Collateral       *string
 	}
@@ -108,10 +108,18 @@ func (e *Engine) ProcessLoanPayments(ctx context.Context, userID string, gameDat
 	defer rows.Close()
 	for rows.Next() {
 		var l loanRow
-		rows.Scan(&l.ID, &l.WeeklyPayment, &l.MonthlyPayment, &l.RemainingBalance, &l.Collateral)
+		// `monthly_payment` nullable: scan ke *float64. Dulu kolom ini di-scan ke
+		// float64 dengan error diabaikan, sehingga satu baris ber-NULL membuat
+		// scan gagal, pgx menutup rows, dan SETIAP pinjaman berikutnya milik user
+		// itu dilewati diam-diam (tak dibayar, tak kena denda, tak default).
+		if err := rows.Scan(&l.ID, &l.WeeklyPayment, &l.MonthlyPayment, &l.RemainingBalance, &l.Collateral); err != nil {
+			e.log().Error("baris pinjaman tidak terbaca, dilewati",
+				"error", err, "user", userID)
+			continue
+		}
 		payment := l.WeeklyPayment
-		if payment <= 0 && l.MonthlyPayment > 0 {
-			payment = l.MonthlyPayment / 4.33
+		if payment <= 0 && l.MonthlyPayment != nil && *l.MonthlyPayment > 0 {
+			payment = *l.MonthlyPayment / 4.33
 		}
 		if payment <= 0 {
 			continue
@@ -121,11 +129,18 @@ func (e *Engine) ProcessLoanPayments(ctx context.Context, userID string, gameDat
 			if txErr == nil {
 				_, dErr := e.Ledger.DebitTx(ctx, tx, userID, payment, "financing", "loan_payment", "Weekly loan payment", gameDate)
 				if dErr == nil {
-					_, _ = tx.Exec(ctx, `
+					// Saldo pinjaman harus turun di transaksi yang sama. Kalau
+					// UPDATE ini gagal tapi tetap di-commit, pemain kehilangan
+					// uang tanpa utangnya berkurang.
+					_, uErr := tx.Exec(ctx, `
 						UPDATE loans SET remaining_balance = GREATEST(0, remaining_balance - $1),
 						       status = CASE WHEN remaining_balance - $1 <= $3 THEN 'paid_off'::varchar ELSE status END
 						WHERE id=$2`, payment, l.ID, moneyEpsilon)
-					if tx.Commit(ctx) == nil {
+					if uErr != nil {
+						e.log().Error("loan payment: UPDATE loans gagal, transaksi dibatalkan",
+							"error", uErr, "loan", l.ID, "user", userID)
+						tx.Rollback(ctx) //nolint:errcheck
+					} else if tx.Commit(ctx) == nil {
 						cash -= payment
 					} else {
 						tx.Rollback(ctx) //nolint:errcheck
@@ -147,6 +162,9 @@ func (e *Engine) ProcessLoanPayments(ctx context.Context, userID string, gameDat
 			}
 		}
 	}
+	if err := rows.Err(); err != nil {
+		e.log().Error("iterasi pinjaman berhenti lebih awal", "error", err, "user", userID)
+	}
 }
 
 // ProcessAircraftFinancingPayments — mirror process_aircraft_financing_payments.
@@ -155,7 +173,7 @@ func (e *Engine) ProcessAircraftFinancingPayments(ctx context.Context, userID st
 	type finRow struct {
 		ID               string
 		WeeklyPayment    float64
-		MonthlyPayment   float64
+		MonthlyPayment   *float64
 		RemainingBalance float64
 		Collateral       *string
 	}
@@ -168,10 +186,18 @@ func (e *Engine) ProcessAircraftFinancingPayments(ctx context.Context, userID st
 	defer rows.Close()
 	for rows.Next() {
 		var l finRow
-		rows.Scan(&l.ID, &l.WeeklyPayment, &l.MonthlyPayment, &l.RemainingBalance, &l.Collateral)
+		// `monthly_payment` nullable: scan ke *float64. Dulu kolom ini di-scan ke
+		// float64 dengan error diabaikan, sehingga satu baris ber-NULL membuat
+		// scan gagal, pgx menutup rows, dan SETIAP pinjaman berikutnya milik user
+		// itu dilewati diam-diam (tak dibayar, tak kena denda, tak default).
+		if err := rows.Scan(&l.ID, &l.WeeklyPayment, &l.MonthlyPayment, &l.RemainingBalance, &l.Collateral); err != nil {
+			e.log().Error("baris pinjaman tidak terbaca, dilewati",
+				"error", err, "user", userID)
+			continue
+		}
 		payment := l.WeeklyPayment
-		if payment <= 0 && l.MonthlyPayment > 0 {
-			payment = l.MonthlyPayment / 4.33
+		if payment <= 0 && l.MonthlyPayment != nil && *l.MonthlyPayment > 0 {
+			payment = *l.MonthlyPayment / 4.33
 		}
 		if payment <= 0 {
 			continue
@@ -181,11 +207,17 @@ func (e *Engine) ProcessAircraftFinancingPayments(ctx context.Context, userID st
 			if txErr == nil {
 				_, dErr := e.Ledger.DebitTx(ctx, tx, userID, payment, "financing", "financing_payment", "Aircraft financing payment", gameDate)
 				if dErr == nil {
-					_, _ = tx.Exec(ctx, `
+					// Lihat ProcessLoanPayments: UPDATE yang gagal tidak boleh
+					// ikut ter-commit bersama debitnya.
+					_, uErr := tx.Exec(ctx, `
 						UPDATE loans SET remaining_balance = GREATEST(0, remaining_balance - $1),
 						       status = CASE WHEN remaining_balance - $1 <= $3 THEN 'paid_off'::varchar ELSE status END
 						WHERE id=$2`, payment, l.ID, moneyEpsilon)
-					if tx.Commit(ctx) == nil {
+					if uErr != nil {
+						e.log().Error("financing payment: UPDATE loans gagal, transaksi dibatalkan",
+							"error", uErr, "loan", l.ID, "user", userID)
+						tx.Rollback(ctx) //nolint:errcheck
+					} else if tx.Commit(ctx) == nil {
 						cash -= payment
 					} else {
 						tx.Rollback(ctx) //nolint:errcheck
@@ -206,6 +238,9 @@ func (e *Engine) ProcessAircraftFinancingPayments(ctx context.Context, userID st
 				}
 			}
 		}
+	}
+	if err := rows.Err(); err != nil {
+		e.log().Error("iterasi financing berhenti lebih awal", "error", err, "user", userID)
 	}
 }
 
