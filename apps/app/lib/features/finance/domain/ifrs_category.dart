@@ -12,17 +12,16 @@
 /// and sign-based cash-flow buckets, which are statement semantics rather than
 /// display grouping.
 ///
-/// Known gaps, left exactly as the two badge builders behaved before this file
-/// existed. Production rows exist for all of them:
-/// `ticket_revenue` (revenue, 320k rows), `maintenance` (cogs),
-/// `loan_repayment` (financing), `aircraft_lease_idle` (opex) and
-/// `aircraft_lease_deposit` (investing). [groupFor] maps all of them to
-/// [IfrsGroup.other], so the badge falls back to CREDIT/DEBIT. The metrics
-/// predicates also match on the category, so the short-form `maintenance` row is
-/// still counted as operations, while `aircraft_lease_idle` counts as operations
-/// rather than as lease (which is where `ifrs_report_builder` puts it). Closing
-/// these gaps changes displayed labels or reported figures, so it is a product
-/// decision, not a refactor.
+/// Every key that exists in production has a group. Five of them (the 320k-row
+/// `ticket_revenue` revenue rows, `maintenance`, `loan_repayment`,
+/// `aircraft_lease_idle` and `aircraft_lease_deposit`) used to fall through to
+/// [IfrsGroup.other], so their badge read CREDIT/DEBIT; that was a display-only
+/// gap, since the metrics predicates match on the category as well.
+///
+/// Note that a display group is not a P&L bucket: `aircraft_lease_deposit` is
+/// shown as [IfrsGroup.lease] because that is what the row is about, while
+/// [capitalExpenditureSubcategories] treats it as an asset purchase (and the
+/// income statement counts it in no expense line).
 class IfrsCategory {
   const IfrsCategory._();
 
@@ -88,20 +87,28 @@ class IfrsCategory {
   /// empty subcategory stays empty there instead of borrowing the category.
   static IfrsGroup groupFor(String key) {
     switch (key) {
+      case 'ticket_revenue':
       case 'route_revenue':
       case 'cargo_revenue':
       case 'revenue':
         return IfrsGroup.ticketSales;
+      case 'fuel':
       case 'fuel_cost':
+      case 'crew':
       case 'crew_cost':
+      case 'maintenance':
       case 'maintenance_cost':
       case 'airport_fees':
       case 'cogs':
       case 'opex':
         return IfrsGroup.operations;
       case 'aircraft_lease':
+      case 'aircraft_lease_idle':
       case 'aircraft_lease_init':
       case 'aircraft_lease_exit':
+        // Deposit sewa pun tampil sebagai LEASE meski di L/R ia aset/belanja
+        // modal, bukan beban (lihat capitalExpenditureSubcategories).
+      case 'aircraft_lease_deposit':
         return IfrsGroup.lease;
       case 'aircraft_repair':
         return IfrsGroup.repair;
@@ -109,6 +116,7 @@ class IfrsCategory {
       case 'aircraft_purchase_deposit':
         return IfrsGroup.purchase;
       case 'loan_payment':
+      case 'loan_repayment':
       case 'loan_disbursement':
       case 'loan_refinance':
       case 'financing_payment':

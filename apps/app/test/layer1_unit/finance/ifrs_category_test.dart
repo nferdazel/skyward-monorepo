@@ -67,29 +67,28 @@ void main() {
   });
 
   group('IfrsCategory display groups', () {
-    // Key dari bank_transactions produksi (1.809.003 baris, 5 kategori).
-    // Nilai di bawah ini merekam perilaku kedua badge SEBELUM classifier ini,
-    // termasuk celah yang disengaja: key yang tidak punya aturan jatuh ke
-    // IfrsGroup.other, dan badge-nya menampilkan CREDIT/DEBIT.
+    // Key dari bank_transactions produksi (1.810.024 baris, 5 kategori).
+    // Setiap key sekarang punya grup; lima di antaranya dulu jatuh ke `other`
+    // sehingga badge-nya menampilkan CREDIT/DEBIT.
     const productionKeys = <String, IfrsGroup>{
       'revenue': IfrsGroup.ticketSales,
       'cargo_revenue': IfrsGroup.ticketSales,
-      'ticket_revenue': IfrsGroup.other,
+      'ticket_revenue': IfrsGroup.ticketSales,
       'fuel_cost': IfrsGroup.operations,
       'crew_cost': IfrsGroup.operations,
       'maintenance_cost': IfrsGroup.operations,
       'airport_fees': IfrsGroup.operations,
-      'maintenance': IfrsGroup.other,
+      'maintenance': IfrsGroup.operations,
       'cogs': IfrsGroup.operations,
       'opex': IfrsGroup.operations,
       'aircraft_lease': IfrsGroup.lease,
-      'aircraft_lease_idle': IfrsGroup.other,
-      'aircraft_lease_deposit': IfrsGroup.other,
+      'aircraft_lease_idle': IfrsGroup.lease,
+      'aircraft_lease_deposit': IfrsGroup.lease,
       'aircraft_purchase': IfrsGroup.purchase,
       'aircraft_purchase_deposit': IfrsGroup.purchase,
       'aircraft_repair': IfrsGroup.repair,
       'loan_payment': IfrsGroup.financing,
-      'loan_repayment': IfrsGroup.other,
+      'loan_repayment': IfrsGroup.financing,
       'loan_disbursement': IfrsGroup.financing,
       'financing': IfrsGroup.financing,
       'investing': IfrsGroup.other,
