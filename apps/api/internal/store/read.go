@@ -211,7 +211,12 @@ type Airport struct {
 }
 
 func (s *Store) GetAirports(ctx context.Context) ([]Airport, error) {
-	rows, err := s.pool.Query(ctx, `SELECT * FROM airports ORDER BY demand_index DESC, iata`)
+	// Kolom eksplisit, bukan `SELECT *`: `pgx.RowToStructByPos` memetakan per
+	// posisi, jadi menambah satu kolom ke tabel ini akan mematahkan endpoint
+	// tanpa peringatan di compile time.
+	rows, err := s.pool.Query(ctx, `
+		SELECT iata, name, city, country, latitude, longitude, demand_index
+		FROM airports ORDER BY demand_index DESC, iata`)
 	if err != nil {
 		return nil, fmt.Errorf("store: airports: %w", err)
 	}
@@ -250,26 +255,37 @@ func (s *Store) GetFinanceSnapshot(ctx context.Context, userID string) (*Finance
 	}
 
 	// Fleet statistics
-	s.pool.QueryRow(ctx, `
+	if err := s.pool.QueryRow(ctx, `
 		SELECT COUNT(*),
 		       COUNT(*) FILTER (WHERE acquisition_type IN ('purchase','finance')),
 		       COUNT(*) FILTER (WHERE acquisition_type = 'lease'),
 		       COALESCE(SUM(CASE WHEN acquisition_type IN ('purchase','finance') THEN m.purchase_price * (f.condition / 100.0) ELSE 0 END), 0),
 		       COALESCE(SUM(CASE WHEN acquisition_type = 'lease' THEN m.lease_price_per_month ELSE 0 END), 0)
 		FROM fleet_aircraft f JOIN aircraft_models m ON m.id=f.aircraft_model_id WHERE f.user_id=$1`, userID,
-	).Scan(&f.FleetCount, &f.OwnedFleetCount, &f.LeasedFleetCount, &f.OwnedAssetValue, &f.LeasedMonthlyExposure)
+	).Scan(&f.FleetCount, &f.OwnedFleetCount, &f.LeasedFleetCount, &f.OwnedAssetValue, &f.LeasedMonthlyExposure); err != nil {
+		return nil, fmt.Errorf("store: finance snapshot fleet: %w", err)
+	}
 
 	// Active routes
-	s.pool.QueryRow(ctx, `SELECT COUNT(*) FROM route_assignments WHERE user_id=$1 AND COALESCE(status,'active')='active'`, userID).Scan(&f.ActiveRouteCount)
+	if err := s.pool.QueryRow(ctx, `SELECT COUNT(*) FROM route_assignments WHERE user_id=$1 AND COALESCE(status,'active')='active'`, userID).Scan(&f.ActiveRouteCount); err != nil {
+		return nil, fmt.Errorf("store: finance snapshot routes: %w", err)
+	}
 
-	// Rolling 30d
+	// Rolling 30d. Dulu error di sini diabaikan: kalau `game_current_time` gagal
+	// dibaca, gameTime tertinggal sebagai zero time sehingga jendelanya menjadi
+	// "sejak tahun 1" dan SELURUH riwayat transaksi ikut terhitung sebagai
+	// pendapatan/expense 30 hari — angka salah, bukan sekadar kosong.
 	var gameTime time.Time
-	s.pool.QueryRow(ctx, `SELECT game_current_time FROM users WHERE id=$1`, userID).Scan(&gameTime)
-	s.pool.QueryRow(ctx, `
+	if err := s.pool.QueryRow(ctx, `SELECT game_current_time FROM users WHERE id=$1`, userID).Scan(&gameTime); err != nil {
+		return nil, fmt.Errorf("store: finance snapshot game time: %w", err)
+	}
+	if err := s.pool.QueryRow(ctx, `
 		SELECT COALESCE(SUM(CASE WHEN transaction_type='credit' THEN amount ELSE 0 END), 0),
 		       COALESCE(SUM(CASE WHEN transaction_type='debit' THEN ABS(amount) ELSE 0 END), 0)
 		FROM bank_transactions WHERE user_id=$1 AND game_date >= $2`, userID, gameTime.AddDate(0, 0, -30),
-	).Scan(&f.RollingRevenue30d, &f.RollingExpense30d)
+	).Scan(&f.RollingRevenue30d, &f.RollingExpense30d); err != nil {
+		return nil, fmt.Errorf("store: finance snapshot rolling: %w", err)
+	}
 	f.RollingNet30d = f.RollingRevenue30d - f.RollingExpense30d
 
 	return f, nil

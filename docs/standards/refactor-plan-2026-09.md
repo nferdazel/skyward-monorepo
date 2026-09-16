@@ -216,8 +216,24 @@ Every item below must fail-then-pass with a DB-backed test once 0.4 lands.
       (every key read is seeded, and vice versa).
 - [ ] **2.4** Snapshot `game_config` + active events once per `WorldTick`
       (removes ~16N + 2NR queries/tick).
-- [ ] **2.5** Replace `SELECT *` + positional scans with explicit column lists;
-      check snapshot scan errors (`store/read.go:214,253-272`).
+- [x] **2.5** `GetAirports` no longer uses `SELECT *` — `pgx.RowToStructByPos` maps by
+      position, so adding a column to `airports` would have broken the endpoint at
+      runtime with no compile-time warning. Column order verified against the
+      baseline and the live table (7 columns, matching the struct); it was the only
+      `SELECT *` left in the API. `GetFinanceSnapshot` now checks its four ignored
+      `Scan` errors (fleet stats, active routes, game time, rolling 30d): a failed
+      scan used to leave zeros, and a failed `game_current_time` read left a zero
+      timestamp, making the rolling window "since year 1" so the *entire* transaction
+      history was reported as 30-day revenue/expense — a wrong number served as 200.
+      Statements re-run read-only against prod: column counts match the scan
+      destinations (5/1/1/2).
+- [ ] **2.8** Backlog from the 2.5 survey. A heuristic pass over `internal/` flagged
+      ~79 `Scan` calls with no visible error check (includes false positives from
+      multi-line statements). Spot-checking showed most are deliberate best-effort
+      reads — bot behaviour degrading gracefully, `credit_scores` tier falling back
+      to `Standard`, config rates falling back to a default — but each still needs an
+      explicit call: intentional-with-comment, or a bug. Only the snapshot sites were
+      in 2.5's scope; the rest are unaudited.
 - [ ] **2.6** FE: one IFRS category classifier; single notification-refresh
       helper; 44 px tap targets.
 - [ ] **2.7** BE: wrap `applyBankruptcy` in one tx; guard bot-pricing nil rows;
