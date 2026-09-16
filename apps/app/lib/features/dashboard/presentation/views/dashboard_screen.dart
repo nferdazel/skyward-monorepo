@@ -140,6 +140,27 @@ class _AuthenticatedDashboardShellState
     _checkOnboarding();
   }
 
+  /// Rebuilds notifications from every cubit that feeds them. The listener that
+  /// fired hands over its own new state; the rest are read from the cubits.
+  /// Five listeners used to repeat this six-argument call verbatim, so adding a
+  /// notification input meant editing five places.
+  void _refreshNotifications({
+    FleetState? fleetState,
+    RoutesState? routesState,
+    BankState? bankState,
+    SimulationState? simState,
+  }) {
+    final sim = simState ?? _simulationCubit.state;
+    _notificationCubit.refreshNotifications(
+      fleetState: fleetState ?? _fleetCubit.state,
+      simState: sim,
+      routesState: routesState ?? _routesCubit.state,
+      bankState: bankState ?? _bankCubit.state,
+      activeEvents: _eventsCubit.isLoaded ? _eventsCubit.activeEvents : null,
+      gameTime: sim.gameTime,
+    );
+  }
+
   /// GAME-07: show the "while you were away" digest after a return that
   /// elapsed at least one full game day. Guarded so it shows once per game
   /// time (subsequent syncs at the same time do not re-trigger it).
@@ -449,31 +470,13 @@ class _AuthenticatedDashboardShellState
           BlocListener<FleetCubit, FleetState>(
             listenWhen: (prev, cur) => cur is FleetLoaded,
             listener: (context, state) {
-              _notificationCubit.refreshNotifications(
-                fleetState: state,
-                simState: _simulationCubit.state,
-                routesState: _routesCubit.state,
-                bankState: _bankCubit.state,
-                activeEvents: _eventsCubit.isLoaded
-                    ? _eventsCubit.activeEvents
-                    : null,
-                gameTime: _simulationCubit.state.gameTime,
-              );
+              _refreshNotifications(fleetState: state);
             },
           ),
           BlocListener<RoutesCubit, RoutesState>(
             listenWhen: (prev, cur) => cur is RoutesLoaded,
             listener: (context, state) {
-              _notificationCubit.refreshNotifications(
-                fleetState: _fleetCubit.state,
-                simState: _simulationCubit.state,
-                routesState: state,
-                bankState: _bankCubit.state,
-                activeEvents: _eventsCubit.isLoaded
-                    ? _eventsCubit.activeEvents
-                    : null,
-                gameTime: _simulationCubit.state.gameTime,
-              );
+              _refreshNotifications(routesState: state);
             },
           ),
           BlocListener<BankCubit, BankState>(
@@ -482,16 +485,7 @@ class _AuthenticatedDashboardShellState
                 cur is BankLoanSuccess ||
                 cur is BankRefinanceSuccess,
             listener: (context, state) {
-              _notificationCubit.refreshNotifications(
-                fleetState: _fleetCubit.state,
-                simState: _simulationCubit.state,
-                routesState: _routesCubit.state,
-                bankState: state,
-                activeEvents: _eventsCubit.isLoaded
-                    ? _eventsCubit.activeEvents
-                    : null,
-                gameTime: _simulationCubit.state.gameTime,
-              );
+              _refreshNotifications(bankState: state);
             },
           ),
           BlocListener<SimulationCubit, SimulationState>(
@@ -499,16 +493,7 @@ class _AuthenticatedDashboardShellState
                 prev.cashBalance != cur.cashBalance ||
                 prev.gameTime != cur.gameTime,
             listener: (context, state) {
-              _notificationCubit.refreshNotifications(
-                fleetState: _fleetCubit.state,
-                simState: state,
-                routesState: _routesCubit.state,
-                bankState: _bankCubit.state,
-                activeEvents: _eventsCubit.isLoaded
-                    ? _eventsCubit.activeEvents
-                    : null,
-                gameTime: _simulationCubit.state.gameTime,
-              );
+              _refreshNotifications(simState: state);
               _maybeShowWhileAwayDigest(state);
               _showAchievementToasts(context, state);
             },
@@ -516,16 +501,9 @@ class _AuthenticatedDashboardShellState
           BlocListener<EventsCubit, EventsState>(
             listenWhen: (prev, cur) => cur is EventsLoaded,
             listener: (context, state) {
-              _notificationCubit.refreshNotifications(
-                fleetState: _fleetCubit.state,
-                simState: _simulationCubit.state,
-                routesState: _routesCubit.state,
-                bankState: _bankCubit.state,
-                activeEvents: _eventsCubit.isLoaded
-                    ? _eventsCubit.activeEvents
-                    : null,
-                gameTime: _simulationCubit.state.gameTime,
-              );
+              // Peristiwa hanya menambah activeEvents, yang sudah dibaca
+              // helper dari _eventsCubit.
+              _refreshNotifications();
             },
           ),
         ],
