@@ -3,6 +3,8 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
 	"time"
 
@@ -217,7 +219,13 @@ func (h *MutationHandler) BankRepayLoan(w http.ResponseWriter, r *http.Request) 
 	var p struct {
 		Amount *float64 `json:"amount,omitempty"`
 	}
-	_ = json.NewDecoder(r.Body).Decode(&p)
+	// Body kosong tetap berarti "lunasi seluruh pinjaman" (Amount nil), tetapi
+	// JSON yang rusak tidak boleh diperlakukan sama: dulu error decode dibuang,
+	// sehingga body rusak menghasilkan pelunasan penuh alih-alih 400.
+	if err := json.NewDecoder(r.Body).Decode(&p); err != nil && !errors.Is(err, io.EOF) {
+		httperr.WriteError(w, nil, httperr.Validation("invalid request body"))
+		return
+	}
 	res, err := h.Engine.Bank.Repay(r.Context(), uid, r.PathValue("id"), p.Amount)
 	if err != nil {
 		httperr.WriteError(w, nil, httperr.Internal("repay loan failed"))
