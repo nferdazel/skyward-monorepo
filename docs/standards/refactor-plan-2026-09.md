@@ -157,13 +157,27 @@ Every item below must fail-then-pass with a DB-backed test once 0.4 lands.
       opens its own transactions), and `LedgerService.DebitAccount` /
       `CreditAccount` (defined, never called). Removed the now-unused imports in
       `store.go`; `go build`/`vet`/tests green.
-- [ ] **1.11** FE: `FleetError.props` includes `message`
-      (`fleet_state.dart:144`).
-- [ ] **1.12** FE: disconnect the WebSocket on logout/user-switch
-      (`go_realtime_client.dart:205`).
-- [ ] **1.13** FE: map auth errors on `ApiException.code`; stop returning
-      `e.toString()` to users (`auth_cubit.dart:147`).
-- [ ] **1.14** FE: remove `postgrest` + `cupertino_icons`, fix pubspec description.
+- [x] **1.11** `FleetError.props` now includes `message`. Without it, two errors
+      that differed only in text compared equal, so `emit` skipped the state and
+      the second message never reached the UI.
+- [x] **1.12** Realtime is disconnected on logout and reconnected on login.
+      `GoRealtimeClient.disconnect()` existed but had **no caller**, so after
+      logout the socket kept running with the previous session's token.
+      `GatewayFactory` gained `existingRealtimeClient` (no forced instantiation)
+      and `AuthCubit` calls it after logout (even when the gateway logout throws)
+      and after login/register/auto-login — the latter because already-mounted
+      cubits never call `connect()` again.
+- [x] **1.13** Auth errors are mapped from the structured `code`
+      (`unauthorized`, `conflict`, `validation_error`, `too_many_requests`,
+      `service_unavailable`) instead of substring-matching `toString()`.
+      `AuthGatewayException` carries the `code` (populated from `ApiException`)
+      and `AppError.isUnauthorizedError` uses it too. Unknown exceptions no longer
+      reach the UI as `toString()` — they show a generic message. Curated gateway
+      messages (from the API error envelope) are still shown verbatim, which is
+      the pre-existing contract asserted by the layer-3 auth test.
+- [x] **1.14** Removed `postgrest` (declared, never imported) and `cupertino_icons`
+      (no `CupertinoIcons` usage) from `pubspec.yaml`; the description no longer
+      mentions Supabase. `pubspec.lock` regenerated.
 
 ## Phase 2 — Consistency & robustness
 
