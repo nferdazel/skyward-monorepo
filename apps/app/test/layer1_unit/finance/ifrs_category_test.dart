@@ -6,6 +6,7 @@ void main() {
     test('match the vocabulary the backend writes', () {
       expect(IfrsCategory.leaseSubcategories, {
         'aircraft_lease',
+        'aircraft_lease_idle',
         'aircraft_lease_init',
         'aircraft_lease_exit',
       });
@@ -14,12 +15,22 @@ void main() {
         'aircraft_purchase',
         'aircraft_purchase_deposit',
       });
-      expect(IfrsCategory.operationsSubcategories, {
-        'fuel_cost',
-        'crew_cost',
-        'maintenance_cost',
-        'airport_fees',
+      expect(IfrsCategory.capitalExpenditureSubcategories, {
+        'aircraft_purchase',
+        'aircraft_purchase_deposit',
+        'aircraft_lease_deposit',
       });
+      expect(IfrsCategory.financingInflowSubcategories, {'loan_disbursement'});
+      expect(IfrsCategory.financingOutflowSubcategories, {
+        'loan_payment',
+        'loan_repayment',
+        'financing_payment',
+      });
+      expect(IfrsCategory.ticketSalesSubcategories, {
+        'ticket_revenue',
+        'route_revenue',
+      });
+      expect(IfrsCategory.cargoRevenueSubcategories, {'cargo_revenue'});
     });
   });
 
@@ -41,20 +52,21 @@ void main() {
       expect(IfrsCategory.isOperationsExpense('cogs', 'maintenance_cost'),
           isTrue);
       expect(IfrsCategory.isOperationsExpense('cogs', 'airport_fees'), isTrue);
-      // Bentuk pendek hanya ada di baris lama. Himpunannya sendiri tidak
-      // memuatnya, tapi predikatnya tetap benar karena kategorinya `cogs`.
-      expect(
-        IfrsCategory.operationsSubcategories.contains('maintenance'),
-        isFalse,
-      );
+      // Bentuk pendek (`maintenance`) sudah ikut dihimpun, jadi ia terhitung
+      // operations di kategori apa pun, sama seperti laporan menghitungnya.
+      expect(IfrsCategory.isOperationsSubcategory('maintenance'), isTrue);
+      expect(IfrsCategory.isOperationsSubcategory('fuel'), isTrue);
+      expect(IfrsCategory.isOperationsSubcategory('fuel_surcharge'), isFalse);
+      expect(IfrsCategory.isOperationsSubcategory('airport_fees'), isTrue);
+      expect(IfrsCategory.isOperationsSubcategory('aircraft_lease'), isFalse);
       expect(IfrsCategory.isOperationsExpense('cogs', 'maintenance'), isTrue);
       expect(IfrsCategory.isOperationsExpense('investing', 'maintenance'),
-          isFalse);
+          isTrue);
     });
 
     test('lease, repair and purchase match on either field', () {
       expect(IfrsCategory.isLeaseExpense('opex', 'aircraft_lease'), isTrue);
-      expect(IfrsCategory.isLeaseExpense('aircraft_lease_idle', ''), isFalse);
+      expect(IfrsCategory.isLeaseExpense('aircraft_lease_idle', ''), isTrue);
       expect(IfrsCategory.isRepairExpense('opex', 'aircraft_repair'), isTrue);
       expect(IfrsCategory.isPurchaseExpense('investing', 'aircraft_purchase'),
           isTrue);
@@ -63,6 +75,51 @@ void main() {
         isTrue,
       );
       expect(IfrsCategory.isPurchaseExpense('opex', 'aircraft_repair'), isFalse);
+    });
+  });
+
+  group('IfrsCategory cash-flow buckets', () {
+    test('operating outflow mencakup biaya, sewa dan perbaikan', () {
+      expect(IfrsCategory.isOperatingInflow('revenue', 'ticket_revenue'), isTrue);
+      expect(IfrsCategory.isOperatingInflow('investing', 'aircraft_sale'),
+          isFalse);
+      expect(IfrsCategory.isOperatingOutflow('cogs', 'fuel_cost'), isTrue);
+      expect(IfrsCategory.isOperatingOutflow('opex', 'aircraft_lease_idle'),
+          isTrue);
+      expect(IfrsCategory.isOperatingOutflow('opex', 'aircraft_repair'), isTrue);
+      expect(IfrsCategory.isOperatingOutflow('investing', 'aircraft_purchase'),
+          isFalse);
+    });
+
+    test('capital expenditure adalah pembelian plus deposit sewa', () {
+      expect(IfrsCategory.isCapitalExpenditure('aircraft_purchase'), isTrue);
+      expect(
+        IfrsCategory.isCapitalExpenditure('aircraft_purchase_deposit'),
+        isTrue,
+      );
+      expect(
+        IfrsCategory.isCapitalExpenditure('aircraft_lease_deposit'),
+        isTrue,
+      );
+      expect(IfrsCategory.isCapitalExpenditure('fuel_cost'), isFalse);
+      expect(IfrsCategory.isAircraftSale('aircraft_sale'), isTrue);
+      expect(IfrsCategory.isAircraftSale('aircraft_purchase'), isFalse);
+    });
+
+    test('financing memisahkan pencairan dan angsuran', () {
+      expect(IfrsCategory.isFinancingInflow('loan_disbursement'), isTrue);
+      expect(IfrsCategory.isFinancingInflow('loan_repayment'), isFalse);
+      expect(IfrsCategory.isFinancingOutflow('loan_payment'), isTrue);
+      expect(IfrsCategory.isFinancingOutflow('loan_repayment'), isTrue);
+      expect(IfrsCategory.isFinancingOutflow('financing_payment'), isTrue);
+    });
+
+    test('idle lease dihitung sebagai sewa, bukan hanya operations', () {
+      expect(IfrsCategory.isLeaseExpense('opex', 'aircraft_lease_idle'), isTrue);
+      expect(
+        IfrsCategory.isPurchaseExpense('investing', 'aircraft_lease_deposit'),
+        isFalse,
+      );
     });
   });
 

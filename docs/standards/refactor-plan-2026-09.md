@@ -374,6 +374,37 @@ Every item below must fail-then-pass with a DB-backed test once 0.4 lands.
       Related, still open: `fleet.go` `Sell`/`TerminateLease` discard the error
       from `Ledger.GetUserGameTime`, which stamps ledger rows with a zero
       game date — out of this item's scope, but now on the record.
+- [x] **2.9** The IFRS statement and the badges read the same vocabulary through
+      separate lists, and production data exposed holes in both.
+      *Statement (wrong numbers).* `loan_repayment` (843 rows, 286.2M) and
+      `aircraft_lease_deposit` (40 rows, 31.6M) matched no branch at all, so the
+      financing outflow and the investing capex were understated and
+      `netCashChange` claimed more cash arrived than really did. The
+      `txnType == 'late_fee'` comparison was dead: it tested `transaction_type`,
+      whose values are only `credit`/`debit`, and production holds no `late_fee`
+      row. All three fixed, with a test that pins every key found in
+      `bank_transactions` to its bucket plus the
+      `netCashChange = operating + investing + financing` identity. Verified
+      fail-then-pass first (capitalExpenditure 100 wanted 200, loanRepayments 0
+      wanted 250), then re-ran the same rules over all 1.81M production rows:
+      0 unmatched, down from 883, with financing in/out balancing at
+      396,000,000 against 395,996,376.
+      *Badges (labels only).* Five keys fell through to `IfrsGroup.other` and
+      read CREDIT/DEBIT: `ticket_revenue` (320k revenue rows), `maintenance`,
+      `loan_repayment`, `aircraft_lease_idle` and `aircraft_lease_deposit`.
+      *One vocabulary.* `IfrsCategory` now owns every alias group (short forms
+      `fuel`/`crew`/`maintenance`, ticket/cargo, lease including idle, capital
+      expenditure including the lease deposit, financing in/out) and exposes the
+      cash-flow predicates. `ifrs_report_builder`'s five loops and the ledger's
+      fuel/ops chip call them instead of keeping local string lists. The builder
+      test written for the fix passes unchanged, which is the evidence that this
+      part moved no number.
+      *Deliberate behaviour changes:* `aircraft_lease_idle` now counts as lease in
+      the metrics too, since the income statement already put it in fleet leasing;
+      buckets overlap by design and `totalExpense` is not summed from them, so
+      nothing is double counted and `leaseExpenseShare` moves by about 0.015%.
+      The ledger's fuel/ops filter now also matches the legacy short-form
+      `maintenance` rows (95 rows, 123M).
 - [ ] **2.6** FE consolidation: three parts, two done.
       *One IFRS category classifier — done.* `features/finance/domain/ifrs_category.dart`
       owns the subcategory sets, the metrics predicates and `groupFor(key)`, shared

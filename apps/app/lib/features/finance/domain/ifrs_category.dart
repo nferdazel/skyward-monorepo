@@ -25,41 +25,81 @@
 class IfrsCategory {
   const IfrsCategory._();
 
+  static const ticketSalesSubcategories = {'ticket_revenue', 'route_revenue'};
+
+  static const cargoRevenueSubcategories = {'cargo_revenue'};
+
+  /// Bentuk pendek (`fuel`, `crew`, `maintenance`) hanya muncul di baris lama,
+  /// tapi laporan sudah lama menghitungnya. Keduanya disatukan di sini supaya
+  /// metrik dan laporan tidak bisa menyimpang lagi.
+  static const fuelSubcategories = {'fuel', 'fuel_cost'};
+
+  static const crewSubcategories = {'crew', 'crew_cost'};
+
+  static const maintenanceSubcategories = {'maintenance', 'maintenance_cost'};
+
+  static const airportFeeSubcategories = {'airport_fees'};
+
+  /// `aircraft_lease_idle` (sewa pesawat menganggur) ikut di sini: laporan
+  /// sudah memasukkannya ke fleet leasing, dan metrik dulu menghitungnya
+  /// sebagai operations karena kategorinya `opex`. Bucket memang boleh
+  /// tumpang tindih (lihat catatan di [isOperationsExpense]).
   static const leaseSubcategories = {
     'aircraft_lease',
+    'aircraft_lease_idle',
     'aircraft_lease_init',
     'aircraft_lease_exit',
   };
 
   static const repairSubcategories = {'aircraft_repair'};
 
+  /// Pembelian pesawat versi metrik (dipakai bucket `totalPurchase`).
   static const purchaseSubcategories = {
     'aircraft_purchase',
     'aircraft_purchase_deposit',
   };
 
-  /// Operating-cost subcategories as stored by the backend. The SQL-side short
-  /// forms (`fuel`, `crew`, `maintenance`) only appear in older statement rows.
-  static const operationsSubcategories = {
-    'fuel_cost',
-    'crew_cost',
-    'maintenance_cost',
-    'airport_fees',
+  /// Belanja modal versi arus kas: sama dengan [purchaseSubcategories] plus
+  /// deposit sewa, yang merupakan uang keluar untuk aset, bukan beban.
+  static const capitalExpenditureSubcategories = {
+    'aircraft_purchase',
+    'aircraft_purchase_deposit',
+    'aircraft_lease_deposit',
+  };
+
+  static const aircraftSaleSubcategory = 'aircraft_sale';
+
+  static const financingInflowSubcategories = {'loan_disbursement'};
+
+  static const financingOutflowSubcategories = {
+    'loan_payment',
+    'loan_repayment',
+    'financing_payment',
   };
 
   // ── Metrics predicates (category aware, as FinanceCubit has always used) ──
 
   static bool isTicketSales(String category, String subcategory) {
     return category == 'revenue' ||
-        subcategory == 'ticket_revenue' ||
-        subcategory == 'route_revenue' ||
-        subcategory == 'cargo_revenue';
+        ticketSalesSubcategories.contains(subcategory) ||
+        cargoRevenueSubcategories.contains(subcategory);
   }
 
+  static bool isOperationsSubcategory(String subcategory) {
+    return fuelSubcategories.contains(subcategory) ||
+        crewSubcategories.contains(subcategory) ||
+        maintenanceSubcategories.contains(subcategory) ||
+        airportFeeSubcategories.contains(subcategory);
+  }
+
+  /// Bucket metrik memang tidak saling eksklusif: kategori `cogs`/`opex`
+  /// menangkap baris yang subkategorinya lebih spesifik (mis. `opex` +
+  /// `aircraft_lease` masuk operations DAN lease). `totalExpense` tidak
+  /// dijumlahkan dari bucket-bucket ini, jadi tidak ada penggandaan uang.
   static bool isOperationsExpense(String category, String subcategory) {
     return category == 'cogs' ||
         category == 'opex' ||
-        operationsSubcategories.contains(subcategory);
+        isOperationsSubcategory(subcategory);
   }
 
   static bool isLeaseExpense(String category, String subcategory) {
@@ -76,6 +116,28 @@ class IfrsCategory {
     return purchaseSubcategories.contains(category) ||
         purchaseSubcategories.contains(subcategory);
   }
+
+  // ── Bucket arus kas (dipakai ifrs_report_builder) ─────────────────────────
+
+  static bool isOperatingInflow(String category, String subcategory) =>
+      isTicketSales(category, subcategory);
+
+  static bool isOperatingOutflow(String category, String subcategory) =>
+      isOperationsExpense(category, subcategory) ||
+      isLeaseExpense(category, subcategory) ||
+      isRepairExpense(category, subcategory);
+
+  static bool isCapitalExpenditure(String subcategory) =>
+      capitalExpenditureSubcategories.contains(subcategory);
+
+  static bool isAircraftSale(String subcategory) =>
+      subcategory == aircraftSaleSubcategory;
+
+  static bool isFinancingInflow(String subcategory) =>
+      financingInflowSubcategories.contains(subcategory);
+
+  static bool isFinancingOutflow(String subcategory) =>
+      financingOutflowSubcategories.contains(subcategory);
 
   // ── Display grouping ─────────────────────────────────────────────────────
 

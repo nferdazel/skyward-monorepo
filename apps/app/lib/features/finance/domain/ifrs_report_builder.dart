@@ -1,5 +1,6 @@
 import '../../bank/domain/bank_transaction_model.dart';
 import 'finance_snapshot.dart';
+import 'ifrs_category.dart';
 
 /// Stateless utility that takes raw finance data and produces
 /// structured IFRS-style financial report data for the drill-down panel.
@@ -21,9 +22,9 @@ class IfrsReportBuilder {
       if (txn.transactionType != 'credit') continue;
       final sub = txn.ifrsSubcategory ?? '';
       final amt = txn.amount.abs();
-      if (sub == 'ticket_revenue' || sub == 'route_revenue') {
+      if (IfrsCategory.ticketSalesSubcategories.contains(sub)) {
         ticketSales += amt;
-      } else if (sub == 'cargo_revenue') {
+      } else if (IfrsCategory.cargoRevenueSubcategories.contains(sub)) {
         cargoRevenue += amt;
       }
     }
@@ -40,20 +41,18 @@ class IfrsReportBuilder {
       final sub = txn.ifrsSubcategory ?? '';
       final cat = txn.ifrsCategory ?? '';
       final amt = txn.amount.abs();
-      if (sub == 'fuel' || sub == 'fuel_cost' || (cat == 'cogs' && sub.isEmpty)) {
+      if (IfrsCategory.fuelSubcategories.contains(sub) ||
+          (cat == 'cogs' && sub.isEmpty)) {
         fuel += amt;
-      } else if (sub == 'crew' || sub == 'crew_cost') {
+      } else if (IfrsCategory.crewSubcategories.contains(sub)) {
         crew += amt;
-      } else if (sub == 'maintenance' || sub == 'maintenance_cost') {
+      } else if (IfrsCategory.maintenanceSubcategories.contains(sub)) {
         maintenance += amt;
-      } else if (sub == 'airport_fees') {
+      } else if (IfrsCategory.airportFeeSubcategories.contains(sub)) {
         airportFees += amt;
-      } else if (sub == 'aircraft_lease' ||
-          sub == 'aircraft_lease_idle' ||
-          sub == 'aircraft_lease_init' ||
-          sub == 'aircraft_lease_exit') {
+      } else if (IfrsCategory.leaseSubcategories.contains(sub)) {
         fleetLeasing += amt;
-      } else if (sub == 'aircraft_repair') {
+      } else if (IfrsCategory.repairSubcategories.contains(sub)) {
         hangarRepairs += amt;
       }
     }
@@ -116,21 +115,14 @@ class IfrsReportBuilder {
       final cat = txn.ifrsCategory ?? '';
       final sub = txn.ifrsSubcategory ?? '';
       final amt = txn.amount.abs();
-      // Revenue inflows (including cargo)
+      // Revenue inflows (including cargo) dan biaya operasional (cogs + opex):
+      // himpunannya milik IfrsCategory, bukan daftar lokal lagi.
       if (txn.transactionType == 'credit' &&
-          (cat == 'revenue' || sub == 'ticket_revenue' || sub == 'route_revenue' || sub == 'cargo_revenue')) {
+          IfrsCategory.isOperatingInflow(cat, sub)) {
         revenueInflows += amt;
       }
-      // Operating outflows (cogs + opex)
       if (txn.transactionType == 'debit' &&
-          (cat == 'cogs' || cat == 'opex' ||
-              sub == 'fuel' || sub == 'fuel_cost' ||
-              sub == 'crew' || sub == 'crew_cost' ||
-              sub == 'maintenance' || sub == 'maintenance_cost' ||
-              sub == 'airport_fees' ||
-              sub == 'aircraft_lease' || sub == 'aircraft_lease_idle' ||
-              sub == 'aircraft_lease_init' || sub == 'aircraft_lease_exit' ||
-              sub == 'aircraft_repair')) {
+          IfrsCategory.isOperatingOutflow(cat, sub)) {
         operatingOutflows += amt;
       }
     }
@@ -146,11 +138,10 @@ class IfrsReportBuilder {
       // operasional. 40 baris produksi (31,5 juta) sebelumnya tidak masuk
       // bucket mana pun sehingga hilang dari arus kas.
       if (txn.transactionType == 'debit' &&
-          (sub == 'aircraft_purchase' ||
-              sub == 'aircraft_purchase_deposit' ||
-              sub == 'aircraft_lease_deposit')) {
+          IfrsCategory.isCapitalExpenditure(sub)) {
         capitalExpenditure += amt;
-      } else if (txn.transactionType == 'credit' && sub == 'aircraft_sale') {
+      } else if (txn.transactionType == 'credit' &&
+          IfrsCategory.isAircraftSale(sub)) {
         aircraftSales += amt;
       }
     }
@@ -169,11 +160,9 @@ class IfrsReportBuilder {
       // kenyataan. Bandingan lama `txnType == 'late_fee'` selalu false: kolom
       // transaction_type berisi 'credit'/'debit', dan produksi tidak punya baris
       // ber-subkategori late_fee sama sekali, jadi cabang itu dihapus.
-      if (sub == 'loan_disbursement' && txnType == 'credit') {
+      if (IfrsCategory.isFinancingInflow(sub) && txnType == 'credit') {
         loanProceeds += amt;
-      } else if ((sub == 'loan_payment' ||
-              sub == 'loan_repayment' ||
-              sub == 'financing_payment') &&
+      } else if (IfrsCategory.isFinancingOutflow(sub) &&
           txnType == 'debit') {
         loanRepayments += amt;
       }

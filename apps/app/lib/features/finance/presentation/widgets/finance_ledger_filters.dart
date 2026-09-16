@@ -48,9 +48,7 @@ List<BankTransaction> applyLedgerFilter(
     case LedgerFilter.fuelOps:
       filtered = filtered
           .where(
-              (t) => IfrsCategory.operationsSubcategories.contains(
-                t.ifrsSubcategory,
-              ),
+              (t) => IfrsCategory.isOperationsSubcategory(t.ifrsSubcategory ?? ''),
             )
           .toList();
       break;
