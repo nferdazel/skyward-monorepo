@@ -298,7 +298,9 @@ Each needs a short written proposal (blast radius + migration path + test plan).
 - [ ] **3.4** Per-tick config injection replacing ~30 `getConfigNum` call sites.
 - [ ] **3.5** Money boundary: round at the Ledger, then migrate float64 →
       int64 cents / decimal inside the engine.
-- [ ] **3.6** Clean-room baseline v2 (if not completed under 0.2).
+- [ ] **3.6** ~~Clean-room baseline v2~~ — **dropped.** D1 answered 2026-09-16:
+      no rewrite; 0.2c/0.2d made the existing dump self-sufficient and the drift
+      check now proves a fresh apply matches prod.
 - [ ] **3.7** Real deploy pipeline: versioned artifacts, gated migration step,
       health-gated rollback, retained logs.
 

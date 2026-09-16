@@ -541,10 +541,10 @@ APP_DB_PASSWORD='…' DATABASE_URL=postgres://<superuser>@<host>:5432/<db> \
 sepenuhnya ada di Go (JWT + predikat `user_id` di query), bukan di RLS —
 lihat migrasi `21_disable_rls_to_match_prod.sql`.
 
-**Gap yang diketahui (2026-09-16):** `00_baseline.sql` **tidak** membuat kolom
-`users.password_hash` (tidak ada migrasi mana pun yang membuatnya), padahal API
-memerlukannya untuk login. Cluster baru dari repo karena itu belum bisa dipakai
-login sampai ini diperbaiki — dilacak sebagai item 0.2d di plan refactor.
+Gap 2026-09-16 (`users.password_hash` tidak dibuat baseline sehingga cluster baru
+tidak bisa login) sudah diperbaiki di `00_baseline.sql`; lihat item 0.2d di plan
+refactor. `scripts/drift-check.sh` sekarang melaporkan schema hasil migrasi
+identik dengan prod.
 
 ### Drift check
 
