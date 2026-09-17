@@ -637,16 +637,21 @@ Each needs a short written proposal (blast radius + migration path + test plan).
       ambang kebijakan jutaan dolar, bukan "uang pas dengan biaya", jadi noise
       1e-8 di sana tidak mengubah keputusan; dan tidak ada data prod yang perlu
       diperbaiki (1.921.439 baris `bank_transactions` semuanya sudah 2 desimal).
-- [ ] **3.5b** Ganti `float64` dengan bilangan bulat sen di dalam engine.
-      **Nilai lebih kecil dari yang diasumsikan 3.5.** Basis data sudah eksak
-      (`numeric(20,2)` di `bank_accounts.balance`, `bank_transactions.amount`,
-      `loans.*`, `route_assignments.ticket_price`), dan aritmetika saldo terjadi
-      di SQL (`balance = balance + $1`), bukan di Go — jadi `float64` hanya tipe
-      transit. Yang tersisa hanyalah menghilangkan perbandingan float di Go,
-      yang sebagian besar sudah ditutup 3.5. Menyentuh 71 titik float64 uang,
-      setiap DTO, model klien, dan 14 kolom. **Butuh keputusan owner sebelum
-      dikerjakan**; kalau tidak ada masalah nyata yang tersisa, kandidat untuk
-      dihapus dari rencana.
+- [~] **3.5b** **Dihapus dari rencana** (keputusan owner 2026-09-17), atas
+      rekomendasi build agent. Item aslinya adalah "migrasi `float64` → `int64`
+      cents"; setelah 3.5 diperiksa, nilainya tidak sebanding risikonya:
+      - Basis data **sudah eksak** — `numeric(20,2)` di `bank_accounts.balance`,
+        `bank_transactions.amount`, `loans.*`, `route_assignments.ticket_price`.
+      - **Aritmetika saldo terjadi di SQL** (`balance = balance + $1`), bukan di
+        Go, jadi `float64` hanya tipe transit.
+      - Perbandingan float di Go — satu-satunya kerugian nyata yang tersisa —
+        sudah ditutup 3.5 dan `d370474`.
+      Biayanya 71 titik `float64` uang di engine, setiap DTO, model klien, dan
+      14 kolom, di `apps/api` **dan** `apps/app`.
+      Kriteria penghapusannya: **tidak ada bug yang bisa ditunjukkan.**
+      Refactor besar di jalur uang tidak pantas diminta tanpa satu pun cacat
+      yang diperbaiki. Kalau nanti muncul masalah presisi nyata, catat dulu
+      kegagalannya, lalu item ini bisa dibuka kembali dengan bukti.
 - [x] **3.6** ~~Clean-room baseline v2~~ — **dropped.** D1 answered 2026-09-16:
       no rewrite; 0.2c/0.2d made the existing dump self-sufficient and the drift
       check now proves a fresh apply matches prod.
