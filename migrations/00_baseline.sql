@@ -1,13 +1,37 @@
 -- Skyward Consolidated Baseline Migration
 -- Generated: 2026-07-22 from live Supabase database
 --
--- This is a single consolidated baseline that replaces58 individual migration
+-- This is a single consolidated baseline that replaces 58 individual migration
 -- files (00_baseline.sql through 20260710250000_fix_performance_indexes.sql).
 --
 -- The schema was dumped directly from the linked Supabase project using:
 --   supabase db dump --linked --schema public
 --
 -- Previous migrations are archived in migrations_old/ for reference.
+--
+-- ---------------------------------------------------------------------------
+-- READ THIS FIRST: MOST OF THE SQL FUNCTIONS IN THIS FILE ARE DEAD
+-- ---------------------------------------------------------------------------
+-- The dump contains ~113 PL/pgSQL functions, because in the Supabase era the
+-- business logic lived in the database. It does not any more: the logic lives
+-- in the Go engine (`apps/api/internal/engine`), whose package doc states that
+-- it calls no SQL functions and uses direct table SQL instead.
+--
+-- Verified 2026-09-17: exactly 13 functions are still reachable —
+--   - 4 called from Go: `get_hq_prefix`, `normalize_username`,
+--     `get_config_numeric`, `haversine_distance`;
+--   - 9 reached from the 5 live triggers (`trg_*_reconcile_net_worth`,
+--     `trg_create_default_bank_account`, `trg_sync_tail_numbers_on_hq_change`)
+--     and their helpers.
+-- The rest are unreachable and dangerous to read: `process_world_tick`,
+-- `purchase_aircraft`, `take_loan`, `create_route` and friends still contain
+-- plausible-looking economy rules that NO LONGER RUN. Do not treat any of them
+-- as current behaviour, and do not "fix" them — the Go engine is authoritative.
+--
+-- They are deliberately NOT dropped here. See `docs/standards/refactor-plan-2026-09.md`
+-- (item 3.5b / the 2026-09-17 pruning decision): removing them means a pruning
+-- migration that cannot be proven safe by reading code alone, so prod keeps
+-- them and this file keeps them.
 --
 -- Extensions required: none. `gen_random_uuid()` is core since PostgreSQL 13
 -- and the target is PostgreSQL 18; `plpgsql` ships by default. `pg_cron` is NOT

@@ -489,7 +489,7 @@ reference data instead of falling back to Go hardcoded defaults and empty
 lookups. Regenerate the latter with `scripts/dump-reference-data.sh`.
 
 - Schema baseline: apply `migrations/00_baseline.sql` first, then `01_…` through
-  `23_…` sequentially — or run `make migrate`, which applies pending migrations
+  `24_…` sequentially — or run `make migrate`, which applies pending migrations
   in order and records each filename + checksum in `schema_migrations`.
 - **RLS is off** on every `public` table and no policies exist: authorization
   lives in the Go API (JWT + `user_id` predicates). `01` enabled RLS for the
