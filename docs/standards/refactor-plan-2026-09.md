@@ -405,7 +405,7 @@ Every item below must fail-then-pass with a DB-backed test once 0.4 lands.
       nothing is double counted and `leaseExpenseShare` moves by about 0.015%.
       The ledger's fuel/ops filter now also matches the legacy short-form
       `maintenance` rows (95 rows, 123M).
-- [ ] **2.6** FE consolidation: three parts, two done.
+- [x] **2.6** FE consolidation: done, with a correction.
       *One IFRS category classifier — done.* `features/finance/domain/ifrs_category.dart`
       owns the subcategory sets, the metrics predicates and `groupFor(key)`, shared
       by the metrics cubit, the ledger filters and the two category badges (the
@@ -447,6 +447,30 @@ Every item below must fail-then-pass with a DB-backed test once 0.4 lands.
       would register as schema drift, since `pg_dump -s` includes function bodies
       and prod still runs the old one. Indonesian em dashes inside `//` comments are
       left alone; R-02 governs UI text, not comments.
+      *Audit 2026-09-17 (verifikasi klaim 2.6 sebelum menutupnya).*
+      Tiga hal diperiksa ulang terhadap kode, bukan terhadap prosa di atas.
+      Dua klaim lulus apa adanya: classifier tunggal (tidak ada lagi `switch`
+      kategori IFRS di luar `ifrs_category.dart`; `ifrs_report_builder` memang
+      menyimpan aturannya sendiri beserta komentar alasannya) dan helper
+      notifikasi tunggal (lima listener, nol panggilan mentah tersisa).
+      Satu klaim **tidak** lulus: dua dari enam target ketuk 44 dp tidak
+      benar-benar berukuran 44 dp. Lonceng HUD dan tombol tutup sonner
+      memasang kotak 44 dp di bawah `GestureDetector` polos, yang default-nya
+      `deferToChild` — hanya anak yang bisa di-hit-test yang menerima ketukan,
+      di sini ikon 16 dp dan 14 dp. Sisa kotaknya ruang mati, jadi komentarnya
+      mengklaim sesuatu yang tidak dilakukan kodenya. Diperbaiki dengan
+      `HitTestBehavior.opaque` di kedua tempat (7 baris, `55c6115`), dan
+      mekanismenya dibuktikan dengan probe sementara: dua widget identik, satu
+      per perilaku; `deferToChild` tidak menerima ketukan 3 px dari tepi,
+      `opaque` menerima. Empat dari enam lainnya sudah benar sejak awal.
+      Dua catatan kecil: `AppTableIconAction` punya **sepuluh** call site, bukan
+      sebelas seperti tertulis di atas, dan tidak ada tes regresi permanen
+      untuk cacat ini karena `SkywardSonner` adalah `Positioned` yang Stack
+      kartunya hanya berisi `AnimatedPositioned` — ia tidak punya tinggi
+      intrinsik dan hanya bisa di-layout di dalam `Overlay`. Empat bentuk
+      harness dicoba, semuanya gagal di Stack internal yang sama, bukan di
+      `GestureDetector`-nya; tes yang hanya memeriksa string sumber akan lebih
+      buruk daripada tidak ada tes.
 - [x] **2.7** `applyBankruptcy` now runs in one transaction with every step checked.
       It was four bare `Exec` calls with the errors dropped, so a failure mid-way
       left the player half-bankrupt — status `Bankrupt` while loans stayed `active`
