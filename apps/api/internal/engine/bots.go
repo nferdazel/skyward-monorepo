@@ -15,16 +15,30 @@ import (
 // decisions are gated on it and each bot is then advanced through the shared
 // player simulation so bot economics match the player model by construction.
 func (e *Engine) ProcessBots(ctx context.Context, targetTime time.Time, snap *TickSnapshot) (int, error) {
-	startingCash := e.getConfigNum(ctx, "starting_cash", 25000000.0)
-	bankruptcyThreshold := e.getConfigNum(ctx, "bankruptcy_cash_threshold", -5000000.0)
-	repairReserve := e.getConfigNum(ctx, "bot_repair_cash_reserve", 500000.0)
-	purchaseMult := e.getConfigNum(ctx, "bot_purchase_cash_multiplier", 1.5)
-	compThreshold := e.getConfigNum(ctx, "bot_competitive_price_threshold", 0.20)
-	recoveryAmount := e.getConfigNum(ctx, "bot_recovery_loan_amount", 2000000.0)
-	repayRatio := e.getConfigNum(ctx, "bot_loan_repayment_ratio", 0.20)
-	lossDaysThresh := int(e.getConfigNum(ctx, "bot_consecutive_loss_days_threshold", 7))
-	secondaryHubChance := e.getConfigNum(ctx, "bot_secondary_hub_chance", 0.20)
-	fleetDiversity := e.getConfigNum(ctx, "bot_fleet_diversity_chance", 0.30)
+	// Sejak 3.4 fungsi ini membaca config dari snapshot, jadi nil berarti
+	// fallback Go — bukan nilai DB. Muat sendiri seperti ProcessPlayer supaya
+	// pemanggil baru tidak diam-diam memakai fallback.
+	if snap == nil {
+		var serr error
+		snap, serr = e.LoadTickSnapshot(ctx, targetTime)
+		if serr != nil {
+			return 0, fmt.Errorf("process bots: %w", serr)
+		}
+	}
+
+	// Dibaca dari snapshot tick, bukan satu per satu: dulu sepuluh pembacaan
+	// terpisah, dan admin yang mengubah config di tengah putaran bisa membuat
+	// bot melihat dua nilai berbeda untuk key yang sama (3.4).
+	startingCash := snap.num("starting_cash", 25000000.0)
+	bankruptcyThreshold := snap.num("bankruptcy_cash_threshold", -5000000.0)
+	repairReserve := snap.num("bot_repair_cash_reserve", 500000.0)
+	purchaseMult := snap.num("bot_purchase_cash_multiplier", 1.5)
+	compThreshold := snap.num("bot_competitive_price_threshold", 0.20)
+	recoveryAmount := snap.num("bot_recovery_loan_amount", 2000000.0)
+	repayRatio := snap.num("bot_loan_repayment_ratio", 0.20)
+	lossDaysThresh := int(snap.num("bot_consecutive_loss_days_threshold", 7))
+	secondaryHubChance := snap.num("bot_secondary_hub_chance", 0.20)
+	fleetDiversity := snap.num("bot_fleet_diversity_chance", 0.30)
 
 	var seasonID string
 	e.Pool.QueryRow(ctx, `SELECT id FROM season_clock WHERE status='active' LIMIT 1`).Scan(&seasonID)
@@ -110,16 +124,16 @@ func (e *Engine) ProcessBots(ctx context.Context, targetTime time.Time, snap *Ti
 		e.botHandleRepair(ctx, b.ID, gameTime, dist.Stage, threshold, repairReserve)
 
 		// route lifecycle (audit + trim)
-		e.botHandleRouteLifecycle(ctx, b.ID, gameTime, dist.Stage, dist.PriceMult, lossDaysThresh)
+		e.botHandleRouteLifecycle(ctx, b.ID, gameTime, dist.Stage, dist.PriceMult, lossDaysThresh, snap)
 
 		// fleet growth
 		e.botHandleFleetGrowth(ctx, b.ID, gameTime, b.Archetype, dist, cash, startingCash, purchaseMult, fleetDiversity)
 
 		// route creation
-		e.botHandleRouteCreation(ctx, b.ID, gameTime, b.Archetype, dist, b.HQ, threshold, secondaryHubChance)
+		e.botHandleRouteCreation(ctx, b.ID, gameTime, b.Archetype, dist, b.HQ, threshold, secondaryHubChance, snap)
 
 		// pricing
-		e.botHandlePricing(ctx, b.ID, gameTime, b.Archetype, dist.Stage, dist.PriceMult, compThreshold)
+		e.botHandlePricing(ctx, b.ID, gameTime, b.Archetype, dist.Stage, dist.PriceMult, compThreshold, snap)
 
 		// financial
 		e.botHandleFinancial(ctx, b.ID, gameTime, dist, cash, startingCash, repayRatio, recoveryAmount)
@@ -133,11 +147,11 @@ func (e *Engine) ProcessBots(ctx context.Context, targetTime time.Time, snap *Ti
 	// Ensure the active bot population is exactly max_bot_count. Spawn one per
 	// tick until the cap is reached so the world does not pop a full roster in
 	// a single tick.
-	maxBots := int(e.getConfigNum(ctx, "max_bot_count", 5))
+	maxBots := int(snap.num("max_bot_count", 5))
 	var botCount int
 	e.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM users WHERE actor_type='AI' AND COALESCE(operational_status,'Active') != 'Bankrupt' AND (season_id IS NULL OR $1::uuid IS NULL OR season_id = $1)`, nullableSeason(seasonID)).Scan(&botCount)
 	if botCount < maxBots {
-		e.spawnBot(ctx, seasonID)
+		e.spawnBot(ctx, seasonID, snap)
 	}
 	return processed, nil
 }
@@ -319,7 +333,7 @@ func (e *Engine) botHandleFleetGrowth(ctx context.Context, botID string, gameTim
 	e.Pool.Exec(ctx, `UPDATE bot_profiles SET last_growth_action_at=$1 WHERE user_id=$2`, gameTime, botID)
 }
 
-func (e *Engine) botHandleRouteLifecycle(ctx context.Context, botID string, gameTime time.Time, distress string, priceMult float64, lossDaysThresh int) {
+func (e *Engine) botHandleRouteLifecycle(ctx context.Context, botID string, gameTime time.Time, distress string, priceMult float64, lossDaysThresh int, snap *TickSnapshot) {
 	var routeCount int
 	e.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM route_assignments WHERE user_id=$1 AND status='active'`, botID).Scan(&routeCount)
 	if routeCount == 0 {
@@ -329,7 +343,7 @@ func (e *Engine) botHandleRouteLifecycle(ctx context.Context, botID string, game
 	e.Pool.QueryRow(ctx, `SELECT last_route_audit_at IS NULL OR last_route_audit_at <= $1::timestamptz - INTERVAL '4 hours' FROM bot_profiles WHERE user_id=$2`, gameTime, botID).Scan(&auditAllowed)
 	if auditAllowed {
 		// route performance: hitung per-rute (reuse route economics sederhana)
-		perf := e.routePerformance(ctx, botID)
+		perf := e.routePerformance(ctx, botID, snap)
 		allProfitable, anyProfitable := true, false
 		worstID, worstProfit := "", 0.0
 		for _, p := range perf {
@@ -358,7 +372,7 @@ func (e *Engine) botHandleRouteLifecycle(ctx context.Context, botID string, game
 
 	// distress trim (simplified: potong frekuensi rute terburuk)
 	if distress == "defensive" || distress == "desperate" {
-		perf := e.routePerformance(ctx, botID)
+		perf := e.routePerformance(ctx, botID, snap)
 		if len(perf) > 0 {
 			worst := perf[0]
 			for _, p := range perf {
@@ -381,7 +395,7 @@ func (e *Engine) botHandleRouteLifecycle(ctx context.Context, botID string, game
 	}
 }
 
-func (e *Engine) botHandleRouteCreation(ctx context.Context, botID string, gameTime time.Time, archetype string, d *botDistress, hq string, threshold float64, secondaryHubChance float64) {
+func (e *Engine) botHandleRouteCreation(ctx context.Context, botID string, gameTime time.Time, archetype string, d *botDistress, hq string, threshold float64, secondaryHubChance float64, snap *TickSnapshot) {
 	var routeCount, idleCount int
 	e.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM route_assignments WHERE user_id=$1 AND status='active'`, botID).Scan(&routeCount)
 	e.Pool.QueryRow(ctx, `
@@ -431,10 +445,10 @@ func (e *Engine) botHandleRouteCreation(ctx context.Context, botID string, gameT
 	if dest == "" {
 		return
 	}
-	baseFare := e.getConfigNum(ctx, "ticket_base_fare", 50.0) + destDist*e.getConfigNum(ctx, "ticket_per_km_rate", 0.12)
+	baseFare := snap.num("ticket_base_fare", 50.0) + destDist*snap.num("ticket_per_km_rate", 0.12)
 	ticketPrice := baseFare * d.PriceMult
 	maxFlights := calcMaxWeeklyFlights(destDist, int(modelSpeed), modelTurnaround,
-		e.getConfigNum(ctx, "max_weekly_flights", 168.0))
+		snap.num("max_weekly_flights", 168.0))
 	targetFlights := int(math.Max(4, float64(maxFlights)*d.SchedRatio))
 
 	// buat rute + assign
@@ -486,14 +500,14 @@ func botRespondPrice(price, base, avgComp float64, compCount int, priceMult,
 	return newPrice
 }
 
-func (e *Engine) botHandlePricing(ctx context.Context, botID string, gameTime time.Time, archetype, distress string, priceMult, compThreshold float64) {
+func (e *Engine) botHandlePricing(ctx context.Context, botID string, gameTime time.Time, archetype, distress string, priceMult, compThreshold float64, snap *TickSnapshot) {
 	var allowed bool
 	e.Pool.QueryRow(ctx, `SELECT last_pricing_review_at IS NULL OR last_pricing_review_at <= $1::timestamptz - INTERVAL '6 hours' FROM bot_profiles WHERE user_id=$2`, gameTime, botID).Scan(&allowed)
 	if !allowed {
 		return
 	}
-	baseFare := e.getConfigNum(ctx, "ticket_base_fare", 50.0)
-	perKM := e.getConfigNum(ctx, "ticket_per_km_rate", 0.12)
+	baseFare := snap.num("ticket_base_fare", 50.0)
+	perKM := snap.num("ticket_per_km_rate", 0.12)
 
 	rows, err := e.Pool.Query(ctx, `SELECT id, ticket_price, distance_km, origin_iata, destination_iata FROM route_assignments WHERE user_id=$1 AND status='active'`, botID)
 	if err != nil {
@@ -591,14 +605,14 @@ func (e *Engine) botHandleFinancial(ctx context.Context, botID string, gameTime 
 // Company names are randomized (mirror generate_company_name) and the insert is
 // retried on unique-violation, because users.company_name is UNIQUE. Without
 // this the AI population could never exceed the number of distinct names.
-func (e *Engine) spawnBot(ctx context.Context, seasonID string) {
+func (e *Engine) spawnBot(ctx context.Context, seasonID string, snap *TickSnapshot) {
 	archetypes := []string{"Regional", "Aggressive", "Balanced"}
 	archetype := archetypes[rand.Intn(3)]
 	var hq string
 	e.Pool.QueryRow(ctx, `SELECT iata FROM airports ORDER BY demand_index DESC, random() LIMIT 1`).Scan(&hq)
 	var gameTime time.Time
 	e.Pool.QueryRow(ctx, `SELECT current_game_time FROM season_clock WHERE status='active' LIMIT 1`).Scan(&gameTime)
-	startingCash := e.getConfigNum(ctx, "starting_cash", 25000000.0)
+	startingCash := snap.num("starting_cash", 25000000.0)
 
 	for attempt := 0; attempt < 10; attempt++ {
 		username := fmt.Sprintf("bot_%s", randString(8))
@@ -730,20 +744,20 @@ func routeWeeklyProfit(p routePerfParams, c routePerfConfig) float64 {
 	return revenue - fuel - crew - maint - lease
 }
 
-func (e *Engine) routePerformance(ctx context.Context, userID string) []routePerf {
+func (e *Engine) routePerformance(ctx context.Context, userID string, snap *TickSnapshot) []routePerf {
 	cfg := routePerfConfig{
-		FuelPrice:        e.getConfigNum(ctx, "fuel_price_per_liter", 0.85),
-		CrewCost:         e.getConfigNum(ctx, "crew_cost_per_hour", 350.0),
-		TicketBase:       e.getConfigNum(ctx, "ticket_base_fare", 50.0),
-		TicketKM:         e.getConfigNum(ctx, "ticket_per_km_rate", 0.12),
-		MaxWeekly:        e.getConfigNum(ctx, "max_weekly_flights", 168.0),
-		DemandPoolScale:  e.getConfigNum(ctx, "demand_pool_scale", 290.0),
-		BusinessFareMult: e.getConfigNum(ctx, "business_fare_multiplier", 1.5),
-		FirstFareMult:    e.getConfigNum(ctx, "first_fare_multiplier", 2.5),
-		EconomyWilling:   e.getConfigNum(ctx, "economy_willing_share", 0.80),
-		BusinessWilling:  e.getConfigNum(ctx, "business_willing_share", 0.15),
-		FirstWilling:     e.getConfigNum(ctx, "first_willing_share", 0.05),
-		CargoPct:         e.getConfigNum(ctx, "cargo_revenue_percentage", 0.05),
+		FuelPrice:        snap.num("fuel_price_per_liter", 0.85),
+		CrewCost:         snap.num("crew_cost_per_hour", 350.0),
+		TicketBase:       snap.num("ticket_base_fare", 50.0),
+		TicketKM:         snap.num("ticket_per_km_rate", 0.12),
+		MaxWeekly:        snap.num("max_weekly_flights", 168.0),
+		DemandPoolScale:  snap.num("demand_pool_scale", 290.0),
+		BusinessFareMult: snap.num("business_fare_multiplier", 1.5),
+		FirstFareMult:    snap.num("first_fare_multiplier", 2.5),
+		EconomyWilling:   snap.num("economy_willing_share", 0.80),
+		BusinessWilling:  snap.num("business_willing_share", 0.15),
+		FirstWilling:     snap.num("first_willing_share", 0.05),
+		CargoPct:         snap.num("cargo_revenue_percentage", 0.05),
 	}
 	rows, err := e.Pool.Query(ctx, `
 		SELECT r.id, r.distance_km, r.ticket_price, r.flights_per_week,

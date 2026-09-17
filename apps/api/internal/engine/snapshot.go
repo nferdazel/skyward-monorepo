@@ -28,6 +28,22 @@ var tickConfigKeys = []string{
 	"business_willing_share",
 	"first_willing_share",
 	"absolute_minimum_safety_limit",
+	// Threshold bot dan parameter hari — dulu dibaca satu per satu lewat
+	// getConfigNum di dalam ProcessBots/processDayBoundary, jadi satu tick bot
+	// bisa melihat dua nilai berbeda untuk key yang sama kalau admin mengubah
+	// config di tengah putaran (3.4).
+	"starting_cash",
+	"max_bot_count",
+	"bankruptcy_negative_days_threshold",
+	"base_lease_deposit_percentage",
+	"bot_repair_cash_reserve",
+	"bot_purchase_cash_multiplier",
+	"bot_competitive_price_threshold",
+	"bot_recovery_loan_amount",
+	"bot_loan_repayment_ratio",
+	"bot_consecutive_loss_days_threshold",
+	"bot_secondary_hub_chance",
+	"bot_fleet_diversity_chance",
 }
 
 // activeEvent — satu baris `game_events` yang berlaku pada waktu tick.

@@ -138,11 +138,18 @@ func TestConfigKeysAreSeeded(t *testing.T) {
 }
 
 // configKeysReadByGo mengumpulkan key `game_config` yang dibaca dari sebuah
-// sumber Go: lewat `getConfigNum(...)` maupun SQL inline
-// (`... FROM game_config WHERE key='...'`).
+// sumber Go: lewat `getConfigNum(...)`, lewat `snap.num(...)` (jalur tick sejak
+// 3.4), maupun SQL inline (`... FROM game_config WHERE key='...'`).
+//
+// `snap.num` harus ikut dikenali: tanpa itu, key yang dipindahkan dari
+// getConfigNum ke snapshot akan lolos dari arah 1 (dibaca Go -> wajib ada di
+// seed), persis di tempat yang paling perlu dijaga.
 func configKeysReadByGo(src string) []string {
 	var keys []string
 	for _, m := range regexp.MustCompile(`getConfigNum\([^"`+"`"+`]*"([a-z_0-9]+)"`).FindAllStringSubmatch(src, -1) {
+		keys = append(keys, m[1])
+	}
+	for _, m := range regexp.MustCompile(`snap\.num\("([a-z_0-9]+)"`).FindAllStringSubmatch(src, -1) {
 		keys = append(keys, m[1])
 	}
 	for _, line := range strings.Split(src, "\n") {

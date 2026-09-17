@@ -464,7 +464,7 @@ func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime ti
 	curDay := userGameTime.Truncate(24 * time.Hour)
 	targetDay := targetTime.Truncate(24 * time.Hour)
 	if advancedDay && curDay != targetDay {
-		e.processDayBoundary(ctx, userID, targetTime, elapsed)
+		e.processDayBoundary(ctx, userID, targetTime, elapsed, snap)
 	}
 	e.EvaluateAchievements(ctx, userID, targetTime)
 
@@ -509,7 +509,7 @@ func (e *Engine) applyBankruptcy(ctx context.Context, userID string) {
 	}
 }
 
-func (e *Engine) processDayBoundary(ctx context.Context, userID string, gameDate time.Time, elapsedDays float64) {
+func (e *Engine) processDayBoundary(ctx context.Context, userID string, gameDate time.Time, elapsedDays float64, snap *TickSnapshot) {
 	// Go-native: credit score + history, loan payments, financing payments
 	e.ProcessCreditAtDayBoundary(ctx, userID, gameDate)
 	e.ProcessLoanPayments(ctx, userID, gameDate)
@@ -524,7 +524,7 @@ func (e *Engine) processDayBoundary(ctx context.Context, userID string, gameDate
 		// negative-day progress). Skip the day-boundary accounting for now.
 		return
 	}
-	threshold := int(e.getConfigNum(ctx, "bankruptcy_negative_days_threshold", 30.0))
+	threshold := int(snap.num("bankruptcy_negative_days_threshold", 30.0))
 	if cashAfter < 0 {
 		if _, err := e.Pool.Exec(ctx, `UPDATE users SET consecutive_negative_days = COALESCE(consecutive_negative_days, 0) + 1,
 			recovery_streak_days = 0 WHERE id=$1`, userID); err != nil {
@@ -558,9 +558,20 @@ func shouldBankruptOnNegativeDays(consecutiveNegativeDays, threshold int) bool {
 	return threshold > 0 && consecutiveNegativeDays >= threshold
 }
 
-// getConfigNum — baca game_config.key. AUDIT-10: fresh DB tanpa seed
-// (migration 17) akan kehilangan key dan senyap memakai fallback Go; catat
-// sekali per key supaya drift terlihat, bukan hilang.
+// getConfigNum — baca game_config.key langsung dari DB.
+//
+// AUDIT-10: fresh DB tanpa seed (migration 17) akan kehilangan key dan senyap
+// memakai fallback Go; catat sekali per key supaya drift terlihat, bukan hilang.
+//
+// Sejak 3.4 jalur TICK tidak lagi memakai ini — ia membaca `snap.num` supaya
+// satu putaran memakai satu nilai per key. Yang tersisa di sini adalah pemanggil
+// di luar tick, yang justru HARUS membaca nilai terbaru saat request:
+//   - `routes.go` / `fleet.go` — handler mutasi REST (validasi frekuensi rute,
+//     deposit lease), tidak punya snapshot;
+//   - `dayboundary.go` `calculateCreditScore` — dipakai halaman kredit, bukan
+//     hanya tick.
+//
+// Menyalinnya ke snapshot akan membuat permintaan pemain memakai config basi.
 func (e *Engine) getConfigNum(ctx context.Context, key string, fallback float64) float64 {
 	var v float64
 	err := e.Pool.QueryRow(ctx, `SELECT COALESCE((value#>>'{}')::numeric, $1) FROM game_config WHERE key=$2`, fallback, key).Scan(&v)
