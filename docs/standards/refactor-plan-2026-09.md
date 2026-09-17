@@ -608,8 +608,45 @@ Each needs a short written proposal (blast radius + migration path + test plan).
       `getConfigNum` dan `snap.num` mengembalikan nilai identik (0 beda,
       0 fallback). `ProcessBots(nil)` terbukti memuat 29 key; dengan guard nil
       dilepas, ia memakai snapshot kosong dan check-nya gagal.
-- [ ] **3.5** Money boundary: round at the Ledger, then migrate float64 →
-      int64 cents / decimal inside the engine.
+- [~] **3.5** Money boundary. **Separuh pertama selesai** (`c998437`); separuh
+      kedua dipecah jadi 3.5b di bawah, dan nilainya lebih kecil dari yang
+      diasumsikan item ini.
+      *Round at the Ledger — done.* Uang disimpan sebagai `numeric(20,2)`, jadi
+      Postgres sudah membulatkan setiap tulis; yang tidak otomatis adalah
+      aritmetika Go. Biaya hasil simulasi datang sebagai `float64` dari pembagian
+      dan perkalian, dan noise-nya berbahaya bukan saat disimpan (kolomnya
+      membulatkan) tapi saat **dibandingkan**. Terukur pada operasi yang benar-
+      benar dipakai engine: `110.01 x 70.15 = 7717.2015000000001`,
+      `605000 / 4.33 = 139722.8637413395`, `12489.36 / 30 x 7 =
+      2914.1840000000002`. Semuanya tersimpan sedikit DI ATAS nilai sen-nya, jadi
+      pemain yang uangnya persis cukup ditolak oleh `cash < cost` — dan itu bukan
+      kasus langka, hampir setiap biaya dari pembagian mengalaminya.
+      `money.go` jadi satu tempat untuk aturannya (`round2`, `moneyLessThan`,
+      `moneyAtLeast`); `amount` dibulatkan di pintu masuk ledger (`applyTx`)
+      supaya Go membandingkan angka yang sama dengan yang disimpan Postgres; enam
+      perbandingan terima/tolak dipindah ke helper itu.
+      `round2` sendiri diperbaiki: bentuk lama `int(v*100+0.5)` memotong menuju
+      nol, jadi negatif membulat ke arah salah **dan tidak stabil** —
+      `round2(-0.5) = -0.49`, dan `round2(-99.99)` menghasilkan `-99.98` lalu
+      `-99.97`, memburuk tiap penerapan. Saldo memang bisa negatif. **Jujur:
+      ini tidak mengubah perilaku produksi sekarang**, karena semua argumen
+      `round2` di produksi non-negatif (harga, persentase, nilai aset); itu bug
+      yang menunggu dipakai. Luapan `v*100` (dulu `Inf`) juga ditangani.
+      Dua hal yang SENGAJA tidak diubah: perbandingan ambang di `bots.go`
+      (`cash < bankruptcyThreshold`, `cash > startingCash*purchaseMult`) adalah
+      ambang kebijakan jutaan dolar, bukan "uang pas dengan biaya", jadi noise
+      1e-8 di sana tidak mengubah keputusan; dan tidak ada data prod yang perlu
+      diperbaiki (1.921.439 baris `bank_transactions` semuanya sudah 2 desimal).
+- [ ] **3.5b** Ganti `float64` dengan bilangan bulat sen di dalam engine.
+      **Nilai lebih kecil dari yang diasumsikan 3.5.** Basis data sudah eksak
+      (`numeric(20,2)` di `bank_accounts.balance`, `bank_transactions.amount`,
+      `loans.*`, `route_assignments.ticket_price`), dan aritmetika saldo terjadi
+      di SQL (`balance = balance + $1`), bukan di Go — jadi `float64` hanya tipe
+      transit. Yang tersisa hanyalah menghilangkan perbandingan float di Go,
+      yang sebagian besar sudah ditutup 3.5. Menyentuh 71 titik float64 uang,
+      setiap DTO, model klien, dan 14 kolom. **Butuh keputusan owner sebelum
+      dikerjakan**; kalau tidak ada masalah nyata yang tersisa, kandidat untuk
+      dihapus dari rencana.
 - [x] **3.6** ~~Clean-room baseline v2~~ — **dropped.** D1 answered 2026-09-16:
       no rewrite; 0.2c/0.2d made the existing dump self-sufficient and the drift
       check now proves a fresh apply matches prod.
