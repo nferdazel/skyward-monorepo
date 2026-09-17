@@ -1264,6 +1264,12 @@ class _RoutesViewState extends State<RoutesView> {
             recommendedAircraft: aircraft,
             isGrounded: isGrounded,
           );
+    // Penumpang, load factor, dan RPK dari server. ASK tetap di klien karena
+    // murni geometri (kursi x jarak x frekuensi). Tanpa data server angkanya 0,
+    // bukan tebakan.
+    final expectedPassengers = serverAssessment?.expectedPassengersPerFlight ?? 0;
+    final loadFactor = serverAssessment?.loadFactorPercent ?? 0.0;
+    final weeklyRPK = expectedPassengers * route.distanceKm * route.flightsPerWeek;
 
     showDialog(
       context: context,
@@ -1303,7 +1309,7 @@ class _RoutesViewState extends State<RoutesView> {
                     ),
                     AppLabeledValue(
                       label: AppStrings.expectedPassengersLabel,
-                      value: '${route.expectedPassengers}',
+                      value: '${expectedPassengers.round()}',
                     ),
                   ],
                 ),
@@ -1337,14 +1343,14 @@ class _RoutesViewState extends State<RoutesView> {
                     ),
                     AppLabeledValue(
                       label: AppStrings.rpkLabel,
-                      value: NumberFormat.compact().format(route.weeklyRPK),
+                      value: NumberFormat.compact().format(weeklyRPK),
                     ),
                     AppLabeledValue(
                       label: AppStrings.loadFactorLabel,
-                      value: '${route.loadFactor.toStringAsFixed(1)}%',
-                      valueColor: route.loadFactor >= 65.0
+                      value: '${loadFactor.toStringAsFixed(1)}%',
+                      valueColor: loadFactor >= 65.0
                           ? AppTheme.success
-                          : (route.loadFactor >= 40.0
+                          : (loadFactor >= 40.0
                               ? AppTheme.warning
                               : AppTheme.error),
                     ),

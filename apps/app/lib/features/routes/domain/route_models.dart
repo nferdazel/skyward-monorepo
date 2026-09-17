@@ -5,13 +5,17 @@ import 'package:equatable/equatable.dart';
 import '../../../core/constants/game_constants.dart';
 import '../../fleet/domain/fleet_models.dart';
 
-// NOTE: Client-side route economics are planning estimates for UI display.
-// The authoritative server-side calculations live in the Go simulation engine
-// (apps/api/internal/engine/simulation.go — routeDailyDemand + allocateCabins),
-// which includes cargo revenue (5% of ticket revenue), cabin mix, and fuel/
-// crew/maintenance shock event multipliers.
-// These Dart formulas intentionally omit those factors for simpler UI preview.
-// Do not treat these as authoritative financial figures.
+// NOTE: this file no longer computes route economics. Until 3.1 the client had
+// its own demand/fare/wear model here (buildPlanningAssessment,
+// buildMaintenancePreviewForSchedule, allocateCabins, calculateDailyDemandPool)
+// that diverged from the simulation — no crew cost, a maintenance basis that
+// included turnaround, and a different self-heal model. Those numbers now come
+// from `GET /routes/assess` (see route_assessment_mapping.dart), which runs the
+// same model as the tick.
+//
+// What remains here is pure geometry and display: airport distance, the base
+// fare reference, weekly ASK, flight duration, and the weekly-flight cap used
+// as a fallback before the server answers.
 
 class RouteMaintenancePreview with Equatable {
   final int allocatedFlightsPerWeek;
@@ -181,7 +185,15 @@ class Airport with Equatable {
   }
 
   @override
-  List<Object?> get props => [iata, name, city, country, latitude, longitude, demandIndex];
+  List<Object?> get props => [
+    iata,
+    name,
+    city,
+    country,
+    latitude,
+    longitude,
+    demandIndex,
+  ];
 }
 
 class UserRoute with Equatable {
@@ -235,21 +247,21 @@ class UserRoute with Equatable {
               Map<String, dynamic>.from(map['fleet_aircraft'] as Map),
             )
           : (map['tail_number'] != null
-              ? UserFleetAircraft.fromMap({
-                  // AUDIT-15: server kini mengirim atribut pesawat ter-assign;
-                  // tanpa ini stub ber-capacity-0 merusak load factor & preview.
-                  'id': map['assigned_aircraft_id'],
-                  'tail_number': map['tail_number'],
-                  'model_name': map['model_name'],
-                  'capacity': map['assigned_capacity'],
-                  'range_km': map['assigned_range_km'],
-                  'speed_kmh': map['assigned_speed_kmh'],
-                  'fuel_burn_per_km': map['assigned_fuel_burn_per_km'],
-                  'maintenance_cost_per_hour':
-                      map['assigned_maintenance_cost_per_hour'],
-                  'condition': map['assigned_condition'],
-                })
-              : null),
+                ? UserFleetAircraft.fromMap({
+                    // AUDIT-15: server kini mengirim atribut pesawat ter-assign;
+                    // tanpa ini stub ber-capacity-0 merusak load factor & preview.
+                    'id': map['assigned_aircraft_id'],
+                    'tail_number': map['tail_number'],
+                    'model_name': map['model_name'],
+                    'capacity': map['assigned_capacity'],
+                    'range_km': map['assigned_range_km'],
+                    'speed_kmh': map['assigned_speed_kmh'],
+                    'fuel_burn_per_km': map['assigned_fuel_burn_per_km'],
+                    'maintenance_cost_per_hour':
+                        map['assigned_maintenance_cost_per_hour'],
+                    'condition': map['assigned_condition'],
+                  })
+                : null),
       status: map['status']?.toString() ?? 'active',
     );
   }
@@ -266,364 +278,6 @@ class UserRoute with Equatable {
   }
 
   // Real-time demand multiplier matching Supabase PL/pgSQL database formula.
-  static double calculateDemandMultiplier({
-    required double distanceKm,
-    required double ticketPrice,
-  }) {
-    final bp = calculateBaseTicketPrice(distanceKm);
-    if (bp == 0) return 0.0;
-    final ratio = ticketPrice / bp;
-    final multiplier = 1.5 - 0.8 * (ratio * ratio);
-    if (multiplier < 0.0) return 0.0;
-    if (multiplier > 1.5) return 1.5;
-    return multiplier;
-  }
-
-  // Route demand contribution from the average airport demand score.
-  static double calculateAirportDemandFactor({
-    required int originDemandIndex,
-    required int destinationDemandIndex,
-  }) {
-    final averageDemand = (originDemandIndex + destinationDemandIndex) / 2.0;
-    final factor =
-        GameConstants.minAirportDemandFactor +
-        ((averageDemand / 100.0) *
-            (GameConstants.maxAirportDemandFactor -
-                GameConstants.minAirportDemandFactor));
-    if (factor < GameConstants.minAirportDemandFactor) {
-      return GameConstants.minAirportDemandFactor;
-    }
-    if (factor > GameConstants.maxAirportDemandFactor) {
-      return GameConstants.maxAirportDemandFactor;
-    }
-    return factor;
-  }
-
-  // GAME-02: demand pool distance weight. Short-haul markets carry more
-  // passengers than long-haul ones. Mirrors Go distanceDemandFactor.
-  static double calculateDistanceDemandFactor({required double distanceKm}) {
-    const shortKm = GameConstants.demandPoolShortHaulKm;
-    const longKm = GameConstants.demandPoolLongHaulKm;
-    const minFactor = GameConstants.demandPoolMinDistanceFactor;
-    const maxFactor = 1.0;
-    if (distanceKm <= shortKm) return maxFactor;
-    if (distanceKm >= longKm) return minFactor;
-    final t = (distanceKm - shortKm) / (longKm - shortKm);
-    return maxFactor + t * (minFactor - maxFactor);
-  }
-
-  // GAME-03: allocate a daily demand pool across cabins by willingness-to-pay.
-  // Mirrors Go allocateCabins (simulation.go). Returns total daily passengers
-  // and revenue. Premium seats beyond the willing share cannot be sold to
-  // economy passengers, which is what creates the trade-off.
-  static ({double passengers, double revenue}) allocateCabins({
-    required int economySeatsPerDay,
-    required int businessSeatsPerDay,
-    required int firstClassSeatsPerDay,
-    required double baseFare,
-    required double demandPool,
-  }) {
-    final totalWilling = GameConstants.economyWillingShare +
-        GameConstants.businessWillingShare +
-        GameConstants.firstWillingShare;
-    if (totalWilling <= 0) {
-      return (passengers: 0.0, revenue: 0.0);
-    }
-    final econDemand =
-        demandPool * GameConstants.economyWillingShare / totalWilling;
-    final bizDemand =
-        demandPool * GameConstants.businessWillingShare / totalWilling;
-    final firstDemand =
-        demandPool * GameConstants.firstWillingShare / totalWilling;
-
-    final firstPax =
-        firstDemand < firstClassSeatsPerDay ? firstDemand : firstClassSeatsPerDay.toDouble();
-    final bizPax =
-        bizDemand < businessSeatsPerDay ? bizDemand : businessSeatsPerDay.toDouble();
-    // Premium-willing passengers not accommodated in premium downgrade to
-    // economy, which fills from its own willing share plus that overflow.
-    final downgrades = (bizDemand - bizPax) + (firstDemand - firstPax);
-    final econPax =
-        (econDemand + downgrades) < economySeatsPerDay
-            ? (econDemand + downgrades)
-            : economySeatsPerDay.toDouble();
-
-    final passengers = econPax + bizPax + firstPax;
-    final revenue = econPax * baseFare +
-        bizPax * baseFare * GameConstants.businessFareMultiplier +
-        firstPax * baseFare * GameConstants.firstFareMultiplier;
-    return (passengers: passengers, revenue: revenue);
-  }
-
-  // GAME-02: fixed daily passenger demand pool for a route. Mirrors the
-  // authoritative Go engine (simulation.go routeDailyDemand).
-  static double calculateDailyDemandPool({
-    required double distanceKm,
-    required double ticketPrice,
-    required int originDemandIndex,
-    required int destinationDemandIndex,
-  }) {
-    final bp = calculateBaseTicketPrice(distanceKm);
-    if (bp <= 0) return 0.0;
-    final pricingDemand = calculateDemandMultiplier(
-      distanceKm: distanceKm,
-      ticketPrice: ticketPrice,
-    );
-    return GameConstants.demandPoolScale *
-        (originDemandIndex / 100.0) *
-        (destinationDemandIndex / 100.0) *
-        calculateDistanceDemandFactor(distanceKm: distanceKm) *
-        pricingDemand;
-  }
-
-  // GAME-02/GAME-03: per-flight passengers given the fixed daily pool split
-  // across the player's weekly flights and allocated across cabins. Mirrors Go
-  // simulation.go. When no cabin is configured, all seats are economy.
-  static int calculateExpectedPassengers({
-    required int capacity,
-    required double distanceKm,
-    required double ticketPrice,
-    required int originDemandIndex,
-    required int destinationDemandIndex,
-    int flightsPerWeek = 7,
-    int economySeats = 0,
-    int businessSeats = 0,
-    int firstClassSeats = 0,
-  }) {
-    if (capacity <= 0 || flightsPerWeek <= 0) return 0;
-    final dailyDemand = calculateDailyDemandPool(
-      distanceKm: distanceKm,
-      ticketPrice: ticketPrice,
-      originDemandIndex: originDemandIndex,
-      destinationDemandIndex: destinationDemandIndex,
-    );
-    var econ = economySeats;
-    var biz = businessSeats;
-    var first = firstClassSeats;
-    if (econ + biz + first <= 0) {
-      econ = capacity;
-      biz = 0;
-      first = 0;
-    }
-    final flightsPerDay = flightsPerWeek / 7.0;
-    final allocation = allocateCabins(
-      economySeatsPerDay: (econ * flightsPerDay).round(),
-      businessSeatsPerDay: (biz * flightsPerDay).round(),
-      firstClassSeatsPerDay: (first * flightsPerDay).round(),
-      baseFare: ticketPrice,
-      demandPool: dailyDemand,
-    );
-    final passengersPerFlight = (allocation.passengers / flightsPerDay).floor();
-    if (passengersPerFlight < 0) return 0;
-    if (passengersPerFlight > capacity) return capacity;
-    return passengersPerFlight;
-  }
-
-  static double calculateDirectOperatingCostPerFlight({
-    required double distanceKm,
-    required AircraftModel model,
-    required Airport origin,
-    required Airport destination,
-  }) {
-    final flightDurationHours =
-        (distanceKm / model.speedKmh) + model.turnaroundHours;
-    final fuelCost =
-        distanceKm * model.fuelBurnPerKm * GameConstants.fuelPricePerLiter;
-    final maintenanceCost = flightDurationHours * model.maintenanceCostPerHour;
-    return fuelCost + maintenanceCost;
-  }
-
-  static RouteViabilityBand calculateViabilityBand({
-    required bool hasCompatibleAircraft,
-    required double contributionPerFlight,
-    required double loadFactorPercent,
-  }) {
-    if (!hasCompatibleAircraft) return RouteViabilityBand.blocked;
-    if (contributionPerFlight <= 0 || loadFactorPercent < 40.0) {
-      return RouteViabilityBand.weak;
-    }
-    if (contributionPerFlight < 12000 || loadFactorPercent < 65.0) {
-      return RouteViabilityBand.workable;
-    }
-    return RouteViabilityBand.strong;
-  }
-
-  static RoutePlanningAssessment buildPlanningAssessment({
-    required Airport origin,
-    required Airport destination,
-    required double distanceKm,
-    required double ticketPrice,
-    required int flightsPerWeek,
-    required List<UserFleetAircraft> availableAircraft,
-    required double autoGroundingThreshold,
-  }) {
-    final compatibleAircraft = availableAircraft
-        .where(
-          (aircraft) =>
-              !aircraft.isMaintenanceGrounded(autoGroundingThreshold) &&
-              aircraft.model.rangeKm >= distanceKm.ceil(),
-        )
-        .toList();
-
-    if (compatibleAircraft.isEmpty) {
-      return const RoutePlanningAssessment(
-        recommendedAircraft: null,
-        weeklyFlights: 0,
-        expectedPassengersPerFlight: 0,
-        loadFactorPercent: 0.0,
-        directOperatingCostPerFlight: 0.0,
-        revenuePerFlight: 0.0,
-        contributionPerFlight: 0.0,
-        weeklyContribution: 0.0,
-        flightDurationHours: 0.0,
-        maxWeeklyFlights: 0,
-        maintenanceHoursPerWeek: 0.0,
-        netWearPerWeek: 0.0,
-        requiresAircraftAssignment: true,
-        hasCompatibleAircraft: false,
-        viability: RouteViabilityBand.blocked,
-      );
-    }
-
-    RoutePlanningAssessment? bestAssessment;
-
-    for (final aircraft in compatibleAircraft) {
-      final expectedPassengers = calculateExpectedPassengers(
-        capacity: aircraft.effectivePassengerCapacity,
-        distanceKm: distanceKm,
-        ticketPrice: ticketPrice,
-        originDemandIndex: origin.demandIndex,
-        destinationDemandIndex: destination.demandIndex,
-        flightsPerWeek: flightsPerWeek,
-        economySeats: aircraft.economySeats,
-        businessSeats: aircraft.businessSeats,
-        firstClassSeats: aircraft.firstClassSeats,
-      );
-      final directCost = calculateDirectOperatingCostPerFlight(
-        distanceKm: distanceKm,
-        model: aircraft.model,
-        origin: origin,
-        destination: destination,
-      );
-      // Revenue includes premium yield: allocate the daily pool across cabins.
-      final flightsPerDay = flightsPerWeek / 7.0;
-      final dailyDemand = calculateDailyDemandPool(
-        distanceKm: distanceKm,
-        ticketPrice: ticketPrice,
-        originDemandIndex: origin.demandIndex,
-        destinationDemandIndex: destination.demandIndex,
-      );
-      var econSeats = aircraft.economySeats;
-      var bizSeats = aircraft.businessSeats;
-      var firstSeats = aircraft.firstClassSeats;
-      if (econSeats + bizSeats + firstSeats <= 0) {
-        econSeats = aircraft.effectivePassengerCapacity;
-        bizSeats = 0;
-        firstSeats = 0;
-      }
-      final allocation = allocateCabins(
-        economySeatsPerDay: (econSeats * flightsPerDay).round(),
-        businessSeatsPerDay: (bizSeats * flightsPerDay).round(),
-        firstClassSeatsPerDay: (firstSeats * flightsPerDay).round(),
-        baseFare: ticketPrice,
-        demandPool: dailyDemand,
-      );
-      final revenuePerFlight =
-          flightsPerDay > 0 ? allocation.revenue / flightsPerDay : 0.0;
-      final contributionPerFlight = revenuePerFlight - directCost;
-      final maintenancePreview = UserRoute.buildMaintenancePreviewForSchedule(
-        distanceKm: distanceKm,
-        flightsPerWeek: flightsPerWeek,
-        aircraft: aircraft,
-        autoGroundingThreshold: autoGroundingThreshold,
-      );
-      final seatCapacity = aircraft.effectivePassengerCapacity;
-      final loadFactor = seatCapacity == 0
-          ? 0.0
-          : (expectedPassengers / seatCapacity) * 100.0;
-      final viability = calculateViabilityBand(
-        hasCompatibleAircraft: true,
-        contributionPerFlight: contributionPerFlight,
-        loadFactorPercent: loadFactor,
-      );
-
-      final assessment = RoutePlanningAssessment(
-        recommendedAircraft: aircraft,
-        weeklyFlights: maintenancePreview.allocatedFlightsPerWeek,
-        expectedPassengersPerFlight: expectedPassengers,
-        loadFactorPercent: loadFactor,
-        directOperatingCostPerFlight: directCost,
-        revenuePerFlight: revenuePerFlight,
-        contributionPerFlight: contributionPerFlight,
-        weeklyContribution:
-            contributionPerFlight * maintenancePreview.allocatedFlightsPerWeek,
-        flightDurationHours:
-            (distanceKm / aircraft.model.speedKmh) +
-            aircraft.model.turnaroundHours,
-        maxWeeklyFlights: maintenancePreview.maxFlightsPerWeek,
-        maintenanceHoursPerWeek: maintenancePreview.maintenanceHoursPerWeek,
-        netWearPerWeek: maintenancePreview.netHealthImpactPercent,
-        requiresAircraftAssignment: false,
-        hasCompatibleAircraft: true,
-        viability: viability,
-      );
-
-      if (bestAssessment == null ||
-          assessment.weeklyContribution > bestAssessment.weeklyContribution) {
-        bestAssessment = assessment;
-      }
-    }
-
-    return bestAssessment!;
-  }
-
-  double get demandMultiplier {
-    return calculateDemandMultiplier(
-      distanceKm: distanceKm,
-      ticketPrice: ticketPrice,
-    );
-  }
-
-  double get airportDemandFactor {
-    return calculateAirportDemandFactor(
-      originDemandIndex: origin.demandIndex,
-      destinationDemandIndex: destination.demandIndex,
-    );
-  }
-
-  // Real-time demand multiplier matching Supabase PL/pgSQL database formula.
-  // Passenger estimate now includes both pricing elasticity and airport demand.
-  int get expectedPassengers {
-    final aircraft = assignedAircraft;
-    if (aircraft == null || !aircraft.canOperateDistance(distanceKm)) {
-      return 0;
-    }
-    final capacity = aircraft.effectivePassengerCapacity;
-    if (baseTicketPrice == 0 || capacity == 0) return 0;
-    return calculateExpectedPassengers(
-      capacity: capacity,
-      distanceKm: distanceKm,
-      ticketPrice: ticketPrice,
-      originDemandIndex: origin.demandIndex,
-      destinationDemandIndex: destination.demandIndex,
-      flightsPerWeek: flightsPerWeek,
-      economySeats: aircraft.economySeats,
-      businessSeats: aircraft.businessSeats,
-      firstClassSeats: aircraft.firstClassSeats,
-    );
-  }
-
-  // Real-time Passenger Load Factor (%)
-  double get loadFactor {
-    final aircraft = assignedAircraft;
-    if (aircraft == null || !aircraft.canOperateDistance(distanceKm)) {
-      return 0.0;
-    }
-    final capacity = aircraft.effectivePassengerCapacity;
-    if (capacity == 0) return 0.0;
-    return (expectedPassengers / capacity) * 100.0;
-  }
-
   // Available Seat Kilometers (ASK) per week
   double get weeklyASK {
     final aircraft = assignedAircraft;
@@ -634,12 +288,6 @@ class UserRoute with Equatable {
     return capacity * distanceKm * flightsPerWeek;
   }
 
-  // Revenue Passenger Kilometers (RPK) per week
-  double get weeklyRPK {
-    return expectedPassengers * distanceKm * flightsPerWeek;
-  }
-
-  // Calculate simulated flight duration (distance / speed + turnaround)
   double getFlightDurationHours() {
     final aircraft = assignedAircraft;
     if (aircraft == null) return 0.0;
@@ -652,7 +300,8 @@ class UserRoute with Equatable {
     return calculateMaximumWeeklyFlights(
       distanceKm: distanceKm,
       speedKmh: assignedAircraft?.model.speedKmh ?? 0,
-      turnaroundHours: assignedAircraft?.model.turnaroundHours ??
+      turnaroundHours:
+          assignedAircraft?.model.turnaroundHours ??
           GameConstants.aircraftTurnaroundHours,
     );
   }
@@ -666,76 +315,6 @@ class UserRoute with Equatable {
     final duration = (distanceKm / speedKmh) + turnaroundHours;
     if (duration <= 0) return 0;
     return (GameConstants.totalWeeklyHoursCap / duration).floor();
-  }
-
-  RouteMaintenancePreview buildMaintenancePreview(
-    double autoGroundingThreshold,
-  ) {
-    return buildMaintenancePreviewForSchedule(
-      distanceKm: distanceKm,
-      flightsPerWeek: flightsPerWeek,
-      aircraft: assignedAircraft,
-      autoGroundingThreshold: autoGroundingThreshold,
-    );
-  }
-
-  static RouteMaintenancePreview buildMaintenancePreviewForSchedule({
-    required double distanceKm,
-    required int flightsPerWeek,
-    required UserFleetAircraft? aircraft,
-    required double autoGroundingThreshold,
-  }) {
-    if (aircraft == null) {
-      return RouteMaintenancePreview(
-        allocatedFlightsPerWeek: flightsPerWeek,
-        maxFlightsPerWeek: GameConstants.absoluteMaxWeeklyFlights,
-        maintenanceHoursPerWeek: 0.0,
-        grossDamagePercent: 0.0,
-        selfHealingCreditPercent: 0.0,
-        netHealthImpactPercent: 0.0,
-        isGrounded: false,
-        requiresAircraftAssignment: true,
-      );
-    }
-
-    final cycleDurationHours =
-        (distanceKm / aircraft.model.speedKmh) +
-        aircraft.model.turnaroundHours;
-    final maxFlightsPerWeek = cycleDurationHours <= 0
-        ? 0
-        : (GameConstants.totalWeeklyHoursCap / cycleDurationHours).floor();
-    final safeAllocatedFlights = flightsPerWeek.clamp(
-      1,
-      maxFlightsPerWeek > 0
-          ? maxFlightsPerWeek
-          : GameConstants.absoluteMaxWeeklyFlights,
-    );
-    final unusedSlots = maxFlightsPerWeek > 0
-        ? max(0, maxFlightsPerWeek - safeAllocatedFlights)
-        : 0;
-    final maintenanceHoursPerWeek = unusedSlots * cycleDurationHours;
-    final grossDamagePercent =
-        safeAllocatedFlights * aircraft.maintenanceWearPerFlightCycle;
-    final selfHealingCreditPercent =
-        aircraft.isMaintenanceGrounded(autoGroundingThreshold)
-        ? 0.0
-        : maintenanceHoursPerWeek *
-              GameConstants.maintenanceAutoRepairRatePerHour;
-    final netHealthImpactPercent =
-        aircraft.isMaintenanceGrounded(autoGroundingThreshold)
-        ? grossDamagePercent
-        : max(0.0, grossDamagePercent - selfHealingCreditPercent);
-
-    return RouteMaintenancePreview(
-      allocatedFlightsPerWeek: safeAllocatedFlights,
-      maxFlightsPerWeek: maxFlightsPerWeek,
-      maintenanceHoursPerWeek: maintenanceHoursPerWeek,
-      grossDamagePercent: grossDamagePercent,
-      selfHealingCreditPercent: selfHealingCreditPercent,
-      netHealthImpactPercent: netHealthImpactPercent,
-      isGrounded: aircraft.isMaintenanceGrounded(autoGroundingThreshold),
-      requiresAircraftAssignment: false,
-    );
   }
 
   @override
