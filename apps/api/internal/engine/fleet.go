@@ -391,7 +391,7 @@ func (f *FleetService) TerminateLease(ctx context.Context, userID, fleetID strin
 	}
 	exitFee := round2(leasePrice * 0.25)
 	cash, _ := f.engine.Ledger.GetBalance(ctx, userID)
-	if cash < exitFee {
+	if moneyLessThan(cash, exitFee) {
 		return &MutationResult{false, "Insufficient funds to pay lease termination fee.", cash}, nil
 	}
 	tx, txErr := f.engine.Pool.Begin(ctx)
