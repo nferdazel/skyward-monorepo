@@ -468,8 +468,8 @@ Every item below must fail-then-pass with a DB-backed test once 0.4 lands.
 
 Each needs a short written proposal (blast radius + migration path + test plan).
 
-- [ ] **3.1** Server-owned route assessment (`GET /routes/assess`); delete the
-      ~300 LOC of client-side economics in the planner.
+- [x] **3.1** Server-owned route assessment (`GET /routes/assess`); client-side
+      economics deleted.
       **Proposal written 2026-09-16:**
       [proposal-3.1-route-assess.md](proposal-3.1-route-assess.md). Verified
       against code: 269 LOC measured (not estimated), 12+ `GameConstants` in the
@@ -534,15 +534,28 @@ Each needs a short written proposal (blast radius + migration path + test plan).
       `route_assignments.distance_km` just like the tick, while the single-route
       path uses haversine, so the two differ in the 13th digit (measured
       max relative deviation 6.3e-15) — not a model difference.
-      **Remaining in Step 3 (interactive half + deletion):** the planner and the
-      route-detail dialog still call the client math, and
-      `buildMaintenancePreview*` is still used by them and by the routes list
-      (`routes_view.dart` 547, 1227/1230, 1627; `routes_cubit.dart` 177, 316,
-      333). Switching them needs debounce + the answer-5 states (explicit
-      "assessment unavailable" + retry, last result labelled as an estimate),
-      because the planner is interactive (price/frequency sliders) and no longer
-      instant. Only after that can the ~269 LOC and
-      `aviation_logic_test.dart` be deleted.
+      **Steps 3-4 complete in `894eee5`, `bec07e3` and `7653503`.** The
+      interactive half: the adjustment dialog became `RouteAdjustmentDialog`
+      (StatefulWidget owning the slider value) and the cubit gained
+      `adjustmentAssessment` plus a 300 ms debounce, so a fast drag is one
+      request rather than one per frame; the previous result stays visible and
+      labelled as an estimate while a new one is checked, and a failure with no
+      prior result offers retry (owner answer 5). Two things were removed as
+      dead rather than ported: `plannerMaintenancePreview` (threaded through
+      state but read by no UI, "tested" only by a test of its own plumbing) and
+      the cubit's `assessRoute`/`lastRouteAssessment` plus the Step-2
+      client-vs-server diff logger, whose purpose ended with the switchover.
+      **Deletion:** `route_models.dart` 755 -> 334 lines (432 removed) — the
+      proposal estimated ~269 LOC for the functions alone; the rest is the wear
+      and viability helpers it counted separately, plus making the file
+      canonical (`dart format` wanted 767 lines changed before). Passengers,
+      load factor, and RPK in the route detail dialog now come from the server
+      while ASK stays client-side as geometry (owner answer 4). What remains in
+      the client is reference and geometry only — base fare hint, airport
+      distance, weekly ASK, flight duration, and the weekly cap used as a
+      fallback before the server answers. `aviation_logic_test.dart` lost the
+      four tests of the deleted model and keeps three (distance, seats, tail
+      number). 470 tests, analyze clean.
 - [ ] **3.2** Unified mutation pipeline (`MutationRunner`) + push DTO knowledge
       out of cubits into gateways.
 - [ ] **3.3** Decompose the five god views; shrink backend god files.
