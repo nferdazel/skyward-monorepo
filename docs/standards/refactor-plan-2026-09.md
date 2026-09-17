@@ -583,7 +583,31 @@ Each needs a short written proposal (blast radius + migration path + test plan).
 - [ ] **3.2** Unified mutation pipeline (`MutationRunner`) + push DTO knowledge
       out of cubits into gateways.
 - [ ] **3.3** Decompose the five god views; shrink backend god files.
-- [ ] **3.4** Per-tick config injection replacing ~30 `getConfigNum` call sites.
+- [x] **3.4** Per-tick config injection — done in `b1fe4b8`. 37 call site -> 4.
+      Jalur tick membaca `snap.num` dari `TickSnapshot` yang dimuat sekali per
+      `WorldTick`; blok terparah adalah `routePerformance`, yang membaca 12 key
+      `game_config` berurutan, dan `ProcessBots` sepuluh. Dua alasan, bukan
+      sekadar rapi: satu putaran tick dulu bisa melihat dua nilai berbeda untuk
+      key yang sama kalau admin mengubah config di tengahnya, dan tiap pembacaan
+      adalah satu query.
+      **Empat call site yang tersisa disengaja**, alasannya ditulis di komentar
+      `getConfigNum`: `routes.go`/`fleet.go` adalah handler mutasi REST
+      (validasi frekuensi rute, deposit lease) yang tidak punya snapshot dan
+      justru harus membaca nilai terbaru saat request; `dayboundary.go`
+      `calculateCreditScore` dipakai halaman kredit, bukan hanya tick. Memindah
+      keduanya ke snapshot akan membuat permintaan pemain memakai config basi.
+      `ProcessBots` kini memuat snapshotnya sendiri saat nil, sejajar dengan
+      `ProcessPlayer` — sebelumnya ia selalu menerima snapshot dari `WorldTick`,
+      tapi setelah membaca dari snapshot ketergantungan implisit itu akan
+      berubah jadi fallback Go yang senyap bagi pemanggil baru.
+      `configKeysReadByGo` di uji kontrak diperbarui untuk mengenali
+      `snap.num(...)`; tanpa itu, key yang dipindahkan akan lolos dari
+      pemeriksaan "dibaca Go -> wajib ada di seed" — tepat di tempat yang paling
+      perlu dijaga (30 key terdeteksi, naik dari sebelumnya).
+      Verifikasi terhadap config prod: untuk setiap key `tickConfigKeys`,
+      `getConfigNum` dan `snap.num` mengembalikan nilai identik (0 beda,
+      0 fallback). `ProcessBots(nil)` terbukti memuat 29 key; dengan guard nil
+      dilepas, ia memakai snapshot kosong dan check-nya gagal.
 - [ ] **3.5** Money boundary: round at the Ledger, then migrate float64 →
       int64 cents / decimal inside the engine.
 - [x] **3.6** ~~Clean-room baseline v2~~ — **dropped.** D1 answered 2026-09-16:
