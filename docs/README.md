@@ -34,6 +34,7 @@ docs/
 ├── standards/
 │   ├── maintainer-standard.md
 │   ├── proposal-3.1-route-assess.md  server-owned route assessment (Phase 3, awaiting approval)
+│   ├── proposal-d3-ws-token.md       WebSocket token transport (D3, awaiting choice)
 │   └── refactor-plan-2026-09.md  audit-driven refactor backlog (phases + decisions)
 └── reviews/             dated historical audits (not living docs; gitignored, local-only)
     ├── aviation-realism-review-2026-09.md
