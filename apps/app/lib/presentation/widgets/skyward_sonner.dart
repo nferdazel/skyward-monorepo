@@ -194,6 +194,9 @@ class _ToastCard extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
               GestureDetector(
                 onTap: onDismiss,
+                // Sama seperti lonceng HUD: tanpa ini hanya ikon 14 dp yang
+                // bisa diketuk dan kotak 44 dp-nya tidak berguna.
+                behavior: HitTestBehavior.opaque,
                 child: const SizedBox(
                   width: 44,
                   height: 44,

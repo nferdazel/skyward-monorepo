@@ -217,6 +217,10 @@ class TopHud extends StatelessWidget {
       button: true,
       child: GestureDetector(
         onTap: onNotificationTap,
+        // `deferToChild` (default GestureDetector) hanya menerima ketukan tepat
+        // di ikon, jadi kotak 44 dp-nya jadi ruang mati. Opaque membuat seluruh
+        // kotak menerima ketukan, yang memang tujuan ukuran 44 dp ini.
+        behavior: HitTestBehavior.opaque,
         // 44 dp tap target; pil latarnya tetap seukuran ikon + padding.
         child: SizedBox(
           width: 44,
