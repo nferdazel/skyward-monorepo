@@ -138,7 +138,7 @@ func (e *Engine) ProcessLoanPayments(ctx context.Context, userID string, gameDat
 		if payment <= 0 {
 			continue
 		}
-		if cash >= payment {
+		if moneyAtLeast(cash, payment) {
 			tx, txErr := e.Pool.Begin(ctx)
 			if txErr == nil {
 				_, dErr := e.Ledger.DebitTx(ctx, tx, userID, payment, "financing", "loan_payment", "Weekly loan payment", gameDate)
@@ -228,7 +228,7 @@ func (e *Engine) ProcessAircraftFinancingPayments(ctx context.Context, userID st
 		if payment <= 0 {
 			continue
 		}
-		if cash >= payment {
+		if moneyAtLeast(cash, payment) {
 			tx, txErr := e.Pool.Begin(ctx)
 			if txErr == nil {
 				_, dErr := e.Ledger.DebitTx(ctx, tx, userID, payment, "financing", "financing_payment", "Aircraft financing payment", gameDate)

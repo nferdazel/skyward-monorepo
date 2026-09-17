@@ -106,6 +106,12 @@ func (l *LedgerService) CreditTx(ctx context.Context, tx pgx.Tx, userID string, 
 }
 
 func (l *LedgerService) applyTx(ctx context.Context, tx pgx.Tx, userID string, amount float64, ifrsCat, ifrsSubcat, desc string, gameTime time.Time, credit, allowNegative bool) (float64, error) {
+	// Dibulatkan ke sen di PINTU MASUK ledger, bukan di setiap pemanggil: biaya
+	// hasil simulasi datang sebagai float (fuel/crew/maintenance dari pembagian
+	// dan perkalian), dan menyimpannya apa adanya membuat kolom numeric(20,2)
+	// membulatkan sendiri sementara Go membandingkan nilai yang belum dibulatkan.
+	// Satu tempat di sini membuat kedua sisi memakai angka yang sama.
+	amount = round2(amount)
 	if amount < 0 {
 		return 0, fmt.Errorf("amount must be non-negative: %v", amount)
 	}

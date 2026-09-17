@@ -171,7 +171,10 @@ func (b *BankService) Repay(ctx context.Context, userID, loanID string, amount *
 		// berarti data rusak, bukan permintaan buruk.
 		return nil, fmt.Errorf("repay: load balance: %w", err)
 	}
-	if cash < payment {
+	// Dibandingkan pada presisi sen: `payment` dihitung dari pembagian
+	// (pokok/bulan), jadi bisa tersimpan sedikit di atas nilai sen-nya dan
+	// menolak pemain yang uangnya persis cukup.
+	if moneyLessThan(cash, payment) {
 		return &MutationResult{Success: false, Message: fmt.Sprintf("Insufficient cash. Need $%.2f, have $%.2f.", payment, cash), NewCash: cash}, nil
 	}
 
@@ -361,7 +364,7 @@ func (b *BankService) FinanceAircraft(ctx context.Context, userID string, p Fina
 	monthly := totalRepayable / float64(p.TermMonths)
 	weekly := monthly / 4.33
 	cash, _ := b.engine.Ledger.GetBalance(ctx, userID)
-	if cash < down {
+	if moneyLessThan(cash, down) {
 		return &MutationResult{false, fmt.Sprintf("Insufficient cash for down payment of $%.0f.", down), cash}, nil
 	}
 	var hq *string

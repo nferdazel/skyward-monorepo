@@ -105,7 +105,7 @@ func (f *FleetService) Purchase(ctx context.Context, userID string, p PurchasePa
 		return &MutationResult{Success: false, Message: err.Error()}, nil
 	}
 	cash, _ := f.engine.Ledger.GetBalance(ctx, userID)
-	if cash < price {
+	if moneyLessThan(cash, price) {
 		return &MutationResult{Success: false, Message: fmt.Sprintf("Insufficient funds to purchase %s.", modelName), NewCash: cash}, nil
 	}
 	var hq *string
@@ -248,7 +248,7 @@ func (f *FleetService) Repair(ctx context.Context, userID, fleetID string) (*Mut
 	// Leased aircraft already carry higher wear (leased_wear_per_flight_cycle),
 	// which is the intended differentiator. See repairCostFor.
 	repairCost := repairCostFor(condition, purchasePrice)
-	if cash < repairCost {
+	if moneyLessThan(cash, repairCost) {
 		return &MutationResult{Success: false,
 			Message: fmt.Sprintf("Insufficient funds for repair. Required: $%.2f", repairCost), NewCash: cash}, nil
 	}
@@ -297,10 +297,6 @@ func maxf(a, b float64) float64 {
 	return b
 }
 
-func round2(v float64) float64 {
-	return float64(int(v*100+0.5)) / 100.0
-}
-
 // LeaseParams — input lease.
 type LeaseParams struct {
 	ModelID         string `json:"model_id"`
@@ -333,7 +329,7 @@ func (f *FleetService) Lease(ctx context.Context, userID string, p LeaseParams) 
 	deposit := calcLeaseDeposit(purchasePrice, leasePrice,
 		f.engine.getConfigNum(ctx, "base_lease_deposit_percentage", 0.10))
 	cash, _ := f.engine.Ledger.GetBalance(ctx, userID)
-	if cash < deposit {
+	if moneyLessThan(cash, deposit) {
 		return &MutationResult{false, fmt.Sprintf("Insufficient funds for lease deposit of %s. Required: $%.2f", modelName, deposit), cash}, nil
 	}
 	var hq *string
