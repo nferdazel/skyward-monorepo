@@ -1,6 +1,6 @@
 # Skyward Operations Runbook
 
-Status: current | Last verified against code: 2026-09-16
+Status: current | Last verified against code: 2026-09-17
 
 Practical operations for the solo owner. This file merges the former
 `audit-queries.md`, `simulation-guide.md`, `owner-tools.md`, and
@@ -226,7 +226,8 @@ order by start_game_time desc;
 `achievements` gained a `notified_at` column in
 `migrations/14_wave5_achievement_notified.sql`; un-notified rows are delivered
 on the next `POST /simulation/sync`. The `features/achievements/` Flutter module
-was removed, so this is a backend/live-data audit surface. `game_date` is game
+is live (`apps/app/lib/features/achievements/`), so this remains a live-data
+audit surface rather than a replacement for the UI. `game_date` is game
 time; `unlocked_at` and `notified_at` are wall-clock write times.
 
 ```sql
@@ -488,7 +489,7 @@ reference data instead of falling back to Go hardcoded defaults and empty
 lookups. Regenerate the latter with `scripts/dump-reference-data.sh`.
 
 - Schema baseline: apply `migrations/00_baseline.sql` first, then `01_…` through
-  `21_…` sequentially — or run `make migrate`, which applies pending migrations
+  `23_…` sequentially — or run `make migrate`, which applies pending migrations
   in order and records each filename + checksum in `schema_migrations`.
 - **RLS is off** on every `public` table and no policies exist: authorization
   lives in the Go API (JWT + `user_id` predicates). `01` enabled RLS for the

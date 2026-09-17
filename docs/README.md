@@ -1,6 +1,6 @@
 # Skyward Documentation
 
-Status: current | Last verified against code: 2026-09-11
+Status: current | Last verified against code: 2026-09-17
 
 Single home for all project documentation. The repo root keeps only `README.md`
 (landing) and `AGENTS.md` (agent working rules).
@@ -25,7 +25,7 @@ docs/
 │   ├── overview.md      system shape, tick/season clock, auth, realtime
 │   ├── backend.md       Go API: engine domains, routes, worker, config
 │   ├── frontend.md      Flutter: cubits, gateways, sync, test layers
-│   └── database.md      schema groups + migrations 00–21 index
+│   └── database.md      schema groups + migrations 00–23 index
 ├── product/
 │   ├── design-system.md token & component spec verified against code
 │   └── roadmap.md       living backlog + open questions + eng debt
@@ -33,12 +33,14 @@ docs/
 │   └── runbook.md       audit SQL, troubleshooting, admin tools, deploy
 ├── standards/
 │   ├── maintainer-standard.md
-│   ├── proposal-3.1-route-assess.md  server-owned route assessment (Phase 3, awaiting approval)
-│   ├── proposal-d3-ws-token.md       WebSocket token transport (D3, awaiting choice)
+│   ├── proposal-3.1-route-assess.md  server-owned route assessment (approved + done 2026-09-16)
+│   ├── proposal-d3-ws-token.md       WebSocket token transport (answered 2026-09-17: one-time ticket, done)
 │   └── refactor-plan-2026-09.md  audit-driven refactor backlog (phases + decisions)
 └── reviews/             dated historical audits (not living docs; gitignored, local-only)
     ├── aviation-realism-review-2026-09.md
-    └── game-design-review-2026-09.md
+    ├── game-design-review-2026-09.md
+    └── refactor-audit-2026-09-{backend,frontend,infra-db-docs,synthesis}.md
+                          sumber backlog refactor-plan-2026-09.md (Phase 0–2)
 ```
 
 ## Conventions

@@ -1,6 +1,6 @@
 # Skyward Frontend Architecture
 
-Status: current | Last verified against code: 2026-09-11
+Status: current | Last verified against code: 2026-09-17
 
 This page describes the Flutter client in `apps/app`. It is the UI/state
 counterpart to the authoritative Go API documented in
@@ -148,7 +148,11 @@ per feature:
 ### Realtime client
 
 `GoRealtimeClient` (`core/realtime/go_realtime_client.dart`) opens
-`GET /ws?token=<jwt>`, sends `subscribe` / `unsubscribe` / `ping`, and emits
+`GET /ws?ticket=<opaque>` — it fetches a single-use ticket from
+`POST /ws/ticket` on every connection attempt and passes it as a query param,
+never the JWT (D3). The ticket fetch is injected as `ticketFetcher` (production
+wiring: `GatewayFactory.fetchRealtimeTicket`), which is also the test seam. It
+sends `subscribe` / `unsubscribe` / `ping`, and emits
 `GoRealtimeEvent`s (`type`, `channel`, `event`, `at`). It reconnects with
 exponential backoff (2s → max 30s), re-subscribes known channels, and pings
 every 30s. A single connection is shared by all cubits via `GatewayFactory`.
@@ -172,8 +176,6 @@ This is separate from the WebSocket freshness layer.
 
 - `SKYWARD_API_URL` → `apiBaseUrl`. Dev default `http://localhost:8090`; prod
   `https://api.qouver.com/skyward`.
-- `SUPABASE_URL` / `SUPABASE_KEY` are still declared fields but are legacy from
-  the Supabase era and are **not** used by the HTTP/WS path.
 
 ## Theme and design system
 
@@ -195,12 +197,12 @@ Dark-only tactical "aviation command" UI. Tokens are centralized:
 
 ## Tests
 
-`apps/app/test/` is a four-layer suite (49 `_test.dart` files):
+`apps/app/test/` is a four-layer suite (60 `_test.dart` files):
 
 | Layer | Location | Files | Covers |
 |---|---|---|---|
-| 1 — unit | `test/layer1_unit/` | 37 | API client/gateways, cubits, domain models, business logic, theme, utils |
-| 2 — widget | `test/layer2_widget/` | 9 | auth lifecycle, responsive overflow, reusable widgets, feature views |
+| 1 — unit | `test/layer1_unit/` | 47 | API client/gateways, cubits, domain models, business logic, theme, utils |
+| 2 — widget | `test/layer2_widget/` | 10 | auth lifecycle, responsive overflow, reusable widgets, feature views |
 | 3 — integration | `test/layer3_integration/` | 2 | auth flow, CRUD + realtime stream |
 | 4 — database | `test/layer4_database/` | 1 test + SQL/sh | Go↔DB RPC/trigger integration, native SQL audits |
 

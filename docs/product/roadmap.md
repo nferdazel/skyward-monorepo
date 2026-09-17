@@ -1,6 +1,6 @@
 # Skyward Product & Engineering Roadmap
 
-Status: current | Last verified against code: 2026-09-11
+Status: current | Last verified against code: 2026-09-17
 
 Living backlog, distilled 2026-09-11 from the (now retired, gitignored) root
 `GAME_REVIEW_TASKLIST.md` (90/135 done — full copy kept at repo-root
@@ -38,8 +38,9 @@ only product backlog — no shadow checklists at repo root.
 - [ ] **GAME-12 · P/L trends (partially done)** — KPI sparklines on Overview shipped in
       `9645222`; remaining: P/L chart on the Finance page.
 - [ ] **GAME-17 · Pre-fill recommended fare** in route planner + "recommended" badge.
-- [ ] **GAME-18 · Route profitability preview before creation** — projected weekly P/L
-      in planner (depends on the GAME-02 demand model); deferred sub-item:
+- [x] **GAME-18 · Route profitability preview before creation** — core done 2026-09-17
+      via 3.1: the adjustment dialog shows projected revenue/cost/weekly contribution
+      from the server (same model as the tick), debounced at 300 ms. Remaining:
       load-factor-vs-frequency preview.
 - [ ] **GAME-19 · Beginner guidance in fleet catalog** — "recommended"/"best value"
       badges; progression guidance.
@@ -78,17 +79,24 @@ only product backlog — no shadow checklists at repo root.
 
 ## 5. Engineering debt
 
-- [ ] Backend infra test gap: `handler/`, `store/`, `realtime/` still have no tests
-      (`engine/`, `auth/`, `middleware/`, `worker/` are covered as of 2026-09-12).
+- [ ] Backend infra test gap: `store/`, `config/`, `db/`, `logfile/`, `cmd/` still have
+      no tests. `handler/`, `realtime/`, `middleware/`, `worker/`, `httperr/` gained
+      coverage later (verified 2026-09-17).
 - [ ] Worker tick interval does not re-read `season_clock.tick_interval_seconds` at
       runtime (`internal/worker/worker.go` TODO).
 - [ ] `worker.Status.NextTickAfter` declared but never populated.
-- [ ] `internal/domain` is dead: no importers; `domain.Money` is a string skeleton while
-      money flows as `float64` (the decimal claim in the old api README was aspirational).
+- [x] ~~`internal/domain` is dead: no importers; `domain.Money` is a string skeleton.~~
+      Resolved: the package was deleted (refactor plan 1.10).
+- [x] ~~Money flows as `float64` while the columns are `numeric(20,2)`.~~ Partly resolved
+      2026-09-17 (3.5): amounts are rounded to the cent at the ledger boundary and
+      accept/reject comparisons use `internal/engine/money.go` helpers. The full
+      `int64`-cents migration was **dropped** (3.5b) — the database is already exact and
+      balance arithmetic happens in SQL.
 - [x] ~~`apps/app/lib/core/config/app_env.dart` still declares unused `SUPABASE_URL` /
       `SUPABASE_KEY` env fields.~~ Resolved 2026-09-12 (AUDIT-21).
-- [ ] SQL audit surfaces `get_world_tick_scheduler_health()` / guardrail reports still
-      reference the pg_cron era — verify or retire (see `../operations/runbook.md`).
+- [x] ~~SQL audit surfaces still reference the pg_cron era — verify or retire.~~
+      Resolved: `migrations/18_retire_pgcron_scheduler_health.sql` drops the broken
+      function; `get_world_tick_guardrail_report()` verified working (runbook §2.6).
 - [ ] Add tests where stale-state regressions are likely (carried from the old
       backend-hardening plan; Phase-3/6 doc-hygiene items were closed by the 2026-09-11
       docs restructure).
@@ -97,14 +105,12 @@ only product backlog — no shadow checklists at repo root.
 any balance change must update the DB row, not just the `game_constants.dart` fallback.
 
 ### Debt logged by the 2026-09-12 security/correctness audit
-- [ ] **Game-config seed migration (AUDIT-10)** — ~25 `game_config` keys
-      (fuel/crew/wear/fares/bot knobs/`credit_tier_config`) are not seeded by any
-      migration; a fresh DB silently runs Go defaults. Blocked on a live
-      `SELECT key, value FROM game_config` dump to avoid balance drift; will land as
-      `migrations/17_game_config_seed.sql`.
-- [ ] **Handler/store DB test harness (AUDIT-24)** — HTTP-level regression tests for the
-      fixed IDOR/validation paths need a test DB (testcontainers-lite). Also unlocks
-      real layer-4 DB integration tests (currently SQL-text checks only).
+- [x] ~~**Game-config seed migration (AUDIT-10)**~~ Done:
+      `migrations/17_game_config_seed.sql` seeds the 39 live keys, and
+      `config_contract_test.go` now fails if a key read by Go is not in the seed.
+- [x] ~~**Handler/store DB test harness (AUDIT-24)**~~ **Won't do** — the harness was
+      built and then removed at owner request 2026-09-16 (refactor plan 0.4). CI does no
+      database work. Verification of DB-touching paths is done by hand against prod.
 - [ ] **Day-boundary serialization (AUDIT-25)** — `ProcessPlayer` commits before
       `processDayBoundary` runs, so the per-user advisory lock no longer covers loan
       payments/late fees. Small race window; wrap the boundary work in its own lock.
@@ -113,9 +119,13 @@ any balance change must update the DB row, not just the `game_constants.dart` fa
 - [ ] **Multi-instance world-tick lock (AUDIT-09)** — `Engine.tickMu` covers a single
       process; a full-scope DB advisory lock is needed before running more than one API
       replica.
-- [ ] **WS token in query string (AUDIT-05 residual)** — deferred; move to a
-      first-message auth frame or one-time ticket (proxy logs currently capture JWTs).
-- [ ] **Fleet/Routes load coalescing (AUDIT-19 residual)** — they still drop concurrent
-      refreshes (`await _activeLoad; return;`); port the Bank pending-refresh pattern.
+- [x] ~~**WS token in query string (AUDIT-05 residual)**~~ Resolved 2026-09-17 (D3,
+      `c7ef0f2`): one-time 30-second ticket via `POST /ws/ticket`; the JWT never enters
+      the URL. Note the original claim ("proxy logs currently capture JWTs") was checked
+      and was not true — neither Caddy nor the API logged the query string, so this
+      closed a trap before it sprang rather than fixing an active leak.
+- [x] ~~**Fleet/Routes load coalescing (AUDIT-19 residual)**~~ Resolved (2.2): shared
+      `core/utils/coalesced_load.dart`, used by `fleet_cubit.dart` and
+      `routes_cubit.dart`.
 - [ ] **UI feedback for dropped double-tap actions (AUDIT-20 residual)** — the runner now
       logs, but a snackbar needs UI plumbing.

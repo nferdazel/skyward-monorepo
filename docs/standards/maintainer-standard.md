@@ -1,6 +1,6 @@
 # Skyward Maintainer Standard
 
-Status: current | Last verified against code: 2026-09-11
+Status: current | Last verified against code: 2026-09-17
 
 This document is the repo-local operating contract for anyone changing Skyward.
 When it conflicts with implementation convenience, this document wins.
@@ -34,7 +34,7 @@ When it conflicts with implementation convenience, this document wins.
   - `database.md` — live schema and migration-derived behavior
 - Product: `docs/product/`
   - `design-system.md` — UI tokens and component rules
-  - `roadmap.md` — forward-looking work *(not yet created)*
+  - `roadmap.md` — forward-looking work
 - Operations: `docs/operations/runbook.md` — sole ops surface.
 - Standards: `docs/standards/maintainer-standard.md` — this file.
 - `docs/reviews/` holds **dated historical artifacts** (e.g.
@@ -72,6 +72,16 @@ Supabase-contracts framing are retired; do not reintroduce them.
     transaction with `SELECT … FOR UPDATE`.
   - Loan/aircraft money comparisons use `engine.moneyEpsilon`, never a raw
     `0.005` literal.
+  - Accept/reject comparisons ("can this player afford it?") use the helpers in
+    `internal/engine/money.go` (`moneyLessThan`, `moneyAtLeast`), never raw
+    operators on `float64`. Costs computed from division or multiplication land
+    slightly above their cent value (`110.01 × 70.15 = 7717.2015000000001`), so
+    a raw `<` rejects a player whose funds are exactly enough. Amounts are
+    rounded to the cent at the ledger boundary (`LedgerService.applyTx`); do not
+    round again in callers.
+  - Threshold comparisons against policy constants (bankruptcy threshold, bot
+    cash reserves, achievement tiers) stay raw: a 1e-8 difference at a
+    multi-million-dollar threshold changes no decision.
 
 ## 4. Testing Bar
 
@@ -96,10 +106,11 @@ migration or engine code, not in an unrepeatable manual `UPDATE`.
 ## 5. Migration Convention
 
 - Migrations are sequential and named `NN_name.sql`, applied in order:
-  `00_baseline.sql` first, then `01_…` through the current `18_…`.
+  `00_baseline.sql` first, then `01_…` through the current `23_…`.
 - Never edit a migration that has been applied. Add a new file instead.
 - Each migration should state its apply command in the header
-  (`psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -1 -f <file>`).
+  (`psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f <file>`). Files from `07_` onward
+  wrap themselves in `BEGIN;/COMMIT;`, so the legacy `-1` flag is unnecessary.
 - Schema or data changes that a fresh environment needs must be captured in a
   migration, not left as manual live-DB state.
 - Document behavior from active code paths, not from historical migration

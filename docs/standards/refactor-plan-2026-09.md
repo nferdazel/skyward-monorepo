@@ -1,5 +1,7 @@
 # Refactor plan 2026-09
 
+Status: current | Last verified against code: 2026-09-17
+
 Tracked, audit-driven refactor backlog. Check items off in the implementing
 commit (same convention as `docs/product/roadmap.md`).
 
@@ -704,4 +706,6 @@ auditors' intentional-design lists (dashboard-shell cubit composition, callback-
 cubit decoupling, transient error states, debug-gated mock leaderboard, AUDIT-14…21
 comment trails, `IndexedStack` + `LazyTabCubit`, static DI singletons, dark-only
 theme, `DebitTxAllowNegative` for simulation costs, single-replica `tickMu`, bot tier
-exemption, `?token=` WS auth until D3, float64 engine until 3.5, etc.).
+exemption, etc.). Sejak daftar ini ditulis, dua hal di dalamnya sudah selesai dan
+tidak lagi berlaku: `?token=` WS auth (D3, `c7ef0f2`) dan pembulatan uang
+(3.5, `c998437`).

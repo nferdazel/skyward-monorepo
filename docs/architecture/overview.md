@@ -1,6 +1,6 @@
 # Skyward Architecture Overview
 
-Status: current | Last verified against code: 2026-09-11
+Status: current | Last verified against code: 2026-09-17
 
 This is the system-shape page for a new contributor or agent. It answers "what
 are the moving parts and who owns the truth?" Deep dives live in the sibling
@@ -66,9 +66,15 @@ There is no separate cron/worker deployment.
 
 ## Realtime (WebSocket)
 
-The WS endpoint is `GET /ws?token=<jwt>` (`internal/handler/ws.go`). It
-authenticates by parsing the same JWT, upgrades the connection, and registers a
-`realtime.Client` on the `realtime.Hub`.
+The WS endpoint is `GET /ws?ticket=<opaque>` (`internal/handler/ws.go`). It
+authenticates by redeeming a single-use, 30-second opaque ticket, upgrades the
+connection, and registers a `realtime.Client` on the `realtime.Hub`.
+
+The ticket is issued by `POST /ws/ticket` behind `AuthGuard`
+(`internal/realtime/ticket.go` holds and redeems it). The session JWT is never
+placed in the URL: a browser cannot set headers on a WebSocket handshake, so the
+client exchanges its token over REST first. A ticket is spent on use and the
+client fetches a fresh one per connection attempt, including reconnects (D3).
 
 Client → server messages (`internal/handler/ws.go`):
 
@@ -126,10 +132,11 @@ All of the following are decided by the Go engine (Postgres is storage +
 constraints), never by the client:
 
 - **Finance ledger** — `engine.LedgerService`
-  (`internal/engine/engine.go`): `DebitTx` / `CreditTx` / `DebitAccount` /
-  `CreditAccount` update `bank_accounts.balance` and append
-  `bank_transactions`. `bank_accounts` is canonical cash; `bank_transactions`
-  is canonical money movement.
+  (`internal/engine/engine.go`): `DebitTx` / `CreditTx` update
+  `bank_accounts.balance` and append `bank_transactions`; `applyTx` rounds every
+  amount to the cent at the ledger boundary (`internal/engine/money.go`), so Go
+  compares the same figure Postgres stores. `bank_accounts` is canonical cash;
+  `bank_transactions` is canonical money movement.
 - **Banking and loans** — `engine.BankService` (`internal/engine/bank.go`):
   `TakeLoan`, `Repay`, `Refinance`, `FinanceAircraft`. The credit model lives in
   `internal/engine/dayboundary.go`: `calculateCreditScore`,

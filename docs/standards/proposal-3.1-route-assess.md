@@ -1,6 +1,14 @@
-Status: proposal, awaiting owner approval | Last verified against code: 2026-09-16
+Status: **approved 2026-09-16, implemented** (`6aa87a3` … `7653503`) |
+Last verified against code: 2026-09-17
 
 # Proposal 3.1 — Server-owned route assessment (`GET /routes/assess`)
+
+> **Implemented.** Dokumen ini disimpan sebagai catatan keputusan, bukan
+> rencana. Dua hal di bawah tersupersede oleh implementasi: handler-nya
+> `handler.RouteAssessHandler` (bukan `read.RouteAssess`), dan D6 menambahkan
+> `GET /routes/assess/batch` yang tidak ada di proposal ini. Empat perbedaan
+> model klien-vs-tick yang ditemukan saat implementasi dicatat di
+> `refactor-plan-2026-09.md` item 3.1.
 
 Phase 3 item in [refactor-plan-2026-09.md](refactor-plan-2026-09.md). Phase 3 needs
 a written proposal before any code: blast radius, migration path, test plan.

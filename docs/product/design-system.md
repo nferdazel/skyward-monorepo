@@ -1,6 +1,6 @@
 # Skyward Design System
 
-Status: current | Last verified against code: 2026-09-11
+Status: current | Last verified against code: 2026-09-17
 
 This is the consolidated UI reference for the Skyward Flutter client (`apps/app`).
 It supersedes the older `docs/architecture/ui-design-system.md`,

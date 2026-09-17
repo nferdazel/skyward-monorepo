@@ -1,7 +1,8 @@
 # Proposal: D3 — WebSocket token transport
 
-Status: proposal, awaiting owner choice on the transport.
-Date: 2026-09-17.
+Status: **answered 2026-09-17 — option A (one-time ticket), implemented** in
+`c7ef0f2`. This document is kept as the decision record.
+Last verified against code: 2026-09-17
 
 ## Problem
 

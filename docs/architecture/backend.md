@@ -1,6 +1,6 @@
 # Skyward Go Backend
 
-Status: current | Last verified against code: 2026-09-11
+Status: current | Last verified against code: 2026-09-17
 
 This page documents `apps/api` (module `skyward-api`) as it actually is: package
 layout, the simulation engine, the HTTP surface, the worker, and the testing
@@ -25,16 +25,15 @@ state. For the system shape and request/auth flow, see
 
 | Package | LOC (approx, non-test) | Responsibility |
 |---|---|---|
-| `internal/engine` | ~2,986 | Sole business logic: simulation, economy, bots, credit, fleet/routes/bank/settings mutations, achievements, events. |
-| `internal/handler` | ~1,168 | Thin HTTP handlers: health, auth, reads, mutations, admin, WS. Parse + validate request, call engine/store, map to JSON. |
-| `internal/store` | ~890 | Direct DB access and read models (`read.go`, `users.go`, `store.go`), plus `store.Tx` helper. |
-| `internal/worker` | ~166 | World-tick loop + exponential backoff + status snapshot. |
-| `internal/realtime` | ~163 | WebSocket hub: clients, channels, broadcast events. |
+| `internal/engine` | ~4,333 | Sole business logic: simulation, economy, bots, credit, fleet/routes/bank/settings mutations, achievements, events. |
+| `internal/handler` | ~1,456 | Thin HTTP handlers: health, auth, reads, mutations, admin, WS. Parse + validate request, call engine/store, map to JSON. |
+| `internal/store` | ~932 | Direct DB access and read models (`read.go`, `users.go`, `store.go`). |
+| `internal/worker` | ~193 | World-tick loop + exponential backoff + status snapshot. |
+| `internal/realtime` | ~289 | WebSocket hub: clients, channels, broadcast events. |
 | `internal/auth` | ~130 | JWT HS256 sign/parse + argon2id hash/verify. |
-| `internal/middleware` | ~307 | Recover, request-id, logging (slog), CORS, rate limit, `AuthGuard`. |
-| `internal/config` | ~162 | Env loading (.env in dev), strict validation (fail-closed in prod). |
+| `internal/middleware` | ~482 | Recover, request-id, logging (slog), CORS, rate limit, `AuthGuard`. |
+| `internal/config` | ~168 | Env loading (.env in dev), strict validation (fail-closed in prod). |
 | `internal/db` | ~80 | `pgxpool` pool creation + slow-query tracer (200ms threshold). |
-| `internal/domain` | ~87 | Business type definitions. |
 | `internal/httperr` | ~124 | Consistent JSON error envelope + `WriteJSON`. |
 | `internal/logfile` | ~105 | Daily log writer (retention, catalina.out style). |
 | `internal/build` | ~11 | Version/commit/date set via ldflags. |
@@ -57,8 +56,6 @@ shutdown.
   are always recorded, pushing the balance negative so the bankruptcy
   machinery (`bankruptcy_cash_threshold`, `consecutive_negative_days`) can
   actually fire. Never use it for user-initiated actions.
-- `DebitAccount` / `CreditAccount` — open their own transaction (used by the
-  per-route simulation loop).
 - `GenerateTailNumber`, `GetUserGameTime`, `GetUserGameTimeTx`.
 
 `bank_accounts.balance` is canonical cash; `bank_transactions` is canonical
@@ -101,11 +98,17 @@ is retried on the next tick instead of silently losing revenue or costs.
 - `WorldTick` — lock active season, advance `season_clock.current_game_time`,
   generate/deactivate events, process all `REAL` players, process bots, write
   `world_tick_log`, write daily `finance_snapshots`, broadcast realtime.
-- `ProcessPlayer` — per-actor simulation: config load, event multipliers,
-  per-user advisory lock, route loop posting ledger rows, aircraft wear,
-  atomic cursor advance, day-boundary hook, achievements, bankruptcy.
-- `processDayBoundary`, `applyBankruptcy`, `shouldBankruptOnNegativeDays`,
-  `getConfigNum`.
+- `ProcessPlayer` — per-actor simulation: event multipliers, per-user advisory
+  lock, route loop posting ledger rows, aircraft wear, atomic cursor advance,
+  day-boundary hook, achievements, bankruptcy. Menerima `*TickSnapshot` (dan
+  memuatnya sendiri kalau `nil`), jadi satu putaran tick memakai satu nilai per
+  key `game_config`.
+- `processDayBoundary`, `applyBankruptcy`, `shouldBankruptOnNegativeDays`.
+- `getConfigNum` — baca `game_config` langsung dari DB. Sejak 3.4 hanya dipakai
+  pemanggil di LUAR tick yang memang harus membaca nilai terbaru saat request:
+  `routes.go`/`fleet.go` (handler mutasi) dan `calculateCreditScore`
+  (`dayboundary.go`, dipakai halaman kredit). Jalur tick memakai
+  `TickSnapshot.num` (`snapshot.go`, 29 key).
 - Economy helpers: `crewCostFor`, `allocateCabins`, `demandWeight`,
   `distanceDemandFactor`, `routeDailyDemand`.
 
@@ -184,8 +187,13 @@ All routes are registered in `cmd/server/main.go`. Groups:
 - **Health / ops**: `GET /healthz`, `GET /health`, `GET /readyz`,
   `GET /version` (`handler.HealthHandler`).
 - **Auth** (public): `POST /auth/register`, `POST /auth/login`,
-  `POST /auth/reset-password`; `GET /auth/me` is guarded.
-- **WebSocket**: `GET /ws` — JWT via `?token=<jwt>` query param.
+  `POST /auth/reset-password`; `GET /auth/me` dan `POST /ws/ticket` di balik
+  `AuthGuard`.
+- **WebSocket**: `GET /ws?ticket=<opaque>` — handshake memakai tiket sekali
+  pakai berumur 30 detik, bukan JWT di query string. Tiketnya diterbitkan
+  `POST /ws/ticket` (di balik `AuthGuard`); `internal/realtime/ticket.go`
+  menyimpan dan menukarnya. Browser tidak bisa memasang header pada handshake
+  WebSocket, jadi JWT ditukar lewat REST dulu (D3).
 - **Read APIs** (`AuthGuard`): `/simulation/state`, `/game-config`, `/fleet`,
   `/aircraft-models`, `/routes`, `/airports`, `/finance/snapshot`,
   `/finance/transactions`, `/finance/history`, `/leaderboard`,
@@ -193,6 +201,10 @@ All routes are registered in `cmd/server/main.go`. Groups:
   `/bank/loans`, `/bank/accounts`, `/bank/transactions`,
   `/fleet/available`, `/fleet/{id}`, `/fleet/models/{modelId}/latest`,
   `/settings/grounding-threshold`, `/events`, `/achievements`.
+- **Route assessment** (`AuthGuard`): `GET /routes/assess` (satu rute, harga
+  tiket + frekuensi sebagai parameter), `GET /routes/assess/batch` (semua rute
+  aktif pemain dengan pesawat yang benar-benar ditugaskan). Keduanya memakai
+  mesin yang sama dengan tick, bukan salinan ekonomi di klien (3.1).
 - **Mutations** (`AuthGuard`): `/fleet/purchase`, `/fleet/lease`,
   `/fleet/{id}/sell`, `/fleet/{id}/repair`, `/fleet/{id}/terminate-lease`,
   `PATCH /fleet/{id}/seats`, `POST /routes`, `POST /routes/{id}/assign`,
@@ -235,25 +247,28 @@ Verification command: `cd apps/api && go test ./...` (or `make test` from the
 repo root, which also runs Flutter tests).
 
 - **Tested**: `internal/engine` (achievements, bankruptcy, bot economics /
-  pricing / spawn, cabin allocation, demand, fleet, route economics, tier gate)
-  and `internal/auth`.
-- **Untested**: `internal/handler`, `internal/store`, `internal/worker`,
-  `internal/realtime`, `internal/middleware`, `internal/config`,
-  `internal/httperr`, `internal/db`, `internal/logfile`, `cmd/server`. There are
-  no `_test.go` files in these packages.
+  pricing / spawn, cabin allocation, demand, fleet, route economics, tier gate,
+  route assessment, config contract, money rounding), `internal/auth`,
+  `internal/handler` (admin, assess, auth reset, mutation, ws, ws ticket),
+  `internal/middleware` (limiter, proxy), `internal/realtime` (ticket),
+  `internal/worker`, `internal/httperr`.
+- **Untested**: `internal/store`, `internal/config`, `internal/db`,
+  `internal/logfile`, `cmd/server`. README `Test` di bagian Testing
+  menjelaskan bahwa CI tidak menyentuh database: paket yang butuh DB diuji
+  lewat engine dengan `pgxpool` atau tidak diuji otomatis sama sekali (harness
+  tes DB dibangun lalu dihapus atas permintaan owner, 2026-09-16).
 
 ## Known divergences and TODOs
 
-- `internal/domain.Money` is declared as a `string` with a comment that it
-  should become `shopspring/decimal`. That dependency is **not** in `go.mod`,
-  and the engine/store use `float64` for money today. The README's "Money =
-  decimal (float64 dilarang)" describes the intended target, not the current
-  code.
-- `internal/domain` is currently a type-definition skeleton; no package in the
-  module imports it (verified by grep).
+- Uang di engine masih `float64` saat transit, sementara kolomnya
+  `numeric(20,2)`. Sejak 3.5 nilai dibulatkan ke sen di pintu masuk ledger
+  (`applyTx` di `engine.go`) dan perbandingan terima/tolak memakai
+  `moneyLessThan`/`moneyAtLeast` dari `money.go`. Migrasi penuh ke bilangan
+  bulat sen **dihapus dari rencana** (3.5b) karena basis data sudah eksak dan
+  aritmetika saldo terjadi di SQL; lihat `refactor-plan-2026-09.md`.
 - The `// TODO Fase 5+` block at the end of `registerRoutes` lists admin routes
   (owner route-optimizer, guardrail-report, scheduler-health) that are not yet
   implemented.
 - PostgreSQL migration files live in `migrations/00_baseline.sql` through
-  `15_finance_snapshots_retention.sql`; older "Migration NN" and timestamp
+  `23_reconcile_fk_constraints.sql`; older "Migration NN" and timestamp
   names are obsolete.
