@@ -90,8 +90,8 @@ only product backlog — no shadow checklists at repo root.
 - [x] ~~Money flows as `float64` while the columns are `numeric(20,2)`.~~ Partly resolved
       2026-09-17 (3.5): amounts are rounded to the cent at the ledger boundary and
       accept/reject comparisons use `internal/engine/money.go` helpers. The full
-      `int64`-cents migration was **dropped** (3.5b) — the database is already exact and
-      balance arithmetic happens in SQL.
+      `int64`-cents migration was **dropped** — the database is already exact and
+      balance arithmetic happens in SQL (see `../standards/decisions.md`).
 - [x] ~~`apps/app/lib/core/config/app_env.dart` still declares unused `SUPABASE_URL` /
       `SUPABASE_KEY` env fields.~~ Resolved 2026-09-12 (AUDIT-21).
 - [x] ~~SQL audit surfaces still reference the pg_cron era — verify or retire.~~

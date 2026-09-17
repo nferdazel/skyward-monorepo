@@ -23,20 +23,25 @@ state. For the system shape and request/auth flow, see
 
 ## Package map
 
-| Package | LOC (approx, non-test) | Responsibility |
-|---|---|---|
-| `internal/engine` | ~4,333 | Sole business logic: simulation, economy, bots, credit, fleet/routes/bank/settings mutations, achievements, events. |
-| `internal/handler` | ~1,456 | Thin HTTP handlers: health, auth, reads, mutations, admin, WS. Parse + validate request, call engine/store, map to JSON. |
-| `internal/store` | ~932 | Direct DB access and read models (`read.go`, `users.go`, `store.go`). |
-| `internal/worker` | ~193 | World-tick loop + exponential backoff + status snapshot. |
-| `internal/realtime` | ~289 | WebSocket hub: clients, channels, broadcast events. |
-| `internal/auth` | ~130 | JWT HS256 sign/parse + argon2id hash/verify. |
-| `internal/middleware` | ~482 | Recover, request-id, logging (slog), CORS, rate limit, `AuthGuard`. |
-| `internal/config` | ~168 | Env loading (.env in dev), strict validation (fail-closed in prod). |
-| `internal/db` | ~80 | `pgxpool` pool creation + slow-query tracer (200ms threshold). |
-| `internal/httperr` | ~124 | Consistent JSON error envelope + `WriteJSON`. |
-| `internal/logfile` | ~105 | Daily log writer (retention, catalina.out style). |
-| `internal/build` | ~11 | Version/commit/date set via ldflags. |
+| Package | Responsibility |
+|---|---|
+| `internal/engine` | Sole business logic: simulation, economy, bots, credit, fleet/routes/bank/settings mutations, achievements, events. |
+| `internal/handler` | Thin HTTP handlers: health, auth, reads, mutations, admin, WS. Parse + validate request, call engine/store, map to JSON. |
+| `internal/store` | Direct DB access and read models (`read.go`, `users.go`, `store.go`). |
+| `internal/worker` | World-tick loop + exponential backoff + status snapshot. |
+| `internal/realtime` | WebSocket hub: clients, channels, broadcast events. |
+| `internal/auth` | JWT HS256 sign/parse + argon2id hash/verify. |
+| `internal/middleware` | Recover, request-id, logging (slog), CORS, rate limit, `AuthGuard`. |
+| `internal/config` | Env loading (.env in dev), strict validation (fail-closed in prod). |
+| `internal/db` | `pgxpool` pool creation + slow-query tracer (200ms threshold). |
+| `internal/httperr` | Consistent JSON error envelope + `WriteJSON`. |
+| `internal/logfile` | Daily log writer (retention, catalina.out style). |
+| `internal/build` | Version/commit/date set via ldflags. |
+
+To see the current size of a package, count it rather than trusting a number
+here: `find apps/api/internal/<pkg> -name '*.go' ! -name '*_test.go' | xargs wc -l`.
+The table above deliberately carries no line counts — they drift within days and
+a wrong one is worse than none.
 
 Entrypoint: `cmd/server/main.go` — config load, logger setup, DB pool, engine,
 realtime hub, worker start, route registration, middleware chain, graceful
@@ -265,7 +270,7 @@ repo root, which also runs Flutter tests).
   (`applyTx` di `engine.go`) dan perbandingan terima/tolak memakai
   `moneyLessThan`/`moneyAtLeast` dari `money.go`. Migrasi penuh ke bilangan
   bulat sen **dihapus dari rencana** (3.5b) karena basis data sudah eksak dan
-  aritmetika saldo terjadi di SQL; lihat `refactor-plan-2026-09.md`.
+  aritmetika saldo terjadi di SQL; lihat `../standards/decisions.md`.
 - The `// TODO Fase 5+` block at the end of `registerRoutes` lists admin routes
   (owner route-optimizer, guardrail-report, scheduler-health) that are not yet
   implemented.

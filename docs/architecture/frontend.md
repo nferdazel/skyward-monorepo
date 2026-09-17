@@ -24,7 +24,7 @@ until the next refetch.
 
 `lib/` is split into three top-level areas:
 
-- `features/` — 13 feature folders, each owning its own `data/`, `domain/`, and
+- `features/` — one folder per feature, each owning its own `data/`, `domain/`, and
   `presentation/` (some omit folders they do not need):
   `achievements`, `auth`, `bank`, `dashboard`, `events`, `finance`, `fleet`,
   `leaderboard`, `navigation`, `notification`, `routes`, `settings`,
@@ -34,7 +34,7 @@ until the next refetch.
 - `presentation/` — shared, app-wide UI that does not belong to one feature:
   `layout/` (`master_detail_shell.dart`, `slide_over_drawer.dart`), `theme/`
   (`app_typography.dart`, `app_spacing.dart`, `app_motion.dart`), and
-  `widgets/` (30 reusable widgets such as `app_table_shell.dart`,
+  `widgets/` (reusable widgets such as `app_table_shell.dart`,
   `notification_panel.dart`, `onboarding_overlay.dart`, `skyward_sonner.dart`).
 
 Inside a feature the usual shape is:
@@ -197,14 +197,16 @@ Dark-only tactical "aviation command" UI. Tokens are centralized:
 
 ## Tests
 
-`apps/app/test/` is a four-layer suite (60 `_test.dart` files):
+`apps/app/test/` is a four-layer suite. Count it with
+`find apps/app/test -name '*_test.dart' | wc -l` rather than trusting a number
+here:
 
-| Layer | Location | Files | Covers |
-|---|---|---|---|
-| 1 — unit | `test/layer1_unit/` | 47 | API client/gateways, cubits, domain models, business logic, theme, utils |
-| 2 — widget | `test/layer2_widget/` | 10 | auth lifecycle, responsive overflow, reusable widgets, feature views |
-| 3 — integration | `test/layer3_integration/` | 2 | auth flow, CRUD + realtime stream |
-| 4 — database | `test/layer4_database/` | 1 test + SQL/sh | Go↔DB RPC/trigger integration, native SQL audits |
+| Layer | Location | Covers |
+|---|---|---|
+| 1 — unit | `test/layer1_unit/` | API client/gateways, cubits, domain models, business logic, theme, utils |
+| 2 — widget | `test/layer2_widget/` | auth lifecycle, responsive overflow, reusable widgets, feature views |
+| 3 — integration | `test/layer3_integration/` | auth flow, CRUD + realtime stream |
+| 4 — database | `test/layer4_database/` | Go↔DB integration and native SQL audits (SQL/`.sh`; CI runs no database) |
 
 Run `flutter analyze` and `flutter test` from `apps/app` (or `make analyze` /
 `make test` at the repo root).

@@ -32,15 +32,13 @@ docs/
 ├── operations/
 │   └── runbook.md       audit SQL, troubleshooting, admin tools, deploy
 ├── standards/
-│   ├── maintainer-standard.md
-│   ├── proposal-3.1-route-assess.md  server-owned route assessment (approved + done 2026-09-16)
-│   ├── proposal-d3-ws-token.md       WebSocket token transport (answered 2026-09-17: one-time ticket, done)
-│   └── refactor-plan-2026-09.md  audit-driven refactor backlog (phases + decisions)
+│   ├── maintainer-standard.md  quality bar, money/config/route rules
+│   └── decisions.md     owner decisions + the work that is still open
 └── reviews/             dated historical audits (not living docs; gitignored, local-only)
     ├── aviation-realism-review-2026-09.md
     ├── game-design-review-2026-09.md
     └── refactor-audit-2026-09-{backend,frontend,infra-db-docs,synthesis}.md
-                          sumber backlog refactor-plan-2026-09.md (Phase 0–2)
+                          sumber backlog refactor (2026-09)
 ```
 
 ## Conventions
