@@ -7,17 +7,24 @@ import (
 	"strings"
 	"time"
 
-	"skyward-api/internal/auth"
 	"skyward-api/internal/httperr"
+	"skyward-api/internal/middleware"
 	"skyward-api/internal/realtime"
 
 	"github.com/gorilla/websocket"
 )
 
-// WSServer — endpoint WS /ws?token=<jwt>.
+// WSServer — endpoint WS /ws?ticket=<opaque>.
+//
+// Tiketnya diterbitkan `POST /ws/ticket` (di belakang AuthGuard) dan ditukar
+// di sini. Token tidak lagi lewat query string: browser tidak bisa memasang
+// header pada handshake WebSocket, jadi JWT ditukar dulu lewat REST.
 type WSServer struct {
 	Hub       *realtime.Hub
 	JWTSecret []byte
+
+	// Tickets — tiket sekali pakai, dibagi dengan handler penerbitnya.
+	Tickets *realtime.TicketStore
 
 	// AllowedOrigins — sama dengan sumber CORS (CORS_ALLOWED_ORIGINS). Kosong
 	// = tanpa batasan (dev). Browser origin di luar daftar ditolak (AUDIT-05).
@@ -71,16 +78,43 @@ type wsMessage struct {
 	Channels []string `json:"channels,omitempty"`
 }
 
-// ServeWS — handle upgrade + read/write pumps.
-func (s *WSServer) ServeWS(w http.ResponseWriter, r *http.Request) {
-	token := r.URL.Query().Get("token")
-	if token == "" {
-		httperr.WriteError(w, nil, httperr.Unauthorized("missing token"))
+// Ticket — terbitkan tiket sekali pakai untuk handshake WS.
+//
+// Dipasang di belakang AuthGuard, jadi user_id datang dari JWT di header
+// Authorization seperti endpoint REST lain. Responsnya hanya berisi tiket dan
+// umurnya; tiketnya sendiri buram dan tidak membawa identitas.
+func (s *WSServer) Ticket(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
+		httperr.WriteError(w, nil, httperr.Unauthorized("missing user context"))
 		return
 	}
-	claims, err := auth.Parse(token, s.JWTSecret)
-	if err != nil || claims.Sub == "" {
-		httperr.WriteError(w, nil, httperr.Unauthorized("invalid token"))
+
+	tok, err := s.Tickets.Issue(userID)
+	if err != nil {
+		httperr.WriteError(w, nil, httperr.Internal("could not issue ticket"))
+		return
+	}
+
+	httperr.WriteJSON(w, http.StatusOK, map[string]any{
+		"ticket":     tok,
+		"expires_in": int(realtime.TicketTTL().Seconds()),
+	})
+}
+
+// ServeWS — handle upgrade + read/write pumps.
+func (s *WSServer) ServeWS(w http.ResponseWriter, r *http.Request) {
+	ticket := r.URL.Query().Get("ticket")
+	if ticket == "" {
+		httperr.WriteError(w, nil, httperr.Unauthorized("missing ticket"))
+		return
+	}
+
+	// Sekali pakai: penukaran yang gagal sekalipun menghabiskan tiketnya,
+	// jadi percobaan ulang harus meminta tiket baru.
+	userID, ok := s.Tickets.Redeem(ticket)
+	if !ok {
+		httperr.WriteError(w, nil, httperr.Unauthorized("invalid or expired ticket"))
 		return
 	}
 
@@ -93,7 +127,7 @@ func (s *WSServer) ServeWS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client := realtime.NewClient(s.Hub, claims.Sub)
+	client := realtime.NewClient(s.Hub, userID)
 	s.Hub.Register(client)
 
 	// write pump

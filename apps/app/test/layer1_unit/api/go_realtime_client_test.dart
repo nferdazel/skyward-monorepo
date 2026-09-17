@@ -2,18 +2,18 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skyward/core/api/auth_token_store.dart';
 import 'package:skyward/core/realtime/go_realtime_client.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
-class _FakeTokenStore implements AuthTokenStore {
-  String? token = 'valid-jwt';
-  @override
-  Future<String?> read() async => token;
-  @override
-  Future<void> write(String value) async => token = value;
-  @override
-  Future<void> clear() async => token = null;
+// Handshake WS memakai tiket sekali pakai (D3), jadi yang disuntik adalah
+// pengambil tiket, bukan token store. Ticket null = belum ada sesi.
+class _FakeTicketFetcher {
+  String? ticket = 'valid-ticket';
+  int calls = 0;
+  Future<String?> call() async {
+    calls++;
+    return ticket;
+  }
 }
 
 class _FakeWebSocketSink implements WebSocketSink {
@@ -66,13 +66,13 @@ class _FakeWebSocketChannel implements WebSocketChannel {
 
 void main() {
   group('GoRealtimeClient', () {
-    test('connect sends token in query and connects channel', () async {
+    test('connect exchanges the session for a ticket and connects', () async {
       late Uri connectedUri;
       final fakeChannel = _FakeWebSocketChannel();
-      final store = _FakeTokenStore();
+      final tickets = _FakeTicketFetcher();
 
       final client = GoRealtimeClient(
-        tokenStore: store,
+        ticketFetcher: tickets.call,
         baseUrl: 'http://localhost:8090',
         channelFactory: (uri) {
           connectedUri = uri;
@@ -83,7 +83,13 @@ void main() {
       await client.connect();
       expect(client.isConnected, isTrue);
       expect(connectedUri.scheme, 'ws');
-      expect(connectedUri.queryParameters['token'], 'valid-jwt');
+      expect(connectedUri.queryParameters['ticket'], 'valid-ticket');
+      expect(
+        connectedUri.queryParameters.containsKey('token'),
+        isFalse,
+        reason: 'JWT tidak boleh ada di URL lagi (D3)',
+      );
+      expect(tickets.calls, 1, reason: 'satu tiket per percobaan connect');
 
       client.disconnect();
       expect(client.isConnected, isFalse);
@@ -92,7 +98,7 @@ void main() {
     test('subscribe sending json action to websocket', () async {
       final fakeChannel = _FakeWebSocketChannel();
       final client = GoRealtimeClient(
-        tokenStore: _FakeTokenStore(),
+        ticketFetcher: _FakeTicketFetcher().call,
         baseUrl: 'http://localhost:8090',
         channelFactory: (uri) => fakeChannel,
       );
@@ -111,7 +117,7 @@ void main() {
     test('incoming ws change event is emitted to stream', () async {
       final fakeChannel = _FakeWebSocketChannel();
       final client = GoRealtimeClient(
-        tokenStore: _FakeTokenStore(),
+        ticketFetcher: _FakeTicketFetcher().call,
         baseUrl: 'http://localhost:8090',
         channelFactory: (uri) => fakeChannel,
       );
@@ -119,11 +125,13 @@ void main() {
       await client.connect();
 
       final eventsFuture = client.events.first;
-      fakeChannel.controller.add(jsonEncode({
-        'type': 'change',
-        'channel': 'fleet_aircraft',
-        'event': 'INSERT',
-      }));
+      fakeChannel.controller.add(
+        jsonEncode({
+          'type': 'change',
+          'channel': 'fleet_aircraft',
+          'event': 'INSERT',
+        }),
+      );
 
       final event = await eventsFuture;
       expect(event.type, 'change');
@@ -133,41 +141,46 @@ void main() {
       client.disconnect();
     });
 
-    test('reconnects automatically after the stream closes unexpectedly',
-        () async {
-      final channels = <_FakeWebSocketChannel>[];
-      final client = GoRealtimeClient(
-        tokenStore: _FakeTokenStore(),
-        baseUrl: 'http://localhost:8090',
-        channelFactory: (uri) {
-          final c = _FakeWebSocketChannel();
-          channels.add(c);
-          return c;
-        },
-      );
+    test(
+      'reconnects automatically after the stream closes unexpectedly',
+      () async {
+        final channels = <_FakeWebSocketChannel>[];
+        final client = GoRealtimeClient(
+          ticketFetcher: _FakeTicketFetcher().call,
+          baseUrl: 'http://localhost:8090',
+          channelFactory: (uri) {
+            final c = _FakeWebSocketChannel();
+            channels.add(c);
+            return c;
+          },
+        );
 
-      await client.connect();
-      expect(channels.length, 1);
-      expect(client.isConnected, isTrue);
+        await client.connect();
+        expect(channels.length, 1);
+        expect(client.isConnected, isTrue);
 
-      // Simulasi koneksi putus tak terduga.
-      await channels.first.controller.close();
-      expect(client.isConnected, isFalse);
+        // Simulasi koneksi putus tak terduga.
+        await channels.first.controller.close();
+        expect(client.isConnected, isFalse);
 
-      // Backoff pertama = 2s.
-      await Future<void>.delayed(const Duration(milliseconds: 2500));
-      expect(channels.length, greaterThanOrEqualTo(2),
-          reason: 'client harus mencoba reconnect setelah koneksi putus');
+        // Backoff pertama = 2s.
+        await Future<void>.delayed(const Duration(milliseconds: 2500));
+        expect(
+          channels.length,
+          greaterThanOrEqualTo(2),
+          reason: 'client harus mencoba reconnect setelah koneksi putus',
+        );
 
-      client.disconnect();
-    });
+        client.disconnect();
+      },
+    );
 
     test('reconnect backoff grows while connections keep failing', () async {
       final timestamps = <int>[];
       final channels = <_FakeWebSocketChannel>[];
       final sw = Stopwatch()..start();
       final client = GoRealtimeClient(
-        tokenStore: _FakeTokenStore(),
+        ticketFetcher: _FakeTicketFetcher().call,
         baseUrl: 'http://localhost:8090',
         channelFactory: (uri) {
           timestamps.add(sw.elapsedMilliseconds);
@@ -183,50 +196,66 @@ void main() {
       // Biarkan beberapa siklus reconnect berjalan (2s, 4s, …).
       await Future<void>.delayed(const Duration(milliseconds: 8000));
 
-      expect(channels.length, greaterThanOrEqualTo(3),
-          reason: 'harus ada beberapa percobaan reconnect');
+      expect(
+        channels.length,
+        greaterThanOrEqualTo(3),
+        reason: 'harus ada beberapa percobaan reconnect',
+      );
       // Jarak antar percobaan harus membesar (backoff), bukan tetap ~2s.
       final gap1 = timestamps[1] - timestamps[0];
       final gap2 = timestamps[2] - timestamps[1];
-      expect(gap2, greaterThan(gap1),
-          reason: 'backoff harus bertambah ($gap1 -> $gap2 ms), '
-              'bukan konstan ~2s');
-
-      client.dispose();
-    });
-
-    test('disconnect during in-flight connect does not leave a live channel',
-        () async {
-      final channels = <_FakeWebSocketChannel>[];
-      final store = _FakeTokenStore();
-      final client = GoRealtimeClient(
-        tokenStore: store,
-        baseUrl: 'http://localhost:8090',
-        channelFactory: (uri) {
-          final c = _FakeWebSocketChannel();
-          channels.add(c);
-          return c;
-        },
+      expect(
+        gap2,
+        greaterThan(gap1),
+        reason:
+            'backoff harus bertambah ($gap1 -> $gap2 ms), '
+            'bukan konstan ~2s',
       );
 
-      // connect() menunggu token dibaca; disconnect() dipanggil selagi pending.
-      final connectFuture = client.connect();
-      client.disconnect();
-      await connectFuture;
-
-      expect(client.isConnected, isFalse,
-          reason: 'disconnect() saat connect in-flight tidak boleh '
-              'meninggalkan channel hidup');
-      expect(channels, isEmpty,
-          reason: 'channel tidak boleh dibuat setelah disconnect()');
-
       client.dispose();
     });
+
+    test(
+      'disconnect during in-flight connect does not leave a live channel',
+      () async {
+        final channels = <_FakeWebSocketChannel>[];
+        final tickets = _FakeTicketFetcher();
+        final client = GoRealtimeClient(
+          ticketFetcher: tickets.call,
+          baseUrl: 'http://localhost:8090',
+          channelFactory: (uri) {
+            final c = _FakeWebSocketChannel();
+            channels.add(c);
+            return c;
+          },
+        );
+
+        // connect() menunggu token dibaca; disconnect() dipanggil selagi pending.
+        final connectFuture = client.connect();
+        client.disconnect();
+        await connectFuture;
+
+        expect(
+          client.isConnected,
+          isFalse,
+          reason:
+              'disconnect() saat connect in-flight tidak boleh '
+              'meninggalkan channel hidup',
+        );
+        expect(
+          channels,
+          isEmpty,
+          reason: 'channel tidak boleh dibuat setelah disconnect()',
+        );
+
+        client.dispose();
+      },
+    );
 
     test('intentional disconnect does not trigger reconnect', () async {
       final channels = <_FakeWebSocketChannel>[];
       final client = GoRealtimeClient(
-        tokenStore: _FakeTokenStore(),
+        ticketFetcher: _FakeTicketFetcher().call,
         baseUrl: 'http://localhost:8090',
         channelFactory: (uri) {
           final c = _FakeWebSocketChannel();
@@ -239,8 +268,88 @@ void main() {
       client.disconnect();
 
       await Future<void>.delayed(const Duration(milliseconds: 2500));
-      expect(channels.length, 1,
-          reason: 'disconnect() sengaja tidak boleh memicu reconnect');
+      expect(
+        channels.length,
+        1,
+        reason: 'disconnect() sengaja tidak boleh memicu reconnect',
+      );
+
+      client.dispose();
+    });
+    test(
+      'tanpa tiket (belum login) tidak connect dan tidak reconnect',
+      () async {
+        final channels = <_FakeWebSocketChannel>[];
+        final tickets = _FakeTicketFetcher()..ticket = null;
+        final client = GoRealtimeClient(
+          baseUrl: 'http://localhost:8090',
+          ticketFetcher: tickets.call,
+          channelFactory: (uri) {
+            final c = _FakeWebSocketChannel();
+            channels.add(c);
+            return c;
+          },
+        );
+
+        await client.connect();
+
+        expect(client.isConnected, isFalse);
+        expect(channels, isEmpty, reason: 'tanpa tiket channel tidak dibuat');
+
+        // Belum ada sesi bukan kegagalan jaringan: tidak boleh memicu reconnect.
+        await Future<void>.delayed(const Duration(milliseconds: 2500));
+        expect(
+          tickets.calls,
+          1,
+          reason: 'tidak ada sesi berarti berhenti, bukan mencoba lagi',
+        );
+
+        client.dispose();
+      },
+    );
+
+    test('kegagalan mengambil tiket dijadwalkan reconnect', () async {
+      var calls = 0;
+      final client = GoRealtimeClient(
+        baseUrl: 'http://localhost:8090',
+        ticketFetcher: () async {
+          calls++;
+          if (calls == 1) throw Exception('jaringan putus');
+          return 'tiket-kedua';
+        },
+        channelFactory: (uri) => _FakeWebSocketChannel(),
+      );
+
+      await client.connect();
+      expect(client.isConnected, isFalse, reason: 'percobaan pertama gagal');
+
+      await Future<void>.delayed(const Duration(milliseconds: 2500));
+      expect(
+        calls,
+        greaterThan(1),
+        reason: 'kegagalan jaringan harus dicoba lagi',
+      );
+
+      client.dispose();
+    });
+
+    test('tiket baru diambil setiap percobaan connect', () async {
+      final tickets = _FakeTicketFetcher();
+      final client = GoRealtimeClient(
+        baseUrl: 'http://localhost:8090',
+        ticketFetcher: tickets.call,
+        channelFactory: (uri) => _FakeWebSocketChannel(),
+      );
+
+      await client.connect();
+      client.disconnect();
+      await client.connect();
+
+      expect(
+        tickets.calls,
+        2,
+        reason: 'tiket sekali pakai, jadi tiap connect butuh tiket baru',
+      );
 
       client.dispose();
     });

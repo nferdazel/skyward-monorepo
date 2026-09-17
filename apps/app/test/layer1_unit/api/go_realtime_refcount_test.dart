@@ -2,18 +2,18 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skyward/core/api/auth_token_store.dart';
 import 'package:skyward/core/realtime/go_realtime_client.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
-class _FakeTokenStore implements AuthTokenStore {
-  String? token = 'valid-jwt';
-  @override
-  Future<String?> read() async => token;
-  @override
-  Future<void> write(String value) async => token = value;
-  @override
-  Future<void> clear() async => token = null;
+// Handshake WS memakai tiket sekali pakai (D3), jadi yang disuntik adalah
+// pengambil tiket, bukan token store. Ticket null = belum ada sesi.
+class _FakeTicketFetcher {
+  String? ticket = 'valid-ticket';
+  int calls = 0;
+  Future<String?> call() async {
+    calls++;
+    return ticket;
+  }
 }
 
 class _FakeSink implements WebSocketSink {
@@ -53,7 +53,7 @@ void main() {
     test('dua subscriber channel sama: subscribe ke server hanya 1x', () async {
       final ch = _FakeChannel();
       final client = GoRealtimeClient(
-        tokenStore: _FakeTokenStore(),
+        ticketFetcher: _FakeTicketFetcher().call,
         baseUrl: 'http://localhost:8090',
         channelFactory: (_) => ch,
       );
@@ -72,7 +72,7 @@ void main() {
         () async {
       final ch = _FakeChannel();
       final client = GoRealtimeClient(
-        tokenStore: _FakeTokenStore(),
+        ticketFetcher: _FakeTicketFetcher().call,
         baseUrl: 'http://localhost:8090',
         channelFactory: (_) => ch,
       );
@@ -97,7 +97,7 @@ void main() {
         () async {
       final ch = _FakeChannel();
       final client = GoRealtimeClient(
-        tokenStore: _FakeTokenStore(),
+        ticketFetcher: _FakeTicketFetcher().call,
         baseUrl: 'http://localhost:8090',
         channelFactory: (_) => ch,
       );
@@ -117,7 +117,7 @@ void main() {
         () async {
       final channels = <_FakeChannel>[];
       final client = GoRealtimeClient(
-        tokenStore: _FakeTokenStore(),
+        ticketFetcher: _FakeTicketFetcher().call,
         baseUrl: 'http://localhost:8090',
         channelFactory: (_) {
           final c = _FakeChannel();

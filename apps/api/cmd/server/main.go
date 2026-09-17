@@ -140,9 +140,18 @@ func registerRoutes(ctx context.Context, mux *http.ServeMux, logger *slog.Logger
 	mux.Handle("GET /version", http.HandlerFunc(health.Version))
 
 	// Auth (Fase 3 — register/login/me).
-	// Realtime WS (Fase 8) — token via query param.
-	wsServer := &handler.WSServer{Hub: hub, JWTSecret: []byte(cfg.JWTSecret), AllowedOrigins: cfg.AllowedOrigins}
+	// Realtime WS (Fase 8) — handshake memakai tiket sekali pakai dari
+	// POST /ws/ticket, bukan JWT di query string (D3).
+	tickets := realtime.NewTicketStore()
+	wsServer := &handler.WSServer{
+		Hub:            hub,
+		JWTSecret:      []byte(cfg.JWTSecret),
+		Tickets:        tickets,
+		AllowedOrigins: cfg.AllowedOrigins,
+	}
 	mux.Handle("GET /ws", http.HandlerFunc(wsServer.ServeWS))
+	mux.Handle("POST /ws/ticket",
+		middleware.AuthGuard([]byte(cfg.JWTSecret), wsServer.Ticket))
 
 	authHandler := &handler.AuthHandler{
 		Store:        st,

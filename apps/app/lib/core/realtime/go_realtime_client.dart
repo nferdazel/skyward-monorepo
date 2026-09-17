@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
-import '../api/auth_token_store.dart';
 import '../config/app_env.dart';
 
 /// Event payload dari WebSocket skyward-api (Go backend hub).
@@ -37,15 +36,20 @@ class GoRealtimeEvent {
 /// Menggantikan Supabase Postgres Changes SDK.
 class GoRealtimeClient {
   GoRealtimeClient({
-    AuthTokenStore? tokenStore,
     String? baseUrl,
     this.channelFactory,
-  })  : _tokenStore = tokenStore ?? const SharedPrefsAuthTokenStore(),
-        _baseUrl = baseUrl ?? AppEnv.apiBaseUrl;
+    this.ticketFetcher,
+  }) : _baseUrl = baseUrl ?? AppEnv.apiBaseUrl;
 
-  final AuthTokenStore _tokenStore;
   final String _baseUrl;
   final WebSocketChannel Function(Uri uri)? channelFactory;
+
+  /// Mengambil tiket sekali pakai dari `POST /ws/ticket`. Disuntik supaya tes
+  /// tidak perlu HTTP; produksi memakai ApiClient dari `gateway_factory`.
+  ///
+  /// Mengembalikan null berarti belum ada sesi (belum login) — bukan error,
+  /// jadi jangan dijadwalkan reconnect.
+  final Future<String?> Function()? ticketFetcher;
 
   WebSocketChannel? _channel;
   StreamSubscription? _subscription;
@@ -78,30 +82,48 @@ class GoRealtimeClient {
   Stream<GoRealtimeEvent> get events => _eventController.stream;
   bool get isConnected => _channel != null;
 
-  /// Koneksi ke `GET /ws?token=<jwt>`.
+  /// Koneksi ke `GET /ws?ticket=<opaque>`.
+  ///
+  /// Handshake tidak lagi memakai JWT: browser tidak bisa memasang header pada
+  /// handshake WebSocket, jadi JWT ditukar dulu lewat `POST /ws/ticket`
+  /// menjadi tiket sekali pakai berumur pendek (D3). Tiket diambil per
+  /// percobaan connect, termasuk saat reconnect.
   Future<void> connect() async {
     if (_channel != null) return;
     _intentionalDisconnect = false;
     _reconnectTimer?.cancel();
     final generation = ++_generation;
 
-    String? token;
+    final fetchTicket = ticketFetcher;
+    if (fetchTicket == null) {
+      debugPrint('[GoRealtimeClient] No ticket fetcher configured');
+      return;
+    }
+
+    String? ticket;
     try {
-      token = await _tokenStore.read();
+      ticket = await fetchTicket();
     } catch (e) {
-      debugPrint('[GoRealtimeClient] Token read failed: $e');
+      debugPrint('[GoRealtimeClient] Ticket fetch failed: $e');
       if (generation == _generation) _scheduleReconnect();
       return;
     }
-    // disconnect() dipanggil selagi token dibaca — batalkan.
+    // disconnect() dipanggil selagi tiket diambil — batalkan.
     if (generation != _generation || _intentionalDisconnect) return;
-    if (token == null || token.isEmpty) return;
+    if (ticket == null || ticket.isEmpty) {
+      // Tanpa tiket handshake pasti ditolak. Tidak reconnect: tidak ada sesi,
+      // dan mencoba lagi hanya mengulang kegagalan yang sama.
+      debugPrint('[GoRealtimeClient] No session, not connecting');
+      return;
+    }
 
     final wsScheme = _baseUrl.startsWith('https') ? 'wss' : 'ws';
     final cleanBase = _baseUrl
         .replaceAll(RegExp(r'^https?://'), '')
         .replaceAll(RegExp(r'/$'), '');
-    final uri = Uri.parse('$wsScheme://$cleanBase/ws?token=$token');
+    final uri = Uri.parse(
+      '$wsScheme://$cleanBase/ws?ticket=${Uri.encodeQueryComponent(ticket)}',
+    );
 
     try {
       final channel = channelFactory != null

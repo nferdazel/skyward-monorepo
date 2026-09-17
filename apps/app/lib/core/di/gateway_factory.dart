@@ -52,12 +52,39 @@ class GatewayFactory {
 
   /// Shared WebSocket client ke skyward-api (Go realtime hub). Satu koneksi
   /// dipakai semua cubit; tiap cubit subscribe channel-nya sendiri.
+  ///
+  /// Handshake memakai tiket sekali pakai, bukan JWT di query string (D3),
+  /// jadi klien menukar tokennya lewat `POST /ws/ticket` dengan ApiClient yang
+  /// sama (yang sudah menyuntikkan header Authorization).
   static GoRealtimeClient? _sharedRealtime;
   static GoRealtimeClient get realtimeClient =>
       _sharedRealtime ??= GoRealtimeClient(
-        tokenStore: const SharedPrefsAuthTokenStore(),
         baseUrl: AppEnv.apiBaseUrl,
+        ticketFetcher: fetchRealtimeTicket,
       );
+
+  /// Tukar sesi yang sedang aktif menjadi tiket WS sekali pakai.
+  ///
+  /// Tokennya tidak dibaca di sini: [apiClient] sudah memegangnya dan
+  /// menyuntikkan header Authorization, jadi membaca ulang hanya menggandakan
+  /// sumber kebenaran (dan membuat fungsi ini bergantung pada SharedPreferences
+  /// walau client-nya sudah dioverride di tes).
+  ///
+  /// Mengembalikan null kalau belum ada sesi (401) atau responsnya tidak berisi
+  /// tiket. Itu keadaan normal sebelum login: [GoRealtimeClient] memperlakukannya
+  /// sebagai "jangan connect", bukan error yang memicu reconnect.
+  static Future<String?> fetchRealtimeTicket() async {
+    final dynamic res;
+    try {
+      res = await apiClient.post('/ws/ticket');
+    } on ApiException catch (e) {
+      if (e.isUnauthorized) return null;
+      rethrow;
+    }
+    if (res is! Map) return null;
+    final ticket = res['ticket'];
+    return ticket is String && ticket.isNotEmpty ? ticket : null;
+  }
 
   /// Client realtime yang sudah ada, tanpa memaksa pembuatannya. Dipakai jalur
   /// auth (logout/login) supaya tidak meng-instansiasi koneksi hanya untuk
