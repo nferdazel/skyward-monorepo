@@ -601,8 +601,16 @@ Each needs a short written proposal (blast radius + migration path + test plan).
 - [x] **D2** Answered 2026-09-16: remove the field. Done in 1.9 — the FE needed no
       change (the leaderboard model never read it), so the "breaks the FE intel pane"
       caveat did not hold. The server-issued-secret alternative was not needed.
-- [ ] **D3** WebSocket token transport out of the query string — do it in Phase 1
-      or defer to Phase 3?
+- [x] **D3** Answered 2026-09-17: **one-time ticket.** Done in `c7ef0f2`.
+      Proposal: `docs/standards/proposal-d3-ws-token.md`. `POST /ws/ticket`
+      (AuthGuard) menerbitkan tiket buram 30 dtk sekali pakai; handshake memakai
+      `GET /ws?ticket=`. Sebelum menulis proposal saya periksa klaim yang biasa
+      dipakai untuk memotivasi item ini — "JWT ada di log Caddy" — dan tidak
+      benar: Caddyfile tanpa direktif log, dan API mencatat `r.URL.Path` bukan
+      `RequestURI`, jadi belum ada yang mencatat token. Jadi ini menutup jebakan
+      sebelum seseorang menyalakan access log, bukan memperbaiki kebocoran yang
+      berjalan. Diverifikasi terhadap server sungguhan: tiket 101, tiket dipakai
+      ulang 401, tiket kedaluwarsa 401, dan JWT sah lewat `?token=` 401.
 - [ ] **D4** Re-introducing any of the force-reverted work (GAME-01/GAME-10 et al.)
       is out of scope here; separate decision.
 - [x] **D5** Answered 2026-09-16: disable RLS to match prod. Done in
