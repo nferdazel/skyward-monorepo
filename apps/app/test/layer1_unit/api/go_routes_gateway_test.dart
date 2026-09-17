@@ -13,6 +13,85 @@ http.Response _json(Object body, int status) => http.Response(
   headers: {'content-type': 'application/json'},
 );
 
+const _realBatchPayload = r'''
+{
+  "routes": [
+    {
+      "route_id": "856a8feb-9fc0-4309-b4d3-784a311fc1f0",
+      "origin": "HND",
+      "destination": "AOJ",
+      "distance_km": 581.9291947301128,
+      "has_compatible_aircraft": true,
+      "aircraft": [
+        {
+          "origin": "HND",
+          "destination": "AOJ",
+          "distance_km": 581.9291947301128,
+          "ticket_price": 110.01,
+          "aircraft_id": "8c49a286-56a2-468e-8c25-a241d9fbae28",
+          "aircraft_model": "Dash 8 Q400",
+          "acquisition_type": "lease",
+          "flights_per_week_requested": 52,
+          "allocated_flights_per_week": 52,
+          "max_weekly_flights": 122,
+          "flight_duration_hours": 1.3724575633135125,
+          "expected_passengers_per_flight": 25.156406999720442,
+          "seat_capacity": 78,
+          "load_factor_percent": 32.25180384579544,
+          "direct_operating_cost_per_flight": 2363.1552912851257,
+          "revenue_per_flight": 2905.8291507412087,
+          "contribution_per_flight": 40.10975689198005,
+          "weekly_contribution": 2085.7073583829624,
+          "weekly_revenue": 143907.7293700408,
+          "weekly_cargo_revenue": 7195.38646850204,
+          "weekly_fuel_cost": 89979.20433913739,
+          "weekly_crew_cost": 12489.363826152963,
+          "weekly_maintenance_cost": 20415.506981536193,
+          "weekly_lease_cost": 26133.333333333332,
+          "wear": {
+            "per_flight_cycle": 0.7581929194730113,
+            "gross_per_week": 39.426031812596584,
+            "self_heal_per_week": 33.51212704070709,
+            "net_per_week": 5.913904771889489,
+            "condition_after_one_week": 34.05609522811051
+          },
+          "viability": {
+            "band": "weak",
+            "reasons": [
+              "load factor below 40%"
+            ]
+          },
+          "multipliers": {
+            "fuel": 1.093200332291924,
+            "maintenance": 1,
+            "demand": 1,
+            "capacity": 1
+          },
+          "inputs_used": {
+            "fuel_price_per_liter": 0.85,
+            "crew_cost_per_hour": 350,
+            "ticket_base_fare": 50,
+            "ticket_per_km_rate": 0.12,
+            "max_weekly_flights": 168,
+            "demand_pool_scale": 290,
+            "business_fare_multiplier": 1.5,
+            "first_fare_multiplier": 2.5,
+            "economy_willing_share": 0.8,
+            "business_willing_share": 0.15,
+            "first_willing_share": 0.05,
+            "cargo_revenue_percentage": 0.05,
+            "owned_wear_per_flight_cycle": 0.5,
+            "leased_wear_per_flight_cycle": 0.7,
+            "maintenance_auto_repair_rate": 0.85,
+            "auto_grounding_threshold": 40
+          }
+        }
+      ]
+    }
+  ]
+}
+''';
+
 void main() {
   group('GoRoutesGateway', () {
     test('loadAirports calls GET /airports', () async {
@@ -251,5 +330,37 @@ void main() {
         throwsA(isA<RoutesGatewayException>()),
       );
     });
+
+    test(
+      'loadRouteAssessments membaca payload batch asli dari server',
+      () async {
+        final gateway = GoRoutesGateway(
+          apiClient: ApiClient(
+            baseUrl: 'https://api.example.com/skyward',
+            httpClient: MockClient((request) async {
+              expect(request.url.path, '/skyward/routes/assess/batch');
+              return http.Response(
+                _realBatchPayload,
+                200,
+                headers: {'content-type': 'application/json'},
+              );
+            }),
+          ),
+        );
+
+        final byRoute = await gateway.loadRouteAssessments('u-1');
+
+        // Kunci peta adalah route_id dari server, bukan origin/destination.
+        expect(byRoute.keys, ['856a8feb-9fc0-4309-b4d3-784a311fc1f0']);
+        final best = byRoute.values.single;
+        expect(best.allocatedFlightsPerWeek, 52);
+        expect(best.expectedPassengersPerFlight, greaterThan(0));
+        expect(best.seatCapacity, 78);
+        // Nilai uang harus ikut terbaca, bukan nol karena nama field meleset.
+        expect(best.weeklyContribution, isNot(0));
+        expect(best.wear.netPerWeek, isNot(0));
+        expect(best.viability.band, 'weak');
+      },
+    );
   });
 }
