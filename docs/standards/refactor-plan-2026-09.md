@@ -608,9 +608,9 @@ Each needs a short written proposal (blast radius + migration path + test plan).
       `getConfigNum` dan `snap.num` mengembalikan nilai identik (0 beda,
       0 fallback). `ProcessBots(nil)` terbukti memuat 29 key; dengan guard nil
       dilepas, ia memakai snapshot kosong dan check-nya gagal.
-- [~] **3.5** Money boundary. **Separuh pertama selesai** (`c998437`); separuh
-      kedua dipecah jadi 3.5b di bawah, dan nilainya lebih kecil dari yang
-      diasumsikan item ini.
+- [x] **3.5** Money boundary — *round at the Ledger* selesai (`c998437`,
+      `d370474`). Separuh keduanya (migrasi `float64` → `int64` cents) dihapus
+      dari rencana, lihat 3.5b.
       *Round at the Ledger — done.* Uang disimpan sebagai `numeric(20,2)`, jadi
       Postgres sudah membulatkan setiap tulis; yang tidak otomatis adalah
       aritmetika Go. Biaya hasil simulasi datang sebagai `float64` dari pembagian
