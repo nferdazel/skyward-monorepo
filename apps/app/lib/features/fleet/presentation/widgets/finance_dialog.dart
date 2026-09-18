@@ -54,9 +54,15 @@ class _FinanceDialogState extends State<FinanceDialog> {
       BankError(:final creditReport) => creditReport,
       _ => null,
     };
+    // Cadangan saat laporan kredit belum ada. Sengaja memakai angka tier
+    // Standard (paling konservatif), bukan harga pesawat: fallback ke harga
+    // pesawat membuat dialog menyatakan SEMUA pesawat layak dibiayai, lalu
+    // `POST /bank/finance-aircraft` menolaknya. Lebih baik UI menolak lebih
+    // dulu daripada pemain mengonfirmasi transaksi yang pasti gagal.
+    // Nilai ini hanya terpakai kalau laporan belum termuat; server mengirim
+    // `max_financing_amount` per tier.
     final securedRate = creditReport?.securedInterestRate ?? 0.10;
-    final maxFinancingAmount =
-        creditReport?.maxFinancingAmount ?? model.purchasePrice;
+    final maxFinancingAmount = creditReport?.maxFinancingAmount ?? 25000000;
     final downPayment = model.purchasePrice * _downPaymentPct;
     final principal = model.purchasePrice - downPayment;
     final totalRepayable = principal * (1 + securedRate);

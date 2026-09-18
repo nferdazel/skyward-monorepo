@@ -642,15 +642,21 @@ type CreditReport struct {
 	CreditScore *CreditScore `json:"credit_score,omitempty"`
 	Tier        string       `json:"tier"`
 	// Tier policy dari credit_tier_config
-	MaxUnsecuredLoan float64  `json:"max_unsecured_loan"`
-	MaxSecuredLoan   float64  `json:"max_secured_loan"`
-	BaseInterestRate float64  `json:"base_interest_rate"`
-	UnsecuredRate    float64  `json:"unsecured_interest_rate"`
-	SecuredRate      float64  `json:"secured_interest_rate"`
-	MinLoanAmount    float64  `json:"min_loan_amount"`
-	MaxActiveLoans   int      `json:"max_active_loans"`
-	Suggestions      []string `json:"suggestions"`
-	HasHistory       bool     `json:"has_history"`
+	MaxUnsecuredLoan float64 `json:"max_unsecured_loan"`
+	MaxSecuredLoan   float64 `json:"max_secured_loan"`
+	// MaxFinancingAmount adalah plafon pembiayaan pesawat. Nilainya SAMA dengan
+	// MaxSecuredLoan karena `BankService.FinanceAircraft` memakai
+	// `tierRate(..., "max_secured", ...)`. Dikirim terpisah karena klien
+	// memakainya untuk gerbang kelayakan di UI, dan sebelumnya klien menebak
+	// 25 juta (nilai tier Standard) untuk semua tier.
+	MaxFinancingAmount float64  `json:"max_financing_amount"`
+	BaseInterestRate   float64  `json:"base_interest_rate"`
+	UnsecuredRate      float64  `json:"unsecured_interest_rate"`
+	SecuredRate        float64  `json:"secured_interest_rate"`
+	MinLoanAmount      float64  `json:"min_loan_amount"`
+	MaxActiveLoans     int      `json:"max_active_loans"`
+	Suggestions        []string `json:"suggestions"`
+	HasHistory         bool     `json:"has_history"`
 }
 
 // creditTierPolicy adalah kebijakan satu tier dari `credit_tier_config`.
@@ -765,6 +771,7 @@ func (s *Store) creditTierPolicyFor(ctx context.Context, tier string) creditTier
 func applyCreditPolicy(cr *CreditReport, p creditTierPolicy) {
 	cr.MaxUnsecuredLoan = p.MaxUnsecured
 	cr.MaxSecuredLoan = p.MaxSecured
+	cr.MaxFinancingAmount = p.MaxSecured // sumber yang sama dengan engine
 	cr.UnsecuredRate = p.RateUnsec
 	cr.SecuredRate = p.RateSecured
 	cr.MinLoanAmount = p.MinLoan
