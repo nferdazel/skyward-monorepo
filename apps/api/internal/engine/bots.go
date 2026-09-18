@@ -396,6 +396,82 @@ func (e *Engine) botHandleRouteLifecycle(ctx context.Context, botID string, game
 	}
 }
 
+// routeCandidate — satu rute yang mungkin dibuka bot, dengan estimasi profit
+// mingguan memakai model yang sama seperti audit rute (`routeWeeklyProfit`).
+type routeCandidate struct {
+	Dest       string
+	DistanceKM float64
+	DestDemand int
+	Profit     float64
+}
+
+// routeCandidateMinProfit — ambang profit mingguan minimum supaya rute baru
+// benar-benar menambah nilai, bukan sekadar mengisi slot. Rute yang cuma
+// untung sepeser pun akan mengunci pesawat dan slot rute bot.
+const routeCandidateMinProfit = 1000.0
+
+// pickBestRouteCandidate memilih kandidat dengan estimasi profit tertinggi.
+// Mengembalikan ok=false kalau tidak ada yang melewati ambang — lebih baik bot
+// tidak membuka rute daripada membuka rute rugi yang harus dihapus lagi nanti.
+func pickBestRouteCandidate(cands []routeCandidate) (routeCandidate, bool) {
+	var best routeCandidate
+	found := false
+	for _, c := range cands {
+		if c.Profit < routeCandidateMinProfit {
+			continue
+		}
+		if !found || c.Profit > best.Profit {
+			best, found = c, true
+		}
+	}
+	return best, found
+}
+
+// estimateRouteProfit — pembungkus tipis supaya pemilihan rute dan audit rute
+// memakai satu perhitungan yang sama. Kalau keduanya berbeda, bot bisa memilih
+// rute yang dianggap untung saat memilih tapi rugi saat diaudit (atau
+// sebaliknya), dan siklus buka-hapus tidak pernah berhenti.
+func estimateRouteProfit(p routePerfParams, c routePerfConfig) float64 {
+	return routeWeeklyProfit(p, c)
+}
+
+// botTargetFlights — jumlah flight/minggu yang masuk akal untuk satu rute bot.
+//
+// Masalah yang diperbaiki: dulu bot memakai `calcMaxWeeklyFlights * SchedRatio`
+// (mis. 0.72 x 75 = 54 flights/minggu). Itu kapasitas FISIK pesawat, bukan
+// jumlah yang dibutuhkan. Demand pool rute 979 km pada harga reference hanya
+// ~157 pax/hari, yang terangkut dalam ~6 flight/minggu dengan pesawat 180 kursi.
+// Menerbangkan 54 flight membuat bot membayar fuel/crew/maintenance 9x lipat
+// untuk penumpang yang sama; pendapatan mentok karena `allocateCabins` dibatasi
+// pool. Itu sebabnya 4 dari 5 bot rugi seumur hidup di prod.
+//
+// Sekarang frekuensi dibatasi pada yang dibutuhkan demand (dengan margin kecil
+// supaya load factor tinggi tapi rute tetap fleksibel), dan tidak pernah
+// melewati kapasitas fisik.
+func botTargetFlights(capacity int, dailyDemand float64, maxPhysical int, schedRatio float64) int {
+	if capacity <= 0 || maxPhysical <= 0 {
+		return 0
+	}
+	// Flight yang dibutuhkan untuk mengangkut seluruh pool (load factor ~100%).
+	needed := dailyDemand * 7.0 / float64(capacity)
+	// SchedRatio mengisi sebagian kapasitas: rasio rendah = load factor tinggi
+	// (murah, tapi penumpang tertinggal), rasio tinggi = melayani lebih banyak
+	// pool. Ambang 1.0 = tepat menutup seluruh pool.
+	if schedRatio <= 0 {
+		schedRatio = 0.72
+	}
+	target := int(math.Ceil(needed * schedRatio))
+	// Minimal 1 flight/minggu supaya rute tetap hidup, dan jangan lewati
+	// kapasitas fisik pesawat.
+	if target < 1 {
+		target = 1
+	}
+	if target > maxPhysical {
+		target = maxPhysical
+	}
+	return target
+}
+
 func (e *Engine) botHandleRouteCreation(ctx context.Context, botID string, gameTime time.Time, archetype string, d *botDistress, hq string, threshold float64, secondaryHubChance float64, snap *TickSnapshot) {
 	var routeCount, idleCount int
 	e.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM route_assignments WHERE user_id=$1 AND status='active'`, botID).Scan(&routeCount)
@@ -412,22 +488,24 @@ func (e *Engine) botHandleRouteCreation(ctx context.Context, botID string, gameT
 		return
 	}
 	// pilih pesawat idle
-	var fleetID, modelID string
-	var distance, price float64
-	var modelSpeed, modelTurnaround float64
+	var fleetID string
+	var acqType string
+	var fuelBurn, maintCostHr, leaseMonth, modelTurnaround, maxRange float64
+	var capacity, modelSpeed int
 	e.Pool.QueryRow(ctx, `
-		SELECT f.id, f.aircraft_model_id, m.range_km, m.capacity,
-		       COALESCE(m.speed_kmh, 500), COALESCE(m.turnaround_hours, 1.0)
+		SELECT f.id, f.acquisition_type, m.fuel_burn_per_km,
+		       m.maintenance_cost_per_hour, COALESCE(m.lease_price_per_month,0),
+		       COALESCE(m.turnaround_hours, 1.0), m.capacity,
+		       COALESCE(m.speed_kmh, 500), m.range_km
 		FROM fleet_aircraft f
 		JOIN aircraft_models m ON m.id=f.aircraft_model_id
 		WHERE f.user_id=$1 AND f.status='active' AND f.condition >= $2
 		AND NOT EXISTS (SELECT 1 FROM route_assignments r WHERE r.assigned_aircraft_id=f.id)
-		LIMIT 1`, botID, threshold).Scan(&fleetID, &modelID, &distance, &price, &modelSpeed, &modelTurnaround)
-	_ = modelID
+		LIMIT 1`, botID, threshold).Scan(&fleetID, &acqType, &fuelBurn, &maintCostHr, &leaseMonth, &modelTurnaround, &capacity, &modelSpeed, &maxRange)
 	if fleetID == "" {
 		return
 	}
-	// cari destinasi dalam range (dari HQ, pakai secondary hub chance)
+	// kandidat destinasi dalam range (dari HQ, pakai secondary hub chance)
 	origin := hq
 	if rand.Float64() < secondaryHubChance {
 		e.Pool.QueryRow(ctx, `SELECT secondary_hub_iata FROM bot_profiles WHERE user_id=$1`, botID).Scan(&origin)
@@ -435,27 +513,99 @@ func (e *Engine) botHandleRouteCreation(ctx context.Context, botID string, gameT
 	if origin == "" {
 		origin = hq
 	}
-	var dest string
-	var destDist float64
-	e.Pool.QueryRow(ctx, `
-		SELECT a.iata, haversine_distance(o.latitude,o.longitude,a.latitude,a.longitude)
+
+	// Nilai setiap kandidat dengan model ekonomi yang SAMA seperti audit rute,
+	// lalu pilih yang estimasi profitnya terbaik. Sebelumnya destinasi dipilih
+	// `ORDER BY random()`, sehingga bot berulang kali membuka rute rugi, menghapusnya
+	// di audit berikutnya, lalu membuka rute rugi baru — siklus yang membuat 4 dari
+	// 5 bot rugi seumur hidup di prod.
+	cfg := routePerfConfig{
+		FuelPrice:        snap.num("fuel_price_per_liter", 0.85),
+		CrewCost:         snap.num("crew_cost_per_hour", 350.0),
+		TicketBase:       snap.num("ticket_base_fare", 50.0),
+		TicketKM:         snap.num("ticket_per_km_rate", 0.12),
+		MaxWeekly:        snap.num("max_weekly_flights", 168.0),
+		DemandPoolScale:  snap.num("demand_pool_scale", 290.0),
+		Demand:           demandCurveFrom(snap),
+		Crew:             crewScaleFrom(snap),
+		BusinessFareMult: snap.num("business_fare_multiplier", 1.5),
+		FirstFareMult:    snap.num("first_fare_multiplier", 2.5),
+		EconomyWilling:   snap.num("economy_willing_share", 0.80),
+		BusinessWilling:  snap.num("business_willing_share", 0.15),
+		FirstWilling:     snap.num("first_willing_share", 0.05),
+		CargoPct:         snap.num("cargo_revenue_percentage", 0.05),
+	}
+
+	// Ambil beberapa kandidat sekaligus (bukan satu acak) supaya ada pilihan
+	// untuk dinilai. Batas 12 kandidat cukup tanpa membebani query.
+	rows, err := e.Pool.Query(ctx, `
+		SELECT a.iata, haversine_distance(o.latitude,o.longitude,a.latitude,a.longitude) AS dist,
+		       a.demand_index
 		FROM airports a, airports o
 		WHERE o.iata=$1 AND a.iata<>$1 AND haversine_distance(o.latitude,o.longitude,a.latitude,a.longitude) <= $2
 		AND NOT EXISTS (SELECT 1 FROM route_assignments r WHERE r.user_id=$3 AND r.origin_iata=$1 AND r.destination_iata=a.iata)
-		ORDER BY random() LIMIT 1`, origin, distance*0.9, botID).Scan(&dest, &destDist)
-	if dest == "" {
+		ORDER BY random() LIMIT 12`, origin, maxRange*0.9, botID)
+	if err != nil {
 		return
 	}
-	baseFare := snap.num("ticket_base_fare", 50.0) + destDist*snap.num("ticket_per_km_rate", 0.12)
-	ticketPrice := baseFare * d.PriceMult
-	maxFlights := calcMaxWeeklyFlights(destDist, int(modelSpeed), modelTurnaround,
-		snap.num("max_weekly_flights", 168.0))
-	targetFlights := int(math.Max(4, float64(maxFlights)*d.SchedRatio))
+	type candRow struct {
+		iata   string
+		dist   float64
+		demand int
+	}
+	var cands []candRow
+	for rows.Next() {
+		var c candRow
+		if err := rows.Scan(&c.iata, &c.dist, &c.demand); err == nil {
+			cands = append(cands, c)
+		}
+	}
+	rows.Close()
+	if len(cands) == 0 {
+		return
+	}
+
+	var originDemand int
+	e.Pool.QueryRow(ctx, `SELECT demand_index FROM airports WHERE iata=$1`, origin).Scan(&originDemand)
+
+	var evaluated []routeCandidate
+	for _, c := range cands {
+		baseFare := cfg.TicketBase + c.dist*cfg.TicketKM
+		ticketPrice := round2(baseFare * d.PriceMult)
+		maxFlights := calcMaxWeeklyFlights(c.dist, modelSpeed, modelTurnaround, cfg.MaxWeekly)
+		candDemand := routeDailyDemand(originDemand, c.demand, c.dist, ticketPrice,
+			cfg.TicketBase, cfg.TicketKM, cfg.DemandPoolScale, cfg.Demand)
+		targetFlights := botTargetFlights(capacity, candDemand, maxFlights, d.SchedRatio)
+		profit := estimateRouteProfit(routePerfParams{
+			DistanceKM: c.dist, TicketPrice: ticketPrice,
+			FlightsPerWeek: float64(targetFlights),
+			FuelBurnPerKM:  fuelBurn, SpeedKMH: float64(modelSpeed),
+			MaintCostHr: maintCostHr, Capacity: float64(capacity),
+			TurnaroundHours: modelTurnaround,
+			OriginDemand:    originDemand, DestDemand: c.demand,
+			AcqType: acqType, LeasePriceMonth: leaseMonth,
+		}, cfg)
+		evaluated = append(evaluated, routeCandidate{Dest: c.iata, DistanceKM: c.dist, DestDemand: c.demand, Profit: profit})
+	}
+
+	best, ok := pickBestRouteCandidate(evaluated)
+	if !ok {
+		// Tidak ada rute yang menguntungkan. Bot menunggu kondisi berubah
+		// daripada membuka rute rugi yang harus dihapus lagi.
+		return
+	}
+	dest, destDist := best.Dest, best.DistanceKM
+	baseFare := cfg.TicketBase + destDist*cfg.TicketKM
+	ticketPrice := round2(baseFare * d.PriceMult)
+	maxFlights := calcMaxWeeklyFlights(destDist, modelSpeed, modelTurnaround, cfg.MaxWeekly)
+	finalDemand := routeDailyDemand(originDemand, best.DestDemand, destDist, ticketPrice,
+		cfg.TicketBase, cfg.TicketKM, cfg.DemandPoolScale, cfg.Demand)
+	targetFlights := botTargetFlights(capacity, finalDemand, maxFlights, d.SchedRatio)
 
 	// buat rute + assign
 	_, _ = e.Routes.Create(ctx, botID, CreateRouteParams{
 		OriginIATA: origin, DestinationIATA: dest, DistanceKM: destDist,
-		TicketPrice: round2(ticketPrice), FlightsPerWeek: targetFlights,
+		TicketPrice: ticketPrice, FlightsPerWeek: targetFlights,
 	})
 	e.Pool.Exec(ctx, `
 		UPDATE route_assignments SET assigned_aircraft_id=$1
