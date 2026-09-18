@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/app_formatters.dart';
+import '../../../../core/utils/runway_indicator.dart';
 import '../../../../presentation/theme/app_spacing.dart';
 import '../../../../presentation/theme/app_typography.dart';
 import '../../../../presentation/widgets/app_card.dart';
@@ -57,14 +58,9 @@ class FinanceOverview {
     final runwayDays = (effectiveBurn > 0)
         ? state.snapshot.cash / effectiveBurn
         : null;
-    final runwayLabel = runwayDays == null
-        ? AppStrings.runwayUnknown
-        : '${runwayDays.toStringAsFixed(1)}${AppStrings.daysSuffix}';
-    final runwayColor = runwayDays == null
-        ? AppTheme.info
-        : (runwayDays < 14
-              ? AppTheme.error
-              : (runwayDays < 45 ? AppTheme.warning : AppTheme.success));
+    final runwayIndicator = RunwayIndicator.from(runwayDays);
+    final runwayLabel = runwayIndicator.label;
+    final runwayColor = runwayIndicator.color;
 
     final largestExpense = <String, double>{
       AppStrings.fleetLeasingCategory: state.totalLease,
