@@ -101,3 +101,49 @@ fitur.
 **Utang:** audit ini memeriksa method+path dan kontrak body/field, bukan setiap
 kombinasi input. Endpoint mutasi lain (routes, bank) hanya diperiksa secara
 statis melalui bentuk body-nya, belum semuanya dicoba ke server sungguhan.
+
+## Audit lanjutan (2026-09-18) — unassign rute, dan hasil penelusuran menyeluruh
+
+Audit kedua menutup utang audit pertama: semua endpoint mutasi sekarang dicoba
+ke server sungguhan dengan payload persis dari klien. Hasilnya satu bug kelima,
+diperbaiki di `127f50d`.
+
+### Bug 5: lepas pesawat dari rute selalu gagal
+
+UI punya tombol "lepas pesawat saat ini" yang mengirim `aircraft_id: ""`
+(`routes_view.dart` → `GoRoutesGateway`). Server menolak lebih dulu dengan
+`"aircraft required"`, jadi pemain tidak bisa melepas pesawat dari rute.
+`RoutesService.Assign` sekarang memperlakukan string kosong sebagai pelepasan
+(`SET assigned_aircraft_id=NULL`), yang juga satu-satunya jalur membuat kolom
+nullable itu kembali NULL.
+
+### Yang diperiksa dan TIDAK bermasalah
+
+Supaya jelas apa yang sudah tertutup, bukan hanya apa yang rusak:
+
+- Semua 16 endpoint mutasi dicoba dengan payload klien: purchase, seats,
+  repair, routes create/assign/patch/delete, loans/repay/refinance,
+  finance-aircraft, settings reset, simulation sync/onboarding, sell,
+  terminate-lease. Selain bug 5, semuanya berperilaku benar.
+- `settings/reset` menghapus semua pesawat user. Beberapa kegagalan
+  "Aircraft not found" saat audit awalnya tampak seperti bug, ternyata karena
+  urutan test saya menjalankan reset sebelum sell. Bukan bug.
+- `credit_scores` tidak dibuat saat register, jadi tier baru selalu Standard
+  sampai ada barisnya. Ini perilaku benar (`applyCreditPolicy` menangani
+  ketiadaan baris), bukan bug.
+- `fuel`/`maintenance`/`demand`/`aircraft` di `route_assessment_dto.dart`
+  memang dikirim server (`engine/assess.go`); kecocokan saya sebelumnya
+  false positive karena grep tidak mengenali tag bersarang.
+- `route_id` di DTO assessment hanya diisi untuk rute yang sudah ada
+  (`omitempty`), dan klien menangani keduanya.
+- `EconomySeats` bertipe `*int` di server, dan `nil` berarti "isi penuh sesuai
+  kapasitas". Klien selalu mengirim angka, jadi jalur `nil` tidak terpakai.
+  UI default ke `widget.model.capacity`, sehingga `0/0/0` tidak mungkin dikirim.
+  Bukan bug, tapi ketergantungan ini perlu diingat kalau UI berubah.
+
+### Pelajaran proses
+
+Cleanup test DB harus jalan di AWAL dan AKHIR. Versi pertama test unassign hanya
+memakai `defer`; saat test mati di tengah (constraint gagal), barisnya
+tertinggal dan run berikutnya menabrak unique constraint. Ini terlihat hanya
+kalau seluruh paket dijalankan dua kali berturut-turut. Jalankan dua kali.
