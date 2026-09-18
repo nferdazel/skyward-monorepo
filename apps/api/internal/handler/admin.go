@@ -4,13 +4,13 @@ package handler
 import (
 	"crypto/subtle"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 
 	"skyward-api/internal/auth"
 	"skyward-api/internal/httperr"
-
-	"github.com/jackc/pgx/v5/pgxpool"
+	"skyward-api/internal/store"
 )
 
 // AdminGuard — middleware untuk endpoint admin (ops: owner optimizer, world tick manual, dll).
@@ -42,7 +42,13 @@ func AdminGuard(token string, next http.HandlerFunc) http.HandlerFunc {
 
 // ResetPassword — POST /admin/account/{id}/reset-password {password}.
 // Admin-only: set password baru untuk user (tanpa email).
-func ResetPassword(pool *pgxpool.Pool) http.HandlerFunc {
+//
+// Query-nya memakai `store.UpdatePasswordHash`. Sebelumnya handler ini menulis
+// UPDATE-nya sendiri, dan penggabungan `err != nil` dengan
+// `RowsAffected() == 0` membuat error database sungguhan (mis. koneksi putus)
+// dilaporkan sebagai 404 "user not found" — pemanggil akan mengira ID-nya
+// salah dan mencoba lagi, bukan menelusuri masalah database.
+func ResetPassword(st *store.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
 			Password string `json:"password"`
@@ -56,9 +62,12 @@ func ResetPassword(pool *pgxpool.Pool) http.HandlerFunc {
 			httperr.WriteError(w, nil, httperr.Internal("hash failed"))
 			return
 		}
-		tag, err := pool.Exec(r.Context(), `UPDATE users SET password_hash=$1 WHERE id=$2`, hash, r.PathValue("id"))
-		if err != nil || tag.RowsAffected() == 0 {
+		switch err := st.UpdatePasswordHash(r.Context(), r.PathValue("id"), hash); {
+		case errors.Is(err, store.ErrUserNotFound):
 			httperr.WriteError(w, nil, httperr.NotFound("user not found"))
+			return
+		case err != nil:
+			httperr.WriteError(w, nil, httperr.Internal("reset password failed"))
 			return
 		}
 		httperr.WriteJSON(w, http.StatusOK, map[string]bool{"success": true})

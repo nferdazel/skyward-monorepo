@@ -229,7 +229,7 @@ func registerRoutes(ctx context.Context, mux *http.ServeMux, logger *slog.Logger
 	admin := func(next http.HandlerFunc) http.HandlerFunc {
 		return handler.AdminGuard(cfg.AdminToken, next)
 	}
-	mux.Handle("POST /admin/account/{id}/reset-password", admin(handler.ResetPassword(pool)))
+	mux.Handle("POST /admin/account/{id}/reset-password", admin(handler.ResetPassword(st)))
 	mux.Handle("GET /admin/worker/status", admin(func(w http.ResponseWriter, r *http.Request) {
 		httperr.WriteJSON(w, http.StatusOK, wk.Status())
 	}))
