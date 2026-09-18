@@ -563,21 +563,19 @@ func shouldBankruptOnNegativeDays(consecutiveNegativeDays, threshold int) bool {
 // AUDIT-10: fresh DB tanpa seed (migration 17) akan kehilangan key dan senyap
 // memakai fallback Go; catat sekali per key supaya drift terlihat, bukan hilang.
 //
-// Sejak 3.4 jalur TICK tidak lagi memakai ini — ia membaca `snap.num` supaya
-// satu putaran memakai satu nilai per key. Yang tersisa di sini adalah pemanggil
-// di luar tick, yang justru HARUS membaca nilai terbaru saat request:
+// Sejak 3.4 jalur tick dan bot tidak lagi memakai ini — keduanya membaca
+// `snap.num` supaya satu putaran memakai satu nilai per key. Sisa pemanggil di
+// sini adalah yang benar-benar butuh nilai saat request:
 //   - `routes.go` — validasi frekuensi rute saat membuat/mengubah rute;
 //   - `fleet.go` — deposit lease saat pembelian.
 //
-// Keduanya melayani request pemain di luar tick dan justru HARUS membaca nilai
-// terbaru saat request, jadi tidak punya snapshot.
+// Keduanya melayani request pemain, tidak punya snapshot, dan memang harus
+// membaca nilai terbaru.
 //
-// `dayboundary.go` `calculateCreditScore` sudah tidak ada di daftar ini: dulu
-// ia beralasan "dipakai halaman kredit, bukan hanya tick", padahal satu-satunya
-// pemanggilnya ada di dalam tick. Sekarang ia memakai `snap`.
-//
-// Menyalin pemanggil REST ke snapshot akan membuat permintaan pemain memakai
-// config basi.
+// `dayboundary.go` `calculateCreditScore` tidak ada di daftar ini karena ia
+// menerima snapshot dari pemanggilnya — termasuk dari POST /simulation/sync,
+// yang lewat `ProcessPlayer` memuat snapshot baru untuk request itu. Jadi
+// kesegaran tetap terjaga tanpa query per pemain di dalam satu putaran.
 func (e *Engine) getConfigNum(ctx context.Context, key string, fallback float64) float64 {
 	var v float64
 	err := e.Pool.QueryRow(ctx, `SELECT COALESCE((value#>>'{}')::numeric, $1) FROM game_config WHERE key=$2`, fallback, key).Scan(&v)

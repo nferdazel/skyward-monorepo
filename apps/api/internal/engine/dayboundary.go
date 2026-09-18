@@ -310,12 +310,17 @@ type creditScore struct {
 
 // calculateCreditScore — mirror calculate_credit_score.
 //
-// `snap` membawa config yang sudah dibaca sekali di awal tick. Sebelumnya
-// fungsi ini memanggil `getConfigNum` per pemain per hari, yang berarti query
-// `game_config` berulang sebanyak jumlah pemain — persis pola yang
-// `TickSnapshot` dibuat untuk menghapusnya. Komentar lama beralasan fungsi ini
-// "dipakai halaman kredit, bukan hanya tick"; itu tidak benar, satu-satunya
-// pemanggilnya ada di dalam tick.
+// `snap` membawa config yang sudah dibaca sekali untuk satu putaran proses.
+// Sebelumnya fungsi ini memanggil `getConfigNum` per pemain per hari, yang
+// berarti query `game_config` berulang sebanyak jumlah pemain — persis pola
+// yang `TickSnapshot` dibuat untuk menghapusnya.
+//
+// Fungsi ini bukan hanya milik world tick. Ada dua jalur yang mencapainya:
+// world tick (dan bot) dengan snapshot yang disiapkan sekali, serta
+// POST /simulation/sync lewat `mutation.go` → `ProcessPlayer`, yang mengirim
+// snapshot nil dan memuatnya sendiri di `ProcessPlayer`. Karena itu snapshot
+// selalu ada saat kode ini berjalan, dan freshest tetap terjaga untuk request
+// pemain: `ProcessPlayer` memuat snapshot BARU untuk setiap request.
 func (e *Engine) calculateCreditScore(ctx context.Context, userID string, snap *TickSnapshot) (*creditScore, bool) {
 	// Skor placeholder saat salah satu komponen tidak terbaca. Dulu hanya baris
 	// users ini yang punya fallback; komponen lain dibiarkan terisi nol lalu ikut
