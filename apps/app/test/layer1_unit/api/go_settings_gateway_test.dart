@@ -51,6 +51,44 @@ void main() {
       expect(res.isNotEmpty, true);
     });
 
+    test(
+      'saveAirlineSettings memetakan kunci p_* dari cubit ke nama server',
+      () async {
+        // Bug nyata: `SettingsCubit.saveSettings` mengirim `p_company_name`,
+        // `p_auto_grounding_threshold`, `p_hq_airport_iata`, dan gateway
+        // meneruskannya apa adanya. Server membaca `company_name` dan
+        // mengabaikan kunci tak dikenal, jadi validasinya bilang
+        // "Company name cannot be empty." dan setting tidak pernah tersimpan.
+        //
+        // Test sebelumnya memanggil gateway dengan `company_name` langsung,
+        // sehingga jalur nyata dari cubit tidak pernah teruji.
+        Map<String, dynamic>? sent;
+        final gateway = GoSettingsGateway(
+          apiClient: ApiClient(
+            baseUrl: 'https://api.example.com/skyward',
+            httpClient: MockClient((request) async {
+              sent = jsonDecode(request.body) as Map<String, dynamic>;
+              return _json({'success': true}, 200);
+            }),
+          ),
+        );
+
+        await gateway.saveAirlineSettings({
+          'p_user_id': 'u-1',
+          'p_company_name': 'Nama Baru',
+          'p_auto_grounding_threshold': 35.0,
+          'p_hq_airport_iata': 'DPS',
+        });
+
+        expect(sent, isNotNull);
+        expect(sent!['company_name'], 'Nama Baru');
+        expect(sent!['auto_grounding_threshold'], 35.0);
+        expect(sent!['hq_airport_iata'], 'DPS');
+        expect(sent!.containsKey('p_company_name'), isFalse,
+            reason: 'server mengabaikan p_company_name');
+      },
+    );
+
     test('resetUserAirline calls POST /settings/reset', () async {
       final gateway = GoSettingsGateway(
         apiClient: ApiClient(

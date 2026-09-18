@@ -24,8 +24,20 @@ class GoSettingsGateway implements SettingsGateway {
   Future<List<dynamic>> saveAirlineSettings(
     Map<String, dynamic> params,
   ) async {
+    // Cubit mengirim kunci legacy RPC `p_*`, sedangkan server Go memakai nama
+    // tanpa prefiks dan mengabaikan kunci tak dikenal. Tanpa pemetaan ini,
+    // `company_name` kosong dan server menolak dengan
+    // "Company name cannot be empty." sehingga setting tidak pernah tersimpan.
+    final body = {
+      'company_name': params['p_company_name'] ?? params['company_name'] ?? '',
+      'auto_grounding_threshold':
+          params['p_auto_grounding_threshold'] ??
+          params['auto_grounding_threshold'],
+      'hq_airport_iata':
+          params['p_hq_airport_iata'] ?? params['hq_airport_iata'],
+    };
     try {
-      final res = await _api.patch('/settings', body: params);
+      final res = await _api.patch('/settings', body: body);
       if (res is List) return res;
       if (res is Map) return [res];
       return const [];
