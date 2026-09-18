@@ -117,7 +117,7 @@ yang rusak. Penerapan yang sama, objek berbeda.
 dan menambah satu janji lagi yang harus diingat manusia. Kita sudah punya satu
 janji seperti itu dan sudah dilanggar.
 
-## DRY-2 (SEDANG) — `read.go`: 22 metode, fragmen SQL disalin
+## DRY-2 (SELESAI) — `read.go`: 22 metode, fragmen SQL disalin
 
 `apps/api/internal/store/read.go` (750 baris) memuat SELECT 23 kolom yang sama
 **empat kali** (`:116-121`, `:610-615`, `:632-637`, `:656-661`), plus daftar
@@ -129,17 +129,27 @@ Yang sudah mulai menyimpang: `GetBankTransactions` (`:307-321`) membatasi
 `limit > 200`, sedangkan `GetBankTransactionsByAccount` (`:730-742`) memakai
 `500` untuk query yang sama.
 
-**Rancangan.** Satu tempat untuk tiap fragmen:
+**Selesai `3d93075`.** Kolom fleet sudah lebih dulu disatukan di DRY-1
+(`fleetSelectColumns` / `fleetSelectFrom` / `queryOneFleet`), jadi yang
+dikerjakan di sini sisanya:
 
-- `const fleetColumns = ...` + `func scanFleet(row) (...)`, dipakai semua
-  pemanggil. Menambah kolom jadi satu perubahan, bukan empat.
-- `const operatingBalanceExpr` dan `const revenue30dExpr` sebagai konstanta
-  string.
-- Batas `limit` disatukan ke satu konstanta, dan perbedaan 200 vs 500
-  diputuskan sekali (siapa pun yang menulisnya kemungkinan tidak sengaja).
+- `operatingBalanceExpr` dan `revenue30dExpr` sebagai konstanta string;
+- `maxPageLimit` (200) dan `maxSnapshotLimit` (500) menggantikan literal.
 
-Sekitar 60-80 baris hilang, dan yang lebih penting: tidak ada lagi kesempatan
-kolom A terisi nilai kolom B karena urutan `Scan` bergeser.
+Satu penyimpangan ikut diperbaiki: `GetBankTransactionsByAccount` memakai 500
+sementara `GetBankTransactions` memakai 200 untuk tabel yang sama, dan
+keduanya jatuh ke 50 — sementara satu-satunya pemanggil mengirim 50 tetap,
+jadi angka 500 tidak pernah terpakai. Sekarang keduanya `maxPageLimit`.
+
+Lookup berparameter di `GetSimulationState` **tidak** ikut memakai fragmen: ia
+memfilter `user_id=$1` pada tabel yang tidak di-JOIN ke `users`, sedangkan
+fragmen memakai alias `u`. Memaksakannya berarti menambah JOIN tanpa manfaat.
+
+Verifikasi: `TestSharedSqlFragmentsReturnRealValues` memanggil tiga metode yang
+memakai fragmen dan membandingkan dengan nilai dari database. Dua fail-then-pass
+dibuktikan (jendela 30 hari dihapus, `account_type` diubah). Fixture memuat satu
+transaksi DI LUAR jendela 30 hari; tanpa itu test hampa, dan itu sudah
+dibuktikan sendiri sebelum baris kedua ditambahkan.
 
 ## DRY-3 (SEDANG) — 17 blok transaksi, tidak ada pembungkusnya
 
