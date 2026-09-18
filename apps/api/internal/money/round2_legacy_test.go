@@ -1,4 +1,4 @@
-package engine
+package money
 
 import (
 	"math"
@@ -7,7 +7,7 @@ import (
 
 func TestRound2HandlesNegative(t *testing.T) {
 	// Bentuk lama `int(v*100+0.5)` memotong menuju nol, jadi negatif membulat
-	// ke arah yang salah: round2(-0.5) menghasilkan -0.49.
+	// ke arah yang salah: Round2(-0.5) menghasilkan -0.49.
 	cases := map[float64]float64{
 		-0.5:     -0.5,
 		-1.005:   -1.0,
@@ -18,24 +18,24 @@ func TestRound2HandlesNegative(t *testing.T) {
 		0:        0,
 	}
 	for in, want := range cases {
-		if got := round2(in); got != want {
-			t.Errorf("round2(%v) = %v, mau %v", in, got, want)
+		if got := Round2(in); got != want {
+			t.Errorf("Round2(%v) = %v, mau %v", in, got, want)
 		}
 	}
 }
 
 func TestRound2HandlesFloatNoise(t *testing.T) {
 	// Nilai nyata dari tick: pembagian lalu perkalian balik meninggalkan noise.
-	if got := round2(121000000.00000001); got != 121000000 {
+	if got := Round2(121000000.00000001); got != 121000000 {
 		t.Errorf("noise pembagian: dapat %v", got)
 	}
-	if got := round2(7717.201500000001); got != 7717.20 {
+	if got := Round2(7717.201500000001); got != 7717.20 {
 		t.Errorf("revenue per flight: dapat %v", got)
 	}
-	if got := round2(89979.204339137388); got != 89979.20 {
+	if got := Round2(89979.204339137388); got != 89979.20 {
 		t.Errorf("fuel: dapat %v", got)
 	}
-	if got := round2(12489.360000000001); got != 12489.36 {
+	if got := Round2(12489.360000000001); got != 12489.36 {
 		t.Errorf("crew: dapat %v", got)
 	}
 }
@@ -45,9 +45,9 @@ func TestRound2IsStable(t *testing.T) {
 	// ini yang membuat pembulatan aman dipasang berulang di batas modul.
 	vals := []float64{0, 0.01, -0.01, 99.99, -99.99, 121000000, -0.5, 1.005}
 	for _, v := range vals {
-		once := round2(v)
-		if twice := round2(once); twice != once {
-			t.Errorf("tidak stabil: round2(%v)=%v lalu %v", v, once, twice)
+		once := Round2(v)
+		if twice := Round2(once); twice != once {
+			t.Errorf("tidak stabil: Round2(%v)=%v lalu %v", v, once, twice)
 		}
 	}
 }
@@ -55,8 +55,8 @@ func TestRound2IsStable(t *testing.T) {
 // Nilai yang sudah 2 desimal dari DB harus lolos tanpa berubah.
 func TestRound2PreservesStoredAmounts(t *testing.T) {
 	for _, v := range []float64{0.01, 9.77, 1309.48, -126.39, 121000000.00, 25000000.00} {
-		if got := round2(v); got != v {
-			t.Errorf("nilai tersimpan berubah: round2(%v) = %v", v, got)
+		if got := Round2(v); got != v {
+			t.Errorf("nilai tersimpan berubah: Round2(%v) = %v", v, got)
 		}
 	}
 }
@@ -82,10 +82,10 @@ func TestMoneyAtLeastAcceptsExactFunds(t *testing.T) {
 		t.Fatalf("asumsi tes salah: perbandingan mentah seharusnya menolak")
 	}
 	// Yang diperbaiki: pada presisi sen, keduanya sama.
-	if !moneyAtLeast(cash, cost) {
+	if !AtLeast(cash, cost) {
 		t.Errorf("saldo yang persis cukup tertolak: cash=%v cost=%v", cash, cost)
 	}
-	if moneyLessThan(cash, cost) {
+	if LessThan(cash, cost) {
 		t.Errorf("moneyLessThan salah untuk saldo yang persis cukup")
 	}
 }
@@ -105,8 +105,8 @@ func TestMoneyAtLeastAcceptsExactFundsAcrossDividedCosts(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			cash := round2(c.cost)
-			if !moneyAtLeast(cash, c.cost) {
+			cash := Round2(c.cost)
+			if !AtLeast(cash, c.cost) {
 				t.Errorf("uang pas tertolak: cash=%v cost=%.17g", cash, c.cost)
 			}
 		})
@@ -114,14 +114,14 @@ func TestMoneyAtLeastAcceptsExactFundsAcrossDividedCosts(t *testing.T) {
 }
 
 func TestMoneyAtLeastRejectsGenuineShortfall(t *testing.T) {
-	if moneyAtLeast(859.99, 860.00) {
+	if AtLeast(859.99, 860.00) {
 		t.Error("kekurangan satu sen harus ditolak")
 	}
-	if !moneyLessThan(859.99, 860.00) {
+	if !LessThan(859.99, 860.00) {
 		t.Error("859.99 memang kurang dari 860.00")
 	}
 	// Selisih di bawah setengah sen dianggap sama (dibulatkan ke sen).
-	if !moneyAtLeast(860.004, 860.00) {
+	if !AtLeast(860.004, 860.00) {
 		t.Error("selisih sub-sen tidak boleh menolak")
 	}
 }
@@ -136,9 +136,9 @@ func TestRound2Extremes(t *testing.T) {
 		math.SmallestNonzeroFloat64, 0,
 	}
 	for _, v := range cases {
-		got := round2(v)
+		got := Round2(v)
 		if math.IsNaN(got) || math.IsInf(got, 0) {
-			t.Errorf("round2(%v) = %v, tidak terdefinisi", v, got)
+			t.Errorf("Round2(%v) = %v, tidak terdefinisi", v, got)
 		}
 	}
 }

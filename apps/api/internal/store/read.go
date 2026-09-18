@@ -181,8 +181,9 @@ const fleetSelectFrom = `
 	JOIN aircraft_models m ON m.id = f.aircraft_model_id`
 
 // fleetGameTime mengambil waktu game pemain, yang menentukan depresiasi nilai
-// jual. Kalau gagal, nilai tanpa depresiasi tetap benar (lihat SaleValueFor),
-// jadi error di sini tidak perlu menggagalkan permintaan baca.
+// jual. Kalau gagal, waktu nol dikembalikan; `money.SaleValueFor` memperlakukan
+// waktu nol sebagai tanpa depresiasi, jadi estimasi tetap masuk akal alih-alih
+// meledak karena umur negatif.
 func (s *Store) fleetGameTime(ctx context.Context, userID string) time.Time {
 	var t time.Time
 	if err := s.pool.QueryRow(ctx, `SELECT game_current_time FROM users WHERE id=$1`, userID).Scan(&t); err != nil {
