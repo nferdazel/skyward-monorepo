@@ -67,3 +67,37 @@ Nothing here is scheduled. Each needs a decision before it needs code.
   `getConfigNum` callers are outside the tick and must read the freshest value.
 - **Route economics**: the server is authoritative. The client does not model
   demand, fares, or wear; it renders `GET /routes/assess`.
+
+## Audit fungsionalitas (2026-09-18) — pelajaran dari tiga bug kunci `p_*`
+
+Audit setelah refactor KISS/DRY/SOLID menemukan tiga bug yang membuat fitur inti
+selalu gagal, semuanya **pre-existing** (sudah ada di produksi sebelum refactor,
+bukan regresi). Ketiganya akar yang sama: cubit mengirim kunci legacy RPC
+Supabase (`p_*`) sementara server Go memakai nama tanpa prefiks dan mengabaikan
+kunci tak dikenal. Diperbaiki di `2353a3d`, `4838bcf`, `0a58dd8`.
+
+**Pelajaran yang berlaku untuk perubahan berikutnya: 506 test hijau bukan bukti
+fitur jalan.** Ketiga bug lolos karena test-nya menguji hal yang berbeda dari
+yang dilakukan kode:
+
+- `go_fleet_gateway_test` mengirim `aircraft_model_id`, nama yang tidak dipakai
+  cubit maupun server. Jadi ia tidak pernah menyentuh jalur nyata.
+- `go_settings_gateway_test` memanggil gateway dengan `company_name` langsung,
+  melewati cubit yang mengirim `p_company_name`.
+- `bank_gateway_test` menyuntik `max_financing_amount` ke parser dan
+  memastikannya terbaca, membuktikan parser bekerja tetapi bukan bahwa field itu
+  pernah datang dari server.
+
+**Aturan yang diambil:** untuk gateway, test harus mengirim kunci yang PERSIS
+dikirim cubit, lalu memastikan yang keluar adalah nama yang dikenal server.
+Menguji gateway dengan kunci yang sudah benar hanya membuktikan gateway
+meneruskan body apa adanya.
+
+**Pemeriksaan yang disarankan saat menambah endpoint baru:** kirim payload dari
+`cubit` ke server sungguhan sekali, jangan hanya lewat mock. Tiga bug ini tidak
+akan lolos kalau satu permintaan nyata pernah dijalankan untuk masing-masing
+fitur.
+
+**Utang:** audit ini memeriksa method+path dan kontrak body/field, bukan setiap
+kombinasi input. Endpoint mutasi lain (routes, bank) hanya diperiksa secara
+statis melalui bentuk body-nya, belum semuanya dicoba ke server sungguhan.
