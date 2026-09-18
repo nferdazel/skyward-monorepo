@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/utils/app_formatters.dart';
+
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../presentation/theme/app_spacing.dart';
@@ -192,11 +194,14 @@ class _WhileAwayDigestDialog extends StatelessWidget {
     );
   }
 
+  /// Nilai uang pada digest memakai pemadat yang sama dengan layar lain.
+  ///
+  /// Dulu di sini ada salinan sendiri dengan 2 desimal untuk juta dan 1 desimal
+  /// untuk ribu, sedangkan `AppFormatters.compactNumber` memakai 1 dan 0. Pemain
+  /// melihat Rp 1.234.567 sebagai `$1.23M` di digest dan `$1.2M` di layar lain.
+  /// Sekarang keduanya lewat satu fungsi.
   String _currency(double value) {
     final sign = value < 0 ? '-' : '';
-    final abs = value.abs();
-    if (abs >= 1000000) return '$sign\$${(abs / 1000000).toStringAsFixed(2)}M';
-    if (abs >= 1000) return '$sign\$${(abs / 1000).toStringAsFixed(1)}K';
-    return '$sign\$${abs.toStringAsFixed(0)}';
+    return '$sign\$${AppFormatters.compactNumber(value.abs())}';
   }
 }

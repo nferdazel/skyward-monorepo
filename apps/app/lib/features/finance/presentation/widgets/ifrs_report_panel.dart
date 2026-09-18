@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+
+import '../../../../core/utils/app_formatters.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../presentation/theme/app_spacing.dart';
@@ -24,11 +25,6 @@ class IfrsReportBody extends StatelessWidget {
     required this.financeState,
     required this.bankState,
   });
-
-  static final NumberFormat _currency = NumberFormat.currency(
-    symbol: '\$',
-    decimalDigits: 0,
-  );
 
   @override
   Widget build(BuildContext context) {
@@ -321,8 +317,8 @@ class IfrsReportBody extends StatelessWidget {
           const SizedBox(width: AppSpacing.md),
           Text(
             hasValue
-                ? '${effectiveIsNegative ? '-' : ''}${_currency.format(displayValue)}'
-                : _currency.format(0),
+                ? '${effectiveIsNegative ? '-' : ''}${AppFormatters.currency.format(displayValue)}'
+                : AppFormatters.currency.format(0),
             style: AppTypography.monoValue.copyWith(
               color: color,
               fontSize: 12,
@@ -352,7 +348,7 @@ class IfrsReportBody extends StatelessWidget {
             ),
           ),
           Text(
-            '${isNeg ? '-' : ''}${_currency.format(value.abs())}',
+            '${isNeg ? '-' : ''}${AppFormatters.currency.format(value.abs())}',
             style: AppTypography.dataEmphasis.copyWith(
               color: color,
               fontSize: 13,
@@ -387,7 +383,7 @@ class IfrsReportBody extends StatelessWidget {
             ),
           ),
           Text(
-            '${isNeg ? '-' : ''}${_currency.format(value.abs())}',
+            '${isNeg ? '-' : ''}${AppFormatters.currency.format(value.abs())}',
             style: AppTypography.dataEmphasis.copyWith(
               color: color,
               fontSize: 15,
@@ -409,7 +405,7 @@ class IfrsReportBody extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(top: 2),
       child: Text(
-        '$label: ${_currency.format(value)}/month',
+        '$label: ${AppFormatters.currency.format(value)}/month',
         style: AppTypography.captionRegular.copyWith(
           color: AppTheme.textMuted,
           fontStyle: FontStyle.italic,

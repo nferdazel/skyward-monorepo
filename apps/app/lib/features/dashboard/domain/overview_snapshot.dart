@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+
+import '../../../core/utils/app_formatters.dart';
+import '../../../core/utils/runway_indicator.dart';
 
 import '../../../core/constants/app_strings.dart';
 import '../../../core/theme/app_theme.dart';
@@ -28,7 +30,6 @@ class OverviewPriority {
 }
 
 class OverviewSnapshot {
-  static final _compactCurrency = NumberFormat.compactCurrency(symbol: '\$');
 
   final int totalFleetCount;
   final int readyFleetCount;
@@ -231,14 +232,9 @@ class OverviewSnapshot {
     final runwayDays = (rollingExpense > 0 && dailyBurnRate > 0)
         ? simState.cashBalance / dailyBurnRate
         : null;
-    final runwayLabel = runwayDays == null
-        ? AppStrings.runwayUnknown
-        : '${runwayDays.toStringAsFixed(1)}${AppStrings.daysSuffix}';
-    final runwayColor = runwayDays == null
-        ? AppTheme.info
-        : (runwayDays < 14
-              ? AppTheme.error
-              : (runwayDays < 45 ? AppTheme.warning : AppTheme.success));
+    final runwayIndicator = RunwayIndicator.from(runwayDays);
+    final runwayLabel = runwayIndicator.label;
+    final runwayColor = runwayIndicator.color;
 
     // Bankruptcy risk escalation (GAME-13). Critical when cash is at/below the
     // warning threshold, or (only while cash is actually negative) when the
@@ -278,7 +274,7 @@ class OverviewSnapshot {
         ? AppStrings.loadingLabel
         : (leaderGap <= 0
               ? AppStrings.worldLeaderLabel
-              : _compactCurrency.format(leaderGap));
+              : AppFormatters.compactCurrency.format(leaderGap));
     final leaderGapColor = leaderGap == null
         ? AppTheme.info
         : (leaderGap <= 0

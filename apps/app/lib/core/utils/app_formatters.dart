@@ -32,10 +32,14 @@ class AppFormatters {
   );
 
   /// Compact number format: 1.2M, 3.4K, 500
+  ///
+  /// Ambangnya 999.500, bukan 1.000.000: dengan 1 desimal, 999.999 dibulatkan
+  /// menjadi "1000.0" dan dulu tampil sebagai "$1000K" alih-alih "$1.0M".
+  /// Pembulatan yang melewati ambang harus ikut menaikkan satuannya.
   static String compactNumber(double value) {
-    if (value >= 1000000) {
+    if (value >= 999500) {
       return '${(value / 1000000).toStringAsFixed(1)}M';
-    } else if (value >= 1000) {
+    } else if (value >= 999.5) {
       return '${(value / 1000).toStringAsFixed(0)}K';
     }
     return value.toStringAsFixed(0);
