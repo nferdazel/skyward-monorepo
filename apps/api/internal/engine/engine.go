@@ -24,7 +24,17 @@ const moneyEpsilon = 0.005
 
 // Engine — root engine; aggregates services.
 type Engine struct {
-	Store    *store.Store
+	Store *store.Store
+	// Pool dipakai di dalam paket engine saja: setiap service (Ledger, Fleet,
+	// Routes, Settings, Bank) menjalankan SQL-nya sendiri di sini.
+	//
+	// Batas ini pernah dilanggar: handler memakai `Engine.Pool` untuk menulis
+	// query season_clock dan onboarding, sehingga lapisan HTTP tahu bentuk
+	// skema dan melewati store. Query-query itu sudah dipindah ke `store`, dan
+	// sejak itu tidak ada pemakai `Pool` di luar paket ini.
+	//
+	// Kalau butuh sesuatu dari sini di lapisan lain, tambahkan fungsinya di
+	// `store` — jangan pakai field ini langsung.
 	Pool     *pgxpool.Pool
 	Ledger   *LedgerService
 	Fleet    *FleetService

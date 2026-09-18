@@ -6,16 +6,21 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"time"
 
 	"skyward-api/internal/engine"
 	"skyward-api/internal/httperr"
+	"skyward-api/internal/store"
 )
 
 // MutationHandler — mutations, thin: AuthGuard → engine → JSON.
 type MutationHandler struct {
 	Engine *engine.Engine
 	Hub    engine.Broadcaster
+	// Store dipakai untuk query yang bukan bagian dari engine, misalnya membaca
+	// season aktif dan menandai onboarding. Sebelumnya handler menulis SQL itu
+	// sendiri lewat `Engine.Pool`, yang membuat lapisan handler tahu bentuk
+	// skema dan melewati store.
+	Store *store.Store
 }
 
 // broadcastOnSuccess — realtime notification setelah mutasi sukses.
@@ -359,9 +364,8 @@ func (h *MutationHandler) SimulationSync(w http.ResponseWriter, r *http.Request)
 	if !ok {
 		return
 	}
-	var seasonTime time.Time
-	if err := h.Engine.Pool.QueryRow(r.Context(),
-		`SELECT current_game_time FROM season_clock WHERE status='active' LIMIT 1`).Scan(&seasonTime); err != nil {
+	seasonTime, err := h.Store.GetActiveSeasonTime(r.Context())
+	if err != nil {
 		// AUDIT-13: jangan pernah lapor success kalau tidak ada season aktif.
 		httperr.WriteError(w, nil, httperr.Internal("no active season for simulation sync"))
 		return
@@ -395,9 +399,7 @@ func (h *MutationHandler) SimulationOnboarding(w http.ResponseWriter, r *http.Re
 	if !ok {
 		return
 	}
-	_, err := h.Engine.Pool.Exec(r.Context(),
-		`UPDATE users SET onboarding_completed=true WHERE id=$1`, uid)
-	if err != nil {
+	if err := h.Store.MarkOnboardingComplete(r.Context(), uid); err != nil {
 		httperr.WriteError(w, nil, httperr.Internal("mark onboarding failed"))
 		return
 	}

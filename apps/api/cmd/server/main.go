@@ -193,7 +193,7 @@ func registerRoutes(ctx context.Context, mux *http.ServeMux, logger *slog.Logger
 	// masing-masing punya `tickMu` sendiri (guard AUDIT-09 jadi tidak menutup
 	// apa-apa untuk POST /admin/world/tick vs worker tick) dan instance mutasi
 	// kehilangan Hub yang sudah dipasang di instance worker.
-	mut := &handler.MutationHandler{Engine: eng, Hub: hub}
+	mut := &handler.MutationHandler{Engine: eng, Hub: hub, Store: st}
 	mux.Handle("POST /fleet/purchase", guard(mut.FleetPurchase))
 	mux.Handle("POST /fleet/lease", guard(mut.FleetLease))
 	mux.Handle("POST /fleet/{id}/sell", guard(mut.FleetSell))

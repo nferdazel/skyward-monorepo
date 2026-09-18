@@ -148,6 +148,38 @@ func (s *Store) NormalizeUsername(ctx context.Context, username string) (string,
 	return *out, nil
 }
 
+// MarkOnboardingComplete — tandai onboarding pemain selesai.
+func (s *Store) MarkOnboardingComplete(ctx context.Context, userID string) error {
+	tag, err := s.pool.Exec(ctx,
+		`UPDATE users SET onboarding_completed = true WHERE id = $1`, userID)
+	if err != nil {
+		return fmt.Errorf("store: mark onboarding complete: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrUserNotFound
+	}
+	return nil
+}
+
+// GetActiveSeasonTime — waktu game season aktif.
+//
+// Dipakai jalur sync satu-pemain sebelum `ProcessPlayer`. Dipisah dari
+// `GetActiveSeason` supaya pemanggil yang hanya butuh waktu tidak ikut
+// mengambil kolom lain, dan supaya `season_clock` tetap dibaca dari satu
+// lapisan (dulu handler menulis query ini sendiri).
+func (s *Store) GetActiveSeasonTime(ctx context.Context) (time.Time, error) {
+	var t time.Time
+	err := s.pool.QueryRow(ctx,
+		`SELECT current_game_time FROM season_clock WHERE status = 'active' LIMIT 1`).Scan(&t)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return time.Time{}, ErrUserNotFound // reuse: "belum ada season"
+	}
+	if err != nil {
+		return time.Time{}, fmt.Errorf("store: get active season time: %w", err)
+	}
+	return t, nil
+}
+
 // UpdatePasswordHash — update password_hash user.
 func (s *Store) UpdatePasswordHash(ctx context.Context, userID, hash string) error {
 	tag, err := s.pool.Exec(ctx, `UPDATE users SET password_hash = $1 WHERE id = $2`, hash, userID)
