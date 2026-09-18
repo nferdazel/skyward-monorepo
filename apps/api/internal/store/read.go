@@ -3,6 +3,7 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -624,6 +625,109 @@ type CreditReport struct {
 	HasHistory       bool     `json:"has_history"`
 }
 
+// creditTierPolicy adalah kebijakan satu tier dari `credit_tier_config`.
+//
+// Nilai-nilainya dulu ditulis ulang sebagai konstanta di dua tempat di dalam
+// `GetCreditReport`, dan keduanya selalu memakai angka tier "Standard" tanpa
+// melihat tier pemain. Akibatnya pemain Gold melihat plafon Rp 5 juta dan bunga
+// 12% padahal engine mengizinkan Rp 10 juta dan 5% — laporan yang dibaca pemain
+// berbeda dari yang akan dieksekusi `take_loan`.
+type creditTierPolicy struct {
+	MaxUnsecured float64
+	MaxSecured   float64
+	RateUnsec    float64
+	RateSecured  float64
+	MinLoan      float64
+	MaxActive    int
+}
+
+// defaultCreditTierPolicy — cadangan saat `credit_tier_config` tidak terbaca.
+// Sengaja memakai nilai tier Standard, tier paling konservatif, supaya kesalahan
+// baca tidak pernah menaikkan plafon pemain.
+//
+// Catatan: fallback di `engine.BankService.tierRate` untuk `rate_unsecured`
+// adalah 0.07, bukan 0.12. Itu bukan ketidaksamaan yang terlewat — 0.07 adalah
+// fallback asli `take_loan` di `00_baseline.sql` (baris 5209, 5219), dan engine
+// mempertahankannya sebagai port yang setia. Perbedaannya hanya muncul kalau
+// `credit_tier_config` hilang, dan sengaja tidak diseragamkan di sini supaya
+// jalur mutasi tidak berubah perilaku.
+func defaultCreditTierPolicy() creditTierPolicy {
+	return creditTierPolicy{
+		MaxUnsecured: 5000000,
+		MaxSecured:   25000000,
+		RateUnsec:    0.12,
+		RateSecured:  0.10,
+		MinLoan:      100000,
+		MaxActive:    3,
+	}
+}
+
+// creditTierPolicyFor membaca kebijakan tier dari `credit_tier_config`.
+//
+// Ini sumber yang sama dengan yang dipakai `engine.BankService.tierRate`, jadi
+// plafon dan bunga yang ditampilkan ke pemain adalah yang akan dipakai engine.
+// `min_loan` dan `max_active_loans` berada di akar objek, bukan di dalam tier.
+func (s *Store) creditTierPolicyFor(ctx context.Context, tier string) creditTierPolicy {
+	p := defaultCreditTierPolicy()
+	if tier == "" {
+		tier = "Standard"
+	}
+	var policyJSON []byte
+	err := s.pool.QueryRow(ctx,
+		`SELECT COALESCE(value->$1, '{}'::jsonb) FROM game_config WHERE key='credit_tier_config'`,
+		tier).Scan(&policyJSON)
+	if err == nil {
+		var raw struct {
+			MaxUnsecured *float64 `json:"max_unsecured"`
+			MaxSecured   *float64 `json:"max_secured"`
+			RateUnsec    *float64 `json:"rate_unsecured"`
+			RateSecured  *float64 `json:"rate_secured"`
+		}
+		if json.Unmarshal(policyJSON, &raw) == nil {
+			if raw.MaxUnsecured != nil {
+				p.MaxUnsecured = *raw.MaxUnsecured
+			}
+			if raw.MaxSecured != nil {
+				p.MaxSecured = *raw.MaxSecured
+			}
+			if raw.RateUnsec != nil {
+				p.RateUnsec = *raw.RateUnsec
+			}
+			if raw.RateSecured != nil {
+				p.RateSecured = *raw.RateSecured
+			}
+		}
+	}
+	// min_loan / max_active_loans di akar objek, sama untuk semua tier.
+	var root struct {
+		MinLoan   *float64 `json:"min_loan"`
+		MaxActive *int     `json:"max_active_loans"`
+	}
+	var rootJSON []byte
+	if err := s.pool.QueryRow(ctx,
+		`SELECT value FROM game_config WHERE key='credit_tier_config'`).Scan(&rootJSON); err == nil {
+		if json.Unmarshal(rootJSON, &root) == nil {
+			if root.MinLoan != nil {
+				p.MinLoan = *root.MinLoan
+			}
+			if root.MaxActive != nil {
+				p.MaxActive = *root.MaxActive
+			}
+		}
+	}
+	return p
+}
+
+// applyCreditPolicy memindahkan kebijakan tier ke laporan kredit.
+func applyCreditPolicy(cr *CreditReport, p creditTierPolicy) {
+	cr.MaxUnsecuredLoan = p.MaxUnsecured
+	cr.MaxSecuredLoan = p.MaxSecured
+	cr.UnsecuredRate = p.RateUnsec
+	cr.SecuredRate = p.RateSecured
+	cr.MinLoanAmount = p.MinLoan
+	cr.MaxActiveLoans = p.MaxActive
+}
+
 func (s *Store) GetCreditReport(ctx context.Context, userID string) (*CreditReport, error) {
 	cr := &CreditReport{Suggestions: []string{}}
 	// Baca credit score
@@ -640,27 +744,17 @@ func (s *Store) GetCreditReport(ctx context.Context, userID string) (*CreditRepo
 		cr.HasHistory = false
 		cr.CreditScore = nil
 		cr.Tier = "Standard"
-		cr.MaxUnsecuredLoan = 5000000
-		cr.MaxSecuredLoan = 25000000
-		cr.BaseInterestRate = 0.12
-		cr.UnsecuredRate = 0.12
-		cr.SecuredRate = 0.10
-		cr.MinLoanAmount = 100000
-		cr.MaxActiveLoans = 3
+		applyCreditPolicy(cr, s.creditTierPolicyFor(ctx, cr.Tier))
 		cr.Suggestions = []string{"Build your fleet and routes to establish credit history."}
 		return cr, nil
 	}
 	cr.HasHistory = true
 
-	// Baca tier config dari game_config
+	// Kebijakan tier dari `credit_tier_config`, dibaca sekali dan dipakai untuk
+	// mengisi laporan.
 	cr.Tier = cr.CreditScore.Tier
-	cr.MaxUnsecuredLoan = 5000000
-	cr.MaxSecuredLoan = 25000000
-	cr.UnsecuredRate = 0.12
-	cr.SecuredRate = 0.10
-	cr.MinLoanAmount = 100000
-	cr.MaxActiveLoans = 3
-	// TODO Fase 6: baca credit_tier_config JSON, resolve tier → policy
+	applyCreditPolicy(cr, s.creditTierPolicyFor(ctx, cr.Tier))
+	// BaseRate mengikuti rate unsecured tier, seperti sebelumnya.
 	cr.BaseInterestRate = cr.UnsecuredRate
 
 	// Suggestions
