@@ -357,7 +357,7 @@ Diverifikasi pada database hasil `make migrate`, termasuk lima jalur error reset
 password (404 / 400 / 200 / 401 tanpa token / 401 token salah) dan login ulang
 dengan password baru.
 
-## KISS-2 (SEBAGIAN SELESAI) — Widget raksasa
+## KISS-2 (SELESAI SEBAGIAN BESAR, sisa dicatat) — Widget raksasa
 
 Lima berkas teratas klien menampung terlalu banyak tanggung jawab dalam satu
 State:
@@ -378,31 +378,47 @@ State:
 | `routes_view.dart` | SELESAI (`b55a2de`) | Helper peta pindah; 2017 -> 1864 baris |
 | `overview_tab.dart` | SELESAI (`6e60b9b`) | `SkeletonCard` pindah; 1289 -> 1254 baris |
 | `leaderboard_view.dart` | TIDAK DIKERJAKAN | Hanya 2 kelas; widget mandiri sudah diekstrak lebih dulu |
-| `fleet_view.dart` | SEBAGIAN | 2413 baris. Lihat catatan di bawah. |
+| `fleet_view.dart` | SEBAGIAN | 2413 -> 1587 baris (-34%). Lihat catatan di bawah. |
 
 Catatan plan untuk `leaderboard_view.dart` ("satu State dengan 12 `_build*`")
 tidak akurat: jumlah sebenarnya 14 metode `_build*`, dan yang penting, tidak ada
 satupun yang layak dipindah karena semuanya saling memanggil dan membaca state.
 Memaksakan pemisahan di sana berarti menulis ulang, bukan memindahkan.
 
-`fleet_view.dart` diukur setelah KISS-3 selesai: 2413 baris, 27 metode dalam
-satu State, total 2050 baris. Yang benar-benar murni fungsi dari parameter hanya
-44 baris (1.8% berkas): `_buildAcquisitionBadge` (6), `_buildWearConditionCell`
-(32), `_tableHeaderCell` (3), `_tableCell` (3). Sepuluh metode terbesar
-(`_buildCatalogRow` 265, `_showAcquireSeatConfigDialog` 232,
-`_showFinanceDialog` 226, `_showSeatConfigDialog` 171, `_buildFleetRow` 171,
-`_buildAcquireTab` 168, `_buildActiveFleetTab` 126, `_confirmDisposal` 104,
-`_confirmRepair` 86, `_buildFilterSortBar` 78) semuanya membaca
-`_selected*`/`_history*`/cubit atau memanggil `setState`, jadi mengekstraknya
-berarti mengubahnya menjadi widget berstate dengan parameter baru. Itu penulisan
-ulang, bukan pemindahan, dan di luar lingkup item ini.
+**Yang sudah dikerjakan** (lima dialog + dua widget, tiap langkah satu commit
+dengan test yang membuka dialognya seperti pemain dan sudah dibuktikan
+fail-then-pass):
 
-**Utang yang dicatat, bukan dikerjakan.** Kalau `fleet_view.dart` perlu dipecah
-sungguh-sungguh, langkahnya adalah memindahkan state per dialog ke widget
-tersendiri (bukan sekadar memindahkan metode), satu dialog per commit, dengan
-test yang membuka dialog itu seperti pemain. Itu pekerjaan tersendiri, bukan
-ekor dari KISS-2. Memaksakannya sekarang hanya memindahkan 1.8% berkas sambil
-menambah empat kelas kecil, dan itu tidak memperbaiki apa pun.
+| Berkas baru | Asal | Bukti |
+|---|---|---|
+| `take_loan_dialog.dart` | `bank_panel.dart` | bank_panel 1318 -> 1082 |
+| `route_map_overlay.dart` | `routes_view.dart` | routes_view 2017 -> 1864 |
+| `skeleton_card.dart` | `overview_tab.dart` | overview_tab 1289 -> 1254 |
+| `seat_config_dialog.dart` + `seat_adjustment_row.dart` | `fleet_view.dart` | menjalankan dialog, kursi 121 terkirim |
+| `acquire_seat_config_dialog.dart` | `fleet_view.dart` | membuka via tombol beli, alokasi 189 |
+| `finance_dialog.dart` | `fleet_view.dart` | bunga 7% dan plafon 40 juta dari BankCubit |
+| `disposal_confirm_dialog.dart` + `repair_confirm_dialog.dart` | `fleet_view.dart` | nilai jual dan biaya perawatan dari server |
+
+Koreksi penting terhadap catatan awal: saya sempat menulis bahwa semua metode
+besar di `fleet_view.dart` "menempel ke state", dan itu KELIRU. Pengukuran ulang
+menunjukkan lima dialog terbesar justru tidak menyentuh field state sama sekali,
+hanya membaca satu cubit lewat `context.read`. Karena itu pemindahannya mungkin,
+bukan penulisan ulang seperti dugaan awal.
+
+**Utang yang dicatat, bukan dikerjakan.** Sisa `fleet_view.dart` (1587 baris)
+adalah komposisi tata letak tab. Yang terbesar adalah keluarga tabel katalog:
+`_buildCatalogRow` (263), `_buildAcquireTab` (170), `_buildActiveFleetTab`
+(117), `_buildFilterSortBar` (78), `_buildActiveFleetTable` (65),
+`_buildCatalogTable` (57). Enam metode ini saling memanggil dan harus pindah
+BERSAMA, dan `_buildCatalogRow` butuh callback untuk dua dialog yang sudah
+dipindah (`_openAcquireSeatConfigDialog`, `_openFinanceDialog`) plus helper
+`_creditTierRank` dan `_tableCell`.
+
+Itu bukan pemindahan, melainkan merancang widget dengan sekitar sepuluh
+parameter dan dua callback. Bukti "identik karakter-per-karakter" yang dipakai
+di semua langkah sebelumnya tidak berlaku lagi, jadi risikonya berbeda kelas.
+Pekerjaan itu layak dikerjakan tersendiri, dengan test alur beli lewat UI, bukan
+sebagai ekor KISS-2.
 
 **Rancangan, bertahap dan tanpa penulisan ulang.** Jangan pecah berdasarkan
 "biar rapi", pecah berdasarkan sesuatu yang bisa diuji:
