@@ -31,6 +31,7 @@ import '../../../routes/presentation/cubit/routes_cubit.dart';
 import '../../../simulation/presentation/cubit/simulation_cubit.dart';
 import '../../domain/overview_snapshot.dart';
 import '../widgets/achievements_summary_card.dart';
+import '../widgets/skeleton_card.dart';
 
 /// Local-only copy for the overview cockpit. Consolidates into AppStrings at
 /// the orchestrator's discretion (per redesign brief).
@@ -786,7 +787,7 @@ class OverviewTab extends StatelessWidget {
         const AppSectionHeader(title: 'ACTIVE WORLD EVENTS'),
         const SizedBox(height: AppSpacing.md),
         if (eventsState is EventsLoading || eventsState is EventsInitial)
-          const _SkeletonCard(height: 64)
+          const SkeletonCard(height: 64)
         else if (eventsState is EventsError)
           _buildRailError(
             message: eventsState.message,
@@ -855,7 +856,7 @@ class OverviewTab extends StatelessWidget {
 
     if (achievementsState is AchievementsLoading ||
         achievementsState is AchievementsInitial) {
-      return const _SkeletonCard(height: 64);
+      return const SkeletonCard(height: 64);
     }
     if (achievementsState is AchievementsError) {
       return _buildRailError(
@@ -1248,42 +1249,6 @@ class OverviewTab extends StatelessWidget {
       financeState: financeState,
       leaderboardState: leaderboardState,
       activeEvents: activeEvents,
-    );
-  }
-}
-
-/// Lightweight shimmer-free loading placeholder for rail cards.
-class _SkeletonCard extends StatelessWidget {
-  final double height;
-
-  const _SkeletonCard({required this.height});
-
-  @override
-  Widget build(BuildContext context) {
-    return CraftCard(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 120,
-            height: 10,
-            decoration: BoxDecoration(
-              color: AppTheme.textMuted.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(AppSpacing.radiusTight),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Container(
-            width: double.infinity,
-            height: height - AppSpacing.xxl,
-            decoration: BoxDecoration(
-              color: AppTheme.textMuted.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(AppSpacing.radiusTight),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

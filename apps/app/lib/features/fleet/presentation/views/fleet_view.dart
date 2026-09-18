@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -196,14 +195,13 @@ class _FleetViewState extends State<FleetView>
                           child: tabState.loadedIndexes.contains(0)
                               ? _buildActiveFleetTab(
                                   userId,
-                                  AppFormatters.currency,
                                   autoGroundingThreshold,
                                 )
                               : const SizedBox.shrink(),
                         ),
                         RepaintBoundary(
                           child: tabState.loadedIndexes.contains(1)
-                              ? _buildAcquireTab(userId, AppFormatters.currency)
+                              ? _buildAcquireTab(userId)
                               : const SizedBox.shrink(),
                         ),
                       ],
@@ -220,7 +218,6 @@ class _FleetViewState extends State<FleetView>
 
   Widget _buildActiveFleetTab(
     String userId,
-    NumberFormat currencyFormat,
     double autoGroundingThreshold,
   ) {
     return BlocBuilder<FleetCubit, FleetState>(
@@ -300,7 +297,6 @@ class _FleetViewState extends State<FleetView>
             _buildFleetSummaryStrip(
               fleetList,
               autoGroundingThreshold,
-              currencyFormat,
             ),
             const SizedBox(height: AppSpacing.md),
             Expanded(
@@ -312,7 +308,6 @@ class _FleetViewState extends State<FleetView>
                     context,
                     fleetList,
                     userId,
-                    currencyFormat,
                     isActionLoading,
                     autoGroundingThreshold,
                     assignedFleetIds,
@@ -328,8 +323,7 @@ class _FleetViewState extends State<FleetView>
                       context,
                       selectedAircraft,
                       userId,
-                      currencyFormat,
-                    ),
+                      ),
                     onSaveCabinConfig: (eco, bus, first) {
                       context.read<FleetCubit>().configureSeats(
                             userId: userId,
@@ -352,7 +346,6 @@ class _FleetViewState extends State<FleetView>
   Widget _buildFleetSummaryStrip(
     List<UserFleetAircraft> fleet,
     double threshold,
-    NumberFormat currencyFormat,
   ) {
     final ready =
         fleet.where((a) => !a.isMaintenanceGrounded(threshold)).length;
@@ -385,13 +378,13 @@ class _FleetViewState extends State<FleetView>
           _buildVerticalDivider(),
           _buildSummaryKpi(
             AppStrings.fleetSummaryLeaseBurn,
-            currencyFormat.format(leaseBurn),
+            AppFormatters.currency.format(leaseBurn),
             AppTheme.warning,
           ),
           _buildVerticalDivider(),
           _buildSummaryKpi(
             AppStrings.fleetSummaryRepairAll,
-            currencyFormat.format(repairAll),
+            AppFormatters.currency.format(repairAll),
             AppTheme.error,
           ),
         ],
@@ -432,7 +425,6 @@ class _FleetViewState extends State<FleetView>
     BuildContext context,
     List<UserFleetAircraft> fleetList,
     String userId,
-    NumberFormat currencyFormat,
     bool isActionLoading,
     double autoGroundingThreshold,
     Set<String> assignedFleetIds,
@@ -479,8 +471,7 @@ class _FleetViewState extends State<FleetView>
                         context,
                         aircraft,
                         userId,
-                        currencyFormat,
-                        isActionLoading,
+                            isActionLoading,
                         autoGroundingThreshold,
                         assignedFleetIds,
                       ),
@@ -499,7 +490,6 @@ class _FleetViewState extends State<FleetView>
     BuildContext context,
     UserFleetAircraft aircraft,
     String userId,
-    NumberFormat currencyFormat,
     bool isActionLoading,
     double autoGroundingThreshold,
     Set<String> assignedFleetIds,
@@ -562,7 +552,6 @@ class _FleetViewState extends State<FleetView>
               isAssigned,
               isLeased: aircraft.acquisitionType == 'lease',
               leasePricePerMonth: aircraft.model.leasePricePerMonth,
-              currencyFormat: currencyFormat,
             )),
             _tableCell(
               Builder(
@@ -605,7 +594,7 @@ class _FleetViewState extends State<FleetView>
                     context: context,
                     aircraft: aircraft,
                     userId: userId,
-                    currencyFormat: currencyFormat,
+
                     isAssigned: isAssigned,
                     isActionLoading: isActionLoading,
                   ),
@@ -638,7 +627,7 @@ class _FleetViewState extends State<FleetView>
                         : aircraft.condition < 100.0
                             ? AppTableIconAction(
                                 tooltip:
-                                    '${AppStrings.repairTooltipPrefix}${currencyFormat.format(aircraft.repairCost)}',
+                                    '${AppStrings.repairTooltipPrefix}${AppFormatters.currency.format(aircraft.repairCost)}',
                                 icon: Icons.build_outlined,
                                 size: 32,
                                 iconSize: 16,
@@ -648,8 +637,7 @@ class _FleetViewState extends State<FleetView>
                                         context,
                                         aircraft,
                                         userId,
-                                        currencyFormat,
-                                      ),
+                                                          ),
                               )
                             : AppBadge(
                                 label: AppStrings.okStatus,
@@ -917,7 +905,7 @@ class _FleetViewState extends State<FleetView>
     );
   }
 
-  Widget _buildAcquireTab(String userId, NumberFormat currencyFormat) {
+  Widget _buildAcquireTab(String userId) {
     return BlocBuilder<FleetCubit, FleetState>(
       buildWhen: (previous, current) => current is! FleetActionSuccess,
       builder: (context, state) {
@@ -1074,8 +1062,7 @@ class _FleetViewState extends State<FleetView>
                       context,
                       filteredCatalog,
                       userId,
-                      currencyFormat,
-                      isActionLoading,
+                        isActionLoading,
                       cashBalance,
                       maxFinancingAmount,
                       currentCreditTier,
@@ -1274,7 +1261,6 @@ class _FleetViewState extends State<FleetView>
     BuildContext context,
     List<AircraftModel> catalog,
     String userId,
-    NumberFormat currencyFormat,
     bool isActionLoading,
     double cashBalance,
     double maxFinancingAmount,
@@ -1315,7 +1301,6 @@ class _FleetViewState extends State<FleetView>
                     context,
                     model,
                     userId,
-                    currencyFormat,
                     isActionLoading,
                     cashBalance,
                     maxFinancingAmount,
@@ -1334,7 +1319,6 @@ class _FleetViewState extends State<FleetView>
     BuildContext context,
     AircraftModel model,
     String userId,
-    NumberFormat currencyFormat,
     bool isActionLoading,
     double cashBalance,
     double maxFinancingAmount,
@@ -1473,7 +1457,7 @@ class _FleetViewState extends State<FleetView>
             _tableCell(
               Tooltip(
                 message:
-                    '${AppStrings.burnHeader}: ${model.fuelBurnPerKm} L/km · ${AppStrings.maintenanceCostLabel}: ${currencyFormat.format(model.maintenanceCostPerHour)}/hr',
+                    '${AppStrings.burnHeader}: ${model.fuelBurnPerKm} L/km · ${AppStrings.maintenanceCostLabel}: ${AppFormatters.currency.format(model.maintenanceCostPerHour)}/hr',
                 child: Align(
                   alignment: Alignment.centerRight,
                   child: Text(
@@ -1492,7 +1476,7 @@ class _FleetViewState extends State<FleetView>
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    'Lease ${currencyFormat.format(model.leasePricePerMonth)}/mo',
+                    'Lease ${AppFormatters.currency.format(model.leasePricePerMonth)}/mo',
                     textAlign: TextAlign.right,
                     style: AppTypography.monoValue.copyWith(
                       color: AppTheme.textPrimary,
@@ -1500,7 +1484,7 @@ class _FleetViewState extends State<FleetView>
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   Text(
-                    'Buy ${currencyFormat.format(model.purchasePrice)}',
+                    'Buy ${AppFormatters.currency.format(model.purchasePrice)}',
                     textAlign: TextAlign.right,
                     style: AppTypography.monoValue.copyWith(
                       color: AppTheme.primary,
@@ -2080,7 +2064,6 @@ class _FleetViewState extends State<FleetView>
     BuildContext context,
     UserFleetAircraft aircraft,
     String userId,
-    NumberFormat currencyFormat,
   ) {
     final fleetCubit = context.read<FleetCubit>();
 
@@ -2094,7 +2077,7 @@ class _FleetViewState extends State<FleetView>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '${AppStrings.repairConfirmPrefix}${aircraft.tailNumber}${AppStrings.repairConfirmMiddle}${aircraft.model.modelName}${AppStrings.repairConfirmSuffix}${currencyFormat.format(aircraft.repairCost)}${AppStrings.repairConfirmCostSuffix}',
+                '${AppStrings.repairConfirmPrefix}${aircraft.tailNumber}${AppStrings.repairConfirmMiddle}${aircraft.model.modelName}${AppStrings.repairConfirmSuffix}${AppFormatters.currency.format(aircraft.repairCost)}${AppStrings.repairConfirmCostSuffix}',
                 style: AppTypography.bodyMedium.copyWith(
                   color: AppTheme.textPrimary,
                 ),
@@ -2168,7 +2151,6 @@ class _FleetViewState extends State<FleetView>
     required BuildContext context,
     required UserFleetAircraft aircraft,
     required String userId,
-    required NumberFormat currencyFormat,
     required bool isAssigned,
     required bool isActionLoading,
   }) {
@@ -2188,7 +2170,6 @@ class _FleetViewState extends State<FleetView>
               context,
               aircraft,
               userId,
-              currencyFormat,
               isAssigned,
             ),
     );
@@ -2198,7 +2179,6 @@ class _FleetViewState extends State<FleetView>
     BuildContext context,
     UserFleetAircraft aircraft,
     String userId,
-    NumberFormat currencyFormat,
     bool isAssigned,
   ) {
     if (isAssigned) {
@@ -2227,8 +2207,8 @@ class _FleetViewState extends State<FleetView>
             children: [
               Text(
                 isLease
-                    ? '${AppStrings.terminateLeaseConfirmPrefix}${aircraft.tailNumber}${AppStrings.terminateLeaseConfirmMiddle}${aircraft.model.modelName}${AppStrings.terminateLeaseConfirmSuffix}${currencyFormat.format(exposureAmount)}${AppStrings.disposalFinalLine}'
-                    : '${AppStrings.sellAircraftConfirmPrefix}${aircraft.tailNumber}${AppStrings.sellAircraftConfirmMiddle}${aircraft.model.modelName}${AppStrings.sellAircraftConfirmSuffix}${currencyFormat.format(exposureAmount)}${AppStrings.disposalFinalLine}',
+                    ? '${AppStrings.terminateLeaseConfirmPrefix}${aircraft.tailNumber}${AppStrings.terminateLeaseConfirmMiddle}${aircraft.model.modelName}${AppStrings.terminateLeaseConfirmSuffix}${AppFormatters.currency.format(exposureAmount)}${AppStrings.disposalFinalLine}'
+                    : '${AppStrings.sellAircraftConfirmPrefix}${aircraft.tailNumber}${AppStrings.sellAircraftConfirmMiddle}${aircraft.model.modelName}${AppStrings.sellAircraftConfirmSuffix}${AppFormatters.currency.format(exposureAmount)}${AppStrings.disposalFinalLine}',
                 style: AppTypography.bodyMedium.copyWith(
                   color: AppTheme.textPrimary,
                 ),
@@ -2244,7 +2224,7 @@ class _FleetViewState extends State<FleetView>
                       label: isLease
                           ? AppStrings.terminationFeeLabel
                           : AppStrings.saleProceedsLabel,
-                      value: currencyFormat.format(exposureAmount),
+                      value: AppFormatters.currency.format(exposureAmount),
                       valueColor: isLease ? AppTheme.warning : AppTheme.success,
                     ),
                   ],
@@ -2376,7 +2356,6 @@ class _FleetViewState extends State<FleetView>
     bool isAssigned, {
     bool isLeased = false,
     double leasePricePerMonth = 0,
-    NumberFormat? currencyFormat,
   }) {
     if (isGrounded) {
       return AppBadge.error(label: AppStrings.groundedState);
@@ -2386,7 +2365,7 @@ class _FleetViewState extends State<FleetView>
       return AppBadge.success(label: AppStrings.earningStatus);
     } else {
       // IDLE — not assigned, not grounded, not maintenance
-      if (isLeased && currencyFormat != null) {
+      if (isLeased) {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
@@ -2394,7 +2373,7 @@ class _FleetViewState extends State<FleetView>
             AppBadge.warning(label: AppStrings.idleStatus),
             const SizedBox(height: 2),
             Text(
-              '−${currencyFormat.format(leasePricePerMonth)}/mo',
+              '−${AppFormatters.currency.format(leasePricePerMonth)}/mo',
               style: AppTypography.badgeText.copyWith(
                 color: AppTheme.warning,
                 letterSpacing: AppTypography.spacingNone,
