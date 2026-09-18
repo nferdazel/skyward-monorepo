@@ -16,7 +16,6 @@ import '../../../../presentation/widgets/app_badge.dart';
 import '../../../../presentation/widgets/app_button.dart';
 import '../../../../presentation/widgets/app_card.dart';
 import '../../../../presentation/widgets/app_dialog_shell.dart';
-import '../../../../presentation/widgets/app_dropdown_field.dart';
 import '../../../../presentation/widgets/app_empty_state.dart';
 import '../../../../presentation/widgets/app_info_strip.dart';
 import '../../../../presentation/widgets/app_labeled_value.dart';
@@ -41,6 +40,7 @@ import '../../domain/fleet_models.dart';
 import '../cubit/fleet_cubit.dart';
 import '../cubit/fleet_state.dart';
 import '../widgets/acquire_seat_config_dialog.dart';
+import '../widgets/finance_dialog.dart';
 import '../widgets/seat_config_dialog.dart';
 
 class FleetView extends StatefulWidget {
@@ -1341,7 +1341,7 @@ class _FleetViewState extends State<FleetView>
                     iconSize: 16,
                     onPressed: isActionLoading || isTierLocked
                         ? null
-                        : () => _showFinanceDialog(context, model, userId),
+                        : () => _openFinanceDialog(context, model, userId),
                   ),
                 ],
               ),
@@ -1386,247 +1386,28 @@ class _FleetViewState extends State<FleetView>
     );
   }
 
-  void _showFinanceDialog(
+  void _openFinanceDialog(
     BuildContext context,
     AircraftModel model,
     String userId,
   ) {
-    double downPaymentPct = 0.20;
-    int termMonths = 60;
-    final bankState = context.read<BankCubit>().state;
-    final creditReport = switch (bankState) {
-      BankLoaded(:final creditReport) => creditReport,
-      BankLoanSuccess(:final creditReport) => creditReport,
-      BankRefinanceSuccess(:final creditReport) => creditReport,
-      BankError(:final creditReport) => creditReport,
-      _ => null,
-    };
-    final securedRate = creditReport?.securedInterestRate ?? 0.10;
-    final maxFinancingAmount =
-        creditReport?.maxFinancingAmount ?? model.purchasePrice;
-
-    showDialog(
+    showDialog<void>(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) {
-          final downPayment = model.purchasePrice * downPaymentPct;
-          final principal = model.purchasePrice - downPayment;
-          final totalRepayable = principal * (1 + securedRate);
-          final monthlyPayment = totalRepayable / termMonths;
-          final weeklyPayment = monthlyPayment / 4.33;
-          final totalCost = downPayment + (monthlyPayment * termMonths);
-          final isEligible = model.purchasePrice <= maxFinancingAmount;
-
-          return AppDialogShell(
-            title: AppStrings.financeDialogTitle
-                .replaceFirst('%s', model.manufacturer)
-                .replaceFirst('%s', model.modelName),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  isEligible
-                      ? AppStrings.financeSecuredPricingDesc
-                      : AppStrings.financeExceedsCapDesc,
-                  style: AppTypography.captionRegular.copyWith(
-                    color: isEligible ? AppTheme.textMuted : AppTheme.warning,
-                  ),
-                ),
-                if (!isEligible) ...[
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    AppStrings.improveCreditTierHint,
-                    style: AppTypography.captionRegular.copyWith(
-                      color: AppTheme.textMuted,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: AppSpacing.sm),
-                // Down payment slider
-                Text(
-                  '${AppStrings.downPaymentLabel} ${(downPaymentPct * 100).round()}%',
-                  style: AppTypography.bodyMedium,
-                ),
-                Slider(
-                  value: downPaymentPct,
-                  min: 0.10,
-                  max: 0.50,
-                  divisions: 8,
-                  onChanged: (v) => setDialogState(() => downPaymentPct = v),
-                ),
-                // Down-payment preset chips
-                Wrap(
-                  spacing: AppSpacing.sm,
-                  children: [0.10, 0.20, 0.30, 0.50].map((pct) {
-                    final isSelected =
-                        (downPaymentPct * 100).round() == (pct * 100).round();
-                    return GestureDetector(
-                      onTap: () =>
-                          setDialogState(() => downPaymentPct = pct),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.md,
-                          vertical: AppSpacing.xs,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? AppTheme.primary.withValues(alpha: 0.15)
-                              : AppTheme.background,
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(
-                            color: isSelected
-                                ? AppTheme.primary
-                                : AppTheme.border,
-                          ),
-                        ),
-                        child: Text(
-                          '${(pct * 100).round()}%',
-                          style: AppTypography.badgeText.copyWith(
-                            color: isSelected
-                                ? AppTheme.primary
-                                : AppTheme.textSecondary,
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-                Text(
-                  AppFormatters.currency.format(downPayment),
-                  style: AppTypography.monoValue,
-                ),
-
-                const SizedBox(height: AppSpacing.lg),
-
-                // Term selector
-                AppDropdownField<int>(
-                  label: AppStrings.financingTermLabel,
-                  value: termMonths,
-                  items: [12, 24, 36, 48, 60]
-                      .map(
-                        (m) => DropdownMenuItem(
-                          value: m,
-                          child: Text(
-                            '$m months (${m ~/ 12} yr)',
-                            style: AppTypography.badgeText.copyWith(
-                              color: AppTheme.textPrimary,
-                            ),
-                          ),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (v) {
-                    if (v != null) setDialogState(() => termMonths = v);
-                  },
-                ),
-
-                const SizedBox(height: AppSpacing.lg),
-
-                // Summary
-                AppInfoStrip(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _summaryRow(
-                        AppStrings.aircraftPriceLabel,
-                        AppFormatters.currency.format(model.purchasePrice),
-                      ),
-                      _summaryRow(
-                        AppStrings.financingCapLabel,
-                        AppFormatters.currency.format(maxFinancingAmount),
-                      ),
-                      _summaryRow(
-                        AppStrings.securedRateLabel,
-                        '${(securedRate * 100).toStringAsFixed(1)}% APR',
-                      ),
-                      _summaryRow(
-                        AppStrings.downPaymentLabel,
-                        AppFormatters.currency.format(downPayment),
-                      ),
-                      _summaryRow(
-                        AppStrings.monthlyServicingLabel,
-                        AppFormatters.currency.format(monthlyPayment),
-                      ),
-                      _summaryRow(
-                        AppStrings.weeklyServicingLabel,
-                        AppFormatters.currency.format(weeklyPayment),
-                      ),
-                      _summaryRow(
-                        AppStrings.totalCostLabel,
-                        AppFormatters.currency.format(totalCost),
-                      ),
-                      _summaryRow(
-                        AppStrings.vsBuyOutrightLabel,
-                        '+${AppFormatters.currency.format(totalCost - model.purchasePrice)}',
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: AppSpacing.lg),
-
-                // Confirm
-                Row(
-                  children: [
-                    Expanded(
-                      child: AppButton(
-                        text: AppStrings.cancel,
-                        onPressed: () => Navigator.pop(ctx),
-                        type: AppButtonType.secondary,
-                        height: 40,
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: AppButton(
-                        text: AppStrings.financeAircraft,
-                        onPressed: !isEligible
-                            ? null
-                            : () async {
-                                final success = await context
-                                    .read<BankCubit>()
-                                    .financeAircraft(
-                                      model.id,
-                                      downPaymentPct,
-                                      termMonths,
-                                    );
-                                if (success && context.mounted) {
-                                  await _refreshAuthoritativeSimulationState(
-                                    context,
-                                    userId,
-                                  );
-                                }
-                                if (context.mounted) Navigator.pop(ctx);
-                              },
-                        type: AppButtonType.primary,
-                        height: 40,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _summaryRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: AppTypography.captionRegular.copyWith(
-              color: AppTheme.textSecondary,
-            ),
-          ),
-          Text(value, style: AppTypography.monoValue),
+      builder: (_) => MultiBlocProvider(
+        providers: [
+          BlocProvider.value(value: context.read<FleetCubit>()),
+          BlocProvider.value(value: context.read<BankCubit>()),
         ],
+        child: FinanceDialog(
+          userId: userId,
+          model: model,
+          // Refresh lintas-cubit tetap di sini: dialog tidak memiliki cubit
+          // simulation, routes, dan finance.
+          onFinanced: () => _refreshAuthoritativeSimulationState(
+            context,
+            userId,
+          ),
+        ),
       ),
     );
   }
