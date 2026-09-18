@@ -98,8 +98,16 @@ func (r *RoutesService) Assign(ctx context.Context, userID, routeID, aircraftID 
 	if err != nil {
 		return &MutationResult{false, "Route not found.", 0}, nil
 	}
+	// `aircraft_id` kosong berarti melepas pesawat dari rute, bukan permintaan
+	// tanpa pesawat. UI tombol "lepas pesawat saat ini" memang mengirim string
+	// kosong (routes_view.dart: isUnassigning saat selectedId == null).
 	if aircraftID == "" {
-		return &MutationResult{false, "aircraft required", 0}, nil
+		if _, err := r.engine.Pool.Exec(ctx,
+			`UPDATE route_assignments SET assigned_aircraft_id=NULL WHERE id=$1 AND user_id=$2`,
+			routeID, userID); err != nil {
+			return &MutationResult{false, txFailureMessage(err), 0}, nil
+		}
+		return &MutationResult{true, "Aircraft unassigned from route.", 0}, nil
 	}
 	// safety threshold = max(auto_grounding_threshold, absolute_minimum_safety_limit)
 	var threshold float64

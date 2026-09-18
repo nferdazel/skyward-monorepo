@@ -178,6 +178,39 @@ void main() {
       expect(res.isNotEmpty, true);
     });
 
+    test(
+      'assignAircraft mengirim string kosong saat melepas pesawat',
+      () async {
+        // Server Go memperlakukan `aircraft_id: ""` sebagai pelepasan
+        // (`RoutesService.Assign`). Field ini TIDAK BOLEH dihilangkan dari body
+        // saat nilainya null, karena decodeBody akan meninggalkannya kosong dan
+        // hasilnya sama: string kosong. Test ini mengunci kontraknya supaya
+        // tidak ada yang "merapikan" jadi `{'aircraft_id': null}` atau
+        // menghapus field-nya.
+        Map<String, dynamic>? sent;
+        final gateway = GoRoutesGateway(
+          apiClient: ApiClient(
+            baseUrl: 'https://api.example.com/skyward',
+            httpClient: MockClient((request) async {
+              sent = jsonDecode(request.body) as Map<String, dynamic>;
+              return _json({'success': true}, 200);
+            }),
+          ),
+        );
+
+        await gateway.assignAircraft(
+          userId: 'u-1',
+          routeId: 'r-1',
+          aircraftId: null,
+        );
+
+        expect(sent, isNotNull);
+        expect(sent!.containsKey('aircraft_id'), isTrue,
+            reason: 'field harus tetap ada supaya server tahu ini pelepasan');
+        expect(sent!['aircraft_id'], '');
+      },
+    );
+
     test('updateRouteFrequencyAndPrice calls PATCH /routes/{id}', () async {
       final gateway = GoRoutesGateway(
         apiClient: ApiClient(
