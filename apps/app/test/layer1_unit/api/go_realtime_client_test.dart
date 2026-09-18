@@ -65,6 +65,13 @@ class _FakeWebSocketChannel implements WebSocketChannel {
 }
 
 void main() {
+  // Timeout untuk test yang menunggu backoff waktu NYATA (2s, 4s, 8s). Default
+  // 30 detik bisa tercapai saat suite berjalan paralel dengan beban CPU tinggi,
+  // dan itu pernah muncul sebagai kegagalan padahal logikanya benar. Dinaikkan
+  // di sini, bukan dengan fakeAsync, karena `go_realtime_client.dart` belum
+  // punya abstraksi waktu untuk disuntik; akar masalahnya dicatat sebagai utang.
+  const realTimeTimeout = Timeout(Duration(minutes: 2));
+
   group('GoRealtimeClient', () {
     test('connect exchanges the session for a ticket and connects', () async {
       late Uri connectedUri;
@@ -173,6 +180,10 @@ void main() {
 
         client.disconnect();
       },
+      // Test ini menunggu backoff waktu nyata. Timeout dinaikkan supaya beban
+      // CPU saat suite paralel tidak terlihat sebagai kegagalan; pernah terjadi
+      // sekali dan menyesatkan.
+      timeout: realTimeTimeout,
     );
 
     test('reconnect backoff grows while connections keep failing', () async {
@@ -213,7 +224,7 @@ void main() {
       );
 
       client.dispose();
-    });
+    }, timeout: realTimeTimeout);
 
     test(
       'disconnect during in-flight connect does not leave a live channel',
@@ -275,7 +286,7 @@ void main() {
       );
 
       client.dispose();
-    });
+    }, timeout: realTimeTimeout);
     test(
       'tanpa tiket (belum login) tidak connect dan tidak reconnect',
       () async {
@@ -306,6 +317,7 @@ void main() {
 
         client.dispose();
       },
+      timeout: realTimeTimeout,
     );
 
     test('kegagalan mengambil tiket dijadwalkan reconnect', () async {
@@ -331,7 +343,7 @@ void main() {
       );
 
       client.dispose();
-    });
+    }, timeout: realTimeTimeout);
 
     test('tiket baru diambil setiap percobaan connect', () async {
       final tickets = _FakeTicketFetcher();

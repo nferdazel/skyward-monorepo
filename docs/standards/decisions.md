@@ -41,6 +41,14 @@ Nothing here is scheduled. Each needs a decision before it needs code.
   Increasingly valuable as unreleased commits pile up.
 - **World demand tuning** — `demand_pool_scale` and `airports.demand_index`
   (split out of D6). Needs a design first.
+- **Six realtime tests wait on wall-clock time** — `go_realtime_client_test.dart`
+  and `go_realtime_refcount_test.dart` wait 2.5-8 real seconds for reconnect
+  backoff. Under parallel CPU load the scheduling slips and the default 30 s
+  timeout fires; this was observed once and looked like a failure. Their timeouts
+  were raised to 2 minutes, which treats the symptom. The real fix is to make
+  time injectable in `core/realtime/go_realtime_client.dart` and drive these with
+  `fakeAsync`, which needs a clock seam the class does not have today. Not done
+  because it is a separate piece of work from the DRY pass.
 - **Dead SQL functions in `00_baseline.sql`** — ~113 dumped from the Supabase
   era, 13 still reachable. Pruning was attempted 2026-09-17 and **abandoned**:
   a dependency analysis by reading code missed live callers twice (once a

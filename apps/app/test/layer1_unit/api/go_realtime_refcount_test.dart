@@ -43,12 +43,19 @@ class _FakeChannel implements WebSocketChannel {
   String? get protocol => null;
 }
 
-List<Map<String, dynamic>> _sentActions(_FakeChannel c) => c.sinkImpl.sentMessages
+List<Map<String, dynamic>> _sentActions(_FakeChannel c) => c
+    .sinkImpl
+    .sentMessages
     .map((m) => jsonDecode(m as String) as Map<String, dynamic>)
     .where((m) => m['action'] == 'subscribe' || m['action'] == 'unsubscribe')
     .toList();
 
 void main() {
+  // Test yang menunggu backoff waktu nyata, dengan alasan sama seperti
+  // go_realtime_client_test.dart: beban CPU saat suite paralel pernah membuat
+  // timeout default 30 detik tercapai walau logikanya benar.
+  const realTimeTimeout = Timeout(Duration(minutes: 2));
+
   group('GoRealtimeClient refcount (AUDIT-14)', () {
     test('dua subscriber channel sama: subscribe ke server hanya 1x', () async {
       final ch = _FakeChannel();
@@ -68,78 +75,90 @@ void main() {
       client.dispose();
     });
 
-    test('unsubscribe satu pemanggil TIDAK melepas channel utk pemanggil lain',
-        () async {
-      final ch = _FakeChannel();
-      final client = GoRealtimeClient(
-        ticketFetcher: _FakeTicketFetcher().call,
-        baseUrl: 'http://localhost:8090',
-        channelFactory: (_) => ch,
-      );
-      await client.connect();
+    test(
+      'unsubscribe satu pemanggil TIDAK melepas channel utk pemanggil lain',
+      () async {
+        final ch = _FakeChannel();
+        final client = GoRealtimeClient(
+          ticketFetcher: _FakeTicketFetcher().call,
+          baseUrl: 'http://localhost:8090',
+          channelFactory: (_) => ch,
+        );
+        await client.connect();
 
-      client.subscribe(['bank_transactions']);
-      client.subscribe(['bank_transactions']);
-      client.unsubscribe(['bank_transactions']); // cubit A close
+        client.subscribe(['bank_transactions']);
+        client.subscribe(['bank_transactions']);
+        client.unsubscribe(['bank_transactions']); // cubit A close
 
-      expect(_sentActions(ch).length, 1,
-          reason: 'masih dipegang cubit B, tidak boleh kirim unsubscribe');
+        expect(
+          _sentActions(ch).length,
+          1,
+          reason: 'masih dipegang cubit B, tidak boleh kirim unsubscribe',
+        );
 
-      client.unsubscribe(['bank_transactions']); // cubit B close
-      final actions = _sentActions(ch);
-      expect(actions.length, 2);
-      expect(actions.last['action'], 'unsubscribe');
-      expect(actions.last['channels'], ['bank_transactions']);
-      client.dispose();
-    });
+        client.unsubscribe(['bank_transactions']); // cubit B close
+        final actions = _sentActions(ch);
+        expect(actions.length, 2);
+        expect(actions.last['action'], 'unsubscribe');
+        expect(actions.last['channels'], ['bank_transactions']);
+        client.dispose();
+      },
+    );
 
-    test('re-subscribe setelah fully released mengirim subscribe lagi',
-        () async {
-      final ch = _FakeChannel();
-      final client = GoRealtimeClient(
-        ticketFetcher: _FakeTicketFetcher().call,
-        baseUrl: 'http://localhost:8090',
-        channelFactory: (_) => ch,
-      );
-      await client.connect();
+    test(
+      're-subscribe setelah fully released mengirim subscribe lagi',
+      () async {
+        final ch = _FakeChannel();
+        final client = GoRealtimeClient(
+          ticketFetcher: _FakeTicketFetcher().call,
+          baseUrl: 'http://localhost:8090',
+          channelFactory: (_) => ch,
+        );
+        await client.connect();
 
-      client.subscribe(['loans']);
-      client.unsubscribe(['loans']);
-      client.subscribe(['loans']); // dibuka lagi (nav balik ke Bank)
+        client.subscribe(['loans']);
+        client.unsubscribe(['loans']);
+        client.subscribe(['loans']); // dibuka lagi (nav balik ke Bank)
 
-      final actions = _sentActions(ch);
-      expect(actions.length, 3);
-      expect(actions[2]['action'], 'subscribe');
-      client.dispose();
-    });
+        final actions = _sentActions(ch);
+        expect(actions.length, 3);
+        expect(actions[2]['action'], 'subscribe');
+        client.dispose();
+      },
+    );
 
-    test('reconnect mengirim ulang semua channel aktif tanpa menambah ref',
-        () async {
-      final channels = <_FakeChannel>[];
-      final client = GoRealtimeClient(
-        ticketFetcher: _FakeTicketFetcher().call,
-        baseUrl: 'http://localhost:8090',
-        channelFactory: (_) {
-          final c = _FakeChannel();
-          channels.add(c);
-          return c;
-        },
-      );
-      await client.connect();
-      client.subscribe(['users', 'bank_transactions']);
+    test(
+      'reconnect mengirim ulang semua channel aktif tanpa menambah ref',
+      () async {
+        final channels = <_FakeChannel>[];
+        final client = GoRealtimeClient(
+          ticketFetcher: _FakeTicketFetcher().call,
+          baseUrl: 'http://localhost:8090',
+          channelFactory: (_) {
+            final c = _FakeChannel();
+            channels.add(c);
+            return c;
+          },
+        );
+        await client.connect();
+        client.subscribe(['users', 'bank_transactions']);
 
-      await channels.first.controller.close(); // putus tak terduga
-      await Future<void>.delayed(const Duration(seconds: 3)); // backoff 2s
-      expect(channels.length, greaterThanOrEqualTo(2));
+        await channels.first.controller.close(); // putus tak terduga
+        await Future<void>.delayed(const Duration(seconds: 3)); // backoff 2s
+        expect(channels.length, greaterThanOrEqualTo(2));
 
-      final re = _sentActions(channels[1]);
-      expect(re.length, 1, reason: 'satu batch resubscribe');
-      expect((re.single['channels'] as List).toSet(),
-          {'users', 'bank_transactions'});
+        final re = _sentActions(channels[1]);
+        expect(re.length, 1, reason: 'satu batch resubscribe');
+        expect((re.single['channels'] as List).toSet(), {
+          'users',
+          'bank_transactions',
+        });
 
-      // ref TIDAK boleh naik dobel: unsubscribe sekali = lepas penuh
-      client.unsubscribe(['users', 'bank_transactions']);
-      client.dispose();
-    });
+        // ref TIDAK boleh naik dobel: unsubscribe sekali = lepas penuh
+        client.unsubscribe(['users', 'bank_transactions']);
+        client.dispose();
+      },
+      timeout: realTimeTimeout,
+    );
   });
 }
