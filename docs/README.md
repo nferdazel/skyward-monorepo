@@ -33,7 +33,8 @@ docs/
 │   └── runbook.md       audit SQL, troubleshooting, admin tools, deploy
 ├── standards/
 │   ├── maintainer-standard.md  quality bar, money/config/route rules
-│   └── decisions.md     owner decisions + the work that is still open
+│   ├── decisions.md     owner decisions + the work that is still open
+│   └── design-principles-plan.md  DRY/KISS/SOLID audit and the fix order
 └── reviews/             dated historical audits (not living docs; gitignored, local-only)
     ├── aviation-realism-review-2026-09.md
     ├── game-design-review-2026-09.md
