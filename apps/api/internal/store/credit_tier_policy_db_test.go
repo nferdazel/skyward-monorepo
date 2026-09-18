@@ -94,6 +94,11 @@ func TestCreditReportUsesTierPolicy(t *testing.T) {
 			if cr.MinLoanAmount != 100000 {
 				t.Errorf("min loan %.0f, mau 100000", cr.MinLoanAmount)
 			}
+			// BaseInterestRate harus ikut terisi; versi pertama commit ini
+			// melewatkannya di jalur tanpa riwayat sehingga nilainya 0.
+			if cr.BaseInterestRate != tc.wantRate {
+				t.Errorf("base interest rate %.2f, mau %.2f", cr.BaseInterestRate, tc.wantRate)
+			}
 		})
 	}
 
@@ -123,6 +128,75 @@ func TestCreditReportUsesTierPolicy(t *testing.T) {
 		if cr.MaxUnsecuredLoan != 5000000 || cr.UnsecuredRate != 0.12 {
 			t.Errorf("tanpa riwayat harus Standard: plafon=%.0f bunga=%.2f",
 				cr.MaxUnsecuredLoan, cr.UnsecuredRate)
+		}
+		// `base_interest_rate` juga harus 0.12 di jalur ini, seperti
+		// `00_baseline.sql` (baris 2254). Sebelumnya field ini 0 karena
+		// applyCreditPolicy belum mengisinya.
+		if cr.BaseInterestRate != 0.12 {
+			t.Errorf("tanpa riwayat: base interest rate %.2f, mau 0.12", cr.BaseInterestRate)
+		}
+	})
+
+	// Jalur config hilang: laporan harus jatuh ke default konservatif
+	// (tier Standard), bukan nol atau nilai tinggi. Ini celah yang ditemukan
+	// review pada versi pertama test.
+	t.Run("config hilang", func(t *testing.T) {
+		const uname = "dry4_noconfig"
+		if _, err := pool.Exec(ctx, `DELETE FROM users WHERE username=$1`, uname); err != nil {
+			t.Fatal(err)
+		}
+		var uid string
+		if err := pool.QueryRow(ctx, `
+			INSERT INTO users (username, password_hash, company_name, ceo_name,
+			                   hq_airport_iata, game_current_time, actor_type, onboarding_completed)
+			VALUES ($1,'x','Dry4 NoCfg','Ceo','CGK',NOW(),'REAL',true) RETURNING id`,
+			uname).Scan(&uid); err != nil {
+			t.Fatal(err)
+		}
+		defer pool.Exec(ctx, `DELETE FROM users WHERE id=$1`, uid)
+		if _, err := pool.Exec(ctx, `
+			INSERT INTO credit_scores (user_id, score, tier, fleet_health_score,
+			    revenue_stability_score, debt_ratio_score, cash_reserves_score, profit_history_score)
+			VALUES ($1, 700, 'Gold', 100,100,100,100,100)
+			ON CONFLICT (user_id) DO UPDATE SET tier=EXCLUDED.tier`, uid); err != nil {
+			t.Fatal(err)
+		}
+
+		// Simpan nilai asli lalu hapus, dan pastikan dipulihkan apa pun yang terjadi.
+		var original []byte
+		if err := pool.QueryRow(ctx,
+			`SELECT value FROM game_config WHERE key='credit_tier_config'`).Scan(&original); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := pool.Exec(ctx,
+			`DELETE FROM game_config WHERE key='credit_tier_config'`); err != nil {
+			t.Fatal(err)
+		}
+		defer func() {
+			if _, err := pool.Exec(ctx,
+				`INSERT INTO game_config (key, value, category, description)
+				 VALUES ('credit_tier_config', $1, 'finance', 'restored by test')
+				 ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value`,
+				original); err != nil {
+				t.Errorf("GAGAL MEMULIHKAN credit_tier_config: %v", err)
+			}
+		}()
+
+		cr, err := s.GetCreditReport(ctx, uid)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if cr.MaxUnsecuredLoan != 5000000 {
+			t.Errorf("config hilang: plafon %.0f, mau 5000000 (konservatif)",
+				cr.MaxUnsecuredLoan)
+		}
+		if cr.UnsecuredRate != 0.12 || cr.BaseInterestRate != 0.12 {
+			t.Errorf("config hilang: bunga %.2f / base %.2f, mau 0.12 keduanya",
+				cr.UnsecuredRate, cr.BaseInterestRate)
+		}
+		if cr.MaxActiveLoans != 3 || cr.MinLoanAmount != 100000 {
+			t.Errorf("config hilang: maxActive=%d minLoan=%.0f, mau 3 / 100000",
+				cr.MaxActiveLoans, cr.MinLoanAmount)
 		}
 	})
 }

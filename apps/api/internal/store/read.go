@@ -645,12 +645,21 @@ type creditTierPolicy struct {
 // Sengaja memakai nilai tier Standard, tier paling konservatif, supaya kesalahan
 // baca tidak pernah menaikkan plafon pemain.
 //
-// Catatan: fallback di `engine.BankService.tierRate` untuk `rate_unsecured`
-// adalah 0.07, bukan 0.12. Itu bukan ketidaksamaan yang terlewat — 0.07 adalah
-// fallback asli `take_loan` di `00_baseline.sql` (baris 5209, 5219), dan engine
-// mempertahankannya sebagai port yang setia. Perbedaannya hanya muncul kalau
-// `credit_tier_config` hilang, dan sengaja tidak diseragamkan di sini supaya
-// jalur mutasi tidak berubah perilaku.
+// Catatan soal fallback saat `credit_tier_config` hilang: nilainya TIDAK
+// diseragamkan dengan engine, dan itu disengaja. Setiap fallback engine adalah
+// salinan dari fungsi SQL yang di-port, jadi mengubahnya berarti mengubah
+// perilaku mutasi:
+//   - `engine/bank.go:90,98,247` (take_loan, refinance) → 0.07 untuk
+//     `rate_unsecured`, dari `00_baseline.sql` baris 5209/5219/4578;
+//   - `engine/bank.go:245` (refinance) → 0.06 untuk `rate_secured`, dari
+//     `00_baseline.sql` baris 4578;
+//   - `engine/bank.go:344,360` (financing) → 0.10, dari `00_baseline.sql` 1819.
+//
+// Artinya saat config hilang, laporan di sini bisa menampilkan angka yang
+// berbeda dari yang akan dikenakan engine — arahnya selalu laporan lebih
+// konservatif (bunga lebih tinggi / plafon sama), bukan sebaliknya. Mengubah
+// salah satunya adalah keputusan produk, bukan kerapian, karena ia mengubah
+// angka pinjaman yang diterima pemain.
 func defaultCreditTierPolicy() creditTierPolicy {
 	return creditTierPolicy{
 		MaxUnsecured: 5000000,
@@ -719,6 +728,12 @@ func (s *Store) creditTierPolicyFor(ctx context.Context, tier string) creditTier
 }
 
 // applyCreditPolicy memindahkan kebijakan tier ke laporan kredit.
+//
+// BaseInterestRate diisi di sini, bukan di pemanggil, supaya kedua jalur
+// (dengan dan tanpa riwayat kredit) tidak bisa lupa mengisinya. Versi pertama
+// fungsi ini melewatkannya di jalur tanpa riwayat, sehingga pemain baru melihat
+// `base_interest_rate: 0` — padahal `00_baseline.sql` mengisinya 0.12 di jalur
+// itu. Menaruhnya di sini membuat field itu tidak bisa terlewat lagi.
 func applyCreditPolicy(cr *CreditReport, p creditTierPolicy) {
 	cr.MaxUnsecuredLoan = p.MaxUnsecured
 	cr.MaxSecuredLoan = p.MaxSecured
@@ -726,6 +741,7 @@ func applyCreditPolicy(cr *CreditReport, p creditTierPolicy) {
 	cr.SecuredRate = p.RateSecured
 	cr.MinLoanAmount = p.MinLoan
 	cr.MaxActiveLoans = p.MaxActive
+	cr.BaseInterestRate = p.RateUnsec
 }
 
 func (s *Store) GetCreditReport(ctx context.Context, userID string) (*CreditReport, error) {
@@ -754,8 +770,6 @@ func (s *Store) GetCreditReport(ctx context.Context, userID string) (*CreditRepo
 	// mengisi laporan.
 	cr.Tier = cr.CreditScore.Tier
 	applyCreditPolicy(cr, s.creditTierPolicyFor(ctx, cr.Tier))
-	// BaseRate mengikuti rate unsecured tier, seperti sebelumnya.
-	cr.BaseInterestRate = cr.UnsecuredRate
 
 	// Suggestions
 	if cr.CreditScore.FleetHealthScore < 80 {
