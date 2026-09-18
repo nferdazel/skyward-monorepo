@@ -357,6 +357,32 @@ func (e *Engine) botHandleRouteLifecycle(ctx context.Context, botID string, game
 				anyProfitable = true
 			}
 		}
+		// Rute individu yang merugi harus diperbaiki walau bot secara
+		// keseluruhan untung. Logika lama hanya menghitung "loss days" kalau
+		// SEMUA rute rugi (`!anyProfitable`), sehingga rute 88 flight yang
+		// profitnya -430k dibiarkan hidup selama ada rute lain yang untung.
+		// Probe membuktikan rute yang sama di frekuensi sehat +88k.
+		for _, p := range perf {
+			if p.Profit >= 0 {
+				continue
+			}
+			var freq int
+			e.Pool.QueryRow(ctx, `SELECT flights_per_week FROM route_assignments WHERE id=$1`, p.RouteID).Scan(&freq)
+			healthy := botTargetFlights(
+				int(p.Params.Capacity),
+				routeDailyDemand(p.Params.OriginDemand, p.Params.DestDemand,
+					p.Params.DistanceKM, p.Params.TicketPrice,
+					p.Config.TicketBase, p.Config.TicketKM,
+					p.Config.DemandPoolScale, p.Config.Demand),
+				calcMaxWeeklyFlights(p.Params.DistanceKM, int(p.Params.SpeedKMH),
+					p.Params.TurnaroundHours, p.Config.MaxWeekly),
+				defaultSchedRatio)
+			if healthy < freq {
+				_, _ = e.Routes.UpdateFreqPrice(ctx, botID, p.RouteID, 0, healthy)
+				e.Pool.Exec(ctx, `UPDATE bot_profiles SET last_route_change_at=$1 WHERE user_id=$2`, gameTime, botID)
+			}
+		}
+
 		if allProfitable && len(perf) > 0 {
 			e.Pool.Exec(ctx, `UPDATE bot_profiles SET consecutive_loss_days=0 WHERE user_id=$1`, botID)
 		} else if !anyProfitable && len(perf) > 0 {
@@ -384,11 +410,23 @@ func (e *Engine) botHandleRouteLifecycle(ctx context.Context, botID string, game
 			if worst.Profit < 0 {
 				var freq int
 				e.Pool.QueryRow(ctx, `SELECT flights_per_week FROM route_assignments WHERE id=$1`, worst.RouteID).Scan(&freq)
-				if distress == "desperate" && freq <= 6 {
+				// Hitung frekuensi sehat dari demand, lalu set langsung. Versi
+				// sebelumnya mengurangi 6 per audit, jadi rute 88 flight butuh
+				// ~14 siklus (~56 jam game) untuk sampai ke ~6 sambil terus
+				// membayar biaya berlebih. Sekarang satu audit cukup.
+				healthy := botTargetFlights(
+					int(worst.Params.Capacity),
+					routeDailyDemand(worst.Params.OriginDemand, worst.Params.DestDemand,
+						worst.Params.DistanceKM, worst.Params.TicketPrice,
+						worst.Config.TicketBase, worst.Config.TicketKM,
+						worst.Config.DemandPoolScale, worst.Config.Demand),
+					calcMaxWeeklyFlights(worst.Params.DistanceKM, int(worst.Params.SpeedKMH),
+						worst.Params.TurnaroundHours, worst.Config.MaxWeekly),
+					defaultSchedRatio)
+				if distress == "desperate" && healthy <= 1 {
 					_, _ = e.Routes.Delete(ctx, botID, worst.RouteID)
-				} else {
-					newFreq := math.Max(6, float64(freq)-6)
-					_, _ = e.Routes.UpdateFreqPrice(ctx, botID, worst.RouteID, 0, int(newFreq))
+				} else if healthy < freq {
+					_, _ = e.Routes.UpdateFreqPrice(ctx, botID, worst.RouteID, 0, healthy)
 				}
 				e.Pool.Exec(ctx, `UPDATE bot_profiles SET last_route_change_at=$1 WHERE user_id=$2`, gameTime, botID)
 			}
@@ -409,6 +447,11 @@ type routeCandidate struct {
 // benar-benar menambah nilai, bukan sekadar mengisi slot. Rute yang cuma
 // untung sepeser pun akan mengunci pesawat dan slot rute bot.
 const routeCandidateMinProfit = 1000.0
+
+// defaultSchedRatio dipakai saat menyesuaikan rute lama yang tidak membawa
+// archetype-nya. Sama dengan schedRatio terbanyak supaya penyesuaian tidak
+// agresif mengubah rute hanya karena kita tidak tahu profil bot-nya.
+const defaultSchedRatio = 0.72
 
 // pickBestRouteCandidate memilih kandidat dengan estimasi profit tertinggi.
 // Mengembalikan ok=false kalau tidak ada yang melewati ambang — lebih baik bot
@@ -832,6 +875,10 @@ func parseF(s string, def float64) float64 {
 type routePerf struct {
 	RouteID string
 	Profit  float64
+	// Disimpan supaya pemanggil bisa menghitung ulang target frekuensi yang
+	// sehat dari demand, bukan menebak atau mengurangi sedikit-sedikit.
+	Params routePerfParams
+	Config routePerfConfig
 }
 
 // routePerfParams — input untuk perhitungan ekonomi satu rute bot.
@@ -942,7 +989,7 @@ func (e *Engine) routePerformance(ctx context.Context, userID string, snap *Tick
 			e.log().Error("route performance: baris tidak terbaca, dilewati", "error", err)
 			continue
 		}
-		out = append(out, routePerf{id, routeWeeklyProfit(p, cfg)})
+		out = append(out, routePerf{RouteID: id, Profit: routeWeeklyProfit(p, cfg), Params: p, Config: cfg})
 	}
 	if err := rows.Err(); err != nil {
 		e.log().Error("route performance: iterasi berhenti lebih awal", "error", err)
