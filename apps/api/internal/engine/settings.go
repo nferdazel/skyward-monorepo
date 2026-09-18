@@ -3,7 +3,10 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"strings"
+
+	"github.com/jackc/pgx/v5"
 )
 
 // SettingsService — settings & account mutations.
@@ -44,37 +47,43 @@ func (s *SettingsService) Save(ctx context.Context, userID string, p SaveParams)
 // Reset — POST /settings/reset. Faithful port of reset_user_airline(p_user_id).
 // Wipe fleet, routes, loans, bank history; restore starting cash.
 func (s *SettingsService) Reset(ctx context.Context, userID string) (*MutationResult, error) {
-	tx, err := s.engine.Pool.Begin(ctx)
+	result, err := withTx(ctx, s.engine.Pool, func(tx pgx.Tx) (*MutationResult, bool, error) {
+		for _, q := range []string{
+			`DELETE FROM bank_transactions WHERE user_id=$1`,
+			`DELETE FROM loans WHERE user_id=$1`,
+			`DELETE FROM credit_scores WHERE user_id=$1`,
+			`DELETE FROM credit_score_history WHERE user_id=$1`,
+			`DELETE FROM route_assignments WHERE user_id=$1`,
+			`DELETE FROM fleet_aircraft WHERE user_id=$1`,
+			`DELETE FROM achievements WHERE user_id=$1`,
+			`INSERT INTO bank_accounts (user_id, account_type, balance)
+			 VALUES ($1, 'operating', COALESCE((SELECT (value#>>'{}')::numeric FROM game_config WHERE key='starting_cash'), 25000000))
+			 ON CONFLICT (user_id, account_type) DO UPDATE SET balance = EXCLUDED.balance`,
+			`UPDATE users SET game_current_time = (SELECT current_game_time FROM season_clock WHERE status='active' LIMIT 1),
+			        net_worth = COALESCE((SELECT (value#>>'{}')::numeric FROM game_config WHERE key='starting_cash'), 25000000),
+			        hq_airport_iata = 'SIN', auto_grounding_threshold = 40.00,
+			        operational_status = 'Active', consecutive_negative_days = 0,
+			        recovery_streak_days = 0, last_active_at = NOW(),
+			        onboarding_completed = false
+			 WHERE id=$1`,
+		} {
+			if _, err := tx.Exec(ctx, q, userID); err != nil {
+				// Bukan error sistem: pemain menerima pesan, transaksi dibatalkan.
+				return &MutationResult{Success: false, Message: "reset failed"}, true, nil
+			}
+		}
+		return nil, false, nil
+	})
 	if err != nil {
+		// Kesalahan Begin/Commit dulu dipetakan ke pesan pemain, bukan error Go.
+		// Pesannya dibedakan seperti sebelumnya supaya tidak ada penurunan.
+		if errors.Is(err, ErrTxCommit) {
+			return &MutationResult{Success: false, Message: "commit failed"}, nil
+		}
 		return &MutationResult{Success: false, Message: "transaction error"}, nil
 	}
-	defer tx.Rollback(ctx) //nolint:errcheck
-
-	for _, q := range []string{
-		`DELETE FROM bank_transactions WHERE user_id=$1`,
-		`DELETE FROM loans WHERE user_id=$1`,
-		`DELETE FROM credit_scores WHERE user_id=$1`,
-		`DELETE FROM credit_score_history WHERE user_id=$1`,
-		`DELETE FROM route_assignments WHERE user_id=$1`,
-		`DELETE FROM fleet_aircraft WHERE user_id=$1`,
-		`DELETE FROM achievements WHERE user_id=$1`,
-		`INSERT INTO bank_accounts (user_id, account_type, balance)
-		 VALUES ($1, 'operating', COALESCE((SELECT (value#>>'{}')::numeric FROM game_config WHERE key='starting_cash'), 25000000))
-		 ON CONFLICT (user_id, account_type) DO UPDATE SET balance = EXCLUDED.balance`,
-		`UPDATE users SET game_current_time = (SELECT current_game_time FROM season_clock WHERE status='active' LIMIT 1),
-		        net_worth = COALESCE((SELECT (value#>>'{}')::numeric FROM game_config WHERE key='starting_cash'), 25000000),
-		        hq_airport_iata = 'SIN', auto_grounding_threshold = 40.00,
-		        operational_status = 'Active', consecutive_negative_days = 0,
-		        recovery_streak_days = 0, last_active_at = NOW(),
-		        onboarding_completed = false
-		 WHERE id=$1`,
-	} {
-		if _, err := tx.Exec(ctx, q, userID); err != nil {
-			return &MutationResult{Success: false, Message: "reset failed"}, nil
-		}
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return &MutationResult{Success: false, Message: "commit failed"}, nil
+	if result != nil {
+		return result, nil
 	}
 	cash, _ := s.engine.Ledger.GetBalance(ctx, userID)
 	return &MutationResult{Success: true, Message: "Airline reset complete.", NewCash: cash}, nil
@@ -82,27 +91,24 @@ func (s *SettingsService) Reset(ctx context.Context, userID string) (*MutationRe
 
 // DeleteAccount — DELETE /account. Faithful port of delete_account (auth-independent).
 func (s *SettingsService) DeleteAccount(ctx context.Context, userID string) (bool, error) {
-	tx, err := s.engine.Pool.Begin(ctx)
-	if err != nil {
-		return false, err
-	}
-	defer tx.Rollback(ctx) //nolint:errcheck
-	for _, q := range []string{
-		`DELETE FROM finance_snapshots WHERE user_id=$1`,
-		`DELETE FROM bank_transactions WHERE user_id=$1`,
-		`DELETE FROM bank_accounts WHERE user_id=$1`,
-		`DELETE FROM achievements WHERE user_id=$1`,
-		`DELETE FROM credit_score_history WHERE user_id=$1`,
-		`DELETE FROM credit_scores WHERE user_id=$1`,
-		`DELETE FROM route_assignments WHERE user_id=$1`,
-		`DELETE FROM loans WHERE user_id=$1`,
-		`DELETE FROM fleet_aircraft WHERE user_id=$1`,
-		`DELETE FROM bot_profiles WHERE user_id=$1`,
-		`DELETE FROM users WHERE id=$1`,
-	} {
-		if _, err := tx.Exec(ctx, q, userID); err != nil {
-			return false, err
+	return withTx(ctx, s.engine.Pool, func(tx pgx.Tx) (bool, bool, error) {
+		for _, q := range []string{
+			`DELETE FROM finance_snapshots WHERE user_id=$1`,
+			`DELETE FROM bank_transactions WHERE user_id=$1`,
+			`DELETE FROM bank_accounts WHERE user_id=$1`,
+			`DELETE FROM achievements WHERE user_id=$1`,
+			`DELETE FROM credit_score_history WHERE user_id=$1`,
+			`DELETE FROM credit_scores WHERE user_id=$1`,
+			`DELETE FROM route_assignments WHERE user_id=$1`,
+			`DELETE FROM loans WHERE user_id=$1`,
+			`DELETE FROM fleet_aircraft WHERE user_id=$1`,
+			`DELETE FROM bot_profiles WHERE user_id=$1`,
+			`DELETE FROM users WHERE id=$1`,
+		} {
+			if _, err := tx.Exec(ctx, q, userID); err != nil {
+				return false, false, err
+			}
 		}
-	}
-	return tx.Commit(ctx) == nil, nil
+		return true, false, nil
+	})
 }

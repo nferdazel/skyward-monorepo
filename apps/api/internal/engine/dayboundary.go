@@ -9,6 +9,8 @@ import (
 	"math"
 	"math/rand"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 )
 
 // ── Events ────────────────────────────────────────────────────────────
@@ -139,29 +141,25 @@ func (e *Engine) ProcessLoanPayments(ctx context.Context, userID string, gameDat
 			continue
 		}
 		if moneyAtLeast(cash, payment) {
-			tx, txErr := e.Pool.Begin(ctx)
-			if txErr == nil {
-				_, dErr := e.Ledger.DebitTx(ctx, tx, userID, payment, "financing", "loan_payment", "Weekly loan payment", gameDate)
-				if dErr == nil {
-					// Saldo pinjaman harus turun di transaksi yang sama. Kalau
-					// UPDATE ini gagal tapi tetap di-commit, pemain kehilangan
-					// uang tanpa utangnya berkurang.
-					_, uErr := tx.Exec(ctx, `
-						UPDATE loans SET remaining_balance = GREATEST(0, remaining_balance - $1),
-						       status = CASE WHEN remaining_balance - $1 <= $3 THEN 'paid_off'::varchar ELSE status END
-						WHERE id=$2`, payment, l.ID, moneyEpsilon)
-					if uErr != nil {
-						e.log().Error("loan payment: UPDATE loans gagal, transaksi dibatalkan",
-							"error", uErr, "loan", l.ID, "user", userID)
-						tx.Rollback(ctx) //nolint:errcheck
-					} else if tx.Commit(ctx) == nil {
-						cash -= payment
-					} else {
-						tx.Rollback(ctx) //nolint:errcheck
-					}
-				} else {
-					tx.Rollback(ctx) //nolint:errcheck
+			// Debit dan pengurangan saldo pinjaman harus berhasil bersama. Kalau
+			// salah satu gagal, keduanya dibatalkan: pemain tidak boleh kehilangan
+			// uang tanpa utangnya berkurang, atau sebaliknya.
+			committed, _ := withTx(ctx, e.Pool, func(tx pgx.Tx) (bool, bool, error) {
+				if _, dErr := e.Ledger.DebitTx(ctx, tx, userID, payment, "financing", "loan_payment", "Weekly loan payment", gameDate); dErr != nil {
+					return false, true, nil
 				}
+				if _, uErr := tx.Exec(ctx, `
+					UPDATE loans SET remaining_balance = GREATEST(0, remaining_balance - $1),
+					       status = CASE WHEN remaining_balance - $1 <= $3 THEN 'paid_off'::varchar ELSE status END
+					WHERE id=$2`, payment, l.ID, moneyEpsilon); uErr != nil {
+					e.log().Error("loan payment: UPDATE loans gagal, transaksi dibatalkan",
+						"error", uErr, "loan", l.ID, "user", userID)
+					return false, true, nil
+				}
+				return true, false, nil
+			})
+			if committed {
+				cash -= payment
 			}
 		} else {
 			lateFee := payment * 0.10
@@ -229,28 +227,24 @@ func (e *Engine) ProcessAircraftFinancingPayments(ctx context.Context, userID st
 			continue
 		}
 		if moneyAtLeast(cash, payment) {
-			tx, txErr := e.Pool.Begin(ctx)
-			if txErr == nil {
-				_, dErr := e.Ledger.DebitTx(ctx, tx, userID, payment, "financing", "financing_payment", "Aircraft financing payment", gameDate)
-				if dErr == nil {
-					// Lihat ProcessLoanPayments: UPDATE yang gagal tidak boleh
-					// ikut ter-commit bersama debitnya.
-					_, uErr := tx.Exec(ctx, `
-						UPDATE loans SET remaining_balance = GREATEST(0, remaining_balance - $1),
-						       status = CASE WHEN remaining_balance - $1 <= $3 THEN 'paid_off'::varchar ELSE status END
-						WHERE id=$2`, payment, l.ID, moneyEpsilon)
-					if uErr != nil {
-						e.log().Error("financing payment: UPDATE loans gagal, transaksi dibatalkan",
-							"error", uErr, "loan", l.ID, "user", userID)
-						tx.Rollback(ctx) //nolint:errcheck
-					} else if tx.Commit(ctx) == nil {
-						cash -= payment
-					} else {
-						tx.Rollback(ctx) //nolint:errcheck
-					}
-				} else {
-					tx.Rollback(ctx) //nolint:errcheck
+			// Lihat ProcessLoanPayments: debit dan pengurangan saldo harus
+			// berhasil bersama, jadi keduanya dibatalkan bila salah satu gagal.
+			committed, _ := withTx(ctx, e.Pool, func(tx pgx.Tx) (bool, bool, error) {
+				if _, dErr := e.Ledger.DebitTx(ctx, tx, userID, payment, "financing", "financing_payment", "Aircraft financing payment", gameDate); dErr != nil {
+					return false, true, nil
 				}
+				if _, uErr := tx.Exec(ctx, `
+					UPDATE loans SET remaining_balance = GREATEST(0, remaining_balance - $1),
+					       status = CASE WHEN remaining_balance - $1 <= $3 THEN 'paid_off'::varchar ELSE status END
+					WHERE id=$2`, payment, l.ID, moneyEpsilon); uErr != nil {
+					e.log().Error("financing payment: UPDATE loans gagal, transaksi dibatalkan",
+						"error", uErr, "loan", l.ID, "user", userID)
+					return false, true, nil
+				}
+				return true, false, nil
+			})
+			if committed {
+				cash -= payment
 			}
 		} else {
 			lateFee := payment * 0.05

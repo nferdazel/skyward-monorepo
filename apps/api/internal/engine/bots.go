@@ -8,6 +8,8 @@ import (
 	"math"
 	"math/rand"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 )
 
 // ProcessBots — orchestrator bot (mirror execute_bot_decisions +
@@ -181,36 +183,35 @@ func (e *Engine) reapBankruptBots(ctx context.Context) {
 	}
 	rows.Close()
 	for _, id := range ids {
-		tx, txErr := e.Pool.Begin(ctx)
-		if txErr != nil {
-			continue
-		}
 		// Best-effort dependent cleanup: user-referencing FKs are ON DELETE
 		// CASCADE, so the final DELETE would suffice. These explicit deletes are
 		// defensive; a missing optional table must not abort the reap, so their
 		// errors are ignored (the CASCADE covers correctness).
-		for _, q := range []string{
-			`DELETE FROM finance_snapshots WHERE user_id=$1`,
-			`DELETE FROM bank_transactions WHERE user_id=$1`,
-			`DELETE FROM bank_accounts WHERE user_id=$1`,
-			`DELETE FROM achievements WHERE user_id=$1`,
-			`DELETE FROM credit_score_history WHERE user_id=$1`,
-			`DELETE FROM credit_scores WHERE user_id=$1`,
-			`DELETE FROM route_assignments WHERE user_id=$1`,
-			`DELETE FROM loans WHERE user_id=$1`,
-			`DELETE FROM fleet_aircraft WHERE user_id=$1`,
-		} {
-			_, _ = tx.Exec(ctx, q, id)
-		}
-		if _, err := tx.Exec(ctx, `DELETE FROM bot_profiles WHERE user_id=$1`, id); err != nil {
-			_ = tx.Rollback(ctx)
-			continue
-		}
-		if _, err := tx.Exec(ctx, `DELETE FROM users WHERE id=$1`, id); err != nil {
-			_ = tx.Rollback(ctx)
-			continue
-		}
-		_ = tx.Commit(ctx)
+		//
+		// Gagal di tengah membuat transaksi dibatalkan, dan bot itu dicoba lagi
+		// pada reap berikutnya; tidak ada yang perlu dilaporkan sekarang.
+		_, _ = withTx(ctx, e.Pool, func(tx pgx.Tx) (struct{}, bool, error) {
+			for _, q := range []string{
+				`DELETE FROM finance_snapshots WHERE user_id=$1`,
+				`DELETE FROM bank_transactions WHERE user_id=$1`,
+				`DELETE FROM bank_accounts WHERE user_id=$1`,
+				`DELETE FROM achievements WHERE user_id=$1`,
+				`DELETE FROM credit_score_history WHERE user_id=$1`,
+				`DELETE FROM credit_scores WHERE user_id=$1`,
+				`DELETE FROM route_assignments WHERE user_id=$1`,
+				`DELETE FROM loans WHERE user_id=$1`,
+				`DELETE FROM fleet_aircraft WHERE user_id=$1`,
+			} {
+				_, _ = tx.Exec(ctx, q, id)
+			}
+			if _, err := tx.Exec(ctx, `DELETE FROM bot_profiles WHERE user_id=$1`, id); err != nil {
+				return struct{}{}, true, nil
+			}
+			if _, err := tx.Exec(ctx, `DELETE FROM users WHERE id=$1`, id); err != nil {
+				return struct{}{}, true, nil
+			}
+			return struct{}{}, false, nil
+		})
 	}
 }
 

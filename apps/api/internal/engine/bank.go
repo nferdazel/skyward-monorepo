@@ -40,236 +40,227 @@ func (b *BankService) TakeLoan(ctx context.Context, userID string, p TakeLoanPar
 		return &MutationResult{Success: false, Message: "Collateral is not supported yet."}, nil
 	}
 
-	tx, err := b.engine.Pool.Begin(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("take loan: begin tx: %w", err)
-	}
-	defer tx.Rollback(ctx) //nolint:errcheck
-
-	var maxActive int
-	err = tx.QueryRow(ctx, `SELECT COALESCE((value#>>'{max_active_loans}')::int, 3) FROM game_config WHERE key='credit_tier_config'`).Scan(&maxActive)
-	if err != nil {
-		maxActive = 3
-	}
-	var activeLoans int
-	err = tx.QueryRow(ctx, `SELECT COUNT(*) FROM loans WHERE user_id=$1 AND status='active'`, userID).Scan(&activeLoans)
-	if err != nil {
-		return nil, fmt.Errorf("take loan: count active loans: %w", err)
-	}
-	if activeLoans >= maxActive {
-		return &MutationResult{Success: false, Message: fmt.Sprintf("Maximum %d active loans allowed.", maxActive)}, nil
-	}
-
-	// Tier kredit pemain. SQL `take_loan` me-resolve dari total_score hasil
-	// calculate_credit_score(); Go menyimpan hasil yang sama di
-	// credit_scores.tier pada day boundary, jadi baris itu yang dipakai. Pemain
-	// baru tanpa baris = skor 500, sama seperti SQL.
-	tier := "Standard"
-	{
-		var stored string
-		switch err := tx.QueryRow(ctx, `SELECT tier FROM credit_scores WHERE user_id=$1`, userID).Scan(&stored); {
-		case err == nil && stored != "":
-			tier = stored
-		case err != nil && !errors.Is(err, pgx.ErrNoRows):
-			return nil, fmt.Errorf("take loan: load credit tier: %w", err)
-		default:
-			tier = resolveCreditTier(500)
+	result, err := withTx(ctx, b.engine.Pool, func(tx pgx.Tx) (*MutationResult, bool, error) {
+		var maxActive int
+		err := tx.QueryRow(ctx, `SELECT COALESCE((value#>>'{max_active_loans}')::int, 3) FROM game_config WHERE key='credit_tier_config'`).Scan(&maxActive)
+		if err != nil {
+			maxActive = 3
 		}
-	}
+		var activeLoans int
+		err = tx.QueryRow(ctx, `SELECT COUNT(*) FROM loans WHERE user_id=$1 AND status='active'`, userID).Scan(&activeLoans)
+		if err != nil {
+			return nil, false, fmt.Errorf("take loan: count active loans: %w", err)
+		}
+		if activeLoans >= maxActive {
+			return &MutationResult{Success: false, Message: fmt.Sprintf("Maximum %d active loans allowed.", maxActive)}, true, nil
+		}
 
-	// Whitelist jenis pinjaman, seperti SQL.
-	if loanType != "unsecured" && loanType != "secured" && loanType != "credit_line" {
-		return &MutationResult{Success: false, Message: "Invalid loan type."}, nil
-	}
+		// Tier kredit pemain. SQL `take_loan` me-resolve dari total_score hasil
+		// calculate_credit_score(); Go menyimpan hasil yang sama di
+		// credit_scores.tier pada day boundary, jadi baris itu yang dipakai. Pemain
+		// baru tanpa baris = skor 500, sama seperti SQL.
+		tier := "Standard"
+		{
+			var stored string
+			switch err := tx.QueryRow(ctx, `SELECT tier FROM credit_scores WHERE user_id=$1`, userID).Scan(&stored); {
+			case err == nil && stored != "":
+				tier = stored
+			case err != nil && !errors.Is(err, pgx.ErrNoRows):
+				return nil, false, fmt.Errorf("take loan: load credit tier: %w", err)
+			default:
+				tier = resolveCreditTier(500)
+			}
+		}
 
-	// Plafon dan rate per jenis dari kebijakan tier (credit_tier_config).
-	var maxPrincipal, rate float64
-	switch loanType {
-	case "unsecured":
-		maxPrincipal = b.tierRate(ctx, tier, "max_unsecured", 5000000)
-		rate = b.tierRate(ctx, tier, "rate_unsecured", 0.07)
-	case "secured":
-		// AUDIT-12: collateral sudah ditolak di atas karena secured lending belum
-		// ada, jadi jalur ini hanya tercapai bila pemain meminta `secured` tanpa
-		// collateral — persis yang SQL tolak.
-		return &MutationResult{Success: false, Message: "Secured loans require collateral aircraft."}, nil
-	default: // credit_line
-		maxPrincipal = b.tierRate(ctx, tier, "max_unsecured", 5000000) * 0.5
-		rate = b.tierRate(ctx, tier, "rate_unsecured", 0.07) + 0.02
-	}
+		// Whitelist jenis pinjaman, seperti SQL.
+		if loanType != "unsecured" && loanType != "secured" && loanType != "credit_line" {
+			return &MutationResult{Success: false, Message: "Invalid loan type."}, true, nil
+		}
 
-	var minLoan float64
-	if err := tx.QueryRow(ctx, `SELECT COALESCE((value#>>'{min_loan}')::numeric, 100000) FROM game_config WHERE key='credit_tier_config'`).Scan(&minLoan); err != nil {
-		minLoan = 100000
-	}
-	if p.Principal < minLoan {
-		return &MutationResult{Success: false, Message: fmt.Sprintf("Minimum loan amount is $%s.", numText(minLoan))}, nil
-	}
-	if p.Principal > maxPrincipal {
-		return &MutationResult{Success: false, Message: fmt.Sprintf("Maximum for %s tier %s loan is $%s.", tier, loanType, numText(maxPrincipal))}, nil
-	}
+		// Plafon dan rate per jenis dari kebijakan tier (credit_tier_config).
+		var maxPrincipal, rate float64
+		switch loanType {
+		case "unsecured":
+			maxPrincipal = b.tierRate(ctx, tier, "max_unsecured", 5000000)
+			rate = b.tierRate(ctx, tier, "rate_unsecured", 0.07)
+		case "secured":
+			// AUDIT-12: collateral sudah ditolak di atas karena secured lending belum
+			// ada, jadi jalur ini hanya tercapai bila pemain meminta `secured` tanpa
+			// collateral — persis yang SQL tolak.
+			return &MutationResult{Success: false, Message: "Secured loans require collateral aircraft."}, true, nil
+		default: // credit_line
+			maxPrincipal = b.tierRate(ctx, tier, "max_unsecured", 5000000) * 0.5
+			rate = b.tierRate(ctx, tier, "rate_unsecured", 0.07) + 0.02
+		}
 
-	weekly := p.Principal * (1 + rate) / float64(p.TermWeeks)
-	monthly := weekly * 4.33
+		var minLoan float64
+		if err := tx.QueryRow(ctx, `SELECT COALESCE((value#>>'{min_loan}')::numeric, 100000) FROM game_config WHERE key='credit_tier_config'`).Scan(&minLoan); err != nil {
+			minLoan = 100000
+		}
+		if p.Principal < minLoan {
+			return &MutationResult{Success: false, Message: fmt.Sprintf("Minimum loan amount is $%s.", numText(minLoan))}, true, nil
+		}
+		if p.Principal > maxPrincipal {
+			return &MutationResult{Success: false, Message: fmt.Sprintf("Maximum for %s tier %s loan is $%s.", tier, loanType, numText(maxPrincipal))}, true, nil
+		}
 
-	gameTime, _ := b.engine.Ledger.GetUserGameTime(ctx, userID)
-	var loanID string
-	err = tx.QueryRow(ctx, `
-		INSERT INTO loans (user_id, loan_type, principal, interest_rate, remaining_balance, weekly_payment, monthly_payment, status, term_months, originated_game_date)
-		VALUES ($1,$2,$3,$4,$3,$5,$6,'active',CEIL($7/4.33)::int,$8)
-		RETURNING id`,
-		userID, loanType, p.Principal, rate, weekly, monthly, p.TermWeeks, gameTime).Scan(&loanID)
+		weekly := p.Principal * (1 + rate) / float64(p.TermWeeks)
+		monthly := weekly * 4.33
+
+		gameTime, _ := b.engine.Ledger.GetUserGameTime(ctx, userID)
+		var loanID string
+		err = tx.QueryRow(ctx, `
+			INSERT INTO loans (user_id, loan_type, principal, interest_rate, remaining_balance, weekly_payment, monthly_payment, status, term_months, originated_game_date)
+			VALUES ($1,$2,$3,$4,$3,$5,$6,'active',CEIL($7/4.33)::int,$8)
+			RETURNING id`,
+			userID, loanType, p.Principal, rate, weekly, monthly, p.TermWeeks, gameTime).Scan(&loanID)
+		if err != nil {
+			return nil, false, fmt.Errorf("take loan: insert loan: %w", err)
+		}
+		newCash, err := b.engine.Ledger.CreditTx(ctx, tx, userID, p.Principal, "financing", "loan_disbursement",
+			fmt.Sprintf("Loan disbursement (%s)", loanType), gameTime)
+		if err != nil {
+			return nil, false, fmt.Errorf("take loan: disburse: %w", err)
+		}
+		return &MutationResult{Success: true, Message: "Loan approved and funds disbursed.", NewCash: newCash}, false, nil
+	})
 	if err != nil {
-		return nil, fmt.Errorf("take loan: insert loan: %w", err)
+		return nil, err
 	}
-	newCash, err := b.engine.Ledger.CreditTx(ctx, tx, userID, p.Principal, "financing", "loan_disbursement",
-		fmt.Sprintf("Loan disbursement (%s)", loanType), gameTime)
-	if err != nil {
-		return nil, fmt.Errorf("take loan: disburse: %w", err)
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return nil, fmt.Errorf("take loan: commit: %w", err)
-	}
-	return &MutationResult{Success: true, Message: "Loan approved and funds disbursed.", NewCash: newCash}, nil
+	return result, nil
 }
 
 // Repay — POST /bank/loans/{id}/repay. Faithful port of repay_loan.
 func (b *BankService) Repay(ctx context.Context, userID, loanID string, amount *float64) (*MutationResult, error) {
-	tx, err := b.engine.Pool.Begin(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("repay: begin tx: %w", err)
-	}
-	defer tx.Rollback(ctx) //nolint:errcheck
-
-	var remaining float64
-	var loanType string
-	var collateral *string
-	err = tx.QueryRow(ctx,
-		`SELECT remaining_balance, loan_type, collateral_aircraft_id FROM loans WHERE id=$1 AND user_id=$2 AND status='active' FOR UPDATE`,
-		loanID, userID).Scan(&remaining, &loanType, &collateral)
-	if err != nil {
-		// Tidak ketemu = penolakan bisnis (400); error DB lain = infra (500).
-		if errors.Is(err, pgx.ErrNoRows) {
-			return &MutationResult{Success: false, Message: "Loan not found or already paid off."}, nil
+	result, err := withTx(ctx, b.engine.Pool, func(tx pgx.Tx) (*MutationResult, bool, error) {
+		var remaining float64
+		var loanType string
+		var collateral *string
+		err := tx.QueryRow(ctx,
+			`SELECT remaining_balance, loan_type, collateral_aircraft_id FROM loans WHERE id=$1 AND user_id=$2 AND status='active' FOR UPDATE`,
+			loanID, userID).Scan(&remaining, &loanType, &collateral)
+		if err != nil {
+			// Tidak ketemu = penolakan bisnis (400); error DB lain = infra (500).
+			if errors.Is(err, pgx.ErrNoRows) {
+				return &MutationResult{Success: false, Message: "Loan not found or already paid off."}, true, nil
+			}
+			return nil, false, fmt.Errorf("repay: load loan: %w", err)
 		}
-		return nil, fmt.Errorf("repay: load loan: %w", err)
-	}
-	payment := remaining
-	if amount != nil {
-		if *amount < remaining {
-			payment = *amount
+		payment := remaining
+		if amount != nil {
+			if *amount < remaining {
+				payment = *amount
+			}
 		}
-	}
-	if payment <= 0 {
-		return &MutationResult{Success: false, Message: "Payment amount must be positive."}, nil
-	}
+		if payment <= 0 {
+			return &MutationResult{Success: false, Message: "Payment amount must be positive."}, true, nil
+		}
 
-	var cash float64
-	err = tx.QueryRow(ctx, `SELECT balance FROM bank_accounts WHERE user_id=$1 AND account_type='operating' FOR UPDATE`, userID).Scan(&cash)
-	if err != nil {
-		// Setiap user punya operating account (dibuat saat registrasi); absennya
-		// berarti data rusak, bukan permintaan buruk.
-		return nil, fmt.Errorf("repay: load balance: %w", err)
-	}
-	// Dibandingkan pada presisi sen: `payment` dihitung dari pembagian
-	// (pokok/bulan), jadi bisa tersimpan sedikit di atas nilai sen-nya dan
-	// menolak pemain yang uangnya persis cukup.
-	if moneyLessThan(cash, payment) {
-		return &MutationResult{Success: false, Message: fmt.Sprintf("Insufficient cash. Need $%.2f, have $%.2f.", payment, cash), NewCash: cash}, nil
-	}
+		var cash float64
+		err = tx.QueryRow(ctx, `SELECT balance FROM bank_accounts WHERE user_id=$1 AND account_type='operating' FOR UPDATE`, userID).Scan(&cash)
+		if err != nil {
+			// Setiap user punya operating account (dibuat saat registrasi); absennya
+			// berarti data rusak, bukan permintaan buruk.
+			return nil, false, fmt.Errorf("repay: load balance: %w", err)
+		}
+		// Dibandingkan pada presisi sen: `payment` dihitung dari pembagian
+		// (pokok/bulan), jadi bisa tersimpan sedikit di atas nilai sen-nya dan
+		// menolak pemain yang uangnya persis cukup.
+		if moneyLessThan(cash, payment) {
+			return &MutationResult{Success: false, Message: fmt.Sprintf("Insufficient cash. Need $%.2f, have $%.2f.", payment, cash), NewCash: cash}, true, nil
+		}
 
-	gameTime, _ := b.engine.Ledger.GetUserGameTime(ctx, userID)
-	desc := "Loan partial repayment"
-	paidOff := (remaining - payment) <= moneyEpsilon
-	if paidOff {
-		desc = "Loan fully repaid"
-	}
-	newCash, err := b.engine.Ledger.DebitTx(ctx, tx, userID, payment, "financing", "loan_repayment", desc, gameTime)
+		gameTime, _ := b.engine.Ledger.GetUserGameTime(ctx, userID)
+		desc := "Loan partial repayment"
+		paidOff := (remaining - payment) <= moneyEpsilon
+		if paidOff {
+			desc = "Loan fully repaid"
+		}
+		newCash, err := b.engine.Ledger.DebitTx(ctx, tx, userID, payment, "financing", "loan_repayment", desc, gameTime)
+		if err != nil {
+			return nil, false, fmt.Errorf("repay: ledger debit: %w", err)
+		}
+		_, err = tx.Exec(ctx, `
+			UPDATE loans SET remaining_balance = GREATEST(0, remaining_balance - $1),
+			       status = CASE WHEN remaining_balance - $1 <= $3 THEN 'paid_off'::varchar ELSE status END
+			WHERE id=$2`, payment, loanID, moneyEpsilon)
+		if err != nil {
+			return nil, false, fmt.Errorf("repay: update loan: %w", err)
+		}
+		if paidOff && loanType == "aircraft_financing" && collateral != nil {
+			_, _ = tx.Exec(ctx, `UPDATE fleet_aircraft SET acquisition_type='purchase' WHERE id=$1 AND user_id=$2 AND acquisition_type='finance'`, *collateral, userID)
+		}
+		msg := "Payment applied."
+		if paidOff {
+			msg = "Loan fully repaid!"
+		}
+		return &MutationResult{Success: true, Message: msg, NewCash: newCash}, false, nil
+	})
 	if err != nil {
-		return nil, fmt.Errorf("repay: ledger debit: %w", err)
+		return nil, err
 	}
-	_, err = tx.Exec(ctx, `
-		UPDATE loans SET remaining_balance = GREATEST(0, remaining_balance - $1),
-		       status = CASE WHEN remaining_balance - $1 <= $3 THEN 'paid_off'::varchar ELSE status END
-		WHERE id=$2`, payment, loanID, moneyEpsilon)
-	if err != nil {
-		return nil, fmt.Errorf("repay: update loan: %w", err)
-	}
-	if paidOff && loanType == "aircraft_financing" && collateral != nil {
-		_, _ = tx.Exec(ctx, `UPDATE fleet_aircraft SET acquisition_type='purchase' WHERE id=$1 AND user_id=$2 AND acquisition_type='finance'`, *collateral, userID)
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return nil, fmt.Errorf("repay: commit: %w", err)
-	}
-	msg := "Payment applied."
-	if paidOff {
-		msg = "Loan fully repaid!"
-	}
-	return &MutationResult{Success: true, Message: msg, NewCash: newCash}, nil
+	return result, nil
 }
 
 // Refinance — POST /bank/loans/{id}/refinance. Faithful port of refinance_loan.
 // AUDIT-07: seluruh alur dalam SATU tx dengan row lock (dulu read di luar tx
 // lalu UPDATE tanpa user_id → lost update vs repay/refinance concurrent).
 func (b *BankService) Refinance(ctx context.Context, userID, loanID string) (*MutationResult, error) {
-	tx, err := b.engine.Pool.Begin(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("refinance: begin tx: %w", err)
-	}
-	defer tx.Rollback(ctx) //nolint:errcheck
-
-	var loanType string
-	var rate, remaining, weeklyPay, monthlyPay float64
-	err = tx.QueryRow(ctx, `
-		SELECT loan_type, interest_rate, remaining_balance, weekly_payment, monthly_payment
-		FROM loans WHERE id=$1 AND user_id=$2 AND status='active' FOR UPDATE`, loanID, userID).
-		Scan(&loanType, &rate, &remaining, &weeklyPay, &monthlyPay)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return &MutationResult{false, "Loan not found or not active.", 0}, nil
+	result, err := withTx(ctx, b.engine.Pool, func(tx pgx.Tx) (*MutationResult, bool, error) {
+		var loanType string
+		var rate, remaining, weeklyPay, monthlyPay float64
+		err := tx.QueryRow(ctx, `
+			SELECT loan_type, interest_rate, remaining_balance, weekly_payment, monthly_payment
+			FROM loans WHERE id=$1 AND user_id=$2 AND status='active' FOR UPDATE`, loanID, userID).
+			Scan(&loanType, &rate, &remaining, &weeklyPay, &monthlyPay)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return &MutationResult{false, "Loan not found or not active.", 0}, true, nil
+			}
+			return nil, false, fmt.Errorf("refinance: load loan: %w", err)
 		}
-		return nil, fmt.Errorf("refinance: load loan: %w", err)
+		// tier rate. Baris credit_scores boleh belum ada (pemain baru → Standard),
+		// tapi error baca sungguhan tidak boleh jadi Standard: tier inilah yang
+		// menentukan rate refinance.
+		var tier string
+		if err := b.engine.Pool.QueryRow(ctx, `SELECT tier FROM credit_scores WHERE user_id=$1`, userID).Scan(&tier); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return nil, false, fmt.Errorf("refinance: load credit tier: %w", err)
+		}
+		if tier == "" {
+			tier = "Standard"
+		}
+		var newRate float64
+		if loanType == "secured" || loanType == "aircraft_financing" {
+			newRate = b.tierRate(ctx, tier, "rate_secured", 0.06)
+		} else {
+			newRate = b.tierRate(ctx, tier, "rate_unsecured", 0.07)
+		}
+		if newRate >= rate {
+			return &MutationResult{false, "Current rate is not better than existing rate.", 0}, true, nil
+		}
+		outstanding := remaining / (1 + rate)
+		periods := 1.0
+		if monthlyPay > 0 {
+			periods = maxf(1, ceilDiv(remaining, monthlyPay))
+		} else if weeklyPay > 0 {
+			periods = maxf(1, ceilDiv(remaining, weeklyPay))
+		}
+		newTotal := outstanding * (1 + newRate)
+		newMonthly := newTotal / periods
+		newWeekly := newMonthly / 4.33
+		if _, err := tx.Exec(ctx, `
+			UPDATE loans SET interest_rate=$1, remaining_balance=$2, weekly_payment=$3, monthly_payment=$4
+			WHERE id=$5 AND user_id=$6`,
+			newRate, newTotal, newWeekly, newMonthly, loanID, userID); err != nil {
+			return nil, false, fmt.Errorf("refinance: update loan: %w", err)
+		}
+		savings := maxf(0, remaining-newTotal)
+		return &MutationResult{true, fmt.Sprintf("Loan refinanced successfully (savings $%.2f).", savings), 0}, false, nil
+	})
+	if err != nil {
+		return nil, err
 	}
-	// tier rate. Baris credit_scores boleh belum ada (pemain baru → Standard),
-	// tapi error baca sungguhan tidak boleh jadi Standard: tier inilah yang
-	// menentukan rate refinance.
-	var tier string
-	if err := b.engine.Pool.QueryRow(ctx, `SELECT tier FROM credit_scores WHERE user_id=$1`, userID).Scan(&tier); err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return nil, fmt.Errorf("refinance: load credit tier: %w", err)
-	}
-	if tier == "" {
-		tier = "Standard"
-	}
-	var newRate float64
-	if loanType == "secured" || loanType == "aircraft_financing" {
-		newRate = b.tierRate(ctx, tier, "rate_secured", 0.06)
-	} else {
-		newRate = b.tierRate(ctx, tier, "rate_unsecured", 0.07)
-	}
-	if newRate >= rate {
-		return &MutationResult{false, "Current rate is not better than existing rate.", 0}, nil
-	}
-	outstanding := remaining / (1 + rate)
-	periods := 1.0
-	if monthlyPay > 0 {
-		periods = maxf(1, ceilDiv(remaining, monthlyPay))
-	} else if weeklyPay > 0 {
-		periods = maxf(1, ceilDiv(remaining, weeklyPay))
-	}
-	newTotal := outstanding * (1 + newRate)
-	newMonthly := newTotal / periods
-	newWeekly := newMonthly / 4.33
-	if _, err := tx.Exec(ctx, `
-		UPDATE loans SET interest_rate=$1, remaining_balance=$2, weekly_payment=$3, monthly_payment=$4
-		WHERE id=$5 AND user_id=$6`,
-		newRate, newTotal, newWeekly, newMonthly, loanID, userID); err != nil {
-		return nil, fmt.Errorf("refinance: update loan: %w", err)
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return nil, fmt.Errorf("refinance: commit: %w", err)
-	}
-	savings := maxf(0, remaining-newTotal)
-	return &MutationResult{true, fmt.Sprintf("Loan refinanced successfully (savings $%.2f).", savings), 0}, nil
+	return result, nil
 }
 
 // numText memformat angka seperti `numeric::TEXT` di Postgres: tanpa nol ekor,
@@ -378,34 +369,29 @@ func (b *BankService) FinanceAircraft(ctx context.Context, userID string, p Fina
 		return nil, fmt.Errorf("finance aircraft: tail number: %w", err)
 	}
 
-	tx, txErr := b.engine.Pool.Begin(ctx)
-	if txErr != nil {
-		return nil, fmt.Errorf("finance aircraft: begin tx: %w", txErr)
-	}
-	defer tx.Rollback(ctx) //nolint:errcheck
-	_, lerr := b.engine.Ledger.DebitTx(ctx, tx, userID, down, "investing", "aircraft_purchase_deposit",
-		fmt.Sprintf("Aircraft financing down payment: %s", modelName), gameTime)
-	if lerr != nil {
-		return nil, fmt.Errorf("finance aircraft: down payment: %w", lerr)
-	}
-	var fleetID string
-	err = tx.QueryRow(ctx, `
-		INSERT INTO fleet_aircraft (user_id, aircraft_model_id, nickname, tail_number, acquisition_type, condition, status, economy_seats, business_seats, first_class_seats)
-		VALUES ($1,$2,$3,$4,'finance',100.00,'active',FLOOR($5*0.80),FLOOR($5*0.15),$5-FLOOR($5*0.80)-FLOOR($5*0.15))
-		RETURNING id`, userID, p.ModelID, modelName, tail, capacity).Scan(&fleetID)
+	_, err = withTx(ctx, b.engine.Pool, func(tx pgx.Tx) (struct{}, bool, error) {
+		_, lerr := b.engine.Ledger.DebitTx(ctx, tx, userID, down, "investing", "aircraft_purchase_deposit",
+			fmt.Sprintf("Aircraft financing down payment: %s", modelName), gameTime)
+		if lerr != nil {
+			return struct{}{}, false, fmt.Errorf("finance aircraft: down payment: %w", lerr)
+		}
+		var fleetID string
+		if err := tx.QueryRow(ctx, `
+			INSERT INTO fleet_aircraft (user_id, aircraft_model_id, nickname, tail_number, acquisition_type, condition, status, economy_seats, business_seats, first_class_seats)
+			VALUES ($1,$2,$3,$4,'finance',100.00,'active',FLOOR($5*0.80),FLOOR($5*0.15),$5-FLOOR($5*0.80)-FLOOR($5*0.15))
+			RETURNING id`, userID, p.ModelID, modelName, tail, capacity).Scan(&fleetID); err != nil {
+			return struct{}{}, false, fmt.Errorf("finance aircraft: insert aircraft: %w", err)
+		}
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO loans (user_id, principal, interest_rate, remaining_balance, weekly_payment, status, loan_type, collateral_aircraft_id, term_months, monthly_payment, originated_game_date)
+			VALUES ($1,$2,$3,$4,$5,'active','aircraft_financing',$6,$7,$8,$9)`,
+			userID, principal, rate, totalRepayable, weekly, fleetID, p.TermMonths, monthly, gameTime); err != nil {
+			return struct{}{}, false, fmt.Errorf("finance aircraft: insert loan: %w", err)
+		}
+		return struct{}{}, false, nil
+	})
 	if err != nil {
-		return nil, fmt.Errorf("finance aircraft: insert aircraft: %w", err)
-	}
-	_, err = tx.Exec(ctx, `
-		INSERT INTO loans (user_id, principal, interest_rate, remaining_balance, weekly_payment, status, loan_type, collateral_aircraft_id, term_months, monthly_payment, originated_game_date)
-		VALUES ($1,$2,$3,$4,$5,'active','aircraft_financing',$6,$7,$8,$9)`,
-		userID, principal, rate, totalRepayable, weekly, fleetID, p.TermMonths, monthly, gameTime)
-	if err != nil {
-		return nil, fmt.Errorf("finance aircraft: insert loan: %w", err)
-	}
-	if err := tx.Commit(ctx); err != nil {
-		// Commit gagal = tidak ada pesawat maupun pinjaman; jangan bilang sukses.
-		return nil, fmt.Errorf("finance aircraft: commit: %w", err)
+		return nil, err
 	}
 	newCash, _ := b.engine.Ledger.GetBalance(ctx, userID)
 	return &MutationResult{true, "Aircraft financed successfully.", newCash}, nil

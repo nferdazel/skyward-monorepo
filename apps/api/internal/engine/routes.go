@@ -5,6 +5,8 @@ import (
 	"context"
 	"fmt"
 	"math"
+
+	"github.com/jackc/pgx/v5"
 )
 
 // RoutesService — routes mutations.
@@ -112,53 +114,51 @@ func (r *RoutesService) Assign(ctx context.Context, userID, routeID, aircraftID 
 	// serialized against Fleet.Sell — previously an aircraft could be sold
 	// between guard and update (ghost route with NULL aircraft via FK SET NULL)
 	// or double-assigned to two routes by concurrent calls.
-	tx, txErr := r.engine.Pool.Begin(ctx)
-	if txErr != nil {
+	result, err := withTx(ctx, r.engine.Pool, func(tx pgx.Tx) (*MutationResult, bool, error) {
+		var rangeKM, speedKMH int
+		var turnaroundHours, condition float64
+		var status string
+		err := tx.QueryRow(ctx, `
+			SELECT m.range_km, m.speed_kmh, COALESCE(m.turnaround_hours, 1.0), f.condition, f.status
+			FROM fleet_aircraft f JOIN aircraft_models m ON m.id=f.aircraft_model_id
+			WHERE f.id=$1 AND f.user_id=$2 FOR UPDATE`, aircraftID, userID).
+			Scan(&rangeKM, &speedKMH, &turnaroundHours, &condition, &status)
+		if err != nil {
+			return &MutationResult{false, "Aircraft is unavailable or below the safety threshold.", 0}, true, nil
+		}
+		if condition < threshold {
+			return &MutationResult{false, "Aircraft is unavailable or below the safety threshold.", 0}, true, nil
+		}
+		if float64(rangeKM) < ceil(routeDist) {
+			return &MutationResult{false, "Aircraft range is insufficient for this route.", 0}, true, nil
+		}
+		// weekly capacity — use the assigned model's real turnaround (AVIATION-13)
+		maxWeekly := calcMaxWeeklyFlights(routeDist, speedKMH, turnaroundHours,
+			r.engine.getConfigNum(ctx, "max_weekly_flights", 168.0))
+		if maxWeekly > 0 && routeFreq > maxWeekly {
+			return &MutationResult{false, "Route frequency exceeds this aircraft's weekly operating capacity.", 0}, true, nil
+		}
+		// double-assignment check (aircraft row is locked)
+		var assigned bool
+		if qerr := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM route_assignments WHERE user_id=$1 AND assigned_aircraft_id=$2 AND id<>$3)`, userID, aircraftID, routeID).Scan(&assigned); qerr != nil {
+			return &MutationResult{false, "assignment check failed", 0}, true, nil
+		}
+		if assigned {
+			return &MutationResult{false, "Aircraft is already assigned to another route.", 0}, true, nil
+		}
+		// ground safety: aircraft tidak boleh grounded
+		if status == "grounded" {
+			return &MutationResult{false, "Aircraft is grounded and cannot be assigned.", 0}, true, nil
+		}
+		if _, err := tx.Exec(ctx, `UPDATE route_assignments SET assigned_aircraft_id=$1 WHERE id=$2 AND user_id=$3`, aircraftID, routeID, userID); err != nil {
+			return &MutationResult{false, "assign failed", 0}, true, nil
+		}
+		return &MutationResult{true, "Aircraft assigned to route.", 0}, false, nil
+	})
+	if err != nil {
 		return &MutationResult{false, "transaction error", 0}, nil
 	}
-	defer tx.Rollback(ctx) //nolint:errcheck
-	var rangeKM, speedKMH int
-	var turnaroundHours, condition float64
-	var status string
-	err = tx.QueryRow(ctx, `
-		SELECT m.range_km, m.speed_kmh, COALESCE(m.turnaround_hours, 1.0), f.condition, f.status
-		FROM fleet_aircraft f JOIN aircraft_models m ON m.id=f.aircraft_model_id
-		WHERE f.id=$1 AND f.user_id=$2 FOR UPDATE`, aircraftID, userID).
-		Scan(&rangeKM, &speedKMH, &turnaroundHours, &condition, &status)
-	if err != nil {
-		return &MutationResult{false, "Aircraft is unavailable or below the safety threshold.", 0}, nil
-	}
-	if condition < threshold {
-		return &MutationResult{false, "Aircraft is unavailable or below the safety threshold.", 0}, nil
-	}
-	if float64(rangeKM) < ceil(routeDist) {
-		return &MutationResult{false, "Aircraft range is insufficient for this route.", 0}, nil
-	}
-	// weekly capacity — use the assigned model's real turnaround (AVIATION-13)
-	maxWeekly := calcMaxWeeklyFlights(routeDist, speedKMH, turnaroundHours,
-		r.engine.getConfigNum(ctx, "max_weekly_flights", 168.0))
-	if maxWeekly > 0 && routeFreq > maxWeekly {
-		return &MutationResult{false, "Route frequency exceeds this aircraft's weekly operating capacity.", 0}, nil
-	}
-	// double-assignment check (aircraft row is locked)
-	var assigned bool
-	if qerr := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM route_assignments WHERE user_id=$1 AND assigned_aircraft_id=$2 AND id<>$3)`, userID, aircraftID, routeID).Scan(&assigned); qerr != nil {
-		return &MutationResult{false, "assignment check failed", 0}, nil
-	}
-	if assigned {
-		return &MutationResult{false, "Aircraft is already assigned to another route.", 0}, nil
-	}
-	// ground safety: aircraft tidak boleh grounded
-	if status == "grounded" {
-		return &MutationResult{false, "Aircraft is grounded and cannot be assigned.", 0}, nil
-	}
-	if _, err := tx.Exec(ctx, `UPDATE route_assignments SET assigned_aircraft_id=$1 WHERE id=$2 AND user_id=$3`, aircraftID, routeID, userID); err != nil {
-		return &MutationResult{false, "assign failed", 0}, nil
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return &MutationResult{false, "commit failed", 0}, nil
-	}
-	return &MutationResult{true, "Aircraft assigned to route.", 0}, nil
+	return result, nil
 }
 
 // UpdateFreqPrice — PATCH /routes/{id}. Faithful port of update_route_frequency_and_price.

@@ -3,9 +3,12 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 )
 
 // financeSnapshotRetentionDays caps how many daily finance_snapshots rows are
@@ -210,53 +213,56 @@ func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime ti
 	// game_current_time and post the same route revenue/costs to the ledger;
 	// the day-advance guard below only prevents the clock/day-boundary from
 	// advancing twice, not the ledger writes.
-	tx, txErr := e.Pool.Begin(ctx)
-	if txErr != nil {
-		return PlayerProcessResult{}, fmt.Errorf("process %s: begin tx: %w", userID, txErr)
-	}
-	defer tx.Rollback(ctx) //nolint:errcheck
-	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtext($1))`, userID); err != nil {
-		return PlayerProcessResult{}, fmt.Errorf("process %s: user lock: %w", userID, err)
-	}
-
-	// user data (read under the per-user lock)
-	var userGameTime time.Time
-	var autoThreshold float64
-	// `auto_grounding_threshold` nullable: tanpa COALESCE, satu user ber-NULL
-	// gagal memuat barisnya dan SELURUH simulasi user itu di-rollback di setiap
-	// tick — tanpa revenue, biaya, maupun kemajuan jam. Default-nya mengikuti
-	// default kolom (40.0), sama seperti COALESCE di routes.go.
-	if err := tx.QueryRow(ctx, `SELECT game_current_time, COALESCE(auto_grounding_threshold, 40.0) FROM users WHERE id=$1`, userID).Scan(&userGameTime, &autoThreshold); err != nil {
-		return PlayerProcessResult{}, fmt.Errorf("process %s: load user: %w", userID, err)
-	}
-
-	elapsed := targetTime.Sub(userGameTime).Hours() / 24.0
-	if elapsed <= 0 {
-		// no-op guard
-		if _, err := e.Pool.Exec(ctx, `UPDATE users SET last_active_at=NOW() WHERE id=$1`, userID); err != nil {
-			e.log().Warn("sim: touch last_active_at failed", "user", userID, "error", err)
+	var (
+		userGameTime time.Time
+		elapsed      float64
+		advancedDay  bool
+		flightsRun   float64
+		totalRevenue float64
+		totalExpense float64
+	)
+	result, err := withTx(ctx, e.Pool, func(tx pgx.Tx) (*PlayerProcessResult, bool, error) {
+		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtext($1))`, userID); err != nil {
+			return nil, false, fmt.Errorf("process %s: user lock: %w", userID, err)
 		}
-		return PlayerProcessResult{}, nil
-	}
-	timeFraction := math.Min(elapsed/7.0, 1.0)
-	safetyThreshold := math.Max(autoThreshold, snap.num("absolute_minimum_safety_limit", 30.0))
 
-	// Route loop
-	type routeRow struct {
-		OriginIATA, DestIATA         string
-		DistanceKM, TicketPrice      float64
-		FlightsPerWeek               int
-		FuelBurnPerKM, SpeedKMH      float64
-		TurnaroundHours, Capacity    float64
-		LeasePriceMonth, MaintCostHr float64
-		AcqType                      string
-		OriginDemand, DestDemand     int
-		AircraftID                   string
-		EconomySeats, BusinessSeats  int
-		FirstClassSeats              int
-	}
-	routes := []routeRow{}
-	rrows, err := e.Pool.Query(ctx, `
+		// user data (read under the per-user lock)
+		var autoThreshold float64
+		// `auto_grounding_threshold` nullable: tanpa COALESCE, satu user ber-NULL
+		// gagal memuat barisnya dan SELURUH simulasi user itu di-rollback di setiap
+		// tick — tanpa revenue, biaya, maupun kemajuan jam. Default-nya mengikuti
+		// default kolom (40.0), sama seperti COALESCE di routes.go.
+		if err := tx.QueryRow(ctx, `SELECT game_current_time, COALESCE(auto_grounding_threshold, 40.0) FROM users WHERE id=$1`, userID).Scan(&userGameTime, &autoThreshold); err != nil {
+			return nil, false, fmt.Errorf("process %s: load user: %w", userID, err)
+		}
+
+		elapsed = targetTime.Sub(userGameTime).Hours() / 24.0
+		if elapsed <= 0 {
+			// no-op guard
+			if _, err := e.Pool.Exec(ctx, `UPDATE users SET last_active_at=NOW() WHERE id=$1`, userID); err != nil {
+				e.log().Warn("sim: touch last_active_at failed", "user", userID, "error", err)
+			}
+			return &PlayerProcessResult{}, true, nil
+		}
+		timeFraction := math.Min(elapsed/7.0, 1.0)
+		safetyThreshold := math.Max(autoThreshold, snap.num("absolute_minimum_safety_limit", 30.0))
+
+		// Route loop
+		type routeRow struct {
+			OriginIATA, DestIATA         string
+			DistanceKM, TicketPrice      float64
+			FlightsPerWeek               int
+			FuelBurnPerKM, SpeedKMH      float64
+			TurnaroundHours, Capacity    float64
+			LeasePriceMonth, MaintCostHr float64
+			AcqType                      string
+			OriginDemand, DestDemand     int
+			AircraftID                   string
+			EconomySeats, BusinessSeats  int
+			FirstClassSeats              int
+		}
+		routes := []routeRow{}
+		rrows, err := e.Pool.Query(ctx, `
 		SELECT ur.origin_iata, ur.destination_iata, ur.distance_km, ur.ticket_price, ur.flights_per_week,
 		       am.fuel_burn_per_km, am.speed_kmh, am.turnaround_hours, am.capacity,
 		       am.lease_price_per_month, am.maintenance_cost_per_hour,
@@ -268,184 +274,189 @@ func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime ti
 		JOIN airports a1 ON a1.iata=ur.origin_iata
 		JOIN airports a2 ON a2.iata=ur.destination_iata
 		WHERE ur.user_id=$1 AND ur.status='active' AND fa.status='active' AND fa.condition>=$2`, userID, safetyThreshold)
-	if err != nil {
-		return PlayerProcessResult{}, fmt.Errorf("process %s: routes query: %w", userID, err)
-	}
-	for rrows.Next() {
-		var r routeRow
-		if serr := rrows.Scan(&r.OriginIATA, &r.DestIATA, &r.DistanceKM, &r.TicketPrice, &r.FlightsPerWeek,
-			&r.FuelBurnPerKM, &r.SpeedKMH, &r.TurnaroundHours, &r.Capacity,
-			&r.LeasePriceMonth, &r.MaintCostHr, &r.AcqType, &r.OriginDemand, &r.DestDemand, &r.AircraftID,
-			&r.EconomySeats, &r.BusinessSeats, &r.FirstClassSeats); serr != nil {
-			rrows.Close()
-			return PlayerProcessResult{}, fmt.Errorf("process %s: routes scan: %w", userID, serr)
+		if err != nil {
+			return nil, false, fmt.Errorf("process %s: routes query: %w", userID, err)
 		}
-		routes = append(routes, r)
-	}
-	rerr := rrows.Err()
-	rrows.Close()
-	if rerr != nil {
-		return PlayerProcessResult{}, fmt.Errorf("process %s: routes iteration: %w", userID, rerr)
-	}
-
-	flightsRun := 0.0
-	totalRevenue := 0.0
-	totalExpense := 0.0
-
-	for _, r := range routes {
-		// Event multiplier dari snapshot (dulu dua query per rute per pemain).
-		demandEvent := snap.demandMult(r.OriginIATA, r.DestIATA)
-		capacityEvent := snap.capacityMult(r.OriginIATA, r.DestIATA)
-
-		flightHours := r.DistanceKM/r.SpeedKMH + r.TurnaroundHours
-		if flightHours <= 0 {
-			continue
-		}
-		vMaxWeekly := int(maxWeekly / flightHours)
-		flights := r.FlightsPerWeek
-		if vMaxWeekly > 0 && flights > vMaxWeekly {
-			flights = vMaxWeekly
-		}
-
-		seasonalFactor := 1.0
-
-		// GAME-03: allocate the daily demand pool across cabins by
-		// willingness-to-pay. `am.capacity` is a seat-slot budget (premium
-		// seats cost 2-3 slots), not a physical seat count; fall back to an
-		// all-economy configuration when the aircraft has no explicit config.
-		// capacityEvent scales seats for events (e.g. weather disruption).
-		econSeats, bizSeats, firstSeats := r.EconomySeats, r.BusinessSeats, r.FirstClassSeats
-		if econSeats+bizSeats+firstSeats <= 0 {
-			econSeats = int(math.Floor(r.Capacity))
-			bizSeats, firstSeats = 0, 0
-		}
-
-		// GAME-02: fixed daily demand pool. Raising frequency past saturation
-		// lowers per-flight load factor. Price elasticity is applied inside
-		// routeDailyDemand (GAME-04).
-		dailyDemand := routeDailyDemand(r.OriginDemand, r.DestDemand, r.DistanceKM,
-			r.TicketPrice, ticketBase, ticketKM, demandPoolScale) * demandEvent * seasonalFactor
-		flightsPerDay := float64(flights) / 7.0
-
-		// Per-day seat capacity by cabin, then allocate the pool across them.
-		allocation := allocateCabins(
-			int(math.Round(float64(econSeats)*flightsPerDay)),
-			int(math.Round(float64(bizSeats)*flightsPerDay)),
-			int(math.Round(float64(firstSeats)*flightsPerDay)),
-			r.TicketPrice, businessFareMult, firstFareMult,
-			economyWilling, businessWilling, firstWilling,
-			dailyDemand, capacityEvent,
-		)
-		// Weekly revenue from the pool directly (not floor-then-multiply per
-		// flight), so weekly revenue is monotonic in the pool and does not
-		// oscillate with rounding at fractional frequencies.
-		weeklyRevenue := allocation.Revenue * 7.0
-		revenue := weeklyRevenue * timeFraction
-		fuelCost := float64(flights) * r.DistanceKM * r.FuelBurnPerKM * fuelPrice * fuelMult
-		crewCostTotal := float64(flights) * flightHours * crewCostFor(crewCost, r.Capacity)
-		maintCost := float64(flights) * r.DistanceKM * r.MaintCostHr * maintMult / r.SpeedKMH
-		opsCost := fuelCost + crewCostTotal + maintCost
-		leaseCost := 0.0
-		if r.AcqType == "lease" {
-			leaseCost = r.LeasePriceMonth * (elapsed / 30.0)
-		}
-
-		opsCost *= timeFraction
-		cargoRev := revenue * cargoPct
-		fuelCost *= timeFraction
-		crewCostTotal *= timeFraction
-		maintCost *= timeFraction
-
-		// write ledger rows inside transaction (AUDIT-06: error ⇒ rollback;
-		// debit operasional ⇒ allow-negative, tercatat selalu)
-		if revenue > 0 {
-			if _, err := e.Ledger.CreditTx(ctx, tx, userID, revenue, "revenue", "ticket_revenue",
-				fmt.Sprintf("Route %s-%s", r.OriginIATA, r.DestIATA), targetTime); err != nil {
-				return PlayerProcessResult{}, fmt.Errorf("process %s: credit ticket revenue: %w", userID, err)
+		for rrows.Next() {
+			var r routeRow
+			if serr := rrows.Scan(&r.OriginIATA, &r.DestIATA, &r.DistanceKM, &r.TicketPrice, &r.FlightsPerWeek,
+				&r.FuelBurnPerKM, &r.SpeedKMH, &r.TurnaroundHours, &r.Capacity,
+				&r.LeasePriceMonth, &r.MaintCostHr, &r.AcqType, &r.OriginDemand, &r.DestDemand, &r.AircraftID,
+				&r.EconomySeats, &r.BusinessSeats, &r.FirstClassSeats); serr != nil {
+				rrows.Close()
+				return nil, false, fmt.Errorf("process %s: routes scan: %w", userID, serr)
 			}
-			totalRevenue += revenue
+			routes = append(routes, r)
 		}
-		if cargoRev > 0 {
-			if _, err := e.Ledger.CreditTx(ctx, tx, userID, cargoRev, "revenue", "cargo_revenue",
-				fmt.Sprintf("Cargo: %s-%s", r.OriginIATA, r.DestIATA), targetTime); err != nil {
-				return PlayerProcessResult{}, fmt.Errorf("process %s: credit cargo: %w", userID, err)
-			}
-			totalRevenue += cargoRev
-		}
-		if fuelCost > 0 {
-			if _, err := e.Ledger.DebitTxAllowNegative(ctx, tx, userID, fuelCost, "cogs", "fuel_cost",
-				fmt.Sprintf("Fuel: %s-%s", r.OriginIATA, r.DestIATA), targetTime); err != nil {
-				return PlayerProcessResult{}, fmt.Errorf("process %s: debit fuel: %w", userID, err)
-			}
-			totalExpense += fuelCost
-		}
-		if crewCostTotal > 0 {
-			if _, err := e.Ledger.DebitTxAllowNegative(ctx, tx, userID, crewCostTotal, "cogs", "crew_cost",
-				fmt.Sprintf("Crew: %s-%s", r.OriginIATA, r.DestIATA), targetTime); err != nil {
-				return PlayerProcessResult{}, fmt.Errorf("process %s: debit crew: %w", userID, err)
-			}
-			totalExpense += crewCostTotal
-		}
-		if maintCost > 0 {
-			if _, err := e.Ledger.DebitTxAllowNegative(ctx, tx, userID, maintCost, "cogs", "maintenance_cost",
-				fmt.Sprintf("Maintenance: %s-%s", r.OriginIATA, r.DestIATA), targetTime); err != nil {
-				return PlayerProcessResult{}, fmt.Errorf("process %s: debit maintenance: %w", userID, err)
-			}
-			totalExpense += maintCost
-		}
-		if leaseCost > 0 {
-			if _, err := e.Ledger.DebitTxAllowNegative(ctx, tx, userID, leaseCost, "opex", "aircraft_lease",
-				fmt.Sprintf("Lease: %s-%s", r.OriginIATA, r.DestIATA), targetTime); err != nil {
-				return PlayerProcessResult{}, fmt.Errorf("process %s: debit lease: %w", userID, err)
-			}
-			totalExpense += leaseCost
+		rerr := rrows.Err()
+		rrows.Close()
+		if rerr != nil {
+			return nil, false, fmt.Errorf("process %s: routes iteration: %w", userID, rerr)
 		}
 
-		// wear
-		wearPerCycle := ownedWear
-		if r.AcqType == "lease" {
-			wearPerCycle = leasedWear
-		}
-		wearPerCycle += r.DistanceKM * 0.0001
-		grossDamage := wearPerCycle * float64(flights) * timeFraction
-		selfHeal := grossDamage * autoRepair
-		netDamage := math.Max(0, grossDamage-selfHeal)
-		if _, werr := tx.Exec(ctx, `UPDATE fleet_aircraft SET condition = GREATEST(0, condition - $1) WHERE id=$2 AND user_id=$3`, netDamage, r.AircraftID, userID); werr != nil {
-			return PlayerProcessResult{}, fmt.Errorf("process %s: apply wear (%s): %w", userID, r.AircraftID, werr)
+		flightsRun = 0.0
+		totalRevenue = 0.0
+		totalExpense = 0.0
+
+		for _, r := range routes {
+			// Event multiplier dari snapshot (dulu dua query per rute per pemain).
+			demandEvent := snap.demandMult(r.OriginIATA, r.DestIATA)
+			capacityEvent := snap.capacityMult(r.OriginIATA, r.DestIATA)
+
+			flightHours := r.DistanceKM/r.SpeedKMH + r.TurnaroundHours
+			if flightHours <= 0 {
+				continue
+			}
+			vMaxWeekly := int(maxWeekly / flightHours)
+			flights := r.FlightsPerWeek
+			if vMaxWeekly > 0 && flights > vMaxWeekly {
+				flights = vMaxWeekly
+			}
+
+			seasonalFactor := 1.0
+
+			// GAME-03: allocate the daily demand pool across cabins by
+			// willingness-to-pay. `am.capacity` is a seat-slot budget (premium
+			// seats cost 2-3 slots), not a physical seat count; fall back to an
+			// all-economy configuration when the aircraft has no explicit config.
+			// capacityEvent scales seats for events (e.g. weather disruption).
+			econSeats, bizSeats, firstSeats := r.EconomySeats, r.BusinessSeats, r.FirstClassSeats
+			if econSeats+bizSeats+firstSeats <= 0 {
+				econSeats = int(math.Floor(r.Capacity))
+				bizSeats, firstSeats = 0, 0
+			}
+
+			// GAME-02: fixed daily demand pool. Raising frequency past saturation
+			// lowers per-flight load factor. Price elasticity is applied inside
+			// routeDailyDemand (GAME-04).
+			dailyDemand := routeDailyDemand(r.OriginDemand, r.DestDemand, r.DistanceKM,
+				r.TicketPrice, ticketBase, ticketKM, demandPoolScale) * demandEvent * seasonalFactor
+			flightsPerDay := float64(flights) / 7.0
+
+			// Per-day seat capacity by cabin, then allocate the pool across them.
+			allocation := allocateCabins(
+				int(math.Round(float64(econSeats)*flightsPerDay)),
+				int(math.Round(float64(bizSeats)*flightsPerDay)),
+				int(math.Round(float64(firstSeats)*flightsPerDay)),
+				r.TicketPrice, businessFareMult, firstFareMult,
+				economyWilling, businessWilling, firstWilling,
+				dailyDemand, capacityEvent,
+			)
+			// Weekly revenue from the pool directly (not floor-then-multiply per
+			// flight), so weekly revenue is monotonic in the pool and does not
+			// oscillate with rounding at fractional frequencies.
+			weeklyRevenue := allocation.Revenue * 7.0
+			revenue := weeklyRevenue * timeFraction
+			fuelCost := float64(flights) * r.DistanceKM * r.FuelBurnPerKM * fuelPrice * fuelMult
+			crewCostTotal := float64(flights) * flightHours * crewCostFor(crewCost, r.Capacity)
+			maintCost := float64(flights) * r.DistanceKM * r.MaintCostHr * maintMult / r.SpeedKMH
+			opsCost := fuelCost + crewCostTotal + maintCost
+			leaseCost := 0.0
+			if r.AcqType == "lease" {
+				leaseCost = r.LeasePriceMonth * (elapsed / 30.0)
+			}
+
+			opsCost *= timeFraction
+			cargoRev := revenue * cargoPct
+			fuelCost *= timeFraction
+			crewCostTotal *= timeFraction
+			maintCost *= timeFraction
+
+			// write ledger rows inside transaction (AUDIT-06: error ⇒ rollback;
+			// debit operasional ⇒ allow-negative, tercatat selalu)
+			if revenue > 0 {
+				if _, err := e.Ledger.CreditTx(ctx, tx, userID, revenue, "revenue", "ticket_revenue",
+					fmt.Sprintf("Route %s-%s", r.OriginIATA, r.DestIATA), targetTime); err != nil {
+					return nil, false, fmt.Errorf("process %s: credit ticket revenue: %w", userID, err)
+				}
+				totalRevenue += revenue
+			}
+			if cargoRev > 0 {
+				if _, err := e.Ledger.CreditTx(ctx, tx, userID, cargoRev, "revenue", "cargo_revenue",
+					fmt.Sprintf("Cargo: %s-%s", r.OriginIATA, r.DestIATA), targetTime); err != nil {
+					return nil, false, fmt.Errorf("process %s: credit cargo: %w", userID, err)
+				}
+				totalRevenue += cargoRev
+			}
+			if fuelCost > 0 {
+				if _, err := e.Ledger.DebitTxAllowNegative(ctx, tx, userID, fuelCost, "cogs", "fuel_cost",
+					fmt.Sprintf("Fuel: %s-%s", r.OriginIATA, r.DestIATA), targetTime); err != nil {
+					return nil, false, fmt.Errorf("process %s: debit fuel: %w", userID, err)
+				}
+				totalExpense += fuelCost
+			}
+			if crewCostTotal > 0 {
+				if _, err := e.Ledger.DebitTxAllowNegative(ctx, tx, userID, crewCostTotal, "cogs", "crew_cost",
+					fmt.Sprintf("Crew: %s-%s", r.OriginIATA, r.DestIATA), targetTime); err != nil {
+					return nil, false, fmt.Errorf("process %s: debit crew: %w", userID, err)
+				}
+				totalExpense += crewCostTotal
+			}
+			if maintCost > 0 {
+				if _, err := e.Ledger.DebitTxAllowNegative(ctx, tx, userID, maintCost, "cogs", "maintenance_cost",
+					fmt.Sprintf("Maintenance: %s-%s", r.OriginIATA, r.DestIATA), targetTime); err != nil {
+					return nil, false, fmt.Errorf("process %s: debit maintenance: %w", userID, err)
+				}
+				totalExpense += maintCost
+			}
+			if leaseCost > 0 {
+				if _, err := e.Ledger.DebitTxAllowNegative(ctx, tx, userID, leaseCost, "opex", "aircraft_lease",
+					fmt.Sprintf("Lease: %s-%s", r.OriginIATA, r.DestIATA), targetTime); err != nil {
+					return nil, false, fmt.Errorf("process %s: debit lease: %w", userID, err)
+				}
+				totalExpense += leaseCost
+			}
+
+			// wear
+			wearPerCycle := ownedWear
+			if r.AcqType == "lease" {
+				wearPerCycle = leasedWear
+			}
+			wearPerCycle += r.DistanceKM * 0.0001
+			grossDamage := wearPerCycle * float64(flights) * timeFraction
+			selfHeal := grossDamage * autoRepair
+			netDamage := math.Max(0, grossDamage-selfHeal)
+			if _, werr := tx.Exec(ctx, `UPDATE fleet_aircraft SET condition = GREATEST(0, condition - $1) WHERE id=$2 AND user_id=$3`, netDamage, r.AircraftID, userID); werr != nil {
+				return nil, false, fmt.Errorf("process %s: apply wear (%s): %w", userID, r.AircraftID, werr)
+			}
+
+			flightsRun += float64(flights) * (elapsed / 7.0)
 		}
 
-		flightsRun += float64(flights) * (elapsed / 7.0)
-	}
-
-	// idle lease cost
-	var idleLeaseCost float64
-	if err := tx.QueryRow(ctx, `
+		// idle lease cost
+		var idleLeaseCost float64
+		if err := tx.QueryRow(ctx, `
 		SELECT COALESCE(SUM(am.lease_price_per_month * ($1 / 30.0)), 0)
 		FROM fleet_aircraft fa JOIN aircraft_models am ON am.id=fa.aircraft_model_id
 		WHERE fa.user_id=$2 AND fa.acquisition_type='lease' AND NOT EXISTS (
 			SELECT 1 FROM route_assignments ra WHERE ra.assigned_aircraft_id=fa.id AND ra.status='active'
 		)`, elapsed, userID).Scan(&idleLeaseCost); err != nil {
-		return PlayerProcessResult{}, fmt.Errorf("process %s: idle lease sum: %w", userID, err)
-	}
-	if idleLeaseCost > 0 {
-		if _, err := e.Ledger.DebitTxAllowNegative(ctx, tx, userID, idleLeaseCost, "opex", "aircraft_lease_idle",
-			"Idle lease carrying cost", targetTime); err != nil {
-			return PlayerProcessResult{}, fmt.Errorf("process %s: debit idle lease: %w", userID, err)
+			return nil, false, fmt.Errorf("process %s: idle lease sum: %w", userID, err)
 		}
-		totalExpense += idleLeaseCost
-	}
+		if idleLeaseCost > 0 {
+			if _, err := e.Ledger.DebitTxAllowNegative(ctx, tx, userID, idleLeaseCost, "opex", "aircraft_lease_idle",
+				"Idle lease carrying cost", targetTime); err != nil {
+				return nil, false, fmt.Errorf("process %s: debit idle lease: %w", userID, err)
+			}
+			totalExpense += idleLeaseCost
+		}
 
-	// update user game time. The WHERE guard makes the day advance atomic:
-	// concurrent syncs/world-tick calls for the same user can only advance the
-	// clock once, so the day-boundary work below never double-counts a day.
-	tag, cerr := tx.Exec(ctx, `UPDATE users SET game_current_time=$1, last_active_at=NOW()
+		// update user game time. The WHERE guard makes the day advance atomic:
+		// concurrent syncs/world-tick calls for the same user can only advance the
+		// clock once, so the day-boundary work below never double-counts a day.
+		tag, cerr := tx.Exec(ctx, `UPDATE users SET game_current_time=$1, last_active_at=NOW()
 		WHERE id=$2 AND game_current_time < $1`, targetTime, userID)
-	if cerr != nil {
-		return PlayerProcessResult{}, fmt.Errorf("process %s: advance clock: %w", userID, cerr)
+		if cerr != nil {
+			return nil, false, fmt.Errorf("process %s: advance clock: %w", userID, cerr)
+		}
+		advancedDay = tag.RowsAffected() > 0
+		return nil, false, nil
+	})
+	if err != nil {
+		return PlayerProcessResult{}, err
 	}
-	advancedDay := tag.RowsAffected() > 0
-	if err := tx.Commit(ctx); err != nil {
-		return PlayerProcessResult{}, fmt.Errorf("process %s: commit: %w", userID, err)
+	if result != nil {
+		return *result, nil
 	}
 
 	cashAfter, balErr := e.Ledger.GetBalance(ctx, userID)
@@ -481,31 +492,31 @@ func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime ti
 // (mis. sudah berstatus Bankrupt tapi pinjamannya masih aktif dan tetap ditagih,
 // atau rutenya masih beroperasi).
 func (e *Engine) applyBankruptcy(ctx context.Context, userID string) {
-	tx, err := e.Pool.Begin(ctx)
+	_, err := withTx(ctx, e.Pool, func(tx pgx.Tx) (struct{}, bool, error) {
+		if _, err := tx.Exec(ctx, `UPDATE users SET operational_status='Bankrupt' WHERE id=$1`, userID); err != nil {
+			e.log().Error("bankruptcy: update users gagal, dibatalkan", "user", userID, "error", err)
+			return struct{}{}, true, nil
+		}
+		if _, err := tx.Exec(ctx, `UPDATE fleet_aircraft SET status='grounded' WHERE user_id=$1`, userID); err != nil {
+			e.log().Error("bankruptcy: grounding fleet gagal, dibatalkan", "user", userID, "error", err)
+			return struct{}{}, true, nil
+		}
+		if _, err := tx.Exec(ctx, `UPDATE loans SET status='defaulted', remaining_balance=0 WHERE user_id=$1 AND status='active'`, userID); err != nil {
+			e.log().Error("bankruptcy: default pinjaman gagal, dibatalkan", "user", userID, "error", err)
+			return struct{}{}, true, nil
+		}
+		if _, err := tx.Exec(ctx, `UPDATE route_assignments SET status='cancelled' WHERE user_id=$1 AND status='active'`, userID); err != nil {
+			e.log().Error("bankruptcy: pembatalan rute gagal, dibatalkan", "user", userID, "error", err)
+			return struct{}{}, true, nil
+		}
+		return struct{}{}, false, nil
+	})
 	if err != nil {
-		e.log().Error("bankruptcy: begin tx gagal", "user", userID, "error", err)
-		return
-	}
-	defer tx.Rollback(ctx) //nolint:errcheck
-
-	if _, err := tx.Exec(ctx, `UPDATE users SET operational_status='Bankrupt' WHERE id=$1`, userID); err != nil {
-		e.log().Error("bankruptcy: update users gagal, dibatalkan", "user", userID, "error", err)
-		return
-	}
-	if _, err := tx.Exec(ctx, `UPDATE fleet_aircraft SET status='grounded' WHERE user_id=$1`, userID); err != nil {
-		e.log().Error("bankruptcy: grounding fleet gagal, dibatalkan", "user", userID, "error", err)
-		return
-	}
-	if _, err := tx.Exec(ctx, `UPDATE loans SET status='defaulted', remaining_balance=0 WHERE user_id=$1 AND status='active'`, userID); err != nil {
-		e.log().Error("bankruptcy: default pinjaman gagal, dibatalkan", "user", userID, "error", err)
-		return
-	}
-	if _, err := tx.Exec(ctx, `UPDATE route_assignments SET status='cancelled' WHERE user_id=$1 AND status='active'`, userID); err != nil {
-		e.log().Error("bankruptcy: pembatalan rute gagal, dibatalkan", "user", userID, "error", err)
-		return
-	}
-	if err := tx.Commit(ctx); err != nil {
-		e.log().Error("bankruptcy: commit gagal", "user", userID, "error", err)
+		if errors.Is(err, ErrTxCommit) {
+			e.log().Error("bankruptcy: commit gagal", "user", userID, "error", err)
+		} else {
+			e.log().Error("bankruptcy: begin tx gagal", "user", userID, "error", err)
+		}
 	}
 }
 

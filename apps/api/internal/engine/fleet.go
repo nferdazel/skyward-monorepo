@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+
 	"skyward-api/internal/money"
 )
 
@@ -124,28 +126,25 @@ func (f *FleetService) Purchase(ctx context.Context, userID string, p PurchasePa
 	}
 	nickname := strings.TrimSpace(p.Nickname)
 
-	tx, err := f.engine.Pool.Begin(ctx)
+	result, err := withTx(ctx, f.engine.Pool, func(tx pgx.Tx) (*MutationResult, bool, error) {
+		newCash, err := f.engine.Ledger.DebitTx(ctx, tx, userID, price, "investing", "aircraft_purchase",
+			fmt.Sprintf("Purchased aircraft %s [%s]", modelName, tail), gameTime)
+		if err != nil {
+			return &MutationResult{Success: false, Message: "ledger debit failed", NewCash: cash}, true, nil
+		}
+		_, err = tx.Exec(ctx, `
+			INSERT INTO fleet_aircraft (user_id, aircraft_model_id, nickname, acquisition_type, condition, status, tail_number, economy_seats, business_seats, first_class_seats)
+			VALUES ($1,$2,$3,'purchase',100.00,'active',$4,$5,$6,$7)`,
+			userID, p.ModelID, nickname, tail, int(econ), p.BusinessSeats, p.FirstClassSeats)
+		if err != nil {
+			return &MutationResult{Success: false, Message: "insert aircraft failed", NewCash: cash}, true, nil
+		}
+		return &MutationResult{Success: true, Message: fmt.Sprintf("Successfully purchased %s [%s]", modelName, tail), NewCash: newCash}, false, nil
+	})
 	if err != nil {
 		return &MutationResult{Success: false, Message: "transaction error", NewCash: cash}, nil
 	}
-	defer tx.Rollback(ctx) //nolint:errcheck
-
-	newCash, err := f.engine.Ledger.DebitTx(ctx, tx, userID, price, "investing", "aircraft_purchase",
-		fmt.Sprintf("Purchased aircraft %s [%s]", modelName, tail), gameTime)
-	if err != nil {
-		return &MutationResult{Success: false, Message: "ledger debit failed", NewCash: cash}, nil
-	}
-	_, err = tx.Exec(ctx, `
-		INSERT INTO fleet_aircraft (user_id, aircraft_model_id, nickname, acquisition_type, condition, status, tail_number, economy_seats, business_seats, first_class_seats)
-		VALUES ($1,$2,$3,'purchase',100.00,'active',$4,$5,$6,$7)`,
-		userID, p.ModelID, nickname, tail, int(econ), p.BusinessSeats, p.FirstClassSeats)
-	if err != nil {
-		return &MutationResult{Success: false, Message: "insert aircraft failed", NewCash: cash}, nil
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return &MutationResult{Success: false, Message: "commit failed", NewCash: cash}, nil
-	}
-	return &MutationResult{Success: true, Message: fmt.Sprintf("Successfully purchased %s [%s]", modelName, tail), NewCash: newCash}, nil
+	return result, nil
 }
 
 // Sell — POST /fleet/{id}/sell. Faithful port of sell_actor_aircraft.
@@ -179,89 +178,83 @@ func (f *FleetService) Sell(ctx context.Context, userID, fleetID string) (*Mutat
 	gameTimeForSale, _ := f.engine.Ledger.GetUserGameTime(ctx, userID)
 	saleValue := saleValueFor(fr.Condition, fr.PurchasePrice, fr.AcquiredGameDate, gameTimeForSale)
 
-	tx, err := f.engine.Pool.Begin(ctx)
+	result, err := withTx(ctx, f.engine.Pool, func(tx pgx.Tx) (*MutationResult, bool, error) {
+		// AUDIT-08: lock the aircraft row — serializes against Routes.Assign so a
+		// plane cannot be sold while being assigned (FK SET NULL ghost route) or
+		// double-assigned. The pre-read check above stays only as a fast-fail.
+		var lockedID string
+		if err := tx.QueryRow(ctx, `SELECT id FROM fleet_aircraft WHERE id=$1 AND user_id=$2 FOR UPDATE`, fleetID, userID).Scan(&lockedID); err != nil {
+			return &MutationResult{Success: false, Message: "Aircraft not found."}, true, nil
+		}
+		var stillAssigned bool
+		if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM route_assignments WHERE user_id=$1 AND assigned_aircraft_id=$2)`, userID, fleetID).Scan(&stillAssigned); err != nil {
+			return &MutationResult{Success: false, Message: "assignment check failed"}, true, nil
+		}
+		if stillAssigned {
+			return &MutationResult{Success: false, Message: "Aircraft is still assigned to a route."}, true, nil
+		}
+
+		gameTime, _ := f.engine.Ledger.GetUserGameTime(ctx, userID)
+		newCash, err := f.engine.Ledger.CreditTx(ctx, tx, userID, saleValue, "investing", "aircraft_sale",
+			fmt.Sprintf("Sold aircraft %s [%s]", fr.ModelName, deref(fr.TailNumber, "NO-TAIL")), gameTime)
+		if err != nil {
+			return &MutationResult{Success: false, Message: "ledger credit failed"}, true, nil
+		}
+		_, err = tx.Exec(ctx, `DELETE FROM fleet_aircraft WHERE id=$1 AND user_id=$2`, fleetID, userID)
+		if err != nil {
+			return &MutationResult{Success: false, Message: "delete aircraft failed"}, true, nil
+		}
+		return &MutationResult{Success: true, Message: fmt.Sprintf("Aircraft sold for $%.2f.", saleValue), NewCash: newCash}, false, nil
+	})
 	if err != nil {
 		return &MutationResult{Success: false, Message: "transaction error"}, nil
 	}
-	defer tx.Rollback(ctx) //nolint:errcheck
-
-	// AUDIT-08: lock the aircraft row — serializes against Routes.Assign so a
-	// plane cannot be sold while being assigned (FK SET NULL ghost route) or
-	// double-assigned. The pre-read check above stays only as a fast-fail.
-	var lockedID string
-	if err := tx.QueryRow(ctx, `SELECT id FROM fleet_aircraft WHERE id=$1 AND user_id=$2 FOR UPDATE`, fleetID, userID).Scan(&lockedID); err != nil {
-		return &MutationResult{Success: false, Message: "Aircraft not found."}, nil
-	}
-	var stillAssigned bool
-	if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM route_assignments WHERE user_id=$1 AND assigned_aircraft_id=$2)`, userID, fleetID).Scan(&stillAssigned); err != nil {
-		return &MutationResult{Success: false, Message: "assignment check failed"}, nil
-	}
-	if stillAssigned {
-		return &MutationResult{Success: false, Message: "Aircraft is still assigned to a route."}, nil
-	}
-
-	gameTime, _ := f.engine.Ledger.GetUserGameTime(ctx, userID)
-	newCash, err := f.engine.Ledger.CreditTx(ctx, tx, userID, saleValue, "investing", "aircraft_sale",
-		fmt.Sprintf("Sold aircraft %s [%s]", fr.ModelName, deref(fr.TailNumber, "NO-TAIL")), gameTime)
-	if err != nil {
-		return &MutationResult{Success: false, Message: "ledger credit failed"}, nil
-	}
-	_, err = tx.Exec(ctx, `DELETE FROM fleet_aircraft WHERE id=$1 AND user_id=$2`, fleetID, userID)
-	if err != nil {
-		return &MutationResult{Success: false, Message: "delete aircraft failed"}, nil
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return &MutationResult{Success: false, Message: "commit failed"}, nil
-	}
-	return &MutationResult{Success: true, Message: fmt.Sprintf("Aircraft sold for $%.2f.", saleValue), NewCash: newCash}, nil
+	return result, nil
 }
 
 // Repair — POST /fleet/{id}/repair. Faithful port of perform_actor_aircraft_repair (player path).
 func (f *FleetService) Repair(ctx context.Context, userID, fleetID string) (*MutationResult, error) {
-	tx, err := f.engine.Pool.Begin(ctx)
+	result, err := withTx(ctx, f.engine.Pool, func(tx pgx.Tx) (*MutationResult, bool, error) {
+		var condition float64
+		var purchasePrice float64
+		var modelName string
+		err := tx.QueryRow(ctx, `
+			SELECT f.condition, m.purchase_price, m.model_name
+			FROM fleet_aircraft f JOIN aircraft_models m ON m.id=f.aircraft_model_id
+			WHERE f.id=$1 AND f.user_id=$2 FOR UPDATE`, fleetID, userID).
+			Scan(&condition, &purchasePrice, &modelName)
+		if err != nil {
+			return &MutationResult{Success: false, Message: "Aircraft not found."}, true, nil
+		}
+		cash, _ := f.engine.Ledger.GetBalance(ctx, userID)
+		if condition >= 100.0 {
+			return &MutationResult{Success: true, Message: fmt.Sprintf("Aircraft %s is already in pristine condition (100%%).", modelName), NewCash: cash}, true, nil
+		}
+		// Repair is priced off the aircraft's value, not its monthly lease rent.
+		// Leased aircraft already carry higher wear (leased_wear_per_flight_cycle),
+		// which is the intended differentiator. See repairCostFor.
+		repairCost := repairCostFor(condition, purchasePrice)
+		if moneyLessThan(cash, repairCost) {
+			return &MutationResult{Success: false,
+				Message: fmt.Sprintf("Insufficient funds for repair. Required: $%.2f", repairCost), NewCash: cash}, true, nil
+		}
+
+		gameTime, _ := f.engine.Ledger.GetUserGameTime(ctx, userID)
+		desc := fmt.Sprintf("Maintenance completed for %s - restored from %.2f%% to 100%%", modelName, condition)
+		newCash, err := f.engine.Ledger.DebitTx(ctx, tx, userID, repairCost, "cogs", "maintenance", desc, gameTime)
+		if err != nil {
+			return &MutationResult{Success: false, Message: "ledger debit failed", NewCash: cash}, true, nil
+		}
+		_, err = tx.Exec(ctx, `UPDATE fleet_aircraft SET condition=100.00, status='active' WHERE id=$1 AND user_id=$2`, fleetID, userID)
+		if err != nil {
+			return &MutationResult{Success: false, Message: "update aircraft failed", NewCash: cash}, true, nil
+		}
+		return &MutationResult{Success: true, Message: "Aircraft maintenance complete. Health restored to 100%!", NewCash: newCash}, false, nil
+	})
 	if err != nil {
 		return &MutationResult{Success: false, Message: "transaction error"}, nil
 	}
-	defer tx.Rollback(ctx) //nolint:errcheck
-
-	var condition float64
-	var purchasePrice float64
-	var modelName string
-	err = tx.QueryRow(ctx, `
-		SELECT f.condition, m.purchase_price, m.model_name
-		FROM fleet_aircraft f JOIN aircraft_models m ON m.id=f.aircraft_model_id
-		WHERE f.id=$1 AND f.user_id=$2 FOR UPDATE`, fleetID, userID).
-		Scan(&condition, &purchasePrice, &modelName)
-	if err != nil {
-		return &MutationResult{Success: false, Message: "Aircraft not found."}, nil
-	}
-	cash, _ := f.engine.Ledger.GetBalance(ctx, userID)
-	if condition >= 100.0 {
-		return &MutationResult{Success: true, Message: fmt.Sprintf("Aircraft %s is already in pristine condition (100%%).", modelName), NewCash: cash}, nil
-	}
-	// Repair is priced off the aircraft's value, not its monthly lease rent.
-	// Leased aircraft already carry higher wear (leased_wear_per_flight_cycle),
-	// which is the intended differentiator. See repairCostFor.
-	repairCost := repairCostFor(condition, purchasePrice)
-	if moneyLessThan(cash, repairCost) {
-		return &MutationResult{Success: false,
-			Message: fmt.Sprintf("Insufficient funds for repair. Required: $%.2f", repairCost), NewCash: cash}, nil
-	}
-
-	gameTime, _ := f.engine.Ledger.GetUserGameTime(ctx, userID)
-	desc := fmt.Sprintf("Maintenance completed for %s - restored from %.2f%% to 100%%", modelName, condition)
-	newCash, err := f.engine.Ledger.DebitTx(ctx, tx, userID, repairCost, "cogs", "maintenance", desc, gameTime)
-	if err != nil {
-		return &MutationResult{Success: false, Message: "ledger debit failed", NewCash: cash}, nil
-	}
-	_, err = tx.Exec(ctx, `UPDATE fleet_aircraft SET condition=100.00, status='active' WHERE id=$1 AND user_id=$2`, fleetID, userID)
-	if err != nil {
-		return &MutationResult{Success: false, Message: "update aircraft failed", NewCash: cash}, nil
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return &MutationResult{Success: false, Message: "commit failed", NewCash: cash}, nil
-	}
-	return &MutationResult{Success: true, Message: "Aircraft maintenance complete. Health restored to 100%!", NewCash: newCash}, nil
+	return result, nil
 }
 
 // ConfigureSeats — PATCH /fleet/{id}/seats. Faithful port of configure_aircraft_seats.
@@ -337,27 +330,26 @@ func (f *FleetService) Lease(ctx context.Context, userID string, p LeaseParams) 
 	if err != nil {
 		return &MutationResult{false, "tail number generation failed", cash}, nil
 	}
-	tx, txErr := f.engine.Pool.Begin(ctx)
-	if txErr != nil {
+	result, err := withTx(ctx, f.engine.Pool, func(tx pgx.Tx) (*MutationResult, bool, error) {
+		_, lerr := f.engine.Ledger.DebitTx(ctx, tx, userID, deposit, "investing", "aircraft_lease_deposit",
+			fmt.Sprintf("Leased aircraft %s deposit [%s]", modelName, tail), gameTime)
+		if lerr != nil {
+			return &MutationResult{false, "ledger debit failed", cash}, true, nil
+		}
+		_, err = tx.Exec(ctx, `
+			INSERT INTO fleet_aircraft (user_id, aircraft_model_id, nickname, acquisition_type, condition, status, tail_number, economy_seats, business_seats, first_class_seats)
+			VALUES ($1,$2,$3,'lease',100.00,'active',$4,$5,$6,$7)`,
+			userID, p.ModelID, p.Nickname, tail, int(econ), p.BusinessSeats, p.FirstClassSeats)
+		if err != nil {
+			return &MutationResult{false, "insert aircraft failed", cash}, true, nil
+		}
+		return nil, false, nil
+	})
+	if err != nil {
 		return &MutationResult{false, "transaction error", cash}, nil
 	}
-	defer tx.Rollback(ctx) //nolint:errcheck
-	_, lerr := f.engine.Ledger.DebitTx(ctx, tx, userID, deposit, "investing", "aircraft_lease_deposit",
-		fmt.Sprintf("Leased aircraft %s deposit [%s]", modelName, tail), gameTime)
-	if lerr != nil {
-		return &MutationResult{false, "ledger debit failed", cash}, nil
-	}
-	_, err = tx.Exec(ctx, `
-		INSERT INTO fleet_aircraft (user_id, aircraft_model_id, nickname, acquisition_type, condition, status, tail_number, economy_seats, business_seats, first_class_seats)
-		VALUES ($1,$2,$3,'lease',100.00,'active',$4,$5,$6,$7)`,
-		userID, p.ModelID, p.Nickname, tail, int(econ), p.BusinessSeats, p.FirstClassSeats)
-	if err != nil {
-		return &MutationResult{false, "insert aircraft failed", cash}, nil
-	}
-	if err := tx.Commit(ctx); err != nil {
-		// Commit gagal = deposit sudah didebit di transaksi yang batal dan
-		// pesawatnya tidak pernah ada; jangan laporkan sukses.
-		return &MutationResult{false, "commit failed", cash}, nil
+	if result != nil {
+		return result, nil
 	}
 	newCash, _ := f.engine.Ledger.GetBalance(ctx, userID)
 	return &MutationResult{true, fmt.Sprintf("Successfully leased %s [%s]", modelName, tail), newCash}, nil
@@ -389,40 +381,38 @@ func (f *FleetService) TerminateLease(ctx context.Context, userID, fleetID strin
 	if moneyLessThan(cash, exitFee) {
 		return &MutationResult{false, "Insufficient funds to pay lease termination fee.", cash}, nil
 	}
-	tx, txErr := f.engine.Pool.Begin(ctx)
-	if txErr != nil {
+	result, err := withTx(ctx, f.engine.Pool, func(tx pgx.Tx) (*MutationResult, bool, error) {
+		// AUDIT-08 (jalur terminate): kunci baris pesawat lalu cek assignment DI
+		// DALAM tx, seperti Fleet.Sell. FK-nya ON DELETE SET NULL, jadi menghapus
+		// pesawat yang masih dipakai meninggalkan route hantu tanpa pesawat — dan
+		// pre-check di atas mengabaikan error bacanya.
+		var lockedID string
+		if err := tx.QueryRow(ctx, `SELECT id FROM fleet_aircraft WHERE id=$1 AND user_id=$2 FOR UPDATE`, fleetID, userID).Scan(&lockedID); err != nil {
+			return &MutationResult{false, "Aircraft not found.", cash}, true, nil
+		}
+		var stillAssigned bool
+		if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM route_assignments WHERE user_id=$1 AND assigned_aircraft_id=$2)`, userID, fleetID).Scan(&stillAssigned); err != nil {
+			return &MutationResult{false, "assignment check failed", cash}, true, nil
+		}
+		if stillAssigned {
+			return &MutationResult{false, "Aircraft is still assigned to a route.", cash}, true, nil
+		}
+		gameTime, _ := f.engine.Ledger.GetUserGameTime(ctx, userID)
+		newCash, debitErr := f.engine.Ledger.DebitTx(ctx, tx, userID, exitFee, "opex", "lease_termination",
+			fmt.Sprintf("Terminated leased aircraft %s [%s]", modelName, deref(tail, "NO-TAIL")), gameTime)
+		if debitErr != nil {
+			return &MutationResult{false, "debit fee failed: " + debitErr.Error(), cash}, true, nil
+		}
+		_, delErr := tx.Exec(ctx, `DELETE FROM fleet_aircraft WHERE id=$1 AND user_id=$2`, fleetID, userID)
+		if delErr != nil {
+			return &MutationResult{false, "delete aircraft failed", cash}, true, nil
+		}
+		return &MutationResult{true, "Lease terminated successfully!", newCash}, false, nil
+	})
+	if err != nil {
 		return &MutationResult{false, "transaction error", cash}, nil
 	}
-	defer tx.Rollback(ctx) //nolint:errcheck
-	// AUDIT-08 (jalur terminate): kunci baris pesawat lalu cek assignment DI
-	// DALAM tx, seperti Fleet.Sell. FK-nya ON DELETE SET NULL, jadi menghapus
-	// pesawat yang masih dipakai meninggalkan route hantu tanpa pesawat — dan
-	// pre-check di atas mengabaikan error bacanya.
-	var lockedID string
-	if err := tx.QueryRow(ctx, `SELECT id FROM fleet_aircraft WHERE id=$1 AND user_id=$2 FOR UPDATE`, fleetID, userID).Scan(&lockedID); err != nil {
-		return &MutationResult{false, "Aircraft not found.", cash}, nil
-	}
-	var stillAssigned bool
-	if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM route_assignments WHERE user_id=$1 AND assigned_aircraft_id=$2)`, userID, fleetID).Scan(&stillAssigned); err != nil {
-		return &MutationResult{false, "assignment check failed", cash}, nil
-	}
-	if stillAssigned {
-		return &MutationResult{false, "Aircraft is still assigned to a route.", cash}, nil
-	}
-	gameTime, _ := f.engine.Ledger.GetUserGameTime(ctx, userID)
-	newCash, debitErr := f.engine.Ledger.DebitTx(ctx, tx, userID, exitFee, "opex", "lease_termination",
-		fmt.Sprintf("Terminated leased aircraft %s [%s]", modelName, deref(tail, "NO-TAIL")), gameTime)
-	if debitErr != nil {
-		return &MutationResult{false, "debit fee failed: " + debitErr.Error(), cash}, nil
-	}
-	_, delErr := tx.Exec(ctx, `DELETE FROM fleet_aircraft WHERE id=$1 AND user_id=$2`, fleetID, userID)
-	if delErr != nil {
-		return &MutationResult{false, "delete aircraft failed", cash}, nil
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return &MutationResult{false, "commit failed", cash}, nil
-	}
-	return &MutationResult{true, "Lease terminated successfully!", newCash}, nil
+	return result, nil
 }
 
 // basePct = `base_lease_deposit_percentage` dari game_config; bracket persentase
