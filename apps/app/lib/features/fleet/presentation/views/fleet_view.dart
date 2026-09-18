@@ -40,6 +40,7 @@ import '../../../simulation/presentation/cubit/simulation_cubit.dart';
 import '../../domain/fleet_models.dart';
 import '../cubit/fleet_cubit.dart';
 import '../cubit/fleet_state.dart';
+import '../widgets/seat_config_dialog.dart';
 
 class FleetView extends StatefulWidget {
   const FleetView({super.key});
@@ -605,7 +606,7 @@ class _FleetViewState extends State<FleetView>
                     size: 32,
                     iconSize: 16,
                     onPressed: () =>
-                        _showSeatConfigDialog(context, aircraft, userId),
+                        _openSeatConfigDialog(context, aircraft, userId),
                   ),
                   const SizedBox(width: AppSpacing.xs),
                   SizedBox(
@@ -670,178 +671,20 @@ class _FleetViewState extends State<FleetView>
     );
   }
 
-  void _showSeatConfigDialog(
+
+  void _openSeatConfigDialog(
     BuildContext context,
     UserFleetAircraft aircraft,
     String userId,
   ) {
-    final fleetCubit = context.read<FleetCubit>();
-    int economy = aircraft.economySeats;
-    int business = aircraft.businessSeats;
-    int firstClass = aircraft.firstClassSeats;
-    final int capacity = aircraft.model.capacity;
-
-    showDialog(
+    showDialog<void>(
       context: context,
-      builder: (dialogCtx) {
-        return StatefulBuilder(
-          builder: (ctx, setDialogState) {
-            final int occupiedSlots =
-                (economy * 1) + (business * 2) + (firstClass * 3);
-            final bool isValid = occupiedSlots <= capacity;
-            final int remainingSlots = capacity - occupiedSlots;
-
-            return AppDialogShell(
-              title: AppStrings.configureSeatAllocation,
-              subtitle:
-                  '${AppStrings.aircraftSubtitlePrefix}: ${aircraft.model.manufacturer.toUpperCase()} ${aircraft.model.modelName} [${aircraft.tailNumber}]',
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Divider(color: AppTheme.border, height: 1),
-                  const SizedBox(height: AppSpacing.md),
-
-                  Text(
-                    AppStrings.realisticSpaceConfiguration.toUpperCase(),
-                    style: AppTypography.badgeText.copyWith(
-                      color: AppTheme.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    AppStrings.realisticSpaceConfigurationDesc,
-                    style: AppTypography.captionRegular.copyWith(
-                      color: AppTheme.textMuted,
-                      height: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-
-                  _buildSeatAdjustmentRow(
-                    ctx,
-                    AppStrings.economyClassSlots,
-                    economy,
-                    (val) {
-                      setDialogState(() {
-                        economy = val;
-                      });
-                    },
-                    maxPossible: capacity,
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  _buildSeatAdjustmentRow(
-                    ctx,
-                    AppStrings.businessClassSlots,
-                    business,
-                    (val) {
-                      setDialogState(() {
-                        business = val;
-                      });
-                    },
-                    maxPossible: (capacity / 2).floor(),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  _buildSeatAdjustmentRow(
-                    ctx,
-                    AppStrings.firstClassSlots,
-                    firstClass,
-                    (val) {
-                      setDialogState(() {
-                        firstClass = val;
-                      });
-                    },
-                    maxPossible: (capacity / 3).floor(),
-                  ),
-                  const SizedBox(height: AppSpacing.xl),
-
-                  // Slots progress bar
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        AppStrings.totalSlotAllocation,
-                        style: AppTypography.badgeText.copyWith(
-                          color: AppTheme.textSecondary,
-                        ),
-                      ),
-                      Text(
-                        '$occupiedSlots / $capacity ${AppStrings.slotsSuffix}',
-                        style: AppTypography.badgeText.copyWith(
-                          color: isValid ? AppTheme.success : AppTheme.error,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Container(
-                    height: 8,
-                    width: double.infinity,
-                    decoration: BoxDecoration(color: AppTheme.background),
-                    child: FractionallySizedBox(
-                      alignment: Alignment.centerLeft,
-                      widthFactor: (occupiedSlots / capacity).clamp(0.0, 1.0),
-                      child: Container(
-                        color: isValid ? AppTheme.success : AppTheme.error,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  if (!isValid)
-                    Text(
-                      '${AppStrings.slotsExceededPrefix}${occupiedSlots - capacity}${AppStrings.slotsExceededSuffix}',
-                      style: AppTypography.badgeText.copyWith(
-                        color: AppTheme.error,
-                      ),
-                    )
-                  else
-                    Text(
-                      '${AppStrings.slotsRemainingPrefix}$remainingSlots${AppStrings.slotsRemainingSuffix}',
-                      style: AppTypography.badgeText.copyWith(
-                        color: AppTheme.textMuted,
-                      ),
-                    ),
-                ],
-              ),
-              actions: Row(
-                children: [
-                  Expanded(
-                    child: AppButton(
-                      text: AppStrings.cancelLabel,
-                      onPressed: () => Navigator.pop(dialogCtx),
-                      type: AppButtonType.secondary,
-                      height: 40,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: AppButton(
-                      text: AppStrings.applyConfig,
-                      onPressed: !isValid
-                          ? null
-                          : () async {
-                              Navigator.pop(dialogCtx);
-                              await fleetCubit.configureSeats(
-                                userId: userId,
-                                aircraftId: aircraft.id,
-                                economy: economy,
-                                business: business,
-                                firstClass: firstClass,
-                              );
-                            },
-                      type: AppButtonType.primary,
-                      height: 40,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
+      builder: (_) => BlocProvider.value(
+        value: context.read<FleetCubit>(),
+        child: SeatConfigDialog(userId: userId, aircraft: aircraft),
+      ),
     );
   }
-
   Widget _buildSeatAdjustmentRow(
     BuildContext context,
     String label,
