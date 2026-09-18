@@ -22,6 +22,8 @@ func testRouteConfig() routePerfConfig {
 		EconomyWilling:   testEconWill,
 		BusinessWilling:  testBizWill,
 		FirstWilling:     testFirstWill,
+		Demand:           defaultDemandCurve(),
+		Crew:             defaultCrewScale(),
 		CargoPct:         0.05,
 	}
 }
@@ -54,7 +56,7 @@ func TestRouteWeeklyProfitUsesDemandPoolAndCabins(t *testing.T) {
 	// Revenue must be derived from the demand pool, not raw capacity. Compute
 	// the expected pool and allocation independently and compare.
 	pool := routeDailyDemand(p.OriginDemand, p.DestDemand, p.DistanceKM,
-		p.TicketPrice, cfg.TicketBase, cfg.TicketKM, cfg.DemandPoolScale)
+		p.TicketPrice, cfg.TicketBase, cfg.TicketKM, cfg.DemandPoolScale, defaultDemandCurve())
 	allocation := allocateCabins(
 		int(math.Round(float64(p.EconomySeats)*2)),
 		int(math.Round(float64(p.BusinessSeats)*2)),
@@ -67,7 +69,7 @@ func TestRouteWeeklyProfitUsesDemandPoolAndCabins(t *testing.T) {
 	flights := math.Min(p.FlightsPerWeek, cfg.MaxWeekly/flightHours)
 	expected := revenue -
 		flights*p.DistanceKM*p.FuelBurnPerKM*cfg.FuelPrice -
-		flights*flightHours*crewCostFor(cfg.CrewCost, p.Capacity) -
+		flights*flightHours*crewCostFor(cfg.CrewCost, p.Capacity, defaultCrewScale()) -
 		flights*p.DistanceKM*p.MaintCostHr/p.SpeedKMH
 
 	if math.Abs(profit-expected) > 0.01 {

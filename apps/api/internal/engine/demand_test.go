@@ -10,16 +10,16 @@ import (
 // (2) adding frequency past saturation lowers per-flight passengers.
 
 func TestDistanceDemandFactor(t *testing.T) {
-	if got := distanceDemandFactor(300); got != 1.0 {
+	if got := distanceDemandFactor(300, defaultDemandCurve()); got != 1.0 {
 		t.Fatalf("short-haul factor = %v, want 1.0", got)
 	}
-	if got := distanceDemandFactor(20000); got != 0.35 {
+	if got := distanceDemandFactor(20000, defaultDemandCurve()); got != 0.35 {
 		t.Fatalf("long-haul factor = %v, want 0.35", got)
 	}
 	// monotonically non-increasing with distance
 	prev := math.Inf(1)
 	for d := 0.0; d <= 20000; d += 500 {
-		got := distanceDemandFactor(d)
+		got := distanceDemandFactor(d, defaultDemandCurve())
 		if got > prev {
 			t.Fatalf("factor increased at %v: %v > %v", d, got, prev)
 		}
@@ -37,7 +37,7 @@ func TestRouteDailyDemandReferenceRoute(t *testing.T) {
 		perKM     = 0.12
 	)
 	refFare := baseFare + distance*perKM
-	pool := routeDailyDemand(90, 90, distance, refFare, baseFare, perKM, poolScale)
+	pool := routeDailyDemand(90, 90, distance, refFare, baseFare, perKM, poolScale, defaultDemandCurve())
 
 	// At the reference fare the price elasticity term is 1.5-0.8 = 0.7.
 	// distanceFactor(800) = 1 + (300/11500)*(0.35-1) ≈ 0.983.
@@ -64,7 +64,7 @@ func TestDemandPoolSaturatesWithFrequency(t *testing.T) {
 		maxLoad   = 0.95
 	)
 	refFare := baseFare + distance*perKM
-	pool := routeDailyDemand(90, 90, distance, refFare, baseFare, perKM, poolScale)
+	pool := routeDailyDemand(90, 90, distance, refFare, baseFare, perKM, poolScale, defaultDemandCurve())
 
 	perFlight := func(flightsPerWeek int) float64 {
 		flightsPerDay := float64(flightsPerWeek) / 7.0
@@ -98,15 +98,15 @@ func TestRouteDailyDemandPriceElasticity(t *testing.T) {
 	)
 	refFare := baseFare + distance*perKM
 
-	cheap := routeDailyDemand(90, 90, distance, refFare*0.7, baseFare, perKM, poolScale)
-	ref := routeDailyDemand(90, 90, distance, refFare, baseFare, perKM, poolScale)
-	expensive := routeDailyDemand(90, 90, distance, refFare*1.3, baseFare, perKM, poolScale)
+	cheap := routeDailyDemand(90, 90, distance, refFare*0.7, baseFare, perKM, poolScale, defaultDemandCurve())
+	ref := routeDailyDemand(90, 90, distance, refFare, baseFare, perKM, poolScale, defaultDemandCurve())
+	expensive := routeDailyDemand(90, 90, distance, refFare*1.3, baseFare, perKM, poolScale, defaultDemandCurve())
 
 	if !(cheap >= ref && ref > expensive) {
 		t.Fatalf("expected cheap >= ref > expensive, got %v %v %v", cheap, ref, expensive)
 	}
 	// Absurdly overpriced -> no demand at all.
-	if got := routeDailyDemand(90, 90, distance, refFare*3, baseFare, perKM, poolScale); got != 0 {
+	if got := routeDailyDemand(90, 90, distance, refFare*3, baseFare, perKM, poolScale, defaultDemandCurve()); got != 0 {
 		t.Fatalf("overpriced pool = %v, want 0", got)
 	}
 }

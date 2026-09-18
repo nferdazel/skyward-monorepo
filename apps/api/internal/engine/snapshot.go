@@ -44,6 +44,16 @@ var tickConfigKeys = []string{
 	"bot_consecutive_loss_days_threshold",
 	"bot_secondary_hub_chance",
 	"bot_fleet_diversity_chance",
+	// Bentuk kurva permintaan dan skala crew. Dulu konstanta di Go; sekarang
+	// config supaya menyeimbangkan ekonomi cukup satu UPDATE, bukan build ulang.
+	"distance_demand_short_km",
+	"distance_demand_long_km",
+	"distance_demand_min_factor",
+	"price_elasticity_max",
+	"price_elasticity_quadratic",
+	"crew_cost_anchor_capacity",
+	"crew_cost_min_mult",
+	"crew_cost_max_mult",
 }
 
 // activeEvent — satu baris `game_events` yang berlaku pada waktu tick.

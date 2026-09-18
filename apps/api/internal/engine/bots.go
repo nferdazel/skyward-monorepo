@@ -698,6 +698,8 @@ type routePerfParams struct {
 // routePerfConfig — parameter ekonomi global (game_config).
 type routePerfConfig struct {
 	FuelPrice, CrewCost, TicketBase, TicketKM, MaxWeekly, DemandPoolScale float64
+	Demand                                                                demandCurve
+	Crew                                                                  crewScale
 	BusinessFareMult, FirstFareMult                                       float64
 	EconomyWilling, BusinessWilling, FirstWilling                         float64
 	CargoPct                                                              float64
@@ -721,7 +723,7 @@ func routeWeeklyProfit(p routePerfParams, c routePerfConfig) float64 {
 		bizSeats, firstSeats = 0, 0
 	}
 	dailyDemand := routeDailyDemand(p.OriginDemand, p.DestDemand, p.DistanceKM,
-		p.TicketPrice, c.TicketBase, c.TicketKM, c.DemandPoolScale)
+		p.TicketPrice, c.TicketBase, c.TicketKM, c.DemandPoolScale, c.Demand)
 	flightsPerDay := flights / 7.0
 	allocation := allocateCabins(
 		int(math.Round(float64(econSeats)*flightsPerDay)),
@@ -734,7 +736,7 @@ func routeWeeklyProfit(p routePerfParams, c routePerfConfig) float64 {
 	revenue := allocation.Revenue * 7.0
 	revenue += revenue * c.CargoPct
 	fuel := flights * p.DistanceKM * p.FuelBurnPerKM * c.FuelPrice
-	crew := flights * flightHours * crewCostFor(c.CrewCost, p.Capacity)
+	crew := flights * flightHours * crewCostFor(c.CrewCost, p.Capacity, c.Crew)
 	maint := flights * p.DistanceKM * p.MaintCostHr / p.SpeedKMH
 	lease := 0.0
 	if p.AcqType == "lease" {
@@ -753,6 +755,8 @@ func (e *Engine) routePerformance(ctx context.Context, userID string, snap *Tick
 		TicketKM:         snap.num("ticket_per_km_rate", 0.12),
 		MaxWeekly:        snap.num("max_weekly_flights", 168.0),
 		DemandPoolScale:  snap.num("demand_pool_scale", 290.0),
+		Demand:           demandCurveFrom(snap),
+		Crew:             crewScaleFrom(snap),
 		BusinessFareMult: snap.num("business_fare_multiplier", 1.5),
 		FirstFareMult:    snap.num("first_fare_multiplier", 2.5),
 		EconomyWilling:   snap.num("economy_willing_share", 0.80),

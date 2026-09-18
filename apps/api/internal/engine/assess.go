@@ -159,6 +159,8 @@ type assessConfig struct {
 	EconomyWilling, BusinessWilling, FirstWilling                         float64
 	CargoPct                                                              float64
 	OwnedWear, LeasedWear, AutoRepair                                     float64
+	Demand                                                                demandCurve
+	Crew                                                                  crewScale
 }
 
 // assessConfigFrom — jembatan tipis dari snapshot tick ke config penilaian
@@ -180,6 +182,8 @@ func assessConfigFrom(snap *TickSnapshot) assessConfig {
 		OwnedWear:        snap.num("owned_wear_per_flight_cycle", 0.50),
 		LeasedWear:       snap.num("leased_wear_per_flight_cycle", 0.70),
 		AutoRepair:       snap.num("maintenance_auto_repair_rate", 0.85),
+		Demand:           demandCurveFrom(snap),
+		Crew:             crewScaleFrom(snap),
 	}
 }
 
@@ -275,7 +279,7 @@ func assessRouteFor(in AssessInput, ac AssessAircraft, cfg assessConfig, snap *T
 	out.SeatCapacity = seatCapacity
 
 	dailyDemand := routeDailyDemand(in.OriginDemand, in.DestDemand, in.DistanceKM,
-		in.TicketPrice, cfg.TicketBase, cfg.TicketKM, cfg.DemandPoolScale) * demandMult
+		in.TicketPrice, cfg.TicketBase, cfg.TicketKM, cfg.DemandPoolScale, cfg.Demand) * demandMult
 	flightsPerDay := float64(flights) / 7.0
 
 	allocation := allocateCabins(
@@ -293,7 +297,7 @@ func assessRouteFor(in AssessInput, ac AssessAircraft, cfg assessConfig, snap *T
 	out.WeeklyRevenue = allocation.Revenue * 7.0
 	out.WeeklyCargo = out.WeeklyRevenue * cfg.CargoPct
 	out.WeeklyFuel = float64(flights) * in.DistanceKM * ac.FuelBurnPerKM * cfg.FuelPrice * fuelMult
-	out.WeeklyCrew = float64(flights) * flightHours * crewCostFor(cfg.CrewCost, ac.Capacity)
+	out.WeeklyCrew = float64(flights) * flightHours * crewCostFor(cfg.CrewCost, ac.Capacity, cfg.Crew)
 	out.WeeklyMaintenance = float64(flights) * in.DistanceKM * ac.MaintenanceCostPerHour * maintMult / ac.SpeedKMH
 	if ac.AcquisitionType == "lease" {
 		out.WeeklyLease = ac.LeasePricePerMonth * (7.0 / 30.0)

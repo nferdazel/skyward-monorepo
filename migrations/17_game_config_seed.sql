@@ -94,4 +94,23 @@ INSERT INTO game_config (key, value, category, unit, description) VALUES ('busin
 INSERT INTO game_config (key, value, category, unit, description) VALUES ('first_willing_share', '0.05', 'simulation', 'ratio', 'GAME-03: share of the demand pool willing to pay for first class.')
   ON CONFLICT (key) DO NOTHING;
 
+-- Bentuk kurva permintaan dan skala crew (dipindah dari konstanta Go di
+-- migrasi 25; nilainya sama dengan fallback Go, jadi perilaku tidak berubah).
+INSERT INTO game_config (key, value, category, unit, description) VALUES ('distance_demand_short_km', '500.0', 'simulation', 'km', 'Rute <= jarak ini memakai distance demand factor maksimum')
+  ON CONFLICT (key) DO NOTHING;
+INSERT INTO game_config (key, value, category, unit, description) VALUES ('distance_demand_long_km', '12000.0', 'simulation', 'km', 'Rute >= jarak ini memakai distance demand factor minimum')
+  ON CONFLICT (key) DO NOTHING;
+INSERT INTO game_config (key, value, category, unit, description) VALUES ('distance_demand_min_factor', '0.35', 'simulation', 'ratio', 'Faktor permintaan terendah untuk rute sangat jauh')
+  ON CONFLICT (key) DO NOTHING;
+INSERT INTO game_config (key, value, category, unit, description) VALUES ('price_elasticity_max', '1.5', 'simulation', 'ratio', 'Batas atas price elasticity pada routeDailyDemand')
+  ON CONFLICT (key) DO NOTHING;
+INSERT INTO game_config (key, value, category, unit, description) VALUES ('price_elasticity_quadratic', '0.8', 'simulation', 'ratio', 'Koefisien kuadrat penurunan permintaan saat harga di atas reference fare')
+  ON CONFLICT (key) DO NOTHING;
+INSERT INTO game_config (key, value, category, unit, description) VALUES ('crew_cost_anchor_capacity', '180.0', 'simulation', 'seats', 'Kapasitas yang membuat crewCostFor memakai tarif dasar tanpa skala')
+  ON CONFLICT (key) DO NOTHING;
+INSERT INTO game_config (key, value, category, unit, description) VALUES ('crew_cost_min_mult', '0.5', 'simulation', 'ratio', 'Batas bawah pengali crewCostFor untuk pesawat kecil')
+  ON CONFLICT (key) DO NOTHING;
+INSERT INTO game_config (key, value, category, unit, description) VALUES ('crew_cost_max_mult', '2.5', 'simulation', 'ratio', 'Batas atas pengali crewCostFor untuk pesawat besar')
+  ON CONFLICT (key) DO NOTHING;
+
 COMMIT;

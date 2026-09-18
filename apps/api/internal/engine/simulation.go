@@ -204,6 +204,8 @@ func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime ti
 	economyWilling := snap.num("economy_willing_share", 0.80)
 	businessWilling := snap.num("business_willing_share", 0.15)
 	firstWilling := snap.num("first_willing_share", 0.05)
+	demand := demandCurveFrom(snap)
+	crew := crewScaleFrom(snap)
 
 	fuelMult := snap.fuelMult()
 	maintMult := snap.maintMult()
@@ -330,7 +332,7 @@ func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime ti
 			// lowers per-flight load factor. Price elasticity is applied inside
 			// routeDailyDemand (GAME-04).
 			dailyDemand := routeDailyDemand(r.OriginDemand, r.DestDemand, r.DistanceKM,
-				r.TicketPrice, ticketBase, ticketKM, demandPoolScale) * demandEvent * seasonalFactor
+				r.TicketPrice, ticketBase, ticketKM, demandPoolScale, demand) * demandEvent * seasonalFactor
 			flightsPerDay := float64(flights) / 7.0
 
 			// Per-day seat capacity by cabin, then allocate the pool across them.
@@ -348,7 +350,7 @@ func (e *Engine) ProcessPlayer(ctx context.Context, userID string, targetTime ti
 			weeklyRevenue := allocation.Revenue * 7.0
 			revenue := weeklyRevenue * timeFraction
 			fuelCost := float64(flights) * r.DistanceKM * r.FuelBurnPerKM * fuelPrice * fuelMult
-			crewCostTotal := float64(flights) * flightHours * crewCostFor(crewCost, r.Capacity)
+			crewCostTotal := float64(flights) * flightHours * crewCostFor(crewCost, r.Capacity, crew)
 			maintCost := float64(flights) * r.DistanceKM * r.MaintCostHr * maintMult / r.SpeedKMH
 			opsCost := fuelCost + crewCostTotal + maintCost
 			leaseCost := 0.0
@@ -599,19 +601,72 @@ func (e *Engine) getConfigNum(ctx context.Context, key string, fallback float64)
 	return v
 }
 
+// demandCurve — bentuk kurva permintaan rute. Dulu konstanta di dalam
+// distanceDemandFactor/routeDailyDemand; sekarang dibaca dari game_config
+// (migrasi 25) supaya bisa di-tuning tanpa build ulang.
+type demandCurve struct {
+	ShortKM, LongKM, MinFactor         float64
+	ElasticityMax, ElasticityQuadratic float64
+}
+
+// defaultDemandCurve — fallback saat key config tidak ada. Nilainya sama dengan
+// konstanta Go yang lama, jadi DB kosong berperilaku seperti sebelumnya.
+func defaultDemandCurve() demandCurve {
+	return demandCurve{
+		ShortKM: 500.0, LongKM: 12000.0, MinFactor: 0.35,
+		ElasticityMax: 1.5, ElasticityQuadratic: 0.8,
+	}
+}
+
+// demandCurveFrom — baca kurva dari snapshot tick, fallback ke nilai Go.
+func demandCurveFrom(snap *TickSnapshot) demandCurve {
+	d := defaultDemandCurve()
+	d.ShortKM = snap.num("distance_demand_short_km", d.ShortKM)
+	d.LongKM = snap.num("distance_demand_long_km", d.LongKM)
+	d.MinFactor = snap.num("distance_demand_min_factor", d.MinFactor)
+	d.ElasticityMax = snap.num("price_elasticity_max", d.ElasticityMax)
+	d.ElasticityQuadratic = snap.num("price_elasticity_quadratic", d.ElasticityQuadratic)
+	return d
+}
+
+// crewScale — skala biaya crew terhadap ukuran pesawat.
+type crewScale struct {
+	Anchor, MinMult, MaxMult float64
+}
+
+func defaultCrewScale() crewScale {
+	return crewScale{Anchor: 180.0, MinMult: 0.5, MaxMult: 2.5}
+}
+
+func crewScaleFrom(snap *TickSnapshot) crewScale {
+	c := defaultCrewScale()
+	c.Anchor = snap.num("crew_cost_anchor_capacity", c.Anchor)
+	c.MinMult = snap.num("crew_cost_min_mult", c.MinMult)
+	c.MaxMult = snap.num("crew_cost_max_mult", c.MaxMult)
+	return c
+}
+
 // crewCostFor scales the flat crew rate by aircraft size (AVIATION-18). Real
 // crew cost rises with type: regional ~150-200/hr, narrowbody ~250-400,
-// widebody ~500-900. Anchored at the config base (350) for a 180-seat jet.
-func crewCostFor(baseRate float64, capacity float64) float64 {
+// widebody ~500-900. Anchored at `scale.Anchor` (config, 180 kursi default)
+// for a narrowbody jet.
+//
+// Skala nol (struct config yang lupa diisi) diganti default, bukan membuat
+// `capacity/0` jadi +Inf lalu dijepit ke maxMult — itu akan mengalikan biaya
+// crew semua pesawat dengan 2.5x diam-diam.
+func crewCostFor(baseRate, capacity float64, scale crewScale) float64 {
 	if capacity <= 0 {
 		return baseRate
 	}
-	mult := capacity / 180.0
-	if mult < 0.5 {
-		mult = 0.5
+	if scale.Anchor <= 0 {
+		scale = defaultCrewScale()
 	}
-	if mult > 2.5 {
-		mult = 2.5
+	mult := capacity / scale.Anchor
+	if mult < scale.MinMult {
+		mult = scale.MinMult
+	}
+	if mult > scale.MaxMult {
+		mult = scale.MaxMult
 	}
 	return baseRate * mult
 }
@@ -672,28 +727,37 @@ func demandWeight(demandIndex int) float64 {
 
 // distanceDemandFactor thins out demand as stage length grows: short-haul
 // markets carry more passengers than long-haul ones. Linear from 1.0 at
-// <=500km down to 0.35 at >=12000km.
-func distanceDemandFactor(distanceKM float64) float64 {
-	const (
-		shortKM = 500.0
-		longKM  = 12000.0
-		minFac  = 0.35
-		maxFac  = 1.0
-	)
-	if distanceKM <= shortKM {
+// `c.ShortKM` down to `c.MinFactor` at `c.LongKM` (config; lihat migrasi 25).
+//
+// `demandCurve` nol (mis. struct config yang lupa diisi) diperlakukan sebagai
+// kurva default, bukan pembagi nol: tanpa ini `LongKM-ShortKM == 0` membuat
+// seluruh permintaan rute hilang diam-diam.
+func distanceDemandFactor(distanceKM float64, c demandCurve) float64 {
+	if c.usable() {
+		c = defaultDemandCurve()
+	}
+	const maxFac = 1.0
+	if distanceKM <= c.ShortKM {
 		return maxFac
 	}
-	if distanceKM >= longKM {
-		return minFac
+	if c.LongKM <= c.ShortKM || distanceKM >= c.LongKM {
+		return c.MinFactor
 	}
-	t := (distanceKM - shortKM) / (longKM - shortKM)
-	return maxFac + t*(minFac-maxFac)
+	t := (distanceKM - c.ShortKM) / (c.LongKM - c.ShortKM)
+	return maxFac + t*(c.MinFactor-maxFac)
 }
+
+// usable — true kalau kurva ini belum diisi (nol) sehingga harus diganti
+// default. Satu penanda cukup: ShortKM selalu > 0 pada nilai sah mana pun.
+func (c demandCurve) usable() bool { return c.ShortKM <= 0 }
 
 // routeDailyDemand computes the fixed daily passenger pool for a route. The
 // pool is split across all of the player's flights on that route, so raising
 // frequency past saturation lowers per-flight load factor (GAME-02).
-func routeDailyDemand(originDemand, destDemand int, distanceKM, price, baseFare, perKM, poolScale float64) float64 {
+//
+// Kurva nol diganti default lewat `distanceDemandFactor`, tapi elasticity juga
+// diperiksa di sini supaya `ElasticityMax` nol tidak memusnahkan pool.
+func routeDailyDemand(originDemand, destDemand int, distanceKM, price, baseFare, perKM, poolScale float64, c demandCurve) float64 {
 	if poolScale <= 0 {
 		return 0
 	}
@@ -701,9 +765,12 @@ func routeDailyDemand(originDemand, destDemand int, distanceKM, price, baseFare,
 	if base <= 0 {
 		return 0
 	}
+	if c.usable() {
+		c = defaultDemandCurve()
+	}
 	ratio := price / base
 	// price elasticity: below reference fare fills the pool, above starves it.
-	priceElasticity := math.Max(0, math.Min(1.5, 1.5-0.8*ratio*ratio))
+	priceElasticity := math.Max(0, math.Min(c.ElasticityMax, c.ElasticityMax-c.ElasticityQuadratic*ratio*ratio))
 	return poolScale * demandWeight(originDemand) * demandWeight(destDemand) *
-		distanceDemandFactor(distanceKM) * priceElasticity
+		distanceDemandFactor(distanceKM, c) * priceElasticity
 }

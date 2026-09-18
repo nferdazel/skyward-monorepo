@@ -122,6 +122,14 @@ is retried on the next tick instead of silently losing revenue or costs.
 - `routeDailyDemand` implements a fixed daily passenger pool split across the
   player's flights, with price elasticity and a distance demand factor. Created
   by migration `05_demand_pool_scale.sql` (`demand_pool_scale`, fallback 290.0).
+  Bentuk kurvanya (`distance_demand_short_km`/`long_km`/`min_factor`,
+  `price_elasticity_max`/`quadratic`) dan skala crew (`crew_cost_anchor_capacity`,
+  `crew_cost_min_mult`/`max_mult`) dibaca dari `game_config` lewat
+  `demandCurveFrom`/`crewScaleFrom` (migrasi 25). Sebelumnya konstanta di Go;
+  sekarang menyeimbangkan ekonomi cukup satu `UPDATE`, tanpa build ulang.
+  Struct kosong (config lupa diisi) jatuh ke `defaultDemandCurve`/
+  `defaultCrewScale`, bukan menghitung dengan nol — lihat
+  `TestEconomyCalibrationLocked`.
 - `allocateCabins` distributes the pool across economy/business/first by
   willingness-to-pay. Created by migration `06_cabin_fare_multipliers.sql`
   (business 1.5x, first 2.5x; willingness 80/15/5). Go fallbacks in
