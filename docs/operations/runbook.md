@@ -464,9 +464,15 @@ entirely when `apps/api/` did not change. `scripts/deploy.sh`
 is deprecated for updates but its `setup` mode still installs the quadlet unit:
 
 ```bash
+export VPS=user@host        # WAJIB: lihat catatan di bawah
 scripts/deploy.sh setup     # once: install quadlet unit + enable service
 scripts/deploy.sh           # deprecated update path; prefer deploy/deploy-vps.sh
 ```
+
+`scripts/deploy.sh` **tidak lagi memuat host produksi**. Repo ini publik, jadi
+menaruh user/host di skrip berarti memaparkan host, user, dan fakta bahwa auth
+memakai SSH key. Isi `VPS` dari environment atau shell profile; jangan
+commit nilainya. Kalau `VPS` kosong, skrip menolak berjalan.
 
 Prod API base: `https://api.qouver.com/skyward`; dev defaults to
 `127.0.0.1:8090` (`PORT`, `HOST`).

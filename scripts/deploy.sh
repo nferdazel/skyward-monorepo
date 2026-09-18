@@ -17,7 +17,12 @@
 #   ./scripts/deploy.sh             # update: restart service prod
 set -euo pipefail
 
-VPS="${VPS:-VPS_USER@VPS_HOST}"
+# Host TIDAK di-hardcode: repo ini publik, dan menaruh user/host produksi di
+# sini memaparkan permukaan serangan (penyerang tahu host, user, dan bahwa auth
+# pakai SSH key). Isi lewat env atau file lokal yang tidak di-commit:
+#   export VPS=<deploy-user>@<host-produksi>
+# Lihat docs/operations/runbook.md.
+VPS="${VPS:?set VPS, mis. export VPS=user@host (lihat docs/operations/runbook.md)}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEPLOY_DIR="$(dirname "$SCRIPT_DIR")/deploy"
 
