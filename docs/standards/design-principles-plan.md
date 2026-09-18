@@ -269,7 +269,7 @@ Catatan: dua panggilan lain di `routes.go:139,196` dan `fleet.go:330` **benar**
 dibiarkan, karena keduanya melayani request pemain dan justru harus membaca
 nilai terbaru. Yang salah hanya jalur tick.
 
-## DRY-6 (RENDAH) — Duplikasi di dalam FE
+## DRY-6 (SEBAGIAN SELESAI) — Duplikasi di dalam FE
 
 Tiga hal, semuanya di klien dan semuanya kecil:
 
@@ -286,17 +286,28 @@ Tiga hal, semuanya di klien dan semuanya kecil:
   `:323`). Selain itu ada `class _S` di `overview_tab.dart:37` **dan**
   `finance_view.dart:38` yang mendaftarkan label sendiri-sendiri.
 
-**Rancangan.** Ekstrak ambang runway + format rasio lease ke satu fungsi domain
-yang dipakai dua tempat. Ekstrak agregasi ledger ke satu builder. Bagi
-`AppStrings` jadi beberapa kelas bersarang (`AppStrings.fleet.*`,
-`AppStrings.bank.*`) dan gabungkan teks kembar jadi satu konstanta. Untuk
-`class _S`, pindahkan isinya ke `AppStrings` supaya hanya ada satu tempat
-mencari teks.
+**Selesai sebagian `d71dba4`.** Yang dikerjakan: pemetaan hari runway ke label
+dan warna disatukan di `core/utils/runway_indicator.dart`, dengan ambang 14/45
+dan batas eksklusifnya dikunci test. Ini bagian yang paling berbahaya karena
+warnanya adalah janji ke pemain. Rumus runway-nya sengaja TETAP berbeda
+(overview tanpa utang, finance dengan cicilan utang harian) dan alasannya
+sekarang tercatat di berkas itu.
+
+Yang TIDAK dikerjakan, dengan alasan:
+- agregasi ledger di `finance_cubit` dan `ifrs_report_builder` bukan duplikat.
+  Keduanya memakai predikat yang sama dari `IfrsCategory`, tapi kebutuhannya
+  berbeda: satu menghitung total dan bucket harian, satu memecah per
+  subkategori untuk laporan IFRS.
+- membagi `AppStrings` (664 konstanta) dan menggabungkan teks kembar menyentuh
+  hampir seluruh berkas UI. Itu penggantian nama besar-besaran dengan risiko
+  tinggi dan manfaat yang tidak bisa diuji, jadi tidak dikerjakan di sini.
+- `class _S` di dua berkas berisi label tata letak masing-masing layar; tidak
+  ada konsumen lain, jadi memusatkannya hanya memindahkan tabel string.
 
 Ini pekerjaan mekanis, tidak berisiko, tapi menyentuh banyak berkas — jadi
 dikerjakan belakangan, bukan lebih dulu.
 
-## DRY-7 (RENDAH) — Empat formatter uang
+## DRY-7 (SELESAI) — Empat formatter uang
 
 `core/utils/app_formatters.dart` sudah punya `currency`, `compactCurrency`,
 `compact`, `percent`. Tapi ada salinan di `overview_snapshot.dart:31`
@@ -308,8 +319,12 @@ Yang terakhir itu **tidak setara**: ia memakai 2 desimal, sedangkan
 `app_formatters.dart:37` memakai 1. Jadi Rp 1.234.567 tampil sebagai `$1.2M` di
 satu layar dan `$1.23M` di layar lain.
 
-**Rancangan.** Hapus tiga salinan, pakai `AppFormatters`. Pilih satu jumlah
-desimal (1, mengikuti mayoritas) dan biarkan `while_away_digest` ikut.
+**Selesai `28af45e`.** Tiga salinan dihapus. Saat memverifikasi hasilnya, saya
+menemukan cacat nyata di `AppFormatters.compactNumber` yang sudah ada sebelum
+perubahan ini: 999.999 dibulatkan menjadi "1000.0" lalu tampil sebagai `$1000K`,
+bukan `$1.0M`. Ambangnya diperbaiki (999.500 / 999.5). Fungsi itu dipakai di
+tujuh tempat, jadi cacatnya terlihat di beberapa layar. Dikunci oleh
+`app_formatters_test.dart`.
 
 ---
 
@@ -418,7 +433,7 @@ dan `route_adjustment_dialog.dart:39`.
 panggil `AppFormatters.currency` langsung di tempat pakai. Mengurangi noise
 signature tanpa mengubah perilaku.
 
-## KISS-4 (RENDAH) — 19 handler mutasi mengulang templat yang sama
+## KISS-4 (SELESAI) — 19 handler mutasi mengulang templat yang sama
 
 `mutation.go` bukan `switch` panjang (dispatch-nya 19 baris `mux.Handle` di
 `main.go:197`), tapi tiap handler mengulang urutan yang sama:
@@ -426,9 +441,15 @@ signature tanpa mengubah perilaku.
 `respondChannel`. Komentar yang sama juga muncul tiga kali (`:208-209`,
 `:233-234`, `:326-327`, `:346-347`).
 
-**Rancangan.** Helper `decodeAndRun[T]` yang menangani auth, decode, dan
-respons; handler tinggal memanggil engine. Ini memperkecil `mutation.go` dan
-menghapus komentar kembar. Prioritas rendah karena kode ini tipis dan bekerja.
+**Selesai `71dfe81`.** Dipakai dua helper, bukan `decodeAndRun[T]` generik:
+`decodeBody` (9 pemakaian) dan `runMutation` (12 pemakaian). Rancangan generik
+ditolak karena 21 handler punya empat bentuk respons berbeda: 9 tanpa body,
+4 memakai `httperr.Wrap` supaya cause ikut terkirim, 3 dengan `WriteJSON`
+khusus. Memaksa satu bentuk akan mengubah perilaku.
+
+Klaim penghematan "188 dari 407 baris" di atas terlalu tinggi: blok-blok itu
+saling tumpang tindih. Berkas turun 407 ke 387 baris. Yang didapat bukan
+penghematan baris melainkan satu tempat untuk setiap pola.
 
 ---
 
@@ -474,7 +495,7 @@ interface, masalahnya bukan "interface terlalu banyak", melainkan **jalur mutasi
 tidak bisa diuji tanpa database**, sementara jalur assess bisa. Itu utang
 testability, bukan utang SOLID.
 
-## SOLID-3 (RENDAH) — Cubit: mixin sudah ada, sisa kembar di sekitar pemakaiannya
+## SOLID-3 (SEBAGIAN SELESAI) — Cubit: mixin sudah ada, sisa kembar di sekitar pemakaiannya
 
 Klien sudah punya `CubitActionRunner` (`core/utils/cubit_action_runner.dart`)
 dan `CoalescedLoad` (`core/utils/coalesced_load.dart`); dokumentasi
@@ -491,11 +512,16 @@ Sisa yang belum ikut:
   `toSafeMap`/`success`/`message` (`fleet_cubit.dart:103-105` vs
   `routes_cubit.dart:99-101`), meski sudah memakai `CubitActionRunner`.
 
-**Rancangan.** Untuk yang terakhir, tambahkan ekstraksi hasil RPC ke
-`safe_cast.dart` (yang sudah menangani cast aman), sehingga
-`success`/`message` diambil lewat satu fungsi. Lalu pindahkan
-`settings_cubit.dart` ke mixin yang ada. `bank_cubit` sengaja dibiarkan sesuai
-catatannya.
+**Selesai sebagian `02451cb`.** `RpcResult.from` ditambahkan ke `safe_cast.dart`
+dan dipakai `fleet_cubit` serta `routes_cubit`. Salinan lama sudah menyimpang:
+`routes_cubit` menangani daftar balasan kosong dan punya nilai cadangan,
+`fleet_cubit` tidak, sehingga `response[0]` bisa melempar RangeError dan hanya
+aman karena RPC kebetulan selalu mengembalikan satu baris.
+
+`settings_cubit.dart` TIDAK dipindah ke mixin: mesinnya mirip tapi alurnya
+menyimpan beberapa penanda loading terpisah dan memanggil beberapa endpoint,
+jadi memaksanya ke `CubitActionRunner` adalah penulisan ulang, bukan
+penghapusan duplikasi. `bank_cubit` tetap dibiarkan sesuai catatannya.
 
 ---
 
