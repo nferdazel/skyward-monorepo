@@ -101,21 +101,21 @@ class FleetCubit extends Cubit<FleetState>
       ),
       action: rpcCall,
       onSuccess: (response) async {
-        final result = toSafeMap(response[0]);
-        final success = result['success'] as bool? ?? false;
-        final message = result['message'] as String?;
+        final rpc = RpcResult.from(response, fallback: failureMessage);
+        final result = rpc.data;
+        final message = rpc.message;
 
-        if (success) {
+        if (rpc.success) {
           return await onSuccess(result, snapshot);
         } else {
           AppLogger.logOperationFailure(
             actionName,
             rpcParams,
-            message ?? failureMessage,
+            message,
           );          if (!isClosed) {
             emit(
               FleetError(
-                message: message ?? failureMessage,
+                message: message,
                 hasData: true,
                 fleet: snapshot.fleet,
                 catalog: snapshot.catalog,

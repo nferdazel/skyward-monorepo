@@ -98,13 +98,11 @@ class RoutesCubit extends Cubit<RoutesState>
       ),
       action: rpcCall,
       onSuccess: (response) async {
-        final result = response.isNotEmpty
-            ? toSafeMap(response[0])
-            : <String, dynamic>{};
-        final success = result['success'] as bool? ?? false;
-        final message = result['message'] as String? ?? failureMessage;
+        final rpc = RpcResult.from(response, fallback: failureMessage);
+        final result = rpc.data;
+        final message = rpc.message;
 
-        if (success) {
+        if (rpc.success) {
           onSuccess?.call(result);
           SyncCoordinator.instance.publish(
             RouteUpdatedEvent(userId: userId, action: actionName),

@@ -35,3 +35,40 @@ List<dynamic> toSafeList(dynamic input) {
   }
   return const [];
 }
+
+/// Hasil RPC dalam bentuk yang sudah aman dibaca.
+///
+/// `fleet_cubit` dan `routes_cubit` sama-sama membongkar balasan RPC dengan
+/// urutan yang sama: ambil elemen pertama, cast aman ke map, lalu baca
+/// `success` dan `message`. Salinan yang berbeda sempat menyimpang: satu
+/// menangani daftar balasan yang kosong dan punya nilai cadangan untuk
+/// `message`, satunya tidak. Perbedaan seperti itu mudah terlewat saat
+/// menyalin, dan akibatnya pesan galat bisa kosong hanya di satu layar.
+class RpcResult {
+  const RpcResult({
+    required this.data,
+    required this.success,
+    required this.message,
+  });
+
+  final Map<String, dynamic> data;
+  final bool success;
+
+  /// Pesan dari server, atau `fallback` kalau server tidak mengirim pesan.
+  /// Sengaja tidak null supaya pemanggil tidak perlu menangani dua kasus.
+  final String message;
+
+  /// `response` adalah daftar balasan RPC; elemen pertama berisi hasilnya.
+  /// Daftar kosong (mis. RPC mengembalikan tanpa baris) diperlakukan sebagai
+  /// kegagalan tanpa pesan, bukan crash.
+  factory RpcResult.from(List<dynamic> response, {String fallback = ''}) {
+    final data = response.isNotEmpty
+        ? toSafeMap(response.first)
+        : <String, dynamic>{};
+    return RpcResult(
+      data: data,
+      success: data['success'] as bool? ?? false,
+      message: data['message'] as String? ?? fallback,
+    );
+  }
+}
