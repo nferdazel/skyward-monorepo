@@ -305,7 +305,7 @@ desimal (1, mengikuti mayoritas) dan biarkan `while_away_digest` ikut.
 
 # 2. KISS
 
-## KISS-1 (SEDANG) — Handler menyentuh database langsung
+## KISS-1 (SELESAI) — Handler menyentuh database langsung
 
 `mutation.go` mengaku di header-nya sendiri (`:15`) bahwa mutasi itu tipis:
 "AuthGuard → engine → JSON". Kenyataannya ada tiga kebocoran:
@@ -318,10 +318,19 @@ desimal (1, mengikuti mayoritas) dan biarkan `while_away_digest` ikut.
 
 Selain itu `mutation.go:381-389` menyusun sendiri map respons sinkronisasi.
 
-**Rancangan.** Pindahkan dua query `mutation.go` ke `store` (yang sudah punya
-subquery season clock di `read.go:43`), dan pindahkan update onboarding ke
-`store/users.go` yang sudah menangani user. Setelah itu handler benar-benar
-tipis seperti klaimnya.
+**Selesai `b531eb7` + audit `8808031`.** Dua query pindah ke `store/users.go`:
+`GetActiveSeasonTime` dan `MarkOnboardingComplete`. `MutationHandler` kini punya
+field `Store`, sejajar dengan `ReadHandler`.
+
+Audit menemukan satu kebocoran yang tidak tercatat di rancangan di atas:
+`admin.go:59` juga menyentuh database, dan lebih buruk — `err != nil` digabung
+dengan `RowsAffected() == 0`, sehingga error database dilaporkan sebagai 404
+"user not found". Sekarang memakai `store.UpdatePasswordHash`. Setelah itu tidak
+ada lagi SQL di lapisan handler maupun pemakaian `pgxpool` selain health checker.
+
+Diverifikasi pada database hasil `make migrate`, termasuk lima jalur error reset
+password (404 / 400 / 200 / 401 tanpa token / 401 token salah) dan login ulang
+dengan password baru.
 
 ## KISS-2 (SEDANG) — Widget raksasa
 
@@ -381,19 +390,26 @@ menghapus komentar kembar. Prioritas rendah karena kode ini tipis dan bekerja.
 
 # 3. SOLID (versi Go)
 
-## SOLID-1 (SEDANG) — Arah dependensi bocor lewat `Engine.Pool` yang publik
+## SOLID-1 (SELESAI, dengan pengecualian yang disengaja) — Arah dependensi bocor lewat `Engine.Pool` yang publik
 
 `engine.go:66` menyimpan `Pool` sebagai field publik, dan handler memakainya
 langsung (KISS-1). Ini akar penyebabnya: selama `Pool` terbuka, lapisan mana pun
 bisa melewati `store` dan `engine`.
 
-**Rancangan.** Setelah KISS-1 memindahkan tiga query terakhir ke `store`,
-jadikan `Pool` tidak diekspor (`engine.go`) dan sediakan metode sempit yang
-dibutuhkan. Kalau `Pool` harus tetap publik karena satu pemakai yang sah,
-sebutkan pemakai itu di komentar — jangan dibiarkan terbuka tanpa penjelasan.
+**Selesai `b531eb7`.** Setelah KISS-1, `Pool` tidak lagi dipakai di luar paket
+engine. Saya memilih **tidak** menjadikannya tidak diekspor, dengan alasan yang
+terukur: 150 pemakaian di dalam paket engine, dan itu perubahan besar tanpa
+manfaat keamanan — yang berbahaya adalah lapisan lain menembus masuk, bukan
+engine memakai pool-nya sendiri.
 
-Ini perubahan kecil yang menutup pintu, bukan refactor. Tapi ia harus
-dikerjakan **setelah** KISS-1, bukan sebelum, supaya tidak ada yang rusak.
+Sebagai gantinya batas itu ditulis di deklarasi `Pool` (`engine.go`), lengkap
+dengan pelanggaran historisnya, supaya pelanggaran berikutnya terbaca sebagai
+pelanggaran. Menyembunyikan field-nya bisa dibuka lagi kalau nanti engine
+dipecah, dan itu keputusan arsitektur tersendiri, bukan efek samping item ini.
+
+Rancangan di atas sudah mengantisipasi jalan ini ("kalau `Pool` harus tetap
+publik karena satu pemakai yang sah, sebutkan pemakai itu di komentar").
+Pemakainya: seluruh service di dalam paket engine.
 
 ## SOLID-2 (RENDAH) — Hanya ada dua interface; salah satunya bisa lebih sempit
 
