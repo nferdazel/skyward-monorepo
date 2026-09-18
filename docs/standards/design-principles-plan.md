@@ -342,7 +342,7 @@ Diverifikasi pada database hasil `make migrate`, termasuk lima jalur error reset
 password (404 / 400 / 200 / 401 tanpa token / 401 token salah) dan login ulang
 dengan password baru.
 
-## KISS-2 (SEDANG) — Widget raksasa
+## KISS-2 (SEBAGIAN SELESAI) — Widget raksasa
 
 Lima berkas teratas klien menampung terlalu banyak tanggung jawab dalam satu
 State:
@@ -354,6 +354,21 @@ State:
 | `bank_panel.dart` | 1318 | panel, `_LoanCard`, `_HistoricalLoanRow`, dan state form `_TakeLoanDialogState` |
 | `overview_tab.dart` | 1289 | konstanta `_S`, `OverviewTab`, `_SkeletonCard` |
 | `leaderboard_view.dart` | 1000 | satu State dengan 12 `_build*` |
+
+**Status per item (diverifikasi ulang terhadap kode, bukan dari catatan lama).**
+
+| Berkas | Hasil | Catatan |
+|---|---|---|
+| `bank_panel.dart` | SELESAI (`1a6d5a7`) | Dialog pinjaman pindah; 1318 -> 1082 baris |
+| `routes_view.dart` | SELESAI (`b55a2de`) | Helper peta pindah; 2017 -> 1864 baris |
+| `overview_tab.dart` | SELESAI (`6e60b9b`) | `SkeletonCard` pindah; 1289 -> 1254 baris |
+| `leaderboard_view.dart` | TIDAK DIKERJAKAN | Hanya 2 kelas; widget mandiri sudah diekstrak lebih dulu |
+| `fleet_view.dart` | BELUM | 2434 baris, target terbesar |
+
+Catatan plan untuk `leaderboard_view.dart` ("satu State dengan 12 `_build*`")
+tidak akurat: jumlah sebenarnya 14 metode `_build*`, dan yang penting, tidak ada
+satupun yang layak dipindah karena semuanya saling memanggil dan membaca state.
+Memaksakan pemisahan di sana berarti menulis ulang, bukan memindahkan.
 
 **Rancangan, bertahap dan tanpa penulisan ulang.** Jangan pecah berdasarkan
 "biar rapi", pecah berdasarkan sesuatu yang bisa diuji:
@@ -373,7 +388,7 @@ memecah per tab. **Jangan serentak** — setiap pemindahan widget menyentuh
 banyak referensi, dan menggabungkannya jadi satu commit besar membuat
 kesalahan tidak bisa dilacak.
 
-## KISS-3 (RENDAH) — `NumberFormat` dioper ke ~15 signature
+## KISS-3 (SELESAI untuk fleet_view) — `NumberFormat` dioper ke ~15 signature
 
 `fleet_view.dart` menerima parameter `NumberFormat currencyFormat` di 11 tempat
 (`:223`, `:355`, `:435`, `:502`, `:920`, `:1277`, `:1337`, `:2083`, `:2171`,
