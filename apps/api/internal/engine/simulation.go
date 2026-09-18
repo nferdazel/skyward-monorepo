@@ -511,7 +511,7 @@ func (e *Engine) applyBankruptcy(ctx context.Context, userID string) {
 
 func (e *Engine) processDayBoundary(ctx context.Context, userID string, gameDate time.Time, elapsedDays float64, snap *TickSnapshot) {
 	// Go-native: credit score + history, loan payments, financing payments
-	e.ProcessCreditAtDayBoundary(ctx, userID, gameDate)
+	e.ProcessCreditAtDayBoundary(ctx, userID, gameDate, snap)
 	e.ProcessLoanPayments(ctx, userID, gameDate)
 	e.ProcessAircraftFinancingPayments(ctx, userID, gameDate)
 
@@ -566,12 +566,18 @@ func shouldBankruptOnNegativeDays(consecutiveNegativeDays, threshold int) bool {
 // Sejak 3.4 jalur TICK tidak lagi memakai ini — ia membaca `snap.num` supaya
 // satu putaran memakai satu nilai per key. Yang tersisa di sini adalah pemanggil
 // di luar tick, yang justru HARUS membaca nilai terbaru saat request:
-//   - `routes.go` / `fleet.go` — handler mutasi REST (validasi frekuensi rute,
-//     deposit lease), tidak punya snapshot;
-//   - `dayboundary.go` `calculateCreditScore` — dipakai halaman kredit, bukan
-//     hanya tick.
+//   - `routes.go` — validasi frekuensi rute saat membuat/mengubah rute;
+//   - `fleet.go` — deposit lease saat pembelian.
 //
-// Menyalinnya ke snapshot akan membuat permintaan pemain memakai config basi.
+// Keduanya melayani request pemain di luar tick dan justru HARUS membaca nilai
+// terbaru saat request, jadi tidak punya snapshot.
+//
+// `dayboundary.go` `calculateCreditScore` sudah tidak ada di daftar ini: dulu
+// ia beralasan "dipakai halaman kredit, bukan hanya tick", padahal satu-satunya
+// pemanggilnya ada di dalam tick. Sekarang ia memakai `snap`.
+//
+// Menyalin pemanggil REST ke snapshot akan membuat permintaan pemain memakai
+// config basi.
 func (e *Engine) getConfigNum(ctx context.Context, key string, fallback float64) float64 {
 	var v float64
 	err := e.Pool.QueryRow(ctx, `SELECT COALESCE((value#>>'{}')::numeric, $1) FROM game_config WHERE key=$2`, fallback, key).Scan(&v)

@@ -278,8 +278,8 @@ func (e *Engine) ProcessAircraftFinancingPayments(ctx context.Context, userID st
 // ── Day boundary: credit score ────────────────────────────────────────
 
 // ProcessCreditAtDayBoundary — mirror process_credit_at_day_boundary + update_credit_score.
-func (e *Engine) ProcessCreditAtDayBoundary(ctx context.Context, userID string, gameDate time.Time) {
-	score, ok := e.calculateCreditScore(ctx, userID)
+func (e *Engine) ProcessCreditAtDayBoundary(ctx context.Context, userID string, gameDate time.Time, snap *TickSnapshot) {
+	score, ok := e.calculateCreditScore(ctx, userID, snap)
 	if !ok {
 		return
 	}
@@ -309,7 +309,14 @@ type creditScore struct {
 }
 
 // calculateCreditScore — mirror calculate_credit_score.
-func (e *Engine) calculateCreditScore(ctx context.Context, userID string) (*creditScore, bool) {
+//
+// `snap` membawa config yang sudah dibaca sekali di awal tick. Sebelumnya
+// fungsi ini memanggil `getConfigNum` per pemain per hari, yang berarti query
+// `game_config` berulang sebanyak jumlah pemain — persis pola yang
+// `TickSnapshot` dibuat untuk menghapusnya. Komentar lama beralasan fungsi ini
+// "dipakai halaman kredit, bukan hanya tick"; itu tidak benar, satu-satunya
+// pemanggilnya ada di dalam tick.
+func (e *Engine) calculateCreditScore(ctx context.Context, userID string, snap *TickSnapshot) (*creditScore, bool) {
 	// Skor placeholder saat salah satu komponen tidak terbaca. Dulu hanya baris
 	// users ini yang punya fallback; komponen lain dibiarkan terisi nol lalu ikut
 	// dihitung — dan nol itu justru nilai TERBAIK untuk debt ratio
@@ -325,7 +332,7 @@ func (e *Engine) calculateCreditScore(ctx context.Context, userID string) (*cred
 		return fallback("gagal membaca net_worth/game time", err)
 	}
 	cash, _ := e.Ledger.GetBalance(ctx, userID)
-	startingCash := e.getConfigNum(ctx, "starting_cash", 25000000.0)
+	startingCash := snap.num("starting_cash", 25000000.0)
 
 	var fleetCount int
 	var avgCondition, groundedRatio float64
