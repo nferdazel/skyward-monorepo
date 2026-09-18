@@ -363,12 +363,31 @@ State:
 | `routes_view.dart` | SELESAI (`b55a2de`) | Helper peta pindah; 2017 -> 1864 baris |
 | `overview_tab.dart` | SELESAI (`6e60b9b`) | `SkeletonCard` pindah; 1289 -> 1254 baris |
 | `leaderboard_view.dart` | TIDAK DIKERJAKAN | Hanya 2 kelas; widget mandiri sudah diekstrak lebih dulu |
-| `fleet_view.dart` | BELUM | 2434 baris, target terbesar |
+| `fleet_view.dart` | SEBAGIAN | 2413 baris. Lihat catatan di bawah. |
 
 Catatan plan untuk `leaderboard_view.dart` ("satu State dengan 12 `_build*`")
 tidak akurat: jumlah sebenarnya 14 metode `_build*`, dan yang penting, tidak ada
 satupun yang layak dipindah karena semuanya saling memanggil dan membaca state.
 Memaksakan pemisahan di sana berarti menulis ulang, bukan memindahkan.
+
+`fleet_view.dart` diukur setelah KISS-3 selesai: 2413 baris, 27 metode dalam
+satu State, total 2050 baris. Yang benar-benar murni fungsi dari parameter hanya
+44 baris (1.8% berkas): `_buildAcquisitionBadge` (6), `_buildWearConditionCell`
+(32), `_tableHeaderCell` (3), `_tableCell` (3). Sepuluh metode terbesar
+(`_buildCatalogRow` 265, `_showAcquireSeatConfigDialog` 232,
+`_showFinanceDialog` 226, `_showSeatConfigDialog` 171, `_buildFleetRow` 171,
+`_buildAcquireTab` 168, `_buildActiveFleetTab` 126, `_confirmDisposal` 104,
+`_confirmRepair` 86, `_buildFilterSortBar` 78) semuanya membaca
+`_selected*`/`_history*`/cubit atau memanggil `setState`, jadi mengekstraknya
+berarti mengubahnya menjadi widget berstate dengan parameter baru. Itu penulisan
+ulang, bukan pemindahan, dan di luar lingkup item ini.
+
+**Utang yang dicatat, bukan dikerjakan.** Kalau `fleet_view.dart` perlu dipecah
+sungguh-sungguh, langkahnya adalah memindahkan state per dialog ke widget
+tersendiri (bukan sekadar memindahkan metode), satu dialog per commit, dengan
+test yang membuka dialog itu seperti pemain. Itu pekerjaan tersendiri, bukan
+ekor dari KISS-2. Memaksakannya sekarang hanya memindahkan 1.8% berkas sambil
+menambah empat kelas kecil, dan itu tidak memperbaiki apa pun.
 
 **Rancangan, bertahap dan tanpa penulisan ulang.** Jangan pecah berdasarkan
 "biar rapi", pecah berdasarkan sesuatu yang bisa diuji:
