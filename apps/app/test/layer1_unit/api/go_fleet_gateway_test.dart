@@ -67,6 +67,84 @@ void main() {
       expect(res.isNotEmpty, true);
     });
 
+    test(
+      'purchaseAircraft mengirim nama field yang dikenal server, bukan p_*',
+      () async {
+        // Bug nyata: cubit mengirim kunci legacy RPC Supabase (`p_model_id`,
+        // `p_nickname`, `p_economy_seats`), dan gateway meneruskannya apa
+        // adanya. Server membaca `model_id`/`nickname`/`economy_seats` dan
+        // MENGABAIKAN kunci tak dikenal, jadi `model_id` kosong dan pembelian
+        // selalu gagal dengan "Aircraft model not found."
+        //
+        // Test ini menetapkan kontrak body yang benar, supaya penyalinan
+        // `p_*` tidak bisa lolos lagi.
+        Map<String, dynamic>? sent;
+        final gateway = GoFleetGateway(
+          apiClient: ApiClient(
+            baseUrl: 'https://api.example.com/skyward',
+            httpClient: MockClient((request) async {
+              sent = jsonDecode(request.body) as Map<String, dynamic>;
+              return _json({'success': true}, 200);
+            }),
+          ),
+        );
+
+        await gateway.purchaseAircraft({
+          'p_user_id': 'u-1',
+          'p_model_id': 'm-1',
+          'p_nickname': 'Pesawat',
+          'p_economy_seats': 150,
+          'p_business_seats': 20,
+          'p_first_class_seats': 0,
+        });
+
+        expect(sent, isNotNull);
+        // Nama yang dibaca server (`engine.PurchaseParams`).
+        expect(sent!['model_id'], 'm-1');
+        expect(sent!['nickname'], 'Pesawat');
+        expect(sent!['economy_seats'], 150);
+        expect(sent!['business_seats'], 20);
+        expect(sent!['first_class_seats'], 0);
+        // Kunci legacy tidak boleh ikut terkirim.
+        expect(sent!.containsKey('p_model_id'), isFalse,
+            reason: 'server mengabaikan p_model_id, jadi model_id akan kosong');
+        expect(sent!.containsKey('p_economy_seats'), isFalse);
+      },
+    );
+
+    test(
+      'leaseAircraft mengirim nama field yang dikenal server, bukan p_*',
+      () async {
+        // Sama seperti purchaseAircraft: `p_model_id` diabaikan server sehingga
+        // sewa selalu gagal.
+        Map<String, dynamic>? sent;
+        final gateway = GoFleetGateway(
+          apiClient: ApiClient(
+            baseUrl: 'https://api.example.com/skyward',
+            httpClient: MockClient((request) async {
+              sent = jsonDecode(request.body) as Map<String, dynamic>;
+              return _json({'success': true}, 200);
+            }),
+          ),
+        );
+
+        await gateway.leaseAircraft({
+          'p_user_id': 'u-1',
+          'p_model_id': 'm-1',
+          'p_nickname': 'Sewa',
+          'p_economy_seats': 100,
+          'p_business_seats': 0,
+          'p_first_class_seats': 0,
+        });
+
+        expect(sent, isNotNull);
+        expect(sent!['model_id'], 'm-1');
+        expect(sent!['nickname'], 'Sewa');
+        expect(sent!['economy_seats'], 100);
+        expect(sent!.containsKey('p_model_id'), isFalse);
+      },
+    );
+
     test('repairAircraft calls POST /fleet/{id}/repair', () async {
       final gateway = GoFleetGateway(
         apiClient: ApiClient(

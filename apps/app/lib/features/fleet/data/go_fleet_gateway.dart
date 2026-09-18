@@ -35,8 +35,17 @@ class GoFleetGateway implements FleetGateway {
 
   @override
   Future<List<dynamic>> purchaseAircraft(Map<String, dynamic> params) async {
+    final body = {
+      'model_id': params['p_model_id'] ?? params['model_id'],
+      'nickname': params['p_nickname'] ?? params['nickname'] ?? '',
+      'economy_seats': params['p_economy_seats'] ?? params['economy_seats'] ?? 0,
+      'business_seats':
+          params['p_business_seats'] ?? params['business_seats'] ?? 0,
+      'first_class_seats':
+          params['p_first_class_seats'] ?? params['first_class_seats'] ?? 0,
+    };
     try {
-      final res = await _api.post('/fleet/purchase', body: params);
+      final res = await _api.post('/fleet/purchase', body: body);
       if (res is List) return res;
       if (res is Map) return [res];
       return const [];
@@ -49,8 +58,17 @@ class GoFleetGateway implements FleetGateway {
 
   @override
   Future<List<dynamic>> leaseAircraft(Map<String, dynamic> params) async {
+    final body = {
+      'model_id': params['p_model_id'] ?? params['model_id'],
+      'nickname': params['p_nickname'] ?? params['nickname'] ?? '',
+      'economy_seats': params['p_economy_seats'] ?? params['economy_seats'] ?? 0,
+      'business_seats':
+          params['p_business_seats'] ?? params['business_seats'] ?? 0,
+      'first_class_seats':
+          params['p_first_class_seats'] ?? params['first_class_seats'] ?? 0,
+    };
     try {
-      final res = await _api.post('/fleet/lease', body: params);
+      final res = await _api.post('/fleet/lease', body: body);
       if (res is List) return res;
       if (res is Map) return [res];
       return const [];
@@ -106,6 +124,9 @@ class GoFleetGateway implements FleetGateway {
     }
   }
 
+  // Catatan pola: cubit mengirim kunci legacy RPC `p_*`, sedangkan server Go
+  // memakai nama tanpa prefiks dan MENGABAIKAN kunci tak dikenal. Setiap
+  // gateway yang menerima `params` mentah harus memetakannya seperti ini.
   @override
   Future<List<dynamic>> configureSeats(Map<String, dynamic> params) async {
     final aircraftId = _aircraftId(params);
