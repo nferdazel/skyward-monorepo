@@ -41,7 +41,7 @@ func (s *Store) GetSimulationState(ctx context.Context, userID string) (*Simulat
 		       u.auto_grounding_threshold, u.operational_status, u.season_id,
 		       sc.current_game_time, sc.time_scale_multiplier,
 		       COALESCE(u.consecutive_negative_days, 0), COALESCE(u.recovery_streak_days, 0),
-		       COALESCE((SELECT ba.balance FROM bank_accounts ba WHERE ba.user_id = u.id AND ba.account_type = 'operating' LIMIT 1), 0)
+		       `+operatingBalanceExpr+`
 		FROM users u
 		CROSS JOIN (SELECT current_game_time, time_scale_multiplier FROM season_clock WHERE status = 'active' LIMIT 1) sc
 		WHERE u.id = $1`, userID,
@@ -180,6 +180,34 @@ const fleetSelectColumns = `
 const fleetSelectFrom = `
 	FROM fleet_aircraft f
 	JOIN aircraft_models m ON m.id = f.aircraft_model_id`
+
+// operatingBalanceExpr — saldo akun operasional milik baris `users u`.
+//
+// Dipakai di lebih dari satu SELECT yang di-JOIN ke `users u`. Subquery yang
+// sama persis pernah disalin utuh; kalau definisi "saldo operasional" berubah,
+// semua tempat harus ikut berubah.
+const operatingBalanceExpr = `
+	COALESCE((SELECT ba.balance FROM bank_accounts ba
+	           WHERE ba.user_id = u.id AND ba.account_type = 'operating' LIMIT 1), 0)`
+
+// revenue30dExpr — total kredit 30 hari terakhir milik baris `users u`.
+//
+// Dulu disalin utuh di dua query. Rumus ini menentukan angka pendapatan yang
+// dilihat pemain, jadi satu salinan yang tertinggal berarti dua layar
+// menampilkan pendapatan berbeda untuk pemain yang sama.
+const revenue30dExpr = `
+	COALESCE((SELECT SUM(bt.amount) FROM bank_transactions bt
+	           WHERE bt.user_id = u.id AND bt.transaction_type = 'credit'
+	             AND bt.game_date >= u.game_current_time - INTERVAL '30 days'), 0)`
+
+// Batas halaman untuk endpoint daftar. Nilainya berbeda per endpoint karena
+// jumlah baris yang wajar juga berbeda (mutasi bank jauh lebih banyak daripada
+// snapshot harian), jadi yang disatukan hanya batas atasnya sebagai konstanta,
+// bukan angkanya. `default` di bawah tetap milik masing-masing pemanggil.
+const (
+	maxPageLimit     = 200 // mutasi bank
+	maxSnapshotLimit = 500 // snapshot finance & riwayat kredit
+)
 
 // fleetGameTime mengambil waktu game pemain, yang menentukan depresiasi nilai
 // jual. Kalau gagal, waktu nol dikembalikan; `money.SaleValueFor` memperlakukan
@@ -389,7 +417,7 @@ type BankTransaction struct {
 }
 
 func (s *Store) GetBankTransactions(ctx context.Context, userID string, limit, offset int) ([]BankTransaction, error) {
-	if limit <= 0 || limit > 200 {
+	if limit <= 0 || limit > maxPageLimit {
 		limit = 50
 	}
 	rows, err := s.pool.Query(ctx, `
@@ -423,10 +451,10 @@ func (s *Store) GetLeaderboard(ctx context.Context) ([]LeaderboardEntry, error) 
 	rows, err := s.pool.Query(ctx, `
 		SELECT u.id, u.company_name, u.ceo_name, u.actor_type='AI',
 		       bp.archetype,
-		       COALESCE((SELECT ba.balance FROM bank_accounts ba WHERE ba.user_id=u.id AND ba.account_type='operating' LIMIT 1), 0),
+		       `+operatingBalanceExpr+`,
 		       COALESCE(u.net_worth, 0),
 		       (SELECT COUNT(*)::int FROM fleet_aircraft f WHERE f.user_id=u.id AND f.status='active'),
-		       COALESCE((SELECT SUM(bt.amount) FROM bank_transactions bt WHERE bt.user_id=u.id AND bt.transaction_type='credit' AND bt.game_date >= u.game_current_time - INTERVAL '30 days'), 0),
+		       `+revenue30dExpr+`, 
 		       COALESCE(u.operational_status, 'Active')
 		FROM users u
 		LEFT JOIN bot_profiles bp ON bp.user_id = u.id
@@ -536,7 +564,7 @@ func (s *Store) GetCompetitorInsights(ctx context.Context, id string, isBot bool
 		SELECT u.company_name, u.ceo_name, COALESCE(u.net_worth,0),
 		       (SELECT COUNT(*)::int FROM fleet_aircraft f WHERE f.user_id=u.id),
 		       (SELECT COUNT(*)::int FROM route_assignments r WHERE r.user_id=u.id),
-		       COALESCE((SELECT SUM(bt.amount) FROM bank_transactions bt WHERE bt.user_id=u.id AND bt.transaction_type='credit' AND bt.game_date >= u.game_current_time - INTERVAL '30 days'), 0),
+		       `+revenue30dExpr+`,
 		       COALESCE(u.operational_status,'Active'),
 		       bp.distress_stage, bp.consecutive_loss_days, u.recovery_streak_days,
 		       COALESCE((SELECT jsonb_object_agg(model, qty) FROM (
@@ -868,7 +896,7 @@ func (s *Store) GetGroundingThreshold(ctx context.Context, userID string) (float
 
 // GetFinanceSnapshots — history finance_snapshots.
 func (s *Store) GetFinanceSnapshots(ctx context.Context, userID string, limit int) ([]map[string]any, error) {
-	if limit <= 0 || limit > 500 {
+	if limit <= 0 || limit > maxSnapshotLimit {
 		limit = 60
 	}
 	rows, err := s.pool.Query(ctx, `
@@ -883,7 +911,7 @@ func (s *Store) GetFinanceSnapshots(ctx context.Context, userID string, limit in
 
 // GetCreditHistory — riwayat credit_score_history.
 func (s *Store) GetCreditHistory(ctx context.Context, userID string, limit int) ([]map[string]any, error) {
-	if limit <= 0 || limit > 500 {
+	if limit <= 0 || limit > maxSnapshotLimit {
 		limit = 60
 	}
 	rows, err := s.pool.Query(ctx, `
@@ -912,7 +940,11 @@ func (s *Store) GetBankAccounts(ctx context.Context, userID string) ([]BankAccou
 // accountId dari query client wajib milik userID, kalau tidak hasil kosong
 // (AUDIT-02: dulu tanpa filter user_id = IDOR ledger pemain lain).
 func (s *Store) GetBankTransactionsByAccount(ctx context.Context, accountID, userID string, limit int) ([]BankTransaction, error) {
-	if limit <= 0 || limit > 500 {
+	// Batas yang sama dengan GetBankTransactions: keduanya membaca tabel yang
+	// sama dan sama-sama jatuh ke 50. Dulu di sini tertulis 500, kemungkinan
+	// karena disalin dari query snapshot, bukan keputusan tersendiri; satu-
+	// satunya pemanggil mengirim 50 tetap, jadi angkanya tidak pernah terpakai.
+	if limit <= 0 || limit > maxPageLimit {
 		limit = 50
 	}
 	rows, err := s.pool.Query(ctx, `
