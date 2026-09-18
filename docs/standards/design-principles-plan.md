@@ -612,3 +612,28 @@ produksi yang punya armada, karena tunnel database mati saat saya mencoba
 mengukur. Jadi saya tidak bisa menyatakan berapa besar uang yang terpengaruh.
 Yang bisa saya nyatakan dengan pasti: rumusnya berbeda secara struktur, dan
 angkanya tampil di UI (`fleet_view.dart:2213`).
+
+## Config hardcoded -> game_config (2026-09-18, `1407b7c`)
+
+Bentuk kurva permintaan dan skala crew dipindah dari konstanta Go ke
+`game_config` (migrasi 25). Nilainya identik dengan fallback lama, jadi tidak
+ada perubahan perilaku; yang berubah hanya menyeimbangkan ekonomi kini cukup
+satu `UPDATE`.
+
+Key baru: `distance_demand_short_km`, `distance_demand_long_km`,
+`distance_demand_min_factor`, `price_elasticity_max`,
+`price_elasticity_quadratic`, `crew_cost_anchor_capacity`, `crew_cost_min_mult`,
+`crew_cost_max_mult`.
+
+**Sisa hardcode yang SENGAJA dibiarkan** (bukan lupa):
+- `distanceDemandFactor` `maxFac` = 1.0. Ini batas matematis "tanpa penalti
+  jarak", bukan knob tuning; menaikkannya di atas 1.0 berarti rute pendek
+  mendapat bonus permintaan, yang mengubah arti kurva.
+- `allocateCabins`, `fuelCost`, `maintCost` — semua inputnya sudah config;
+  angkanya sendiri turunan rumus, bukan knob.
+- `assess.go` `0.70`/`0.50` di sekitar baris 485 — nilai ambang tampilan
+  assessment. Kandidat berikutnya kalau memang perlu di-tuning.
+- `min_airport_demand_factor`/`max_airport_demand_factor`: ada di DB dan
+  dipakai SQL lama, tapi engine Go tidak memakainya (Go memakai `demandWeight`
+  yang dikalibrasi ulang di GAME-02). Dibiarkan sebagai key mati yang terdaftar;
+  menghapusnya berarti migrasi baru yang membuang baris prod.
