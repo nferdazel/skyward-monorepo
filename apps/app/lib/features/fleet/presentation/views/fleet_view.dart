@@ -15,10 +15,7 @@ import '../../../../presentation/layout/master_detail_shell.dart';
 import '../../../../presentation/widgets/app_badge.dart';
 import '../../../../presentation/widgets/app_button.dart';
 import '../../../../presentation/widgets/app_card.dart';
-import '../../../../presentation/widgets/app_dialog_shell.dart';
 import '../../../../presentation/widgets/app_empty_state.dart';
-import '../../../../presentation/widgets/app_info_strip.dart';
-import '../../../../presentation/widgets/app_labeled_value.dart';
 import '../../../../presentation/widgets/app_multi_select_field.dart';
 import '../../../../presentation/widgets/app_snackbar.dart';
 import '../../../../presentation/widgets/app_table_cells.dart';
@@ -40,7 +37,9 @@ import '../../domain/fleet_models.dart';
 import '../cubit/fleet_cubit.dart';
 import '../cubit/fleet_state.dart';
 import '../widgets/acquire_seat_config_dialog.dart';
+import '../widgets/disposal_confirm_dialog.dart';
 import '../widgets/finance_dialog.dart';
+import '../widgets/repair_confirm_dialog.dart';
 import '../widgets/seat_config_dialog.dart';
 
 class FleetView extends StatefulWidget {
@@ -218,10 +217,7 @@ class _FleetViewState extends State<FleetView>
     );
   }
 
-  Widget _buildActiveFleetTab(
-    String userId,
-    double autoGroundingThreshold,
-  ) {
+  Widget _buildActiveFleetTab(String userId, double autoGroundingThreshold) {
     return BlocBuilder<FleetCubit, FleetState>(
       buildWhen: (previous, current) => current is! FleetActionSuccess,
       builder: (context, state) {
@@ -296,10 +292,7 @@ class _FleetViewState extends State<FleetView>
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _buildFleetSummaryStrip(
-              fleetList,
-              autoGroundingThreshold,
-            ),
+            _buildFleetSummaryStrip(fleetList, autoGroundingThreshold),
             const SizedBox(height: AppSpacing.md),
             Expanded(
               child: MasterDetailShell(
@@ -321,19 +314,16 @@ class _FleetViewState extends State<FleetView>
                     aircraft: selectedAircraft,
                     autoGroundingThreshold: autoGroundingThreshold,
                     isActionLoading: isActionLoading,
-                    onRepair: () => _confirmRepair(
-                      context,
-                      selectedAircraft,
-                      userId,
-                      ),
+                    onRepair: () =>
+                        _openRepairDialog(context, selectedAircraft, userId),
                     onSaveCabinConfig: (eco, bus, first) {
                       context.read<FleetCubit>().configureSeats(
-                            userId: userId,
-                            aircraftId: selectedAircraft.id,
-                            economy: eco,
-                            business: bus,
-                            firstClass: first,
-                          );
+                        userId: userId,
+                        aircraftId: selectedAircraft.id,
+                        economy: eco,
+                        business: bus,
+                        firstClass: first,
+                      );
                     },
                   ),
                 ),
@@ -349,15 +339,16 @@ class _FleetViewState extends State<FleetView>
     List<UserFleetAircraft> fleet,
     double threshold,
   ) {
-    final ready =
-        fleet.where((a) => !a.isMaintenanceGrounded(threshold)).length;
-    final grounded =
-        fleet.where((a) => a.isMaintenanceGrounded(threshold)).length;
+    final ready = fleet
+        .where((a) => !a.isMaintenanceGrounded(threshold))
+        .length;
+    final grounded = fleet
+        .where((a) => a.isMaintenanceGrounded(threshold))
+        .length;
     final leaseBurn = fleet
         .where((a) => a.acquisitionType == 'lease')
         .fold<double>(0, (s, a) => s + a.model.leasePricePerMonth);
-    final repairAll =
-        fleet.fold<double>(0, (s, a) => s + a.repairCost);
+    final repairAll = fleet.fold<double>(0, (s, a) => s + a.repairCost);
 
     return CraftCard(
       padding: const EdgeInsets.symmetric(
@@ -401,9 +392,7 @@ class _FleetViewState extends State<FleetView>
         children: [
           Text(
             label,
-            style: AppTypography.microLabel.copyWith(
-              color: AppTheme.textMuted,
-            ),
+            style: AppTypography.microLabel.copyWith(color: AppTheme.textMuted),
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
@@ -416,11 +405,7 @@ class _FleetViewState extends State<FleetView>
   }
 
   Widget _buildVerticalDivider() {
-    return Container(
-      width: 1,
-      height: 28,
-      color: AppTheme.border,
-    );
+    return Container(width: 1, height: 28, color: AppTheme.border);
   }
 
   Widget _buildActiveFleetTable(
@@ -467,13 +452,14 @@ class _FleetViewState extends State<FleetView>
                           setState(() => _selectedAircraftId = aircraft.id),
                       hoverColor: AppTheme.surfaceActive.withValues(alpha: 0.4),
                       splashColor: AppTheme.primary.withValues(alpha: 0.08),
-                      highlightColor:
-                          AppTheme.surfaceActive.withValues(alpha: 0.5),
+                      highlightColor: AppTheme.surfaceActive.withValues(
+                        alpha: 0.5,
+                      ),
                       child: _buildFleetRow(
                         context,
                         aircraft,
                         userId,
-                            isActionLoading,
+                        isActionLoading,
                         autoGroundingThreshold,
                         assignedFleetIds,
                       ),
@@ -548,13 +534,15 @@ class _FleetViewState extends State<FleetView>
             ),
             _tableCell(_buildAcquisitionBadge(aircraft.acquisitionType)),
             _tableCell(_buildWearConditionCell(aircraft.condition)),
-            _tableCell(_buildStatusBadge(
-              aircraft.status,
-              isGrounded,
-              isAssigned,
-              isLeased: aircraft.acquisitionType == 'lease',
-              leasePricePerMonth: aircraft.model.leasePricePerMonth,
-            )),
+            _tableCell(
+              _buildStatusBadge(
+                aircraft.status,
+                isGrounded,
+                isAssigned,
+                isLeased: aircraft.acquisitionType == 'lease',
+                leasePricePerMonth: aircraft.model.leasePricePerMonth,
+              ),
+            ),
             _tableCell(
               Builder(
                 builder: (context) {
@@ -627,29 +615,29 @@ class _FleetViewState extends State<FleetView>
                             ),
                           )
                         : aircraft.condition < 100.0
-                            ? AppTableIconAction(
-                                tooltip:
-                                    '${AppStrings.repairTooltipPrefix}${AppFormatters.currency.format(aircraft.repairCost)}',
-                                icon: Icons.build_outlined,
-                                size: 32,
-                                iconSize: 16,
-                                onPressed: isActionLoading
-                                    ? null
-                                    : () => _confirmRepair(
-                                        context,
-                                        aircraft,
-                                        userId,
-                                                          ),
-                              )
-                            : AppBadge(
-                                label: AppStrings.okStatus,
-                                color: AppTheme.success,
-                                letterSpacing: AppTypography.spacingRelaxed,
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: AppSpacing.sm,
-                                  vertical: AppSpacing.xs,
-                                ),
-                              ),
+                        ? AppTableIconAction(
+                            tooltip:
+                                '${AppStrings.repairTooltipPrefix}${AppFormatters.currency.format(aircraft.repairCost)}',
+                            icon: Icons.build_outlined,
+                            size: 32,
+                            iconSize: 16,
+                            onPressed: isActionLoading
+                                ? null
+                                : () => _openRepairDialog(
+                                    context,
+                                    aircraft,
+                                    userId,
+                                  ),
+                          )
+                        : AppBadge(
+                            label: AppStrings.okStatus,
+                            color: AppTheme.success,
+                            letterSpacing: AppTypography.spacingRelaxed,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: AppSpacing.sm,
+                              vertical: AppSpacing.xs,
+                            ),
+                          ),
                   ),
                 ],
               ),
@@ -672,7 +660,6 @@ class _FleetViewState extends State<FleetView>
     );
   }
 
-
   void _openSeatConfigDialog(
     BuildContext context,
     UserFleetAircraft aircraft,
@@ -686,6 +673,7 @@ class _FleetViewState extends State<FleetView>
       ),
     );
   }
+
   Widget _buildAcquireTab(String userId) {
     return BlocBuilder<FleetCubit, FleetState>(
       buildWhen: (previous, current) => current is! FleetActionSuccess,
@@ -727,23 +715,24 @@ class _FleetViewState extends State<FleetView>
 
         // Read affordability context. Use select on BankCubit so the catalog
         // rebuilds when the credit report (and thus the tier) arrives.
-        final cashBalance =
-            context.select((SimulationCubit cubit) => cubit.state.cashBalance);
-        final creditTierAndFinancing =
-            context.select<BankCubit, (String?, double)>((cubit) {
-          final bankState = cubit.state;
-          final report = switch (bankState) {
-            BankLoaded(:final creditReport) => creditReport,
-            BankLoanSuccess(:final creditReport) => creditReport,
-            BankRefinanceSuccess(:final creditReport) => creditReport,
-            BankError(:final creditReport) => creditReport,
-            _ => null,
-          };
-          return (
-            report?.creditTier,
-            report?.maxFinancingAmount ?? double.infinity,
-          );
-        });
+        final cashBalance = context.select(
+          (SimulationCubit cubit) => cubit.state.cashBalance,
+        );
+        final creditTierAndFinancing = context
+            .select<BankCubit, (String?, double)>((cubit) {
+              final bankState = cubit.state;
+              final report = switch (bankState) {
+                BankLoaded(:final creditReport) => creditReport,
+                BankLoanSuccess(:final creditReport) => creditReport,
+                BankRefinanceSuccess(:final creditReport) => creditReport,
+                BankError(:final creditReport) => creditReport,
+                _ => null,
+              };
+              return (
+                report?.creditTier,
+                report?.maxFinancingAmount ?? double.infinity,
+              );
+            });
         // While the bank report is not loaded yet, the tier is unknown. Treat
         // it as unknown (unlocked) rather than defaulting to Standard, so a
         // Gold/Platinum player does not see every model falsely locked during
@@ -767,7 +756,8 @@ class _FleetViewState extends State<FleetView>
               );
 
         final filteredCatalog = _filterAndSortCatalog(catalog, filters);
-        final hasActiveFilter = filters.manufacturers.isNotEmpty ||
+        final hasActiveFilter =
+            filters.manufacturers.isNotEmpty ||
             filters.categories.isNotEmpty ||
             filters.ranges.isNotEmpty;
 
@@ -843,7 +833,7 @@ class _FleetViewState extends State<FleetView>
                       context,
                       filteredCatalog,
                       userId,
-                        isActionLoading,
+                      isActionLoading,
                       cashBalance,
                       maxFinancingAmount,
                       currentCreditTier,
@@ -1174,9 +1164,7 @@ class _FleetViewState extends State<FleetView>
                           ),
                           const SizedBox(width: AppSpacing.xs),
                           Text(
-                            AppStrings.requiresCreditTier(
-                              model.minCreditTier,
-                            ),
+                            AppStrings.requiresCreditTier(model.minCreditTier),
                             style: AppTypography.badgeText.copyWith(
                               color: AppTheme.warning,
                               letterSpacing: AppTypography.spacingRelaxed,
@@ -1403,99 +1391,21 @@ class _FleetViewState extends State<FleetView>
           model: model,
           // Refresh lintas-cubit tetap di sini: dialog tidak memiliki cubit
           // simulation, routes, dan finance.
-          onFinanced: () => _refreshAuthoritativeSimulationState(
-            context,
-            userId,
-          ),
+          onFinanced: () =>
+              _refreshAuthoritativeSimulationState(context, userId),
         ),
       ),
     );
   }
 
-  void _confirmRepair(
+  void _openRepairDialog(
     BuildContext context,
     UserFleetAircraft aircraft,
     String userId,
   ) {
-    final fleetCubit = context.read<FleetCubit>();
-
-    showDialog(
-      context: context,
-      builder: (dialogCtx) {
-        return AppDialogShell(
-          title: AppStrings.performMaintenance,
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '${AppStrings.repairConfirmPrefix}${aircraft.tailNumber}${AppStrings.repairConfirmMiddle}${aircraft.model.modelName}${AppStrings.repairConfirmSuffix}${AppFormatters.currency.format(aircraft.repairCost)}${AppStrings.repairConfirmCostSuffix}',
-                style: AppTypography.bodyMedium.copyWith(
-                  color: AppTheme.textPrimary,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              // Before/after condition preview
-              Row(
-                children: [
-                  Text(
-                    '${aircraft.condition.toStringAsFixed(0)}%',
-                    style: AppTypography.monoValue.copyWith(
-                      color: ConditionColors.colorFor(aircraft.condition),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.sm,
-                    ),
-                    child: Text(
-                      '→',
-                      style: AppTypography.bodyMedium.copyWith(
-                        color: AppTheme.textMuted,
-                      ),
-                    ),
-                  ),
-                  Text(
-                    '100%',
-                    style: AppTypography.monoValue.copyWith(
-                      color: AppTheme.success,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          actions: Row(
-            children: [
-              Expanded(
-                child: AppButton(
-                  text: AppStrings.cancelLabel,
-                  onPressed: () => Navigator.pop(dialogCtx),
-                  type: AppButtonType.secondary,
-                  height: 40,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: AppButton(
-                  text: AppStrings.performMaintenance,
-                  onPressed: () async {
-                    Navigator.pop(dialogCtx);
-                    await fleetCubit.repairAircraft(
-                      userId: userId,
-                      fleetId: aircraft.id,
-                      onBalanceChanged: (newCash) =>
-                          _applyCashBalance(context, userId, newCash),
-                    );
-                  },
-                  type: AppButtonType.primary,
-                  height: 40,
-                ),
-              ),
-            ],
-          ),
-        );
-      },
+    _showDialog(
+      context,
+      RepairConfirmDialog(userId: userId, aircraft: aircraft),
     );
   }
 
@@ -1518,16 +1428,26 @@ class _FleetViewState extends State<FleetView>
       iconSize: 16,
       onPressed: isActionLoading || isAssigned
           ? null
-          : () => _confirmDisposal(
-              context,
-              aircraft,
-              userId,
-              isAssigned,
-            ),
+          : () => _openDisposalDialog(context, aircraft, userId, isAssigned),
     );
   }
 
-  void _confirmDisposal(
+  /// Membungkus dialog dengan cubit yang dibutuhkannya. RefresH lintas-cubit
+  /// tetap milik layar ini, bukan dialog.
+  void _showDialog(BuildContext context, Widget dialog) {
+    showDialog<void>(
+      context: context,
+      builder: (_) => MultiBlocProvider(
+        providers: [
+          BlocProvider.value(value: context.read<FleetCubit>()),
+          BlocProvider.value(value: context.read<SimulationCubit>()),
+        ],
+        child: dialog,
+      ),
+    );
+  }
+
+  void _openDisposalDialog(
     BuildContext context,
     UserFleetAircraft aircraft,
     String userId,
@@ -1537,108 +1457,10 @@ class _FleetViewState extends State<FleetView>
       AppSnackBar.showWarning(context, AppStrings.disposalAssignedWarning);
       return;
     }
-
-    final isLease = aircraft.acquisitionType == 'lease';
-    final fleetCubit = context.read<FleetCubit>();
-    // Angka dari server, bukan dihitung di klien: angka yang ditampilkan di
-    // dialog ini sama persis dengan yang akan dicatat ledger.
-    final exposureAmount =
-        isLease ? aircraft.leaseExitFee : aircraft.saleValue;
-
-    showDialog(
-      context: context,
-      builder: (dialogCtx) {
-        return AppDialogShell(
-          title: isLease
-              ? AppStrings.terminateLeaseTitle
-              : AppStrings.sellAircraftTitle,
-          titleColor: isLease ? AppTheme.warning : AppTheme.primary,
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                isLease
-                    ? '${AppStrings.terminateLeaseConfirmPrefix}${aircraft.tailNumber}${AppStrings.terminateLeaseConfirmMiddle}${aircraft.model.modelName}${AppStrings.terminateLeaseConfirmSuffix}${AppFormatters.currency.format(exposureAmount)}${AppStrings.disposalFinalLine}'
-                    : '${AppStrings.sellAircraftConfirmPrefix}${aircraft.tailNumber}${AppStrings.sellAircraftConfirmMiddle}${aircraft.model.modelName}${AppStrings.sellAircraftConfirmSuffix}${AppFormatters.currency.format(exposureAmount)}${AppStrings.disposalFinalLine}',
-                style: AppTypography.bodyMedium.copyWith(
-                  color: AppTheme.textPrimary,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              AppInfoStrip(
-                backgroundColor: AppTheme.background,
-                child: Wrap(
-                  spacing: AppSpacing.lg,
-                  runSpacing: AppSpacing.sm,
-                  children: [
-                    AppLabeledValue(
-                      label: isLease
-                          ? AppStrings.terminationFeeLabel
-                          : AppStrings.saleProceedsLabel,
-                      value: AppFormatters.currency.format(exposureAmount),
-                      valueColor: isLease ? AppTheme.warning : AppTheme.success,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          actions: Row(
-            children: [
-              Expanded(
-                child: AppButton(
-                  text: AppStrings.cancelLabel,
-                  onPressed: () => Navigator.pop(dialogCtx),
-                  type: AppButtonType.secondary,
-                  height: 40,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                    child: AppButton(
-                      text: isLease
-                          ? AppStrings.confirmLeaseTermination
-                          : AppStrings.confirmSale,
-                      onPressed: () async {
-                        Navigator.pop(dialogCtx);
-                        if (isLease) {
-                          await fleetCubit.terminateLease(
-                            userId: userId,
-                            fleetId: aircraft.id,
-                            onBalanceChanged: (newCash) =>
-                                _applyCashBalance(context, userId, newCash),
-                          );
-                        } else {
-                          await fleetCubit.sellAircraft(
-                            userId: userId,
-                            fleetId: aircraft.id,
-                            onBalanceChanged: (newCash) =>
-                                _applyCashBalance(context, userId, newCash),
-                          );
-                        }
-                      },
-                      type: AppButtonType.primary,
-                      backgroundColor:
-                          isLease ? AppTheme.warning : null,
-                      textColor: isLease ? Colors.black : null,
-                      height: 40,
-                    ),
-                  ),
-            ],
-          ),
-        );
-      },
+    _showDialog(
+      context,
+      DisposalConfirmDialog(userId: userId, aircraft: aircraft),
     );
-  }
-
-  Future<void> _applyCashBalance(
-    BuildContext context,
-    String userId,
-    double newCash,
-  ) async {
-    final simCubit = context.read<SimulationCubit>();
-    simCubit.applyImmediateCashBalance(newCash);
   }
 
   Future<void> _refreshAuthoritativeSimulationState(
