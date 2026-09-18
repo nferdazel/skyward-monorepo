@@ -40,6 +40,7 @@ import '../../../simulation/presentation/cubit/simulation_cubit.dart';
 import '../../domain/fleet_models.dart';
 import '../cubit/fleet_cubit.dart';
 import '../cubit/fleet_state.dart';
+import '../widgets/acquire_seat_config_dialog.dart';
 import '../widgets/seat_config_dialog.dart';
 
 class FleetView extends StatefulWidget {
@@ -685,69 +686,6 @@ class _FleetViewState extends State<FleetView>
       ),
     );
   }
-  Widget _buildSeatAdjustmentRow(
-    BuildContext context,
-    String label,
-    int value,
-    ValueChanged<int> onChanged, {
-    required int maxPossible,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              label,
-              style: AppTypography.badgeText.copyWith(
-                color: AppTheme.textPrimary,
-              ),
-            ),
-            Text(
-              '$value Seats',
-              style: AppTypography.badgeText.copyWith(color: AppTheme.primary),
-            ),
-          ],
-        ),
-        Row(
-          children: [
-            IconButton(
-              icon: Icon(Icons.remove, size: 16, color: AppTheme.textSecondary),
-              onPressed: value > 0 ? () => onChanged(value - 1) : null,
-            ),
-            Expanded(
-              child: SliderTheme(
-                data: SliderTheme.of(context).copyWith(
-                  trackHeight: 2.0,
-                  activeTrackColor: AppTheme.primary,
-                  inactiveTrackColor: AppTheme.border,
-                  thumbColor: AppTheme.primary,
-                  overlayColor: AppTheme.primary.withValues(alpha: 0.1),
-                  thumbShape: const RoundSliderThumbShape(
-                    enabledThumbRadius: 6,
-                  ),
-                ),
-                child: Slider(
-                  value: value.toDouble(),
-                  min: 0,
-                  max: maxPossible.toDouble(),
-                  onChanged: (v) => onChanged(v.toInt()),
-                ),
-              ),
-            ),
-            IconButton(
-              icon: Icon(Icons.add, size: 16, color: AppTheme.textSecondary),
-              onPressed: value < maxPossible
-                  ? () => onChanged(value + 1)
-                  : null,
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
   Widget _buildAcquireTab(String userId) {
     return BlocBuilder<FleetCubit, FleetState>(
       buildWhen: (previous, current) => current is! FleetActionSuccess,
@@ -1369,7 +1307,7 @@ class _FleetViewState extends State<FleetView>
                     iconSize: 16,
                     onPressed: isActionLoading || isTierLocked
                         ? null
-                        : () => _showAcquireSeatConfigDialog(
+                        : () => _openAcquireSeatConfigDialog(
                             context,
                             model,
                             userId,
@@ -1386,7 +1324,7 @@ class _FleetViewState extends State<FleetView>
                     iconSize: 16,
                     onPressed: isActionLoading || isTierLocked
                         ? null
-                        : () => _showAcquireSeatConfigDialog(
+                        : () => _openAcquireSeatConfigDialog(
                             context,
                             model,
                             userId,
@@ -1425,236 +1363,26 @@ class _FleetViewState extends State<FleetView>
   }
 
   // ATOMIC SEAT CONFIGURATION AND ACQUISITION FLOW (Pillar 3, Item 3: No Naming prompt, Seat Config first)
-  void _showAcquireSeatConfigDialog(
+
+  void _openAcquireSeatConfigDialog(
     BuildContext context,
     AircraftModel model,
     String userId,
     bool isLease,
   ) {
-    final fleetCubit = context.read<FleetCubit>();
-    int economy = model.capacity; // Default to max economy
-    int business = 0;
-    int firstClass = 0;
-    final int capacity = model.capacity;
-
-    showDialog(
+    showDialog<void>(
       context: context,
-      builder: (dialogCtx) {
-        return StatefulBuilder(
-          builder: (ctx, setDialogState) {
-            final int occupiedSlots =
-                (economy * 1) + (business * 2) + (firstClass * 3);
-            final bool isValid = occupiedSlots <= capacity;
-            final int remainingSlots = capacity - occupiedSlots;
-            final cash = ctx.select(
-              (SimulationCubit cubit) => cubit.state.cashBalance,
-            );
-
-            return AppDialogShell(
-              title: isLease
-                  ? AppStrings.leaseAirframeAndConfigureCabin
-                  : AppStrings.commissionAirframeAndConfigureCabin,
-              subtitle:
-                  '${AppStrings.aircraftSubtitlePrefix}: ${model.manufacturer.toUpperCase()} ${model.modelName} (${AppStrings.capacitySubtitlePrefix}: $capacity PAX)',
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    isLease
-                        ? '${AppStrings.leaseDownPaymentPrefix}${AppFormatters.currency.format(model.leasePricePerMonth)}${AppStrings.leaseDownPaymentSuffix}'
-                        : '${AppStrings.purchaseDeductionPrefix}${AppFormatters.currency.format(model.purchasePrice)}${AppStrings.purchaseDeductionSuffix}',
-                    style: AppTypography.captionRegular.copyWith(
-                      color: AppTheme.textMuted,
-                      height: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  // Cash-impact strip
-                  Text(
-                    '${AppStrings.cashAfterLabel} ${AppFormatters.currency.format(cash - (isLease ? model.leasePricePerMonth : model.purchasePrice))}',
-                    style: AppTypography.badgeText.copyWith(
-                      color: AppTheme.textSecondary,
-                    ),
-                  ),
-                  // Breakeven note (buy vs lease)
-                  if (!isLease && model.leasePricePerMonth > 0)
-                    Padding(
-                      padding: const EdgeInsets.only(top: AppSpacing.xs),
-                      child: Text(
-                        '${AppStrings.breakevenLabel} ${(model.purchasePrice / model.leasePricePerMonth).round()} ${AppStrings.breakevenMonthsSuffix}',
-                        style: AppTypography.captionRegular.copyWith(
-                          color: AppTheme.textMuted,
-                        ),
-                      ),
-                    ),
-                  const SizedBox(height: AppSpacing.md),
-                  Divider(color: AppTheme.border, height: 1),
-                  const SizedBox(height: AppSpacing.md),
-
-                  Text(
-                    AppStrings.realisticSpaceConfiguration.toUpperCase(),
-                    style: AppTypography.badgeText.copyWith(
-                      color: AppTheme.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    AppStrings.realisticSpaceConfigurationDesc,
-                    style: AppTypography.captionRegular.copyWith(
-                      color: AppTheme.textMuted,
-                      height: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-
-                  _buildSeatAdjustmentRow(
-                    ctx,
-                    AppStrings.economyClassSlots,
-                    economy,
-                    (val) {
-                      setDialogState(() {
-                        economy = val;
-                      });
-                    },
-                    maxPossible: capacity,
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                  _buildSeatAdjustmentRow(
-                    ctx,
-                    AppStrings.businessClassSlots,
-                    business,
-                    (val) {
-                      setDialogState(() {
-                        business = val;
-                      });
-                    },
-                    maxPossible: (capacity / 2).floor(),
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                  _buildSeatAdjustmentRow(
-                    ctx,
-                    AppStrings.firstClassSlots,
-                    firstClass,
-                    (val) {
-                      setDialogState(() {
-                        firstClass = val;
-                      });
-                    },
-                    maxPossible: (capacity / 3).floor(),
-                  ),
-                  const SizedBox(height: AppSpacing.xxl),
-
-                  // Slots progress bar
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        AppStrings.totalSlotAllocation,
-                        style: AppTypography.badgeText.copyWith(
-                          color: AppTheme.textSecondary,
-                        ),
-                      ),
-                      Text(
-                        '$occupiedSlots / $capacity ${AppStrings.slotsSuffix}',
-                        style: AppTypography.badgeText.copyWith(
-                          color: isValid ? AppTheme.success : AppTheme.error,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Container(
-                    height: 8,
-                    width: double.infinity,
-                    decoration: BoxDecoration(color: AppTheme.background),
-                    child: FractionallySizedBox(
-                      alignment: Alignment.centerLeft,
-                      widthFactor: (occupiedSlots / capacity).clamp(0.0, 1.0),
-                      child: Container(
-                        color: isValid ? AppTheme.success : AppTheme.error,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  if (!isValid)
-                    Text(
-                      '${AppStrings.slotsExceededPrefix}${occupiedSlots - capacity}${AppStrings.slotsExceededSuffix}',
-                      style: AppTypography.badgeText.copyWith(
-                        color: AppTheme.error,
-                      ),
-                    )
-                  else
-                    Text(
-                      '${AppStrings.slotsRemainingPrefix}$remainingSlots${AppStrings.slotsRemainingSuffix}',
-                      style: AppTypography.badgeText.copyWith(
-                        color: AppTheme.textMuted,
-                      ),
-                    ),
-                ],
-              ),
-              actions: Row(
-                children: [
-                  Expanded(
-                    child: AppButton(
-                      text: AppStrings.cancelLabel,
-                      onPressed: () => Navigator.pop(dialogCtx),
-                      type: AppButtonType.secondary,
-                      height: 40,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: AppButton(
-                      text: isLease
-                          ? AppStrings.leaseAirframe
-                          : AppStrings.commissionAirframe,
-                      onPressed: !isValid
-                          ? null
-                          : () async {
-                              Navigator.pop(dialogCtx);
-                              if (isLease) {
-                                await fleetCubit.leaseAircraft(
-                                  userId: userId,
-                                  modelId: model.id,
-                                  nickname: model.modelName,
-                                  economy: economy,
-                                  business: business,
-                                  firstClass: firstClass,
-                                  onBalanceChanged: (newCash) =>
-                                      _applyCashBalance(
-                                        context,
-                                        userId,
-                                        newCash,
-                                      ),
-                                );
-                              } else {
-                                await fleetCubit.purchaseAircraft(
-                                  userId: userId,
-                                  modelId: model.id,
-                                  nickname: model.modelName,
-                                  economy: economy,
-                                  business: business,
-                                  firstClass: firstClass,
-                                  onBalanceChanged: (newCash) =>
-                                      _applyCashBalance(
-                                        context,
-                                        userId,
-                                        newCash,
-                                      ),
-                                );
-                              }
-                            },
-                      type: AppButtonType.primary,
-                      height: 40,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
+      builder: (_) => MultiBlocProvider(
+        providers: [
+          BlocProvider.value(value: context.read<FleetCubit>()),
+          BlocProvider.value(value: context.read<SimulationCubit>()),
+        ],
+        child: AcquireSeatConfigDialog(
+          userId: userId,
+          model: model,
+          isLease: isLease,
+        ),
+      ),
     );
   }
 
