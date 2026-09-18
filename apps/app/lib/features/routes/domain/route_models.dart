@@ -2,7 +2,6 @@ import 'dart:math';
 
 import 'package:equatable/equatable.dart';
 
-import '../../../core/constants/game_constants.dart';
 import '../../fleet/domain/fleet_models.dart';
 
 // NOTE: this file no longer computes route economics. Until 3.1 the client had
@@ -266,18 +265,14 @@ class UserRoute with Equatable {
     );
   }
 
-  // Calculate default/ideal Ticket Cost: $50 base + $0.12 per kilometer
-  double get baseTicketPrice {
-    return GameConstants.ticketBaseFare +
-        (distanceKm * GameConstants.ticketPerKmRate);
-  }
+  // Harga tiket dasar TIDAK dihitung di sini.
+  //
+  // Sebelumnya ada `baseTicketPrice` yang memakai `GameConstants.ticketBaseFare`
+  // (50) + `ticketPerKmRate` (0.12). Nilai itu duplikat dari game_config: saat
+  // admin mengubah `ticket_base_fare` di server, UI tetap memakai 50. Sekarang
+  // pemanggil membaca config dari `SimulationState.baseTicketPrice(distanceKm)`,
+  // yang berasal dari `/game-config`.
 
-  static double calculateBaseTicketPrice(double distanceKm) {
-    return GameConstants.ticketBaseFare +
-        (distanceKm * GameConstants.ticketPerKmRate);
-  }
-
-  // Real-time demand multiplier matching Supabase PL/pgSQL database formula.
   // Available Seat Kilometers (ASK) per week
   double get weeklyASK {
     final aircraft = assignedAircraft;
@@ -295,27 +290,12 @@ class UserRoute with Equatable {
         aircraft.model.turnaroundHours;
   }
 
-  // Maximum allowed weekly frequency on this route for the aircraft
-  int getMaximumWeeklyFlights() {
-    return calculateMaximumWeeklyFlights(
-      distanceKm: distanceKm,
-      speedKmh: assignedAircraft?.model.speedKmh ?? 0,
-      turnaroundHours:
-          assignedAircraft?.model.turnaroundHours ??
-          GameConstants.aircraftTurnaroundHours,
-    );
-  }
-
-  static int calculateMaximumWeeklyFlights({
-    required double distanceKm,
-    required int speedKmh,
-    double turnaroundHours = GameConstants.aircraftTurnaroundHours,
-  }) {
-    if (distanceKm <= 0 || speedKmh <= 0) return 0;
-    final duration = (distanceKm / speedKmh) + turnaroundHours;
-    if (duration <= 0) return 0;
-    return (GameConstants.totalWeeklyHoursCap / duration).floor();
-  }
+  // Batas frekuensi mingguan TIDAK dihitung di sini.
+  //
+  // Server menentukan lewat `max_weekly_flights` (game_config) dibagi durasi
+  // siklus pesawat, dan mengirimnya sebagai `max_weekly_flights` di penilaian
+  // rute. Versi lokal dulu memakai `GameConstants.totalWeeklyHoursCap` yang
+  // dibekukan, jadi UI dan server bisa memakai dua nilai berbeda.
 
   @override
   List<Object?> get props => [

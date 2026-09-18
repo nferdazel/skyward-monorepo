@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+
+	"skyward-api/internal/money"
 )
 
 // ── Simulation ────────────────────────────────────────────────────────
@@ -83,7 +85,30 @@ func (s *Store) GetGameConfig(ctx context.Context) ([]ConfigEntry, error) {
 
 // ── Fleet ─────────────────────────────────────────────────────────────
 
+// FleetAircraft adalah bentuk yang dikirim ke klien. Ia memuat field terhitung
+// (sale_value, repair_cost, lease_exit_fee) yang TIDAK ada kolomnya di SQL.
+//
+// Karena itu ia dipisah dari fleetRow di bawah: pgx.RowToStructByPos memetakan
+// kolom berdasarkan posisi dan menuntut jumlah field sama persis dengan jumlah
+// kolom. Menaruh field terhitung di struct yang di-scan membuat pemetaan gagal
+// ("number of field descriptions must equal number of destinations"), yang
+// justru ditemukan oleh test saat kolom acquired_game_date ditambahkan.
 type FleetAircraft struct {
+	FleetState
+	// Nilai terhitung, diisi computeFleetEconomics lewat `internal/money` —
+	// paket yang sama yang dipakai engine saat mencatat ledger. Klien
+	// menampilkan angka ini, bukan menghitung ulang, sehingga estimasi yang
+	// dilihat pemain sama dengan yang akan ia terima.
+	SaleValue     float64 `json:"sale_value"`
+	RepairCost    float64 `json:"repair_cost"`
+	LeaseExitFee  float64 `json:"lease_exit_fee"`
+	CanBeSold     bool    `json:"can_be_sold"`
+	SaleValueNote string  `json:"sale_value_note,omitempty"`
+}
+
+// FleetState adalah kolom mentah hasil scan, urutannya HARUS cocok dengan
+// fleetSelectColumns (dan sebaliknya).
+type FleetState struct {
 	ID              string  `json:"id"`
 	UserID          string  `json:"user_id"`
 	ModelID         string  `json:"aircraft_model_id"`
@@ -100,33 +125,90 @@ type FleetAircraft struct {
 	TurnaroundHr    float64 `json:"turnaround_hours"`
 	// Aircraft-model attributes, flattened so the client can rebuild the nested
 	// model. Without these the Flutter fleet card rendered capacity/range as 0.
-	Type            string  `json:"type"`
-	RangeKM         int     `json:"range_km"`
-	Capacity        int     `json:"capacity"`
-	SpeedKMH        int     `json:"speed_kmh"`
-	FuelBurnPerKM   float64 `json:"fuel_burn_per_km"`
-	MaintCostPerHr  float64 `json:"maintenance_cost_per_hour"`
-	PurchasePrice   float64 `json:"purchase_price"`
-	LeasePriceMonth float64 `json:"lease_price_per_month"`
-	MinCreditTier   string  `json:"min_credit_tier"`
+	Type             string     `json:"type"`
+	RangeKM          int        `json:"range_km"`
+	Capacity         int        `json:"capacity"`
+	SpeedKMH         int        `json:"speed_kmh"`
+	FuelBurnPerKM    float64    `json:"fuel_burn_per_km"`
+	MaintCostPerHr   float64    `json:"maintenance_cost_per_hour"`
+	PurchasePrice    float64    `json:"purchase_price"`
+	LeasePriceMonth  float64    `json:"lease_price_per_month"`
+	MinCreditTier    string     `json:"min_credit_tier"`
+	AcquiredGameDate *time.Time `json:"-"`
+}
+
+// newFleetAircraft mengubah baris hasil scan menjadi bentuk yang dikirim ke
+// klien, sekaligus mengisi nilai terhitung.
+//
+// Perhitungannya memanggil `internal/money`, paket yang sama dengan yang dipakai
+// engine saat mencatat ledger. Itu sebabnya estimasi yang dilihat pemain sama
+// dengan jumlah yang akan ia terima: bukan rumus yang disalin, tapi fungsi yang
+// sama.
+func newFleetAircraft(st FleetState, gameTime time.Time) FleetAircraft {
+	f := FleetAircraft{FleetState: st}
+	if st.AcquisitionType == "purchase" {
+		f.SaleValue = money.SaleValueFor(st.Condition, st.PurchasePrice, st.AcquiredGameDate, gameTime)
+		f.CanBeSold = true
+	} else {
+		f.SaleValueNote = "leased aircraft cannot be sold; terminate the lease instead"
+	}
+	f.RepairCost = money.RepairCostFor(st.Condition, st.PurchasePrice)
+	if st.AcquisitionType == "lease" {
+		f.LeaseExitFee = money.LeaseExitFeeFor(st.LeasePriceMonth)
+	}
+	return f
+}
+
+// fleetSelectColumns — daftar kolom untuk setiap query fleet.
+//
+// Dulu 23 kolom ini disalin di empat tempat, dan menambah satu kolom berarti
+// menyunting empat query dengan urutan yang harus sama persis (pgx memetakan
+// berdasarkan posisi). Itu satu kelas bug yang tidak akan ketahuan compiler:
+// kolom A terisi nilai kolom B begitu salah satu salinan tertinggal.
+//
+// Urutan HARUS cocok dengan pgx.RowToStructByPos[FleetState].
+const fleetSelectColumns = `
+		f.id, f.user_id, f.aircraft_model_id, m.model_name, m.manufacturer,
+		f.acquisition_type, f.condition, f.status, f.tail_number, f.nickname,
+		f.economy_seats, f.business_seats, f.first_class_seats, m.turnaround_hours,
+		m.type, m.range_km, m.capacity, m.speed_kmh, m.fuel_burn_per_km,
+		m.maintenance_cost_per_hour, m.purchase_price, m.lease_price_per_month,
+		COALESCE(m.min_credit_tier,''), f.acquired_game_date`
+
+// fleetSelectFrom — FROM + JOIN yang selalu ikut dengan kolom di atas.
+const fleetSelectFrom = `
+	FROM fleet_aircraft f
+	JOIN aircraft_models m ON m.id = f.aircraft_model_id`
+
+// fleetGameTime mengambil waktu game pemain, yang menentukan depresiasi nilai
+// jual. Kalau gagal, nilai tanpa depresiasi tetap benar (lihat SaleValueFor),
+// jadi error di sini tidak perlu menggagalkan permintaan baca.
+func (s *Store) fleetGameTime(ctx context.Context, userID string) time.Time {
+	var t time.Time
+	if err := s.pool.QueryRow(ctx, `SELECT game_current_time FROM users WHERE id=$1`, userID).Scan(&t); err != nil {
+		return time.Time{}
+	}
+	return t
 }
 
 func (s *Store) GetFleet(ctx context.Context, userID string) ([]FleetAircraft, error) {
 	rows, err := s.pool.Query(ctx, `
-		SELECT f.id, f.user_id, f.aircraft_model_id, m.model_name, m.manufacturer,
-		       f.acquisition_type, f.condition, f.status, f.tail_number, f.nickname,
-		       f.economy_seats, f.business_seats, f.first_class_seats, m.turnaround_hours,
-		       m.type, m.range_km, m.capacity, m.speed_kmh, m.fuel_burn_per_km,
-		       m.maintenance_cost_per_hour, m.purchase_price, m.lease_price_per_month,
-		       COALESCE(m.min_credit_tier,'')
-		FROM fleet_aircraft f
-		JOIN aircraft_models m ON m.id = f.aircraft_model_id
+		SELECT `+fleetSelectColumns+fleetSelectFrom+`
 		WHERE f.user_id = $1 ORDER BY f.acquired_game_date DESC NULLS LAST`, userID)
 	if err != nil {
 		return nil, fmt.Errorf("store: fleet: %w", err)
 	}
 	defer rows.Close()
-	return pgx.CollectRows(rows, pgx.RowToStructByPos[FleetAircraft])
+	states, err := pgx.CollectRows(rows, pgx.RowToStructByPos[FleetState])
+	if err != nil {
+		return nil, fmt.Errorf("store: fleet scan: %w", err)
+	}
+	gameTime := s.fleetGameTime(ctx, userID)
+	fleet := make([]FleetAircraft, 0, len(states))
+	for i := range states {
+		fleet = append(fleet, newFleetAircraft(states[i], gameTime))
+	}
+	return fleet, nil
 }
 
 type AircraftModel struct {
@@ -607,14 +689,7 @@ func (s *Store) GetCreditReport(ctx context.Context, userID string) (*CreditRepo
 // GetFleetAvailable — pesawat tanpa rute aktif (untuk assign UI).
 func (s *Store) GetFleetAvailable(ctx context.Context, userID string) ([]FleetAircraft, error) {
 	rows, err := s.pool.Query(ctx, `
-		SELECT f.id, f.user_id, f.aircraft_model_id, m.model_name, m.manufacturer,
-		       f.acquisition_type, f.condition, f.status, f.tail_number, f.nickname,
-		       f.economy_seats, f.business_seats, f.first_class_seats, m.turnaround_hours,
-		       m.type, m.range_km, m.capacity, m.speed_kmh, m.fuel_burn_per_km,
-		       m.maintenance_cost_per_hour, m.purchase_price, m.lease_price_per_month,
-		       COALESCE(m.min_credit_tier,'')
-		FROM fleet_aircraft f
-		JOIN aircraft_models m ON m.id = f.aircraft_model_id
+		SELECT `+fleetSelectColumns+fleetSelectFrom+`
 		WHERE f.user_id = $1 AND f.status = 'active'
 		  AND NOT EXISTS (SELECT 1 FROM route_assignments r WHERE r.assigned_aircraft_id = f.id)
 		ORDER BY f.condition DESC`, userID)
@@ -622,56 +697,56 @@ func (s *Store) GetFleetAvailable(ctx context.Context, userID string) ([]FleetAi
 		return nil, fmt.Errorf("store: fleet available: %w", err)
 	}
 	defer rows.Close()
-	return pgx.CollectRows(rows, pgx.RowToStructByPos[FleetAircraft])
+	states, err := pgx.CollectRows(rows, pgx.RowToStructByPos[FleetState])
+	if err != nil {
+		return nil, fmt.Errorf("store: fleet available scan: %w", err)
+	}
+	gameTime := s.fleetGameTime(ctx, userID)
+	list := make([]FleetAircraft, 0, len(states))
+	for i := range states {
+		list = append(list, newFleetAircraft(states[i], gameTime))
+	}
+	return list, nil
 }
 
 // GetFleetByID — satu pesawat (fetchSingleAircraft).
 func (s *Store) GetFleetByID(ctx context.Context, userID, fleetID string) (*FleetAircraft, error) {
-	var f FleetAircraft
-	err := s.pool.QueryRow(ctx, `
-		SELECT f.id, f.user_id, f.aircraft_model_id, m.model_name, m.manufacturer,
-		       f.acquisition_type, f.condition, f.status, f.tail_number, f.nickname,
-		       f.economy_seats, f.business_seats, f.first_class_seats, m.turnaround_hours,
-		       m.type, m.range_km, m.capacity, m.speed_kmh, m.fuel_burn_per_km,
-		       m.maintenance_cost_per_hour, m.purchase_price, m.lease_price_per_month,
-		       COALESCE(m.min_credit_tier,'')
-		FROM fleet_aircraft f
-		JOIN aircraft_models m ON m.id = f.aircraft_model_id
-		WHERE f.id = $1 AND f.user_id = $2`, fleetID, userID).Scan(
-		&f.ID, &f.UserID, &f.ModelID, &f.ModelName, &f.Manufacturer,
-		&f.AcquisitionType, &f.Condition, &f.Status, &f.TailNumber, &f.Nickname,
-		&f.EconomySeats, &f.BusinessSeats, &f.FirstClassSeats, &f.TurnaroundHr,
-		&f.Type, &f.RangeKM, &f.Capacity, &f.SpeedKMH, &f.FuelBurnPerKM,
-		&f.MaintCostPerHr, &f.PurchasePrice, &f.LeasePriceMonth, &f.MinCreditTier)
+	f, err := s.queryOneFleet(ctx, userID, `
+		WHERE f.id = $1 AND f.user_id = $2`, fleetID, userID)
 	if err != nil {
 		return nil, err
 	}
-	return &f, nil
+	return f, nil
 }
 
 // GetLatestFleetForModel — pesawat terbaru untuk model tertentu.
 func (s *Store) GetLatestFleetForModel(ctx context.Context, userID, modelID string) (*FleetAircraft, error) {
-	var f FleetAircraft
-	err := s.pool.QueryRow(ctx, `
-		SELECT f.id, f.user_id, f.aircraft_model_id, m.model_name, m.manufacturer,
-		       f.acquisition_type, f.condition, f.status, f.tail_number, f.nickname,
-		       f.economy_seats, f.business_seats, f.first_class_seats, m.turnaround_hours,
-		       m.type, m.range_km, m.capacity, m.speed_kmh, m.fuel_burn_per_km,
-		       m.maintenance_cost_per_hour, m.purchase_price, m.lease_price_per_month,
-		       COALESCE(m.min_credit_tier,'')
-		FROM fleet_aircraft f
-		JOIN aircraft_models m ON m.id = f.aircraft_model_id
+	f, err := s.queryOneFleet(ctx, userID, `
 		WHERE f.user_id = $1 AND f.aircraft_model_id = $2
 		ORDER BY f.acquired_game_date DESC NULLS LAST
-		LIMIT 1`, userID, modelID).Scan(
-		&f.ID, &f.UserID, &f.ModelID, &f.ModelName, &f.Manufacturer,
-		&f.AcquisitionType, &f.Condition, &f.Status, &f.TailNumber, &f.Nickname,
-		&f.EconomySeats, &f.BusinessSeats, &f.FirstClassSeats, &f.TurnaroundHr,
-		&f.Type, &f.RangeKM, &f.Capacity, &f.SpeedKMH, &f.FuelBurnPerKM,
-		&f.MaintCostPerHr, &f.PurchasePrice, &f.LeasePriceMonth, &f.MinCreditTier)
+		LIMIT 1`, userID, modelID)
 	if err != nil {
 		return nil, err
 	}
+	return f, nil
+}
+
+// queryOneFleet menjalankan satu query fleet dengan kolom bersama. `where`
+// diisi klausa WHERE (dan ORDER/LIMIT bila perlu) tanpa SELECT/FROM.
+//
+// `userID` dipakai untuk mengambil waktu game (depresiasi nilai jual), bukan
+// untuk filter — filter tetap dari argumen `args`.
+func (s *Store) queryOneFleet(ctx context.Context, userID, where string, args ...any) (*FleetAircraft, error) {
+	rows, err := s.pool.Query(ctx, `SELECT `+fleetSelectColumns+fleetSelectFrom+where, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	state, err := pgx.CollectExactlyOneRow(rows, pgx.RowToStructByPos[FleetState])
+	if err != nil {
+		return nil, err
+	}
+	f := newFleetAircraft(state, s.fleetGameTime(ctx, userID))
 	return &f, nil
 }
 

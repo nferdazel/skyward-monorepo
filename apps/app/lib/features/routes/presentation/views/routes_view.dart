@@ -144,12 +144,18 @@ class _RoutesViewState extends State<RoutesView> {
         final airports = _getAirports(state);
         final availableFleet = _getAvailableFleet(state);
         final routeAssessments = _getRouteAssessments(state);
+        // Formula harga dari game_config (server), bukan konstanta klien.
+        final simulation = context.watch<SimulationCubit>().state;
+        final baseFareConfig = (
+          base: simulation.ticketBaseFare,
+          perKm: simulation.ticketPerKMRate,
+        );
 
         return Stack(
           children: [
             // ── Base Layer: Full-screen Map ──
             Positioned.fill(
-              child: _buildFullMap(routes, homeAirport, airports),
+              child: _buildFullMap(routes, homeAirport, airports, routeAssessments),
             ),
 
             // ── Left: Route List Panel ──
@@ -165,6 +171,7 @@ class _RoutesViewState extends State<RoutesView> {
                   userId,
                   autoGroundingThreshold,
                   routeAssessments,
+                  baseFareConfig,
                 ),
               ),
 
@@ -187,6 +194,7 @@ class _RoutesViewState extends State<RoutesView> {
                 availableFleet,
                 userId,
                 autoGroundingThreshold,
+                baseFareConfig,
               ),
             ),
 
@@ -219,7 +227,12 @@ class _RoutesViewState extends State<RoutesView> {
   // FULL MAP (Base Layer)
   // ══════════════════════════════════════════════
 
-  Widget _buildFullMap(List<UserRoute> routes, Airport? homeAirport, List<Airport> airports) {
+  Widget _buildFullMap(
+    List<UserRoute> routes,
+    Airport? homeAirport,
+    List<Airport> airports,
+    Map<String, RoutePlanAssessmentDto> routeAssessments,
+  ) {
     final connectedAirports = <String, Airport>{
       for (final r in routes) r.origin.iata: r.origin,
       for (final r in routes) r.destination.iata: r.destination,
@@ -234,7 +247,7 @@ class _RoutesViewState extends State<RoutesView> {
         origin: r.origin,
         destination: r.destination,
         highlighted: false,
-        color: _getRouteColor(r),
+        color: _getRouteColor(r, routeAssessments),
       )),
     ];
     if (highlightedRoute != null) {
@@ -242,7 +255,7 @@ class _RoutesViewState extends State<RoutesView> {
         origin: highlightedRoute.origin,
         destination: highlightedRoute.destination,
         highlighted: true,
-        color: _getRouteColor(highlightedRoute),
+        color: _getRouteColor(highlightedRoute, routeAssessments),
       ));
     }
 
@@ -420,6 +433,7 @@ class _RoutesViewState extends State<RoutesView> {
     String userId,
     double autoGroundingThreshold,
     Map<String, RoutePlanAssessmentDto> routeAssessments,
+    ({double base, double perKm}) baseFareConfig,
   ) {
     return Container(
       width: 260,
@@ -530,6 +544,7 @@ class _RoutesViewState extends State<RoutesView> {
                     autoGroundingThreshold,
                     userId,
                     routeAssessments[route.id],
+                    baseFareConfig,
                   ),
                 );
               },
@@ -547,13 +562,17 @@ class _RoutesViewState extends State<RoutesView> {
     double autoGroundingThreshold,
     String userId,
     RoutePlanAssessmentDto? serverAssessment,
+    ({double base, double perKm}) baseFareConfig,
   ) {
     final hasAircraft = route.assignedAircraft != null;
     final isGrounded = !hasAircraft ||
         route.assignedAircraft!.isMaintenanceGrounded(autoGroundingThreshold);
     // Keausan datang dari server; tanpa data, rute tidak diklaim "PRESSURED".
     final netWear = serverAssessment?.wear.netPerWeek ?? 0.0;
-    final idealPrice = route.baseTicketPrice;
+    // Harga ideal dihitung dari config server, bukan konstanta klien; kalau
+    // admin mengubah formula tiket, label harga rute ikut menyesuaikan.
+    final idealPrice =
+        baseFareConfig.base + (route.distanceKm * baseFareConfig.perKm);
     final pricingRatio = route.ticketPrice / idealPrice;
 
     Color statusColor;
@@ -819,6 +838,7 @@ class _RoutesViewState extends State<RoutesView> {
     List<UserFleetAircraft> availableFleet,
     String userId,
     double autoGroundingThreshold,
+    ({double base, double perKm}) baseFareConfig,
   ) {
     return Container(
       decoration: BoxDecoration(
@@ -1035,8 +1055,8 @@ class _RoutesViewState extends State<RoutesView> {
                   'BASE FARE',
                   _plannerDistance > 0
                       ? AppFormatters.currency.format(
-                          GameConstants.ticketBaseFare +
-                              (_plannerDistance * GameConstants.ticketPerKmRate),
+                          baseFareConfig.base +
+                              (_plannerDistance * baseFareConfig.perKm),
                         )
                       : '--',
                 ),
@@ -1698,14 +1718,32 @@ class _RoutesViewState extends State<RoutesView> {
     return const {};
   }
 
-  Color _getRouteColor(UserRoute route) {
-    final baseFare = GameConstants.ticketBaseFare +
-        (route.distanceKm * GameConstants.ticketPerKmRate);
-    final priceRatio = route.ticketPrice / baseFare;
-
-    if (priceRatio <= 1.05) return AppTheme.success;
-    if (priceRatio <= 1.20) return AppTheme.warning;
-    return AppTheme.error;
+  /// Warna rute mengikuti band kelayakan dari server, bukan rasio harga yang
+  /// dihitung klien.
+  ///
+  /// Sebelumnya fungsi ini membandingkan `ticketPrice` dengan base fare yang
+  /// diturunkan dari `GameConstants` (50 + 0.12/km). Begitu admin mengubah
+  /// `ticket_base_fare` di game_config, ambang warnanya jadi salah: rute sehat
+  /// bisa tampil merah. Server sudah mengirim band otoritatif, jadi klien
+  /// memakainya dan tidak lagi menebak.
+  ///
+  /// Rute yang belum punya penilaian dikembalikan netral: UI tidak mengarang
+  /// warna untuk angka yang belum diketahui.
+  Color _getRouteColor(
+    UserRoute route,
+    Map<String, RoutePlanAssessmentDto> assessments,
+  ) {
+    final dto = assessments[route.id];
+    if (dto == null) return AppTheme.primary;
+    switch (viabilityBandFromServer(dto.viability.band)) {
+      case RouteViabilityBand.strong:
+        return AppTheme.success;
+      case RouteViabilityBand.workable:
+        return AppTheme.warning;
+      case RouteViabilityBand.weak:
+      case RouteViabilityBand.blocked:
+        return AppTheme.error;
+    }
   }
 
   List<Polyline> _buildPreviewLine(int arcSteps) {

@@ -91,6 +91,22 @@ class UserFleetAircraft with Equatable {
   final int firstClassSeats;
   final String tailNumber;
 
+  /// Nilai ekonomi dihitung server, bukan klien.
+  ///
+  /// Sebelumnya ketiganya dihitung di sini, dan `estimatedSaleValue` memakai
+  /// `purchasePrice * 0.72` sementara server memakai depresiasi umur. Pemain
+  /// melihat satu angka lalu menerima angka lain, tanpa error apa pun. Sekarang
+  /// angkanya datang dari `store` yang memanggil fungsi yang sama dengan jalur
+  /// ledger, jadi estimasi dan jumlah yang diterima tidak bisa berbeda.
+  ///
+  /// `saleValue` hanya bermakna bila [canBeSold]; `leaseExitFee` hanya untuk
+  /// pesawat sewa.
+  final double saleValue;
+  final double repairCost;
+  final double leaseExitFee;
+  final bool canBeSold;
+  final String? saleValueNote;
+
   const UserFleetAircraft({
     required this.id,
     required this.nickname,
@@ -98,6 +114,11 @@ class UserFleetAircraft with Equatable {
     required this.condition,
     required this.status,
     required this.model,
+    this.saleValue = 0.0,
+    this.repairCost = 0.0,
+    this.leaseExitFee = 0.0,
+    this.canBeSold = false,
+    this.saleValueNote,
     this.economySeats = 0,
     this.businessSeats = 0,
     this.firstClassSeats = 0,
@@ -137,6 +158,11 @@ class UserFleetAircraft with Equatable {
       businessSeats: (map['business_seats'] as num?)?.toInt() ?? 0,
       firstClassSeats: (map['first_class_seats'] as num?)?.toInt() ?? 0,
       tailNumber: (map['tail_number'] ?? '').toString(),
+      saleValue: (map['sale_value'] as num?)?.toDouble() ?? 0.0,
+      repairCost: (map['repair_cost'] as num?)?.toDouble() ?? 0.0,
+      leaseExitFee: (map['lease_exit_fee'] as num?)?.toDouble() ?? 0.0,
+      canBeSold: map['can_be_sold'] as bool? ?? false,
+      saleValueNote: map['sale_value_note'] as String?,
     );
   }
 
@@ -163,27 +189,6 @@ class UserFleetAircraft with Equatable {
 
   bool canOperateDistance(double distanceKm) {
     return model.rangeKm >= distanceKm.ceil();
-  }
-
-  double get estimatedSaleValue {
-    if (acquisitionType != 'purchase') return 0.0;
-    return model.purchasePrice * 0.72 * (condition / 100.0);
-  }
-
-  double get leaseTerminationFee {
-    if (acquisitionType != 'lease') return 0.0;
-    return model.leasePricePerMonth * 0.25;
-  }
-
-  // Calculate dynamic repair cost based on condition and asset value.
-  // Must match the authoritative Go backend (apps/api/internal/engine/fleet.go
-  // Repair): repair is priced off aircraft value for BOTH owned and leased
-  // aircraft. Leased aircraft already carry higher wear per flight cycle,
-  // which is the intended differentiator — not a punitive repair formula.
-  double get repairCost {
-    if (condition >= 100.0) return 0.0;
-    final wearPercent = 100.0 - condition;
-    return wearPercent * (model.purchasePrice * 0.0005);
   }
 
   @override

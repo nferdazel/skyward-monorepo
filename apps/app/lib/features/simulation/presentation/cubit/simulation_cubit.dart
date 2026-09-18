@@ -267,6 +267,11 @@ class SimulationCubit extends Cubit<SimulationState>
       double bankruptcyCashThreshold = GameConstants.bankruptcyCashThreshold;
       int bankruptcyNegativeDaysThreshold =
           GameConstants.bankruptcyNegativeDaysThreshold;
+      // Formula harga tiket dari game_config. Dipakai planner supaya estimasi
+      // yang ditampilkan tidak memakai konstanta beku saat admin mengubah
+      // config di server.
+      double ticketBaseFare = GameConstants.ticketBaseFare;
+      double ticketPerKMRate = GameConstants.ticketPerKmRate;
 
       if (_cachedGameSettings != null && _cachedSettingsTime != null &&
           DateTime.now().difference(_cachedSettingsTime!) < GameConstants.settingsCacheTtl) {
@@ -285,6 +290,12 @@ class SimulationCubit extends Cubit<SimulationState>
             (_cachedGameSettings!['bankruptcy_negative_days_threshold'] as num?)
                 ?.toInt() ??
             GameConstants.bankruptcyNegativeDaysThreshold;
+        ticketBaseFare =
+            (_cachedGameSettings!['ticket_base_fare'] as num?)?.toDouble() ??
+            GameConstants.ticketBaseFare;
+        ticketPerKMRate =
+            (_cachedGameSettings!['ticket_per_km_rate'] as num?)?.toDouble() ??
+            GameConstants.ticketPerKmRate;
       } else {
         // Fetch settings in isolation: kegagalan /game-config tidak boleh
         // membatalkan cash & game time yang sudah berhasil diambil.
@@ -314,6 +325,14 @@ class SimulationCubit extends Cubit<SimulationState>
                         as num?)
                     ?.toInt() ??
                 GameConstants.bankruptcyNegativeDaysThreshold;
+            ticketBaseFare =
+                (_cachedGameSettings!['ticket_base_fare'] as num?)
+                    ?.toDouble() ??
+                GameConstants.ticketBaseFare;
+            ticketPerKMRate =
+                (_cachedGameSettings!['ticket_per_km_rate'] as num?)
+                    ?.toDouble() ??
+                GameConstants.ticketPerKmRate;
           }
         } catch (e, stack) {
           AppError.log('simulation_load_settings', e, stack);
@@ -336,6 +355,14 @@ class SimulationCubit extends Cubit<SimulationState>
                         as num?)
                     ?.toInt() ??
                 GameConstants.bankruptcyNegativeDaysThreshold;
+            ticketBaseFare =
+                (_cachedGameSettings!['ticket_base_fare'] as num?)
+                    ?.toDouble() ??
+                GameConstants.ticketBaseFare;
+            ticketPerKMRate =
+                (_cachedGameSettings!['ticket_per_km_rate'] as num?)
+                    ?.toDouble() ??
+                GameConstants.ticketPerKmRate;
           }
         }
       }
@@ -363,6 +390,8 @@ class SimulationCubit extends Cubit<SimulationState>
           recoveryStreakDays: authoritativeUser.recoveryStreakDays,
           bankruptcyCashThreshold: bankruptcyCashThreshold,
           bankruptcyNegativeDaysThreshold: bankruptcyNegativeDaysThreshold,
+          ticketBaseFare: ticketBaseFare,
+          ticketPerKMRate: ticketPerKMRate,
         ),
       );
 

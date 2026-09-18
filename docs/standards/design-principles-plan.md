@@ -81,8 +81,14 @@ Rumus lain yang bernasib sama, semuanya sudah menyimpang atau akan menyimpang:
 |---|---|---|
 | Biaya reparasi | `fleet.go:32`: `(100-condition) * purchasePrice * 0.0005` | `fleet_models.dart:183-186` — sama, **dengan komentar "Must match the authoritative Go backend"** |
 | Biaya keluar lease | `fleet.go:392`: `leasePricePerMonth * 0.25` | `fleet_models.dart:176` — sama |
-| Batas frekuensi mingguan | `routes.go:216` dari `getConfigNum("max_weekly_flights", 168.0)` | `route_models.dart:308-317` dari `GameConstants.totalWeeklyHoursCap = 168.0` (beku) |
+| Batas frekuensi mingguan | `routes.go:216` dari `getConfigNum("max_weekly_flights", 168.0)` | `route_models.dart:305-317` dari `GameConstants.totalWeeklyHoursCap = 168.0` (beku) |
 | Saran harga tiket | `simulation.go:195-196`: `snap.num("ticket_base_fare", 50.0)` | `route_models.dart:270-278` dari `GameConstants.ticketBaseFare = 50.0` (beku) |
+
+Catatan koreksi: audit awal menyebut `totalWeeklyHoursCap` sebagai "konstanta
+fisika" karena 168 adalah jumlah jam dalam seminggu. Itu keliru. Server
+membacanya dari `getConfigNum("max_weekly_flights")`, dan kuncinya ada di
+`game_config` (nilainya 168 di prod). Jadi klien memang membekukan config, bukan
+menduplikasi fakta fisika. Sudah diperbaiki dengan memakai penilaian server.
 
 Komentar "Must match the authoritative Go backend" adalah bukti terbaik bahwa
 duplikasi ini disadari dan tetap bocor. Komentar tidak bisa menegakkan apa pun.

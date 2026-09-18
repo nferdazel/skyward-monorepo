@@ -116,10 +116,44 @@ void main() {
       expect(aircraft.effectivePassengerCapacity, 168);
       expect(aircraft.canOperateDistance(5400), isTrue);
       expect(aircraft.canOperateDistance(7600), isFalse);
-      expect(aircraft.leaseTerminationFee, 125000.0);
-      expect(aircraft.estimatedSaleValue, 0.0);
-      // Leased repair is value-based, matching the Go backend (GAME-05).
-      expect(aircraft.repairCost, closeTo(11.5 * (100000000.0 * 0.0005), 0.01));
+      // Nilai ekonomi dibaca dari server, bukan dihitung ulang di klien.
+      // Payload lama (tanpa field ini) harus default aman, bukan menebak.
+      expect(aircraft.saleValue, 0.0);
+      expect(aircraft.repairCost, 0.0);
+      expect(aircraft.leaseExitFee, 0.0);
+      expect(aircraft.canBeSold, isFalse);
+    });
+
+    // Regresi: klien pernah menghitung nilai jual sendiri dengan
+    // `purchasePrice * 0.72`, sementara server memakai depresiasi umur. Pemain
+    // melihat satu angka lalu menerima angka lain. Sekarang klien hanya membaca
+    // `sale_value` dari server, jadi test ini mengunci kontrak payload itu.
+    test('UserFleetAircraft reads server-computed sale value, never derives it',
+        () {
+      final aircraft = UserFleetAircraft.fromMap({
+        'id': 'fleet-777',
+        'acquisition_type': 'purchase',
+        'condition': 80.0,
+        'status': 'active',
+        'tail_number': 'PK-DRY',
+        'purchase_price': 8000000.0,
+        'sale_value': 6430663.93,
+        'repair_cost': 80000.0,
+        'can_be_sold': true,
+        'aircraft_models': {
+          'id': 'model-1',
+          'purchase_price': 8000000.0,
+        },
+      });
+
+      // Angka server dipakai apa adanya.
+      expect(aircraft.saleValue, 6430663.93);
+      expect(aircraft.repairCost, 80000.0);
+      expect(aircraft.canBeSold, isTrue);
+
+      // Dan bukan rumus lama klien: 8000000 * 0.72 * 0.80 = 4608000.
+      // Selisihnya nyata (~1.8 juta) dan dulu tidak terlihat pemain.
+      expect(aircraft.saleValue, isNot(closeTo(4608000.0, 1.0)));
     });
 
     // Regression: the Go /fleet endpoint returns a FLAT aircraft map (no nested
@@ -162,8 +196,11 @@ void main() {
     });
 
     test(
-      'Owned aircraft derives disposal value from condition-adjusted residual',
+      'Owned aircraft disposal value comes from the server, not the client',
       () {
+        // Model dibuat dengan harga beli besar hanya untuk membuktikan klien
+        // TIDAK memakainya untuk menghitung nilai jual. Kalau seseorang kelak
+        // mengembalikan rumus lokal, angka yang diharapkan di bawah akan gagal.
         final aircraft = UserFleetAircraft(
           id: 'fleet-owned',
           nickname: 'Owned Tail',
@@ -184,10 +221,14 @@ void main() {
             leasePricePerMonth: 1460000.0,
           ),
           economySeats: 290,
+          saleValue: 168192000.0,
+          repairCost: 2920000.0,
+          canBeSold: true,
         );
 
-        expect(aircraft.estimatedSaleValue, closeTo(168192000.0, 0.01));
-        expect(aircraft.leaseTerminationFee, 0.0);
+        expect(aircraft.saleValue, closeTo(168192000.0, 0.01));
+        expect(aircraft.canBeSold, isTrue);
+        expect(aircraft.leaseExitFee, 0.0);
       },
     );
 

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"skyward-api/internal/money"
 )
 
 // FleetService — fleet mutations.
@@ -18,18 +20,19 @@ type MutationResult struct {
 	NewCash float64 `json:"new_cash,omitempty"`
 }
 
-// repairCostFor computes the cost to restore an aircraft from `condition` to
-// 100%. It is priced off the aircraft's value (purchase price) for BOTH owned
-// and leased aircraft. Leased aircraft already carry higher wear per flight
-// cycle (leased_wear_per_flight_cycle), which is the intended differentiator —
-// not a punitive repair formula. The previous lease formula
-// `(100-condition) * lease_price_per_month * 0.50` made a full repair cost
-// ~10x the monthly lease (GAME-05), turning leasing into a new-player trap.
+// repairCostFor, saleValueFor, dan leaseExitFeeFor pindah ke
+// `internal/money` supaya lapisan baca (store) dan lapisan ledger (engine)
+// memakai rumus yang sama persis, bukan salinan. Lihat header paket money.
 func repairCostFor(condition, purchasePrice float64) float64 {
-	if condition >= 100.0 {
-		return 0
-	}
-	return (100.0 - condition) * (purchasePrice * 0.0005)
+	return money.RepairCostFor(condition, purchasePrice)
+}
+
+func saleValueFor(condition, purchasePrice float64, acquiredGameDate *time.Time, gameTime time.Time) float64 {
+	return money.SaleValueFor(condition, purchasePrice, acquiredGameDate, gameTime)
+}
+
+func leaseExitFeeFor(leasePricePerMonth float64) float64 {
+	return money.LeaseExitFeeFor(leasePricePerMonth)
 }
 
 // PurchaseParams — input purchase/lease.
@@ -173,16 +176,8 @@ func (f *FleetService) Sell(ctx context.Context, userID, fleetID string) (*Mutat
 		return &MutationResult{Success: false, Message: "Aircraft is still assigned to a route."}, nil
 	}
 
-	baseValue := fr.PurchasePrice * (fr.Condition / 100.0)
-	saleValue := baseValue
-	if fr.AcquiredGameDate != nil {
-		gameTime, err := f.engine.Ledger.GetUserGameTime(ctx, userID)
-		if err == nil {
-			ageYears := gameTime.Sub(*fr.AcquiredGameDate).Hours() / (365.25 * 24)
-			dep := maxf(0.10, 1.0-0.05*ageYears)
-			saleValue = round2(baseValue * dep)
-		}
-	}
+	gameTimeForSale, _ := f.engine.Ledger.GetUserGameTime(ctx, userID)
+	saleValue := saleValueFor(fr.Condition, fr.PurchasePrice, fr.AcquiredGameDate, gameTimeForSale)
 
 	tx, err := f.engine.Pool.Begin(ctx)
 	if err != nil {
@@ -389,7 +384,7 @@ func (f *FleetService) TerminateLease(ctx context.Context, userID, fleetID strin
 	if assigned {
 		return &MutationResult{false, "Aircraft is still assigned to a route.", 0}, nil
 	}
-	exitFee := round2(leasePrice * 0.25)
+	exitFee := leaseExitFeeFor(leasePrice)
 	cash, _ := f.engine.Ledger.GetBalance(ctx, userID)
 	if moneyLessThan(cash, exitFee) {
 		return &MutationResult{false, "Insufficient funds to pay lease termination fee.", cash}, nil

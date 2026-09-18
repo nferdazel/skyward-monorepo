@@ -2208,9 +2208,10 @@ class _FleetViewState extends State<FleetView>
 
     final isLease = aircraft.acquisitionType == 'lease';
     final fleetCubit = context.read<FleetCubit>();
-    final exposureAmount = isLease
-        ? aircraft.leaseTerminationFee
-        : aircraft.estimatedSaleValue;
+    // Angka dari server, bukan dihitung di klien: angka yang ditampilkan di
+    // dialog ini sama persis dengan yang akan dicatat ledger.
+    final exposureAmount =
+        isLease ? aircraft.leaseExitFee : aircraft.saleValue;
 
     showDialog(
       context: context,

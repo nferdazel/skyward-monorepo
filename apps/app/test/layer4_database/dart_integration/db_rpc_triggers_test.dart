@@ -65,6 +65,11 @@ void main() {
         'economy_seats': 150,
         'business_seats': 15,
         'first_class_seats': 3,
+        // Nilai ekonomi dihitung server dan ikut di payload; klien tidak lagi
+        // menurunkan repair cost dari harga beli.
+        'repair_cost': 168750.0,
+        'sale_value': 42750000.0,
+        'can_be_sold': true,
         'aircraft_models': {
           'id': 'model-uuid-2',
           'manufacturer': 'Embraer',
@@ -83,7 +88,7 @@ void main() {
       final fleetAircraft = UserFleetAircraft.fromMap(aircraftMap);
       expect(fleetAircraft.id, 'aircraft-uuid-2');
       expect(fleetAircraft.model.modelName, 'E195-E2');
-      expect(fleetAircraft.repairCost, closeTo(4.5 * (75000000.0 * 0.0005), 0.01)); // Repair cost math check
+      expect(fleetAircraft.repairCost, closeTo(168750.0, 0.01)); // Nilai dari server
 
       // 3. Verify route models RPC parser compatibility
       final routeMap = {

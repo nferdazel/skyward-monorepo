@@ -13,6 +13,7 @@ import '../../../../presentation/widgets/app_dialog_shell.dart';
 import '../../../../presentation/widgets/app_snackbar.dart';
 import '../../../../presentation/widgets/app_stat_text.dart';
 import '../../domain/route_assessment_mapping.dart';
+import '../../../simulation/presentation/cubit/simulation_cubit.dart';
 import '../../domain/route_models.dart';
 import '../cubit/routes_cubit.dart';
 import '../cubit/routes_state.dart';
@@ -96,24 +97,15 @@ class _RouteAdjustmentDialogState extends State<RouteAdjustmentDialog> {
     }
 
     final cubit = context.read<RoutesCubit>();
-    final cap =
-        cubit.adjustmentAssessment.assessment?.maxWeeklyFlights ??
-        widget.route.getMaximumWeeklyFlights();
-    // Simpan nilai yang sudah dibatasi, seperti sebelumnya: mengirim frekuensi
-    // di atas cap akan ditolak/gate di server.
+    // Batas frekuensi datang dari penilaian server. Tidak ada lagi fallback
+    // hitung-lokal: nilai lokal dulu memakai `totalWeeklyHoursCap` yang
+    // dibekukan di klien, dan membandingkannya dengan `cap` server menghasilkan
+    // dua besaran berbeda yang bisa saling meniadakan.
+    //
+    // Kalau penilaian belum tersedia, frekuensi yang diminta dikirim apa
+    // adanya; server tetap menolaknya kalau melebihi kapasitas pesawat.
+    final cap = cubit.adjustmentAssessment.assessment?.maxWeeklyFlights ?? 0;
     final freq = cap > 0 && _requestedFlights > cap ? cap : _requestedFlights;
-
-    final maxFreq = widget.route.getMaximumWeeklyFlights();
-    if (maxFreq > 0 && freq > maxFreq) {
-      AppSnackBar.showError(
-        context,
-        '${AppStrings.frequencyExceedsPhysicalLimitPrefix}$maxFreq'
-        '${AppStrings.frequencyExceedsPhysicalLimitMiddle}'
-        '${GameConstants.totalWeeklyHoursCap.toStringAsFixed(0)}'
-        '${AppStrings.frequencyExceedsPhysicalLimitSuffix}',
-      );
-      return;
-    }
 
     Navigator.pop(context);
     await cubit.updateRouteFrequencyAndPrice(
@@ -159,7 +151,7 @@ class _RouteAdjustmentDialogState extends State<RouteAdjustmentDialog> {
             children: [
               Text(
                 '${AppStrings.routePricingGuidance}'
-                '${widget.currencyFormat.format(route.baseTicketPrice)}\n'
+                '${widget.currencyFormat.format(context.read<SimulationCubit>().state.baseTicketPrice(widget.route.distanceKm))}\n'
                 '${AppStrings.routePricingGuidanceSuffix}',
                 style: AppTypography.captionRegular.copyWith(height: 1.4),
               ),

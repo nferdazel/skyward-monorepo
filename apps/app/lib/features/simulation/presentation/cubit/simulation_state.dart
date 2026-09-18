@@ -27,6 +27,17 @@ class SimulationState with Equatable {
   /// the mirrored constants when config has not loaded.
   final double bankruptcyCashThreshold;
   final int bankruptcyNegativeDaysThreshold;
+
+  /// Config formula harga tiket dari server, dengan pola yang sama seperti
+  /// ambang kebangkrutan di atas: server yang menentukan, konstanta hanya
+  /// fallback saat config belum termuat.
+  ///
+  /// Sebelumnya planner memakai `GameConstants.ticketBaseFare` (50) dan
+  /// `ticketPerKmRate` (0.12) langsung. Begitu admin mengubah config di
+  /// database, server memakai nilai baru sementara UI menampilkan yang lama.
+  final double ticketBaseFare;
+  final double ticketPerKMRate;
+
   final List<Map<String, dynamic>> lastUnlockedAchievements;
   final String? errorMessage;
 
@@ -46,9 +57,21 @@ class SimulationState with Equatable {
     this.bankruptcyCashThreshold = GameConstants.bankruptcyCashThreshold,
     this.bankruptcyNegativeDaysThreshold =
         GameConstants.bankruptcyNegativeDaysThreshold,
+    this.ticketBaseFare = GameConstants.ticketBaseFare,
+    this.ticketPerKMRate = GameConstants.ticketPerKmRate,
     this.lastUnlockedAchievements = const [],
     this.errorMessage,
   });
+
+  /// Harga tiket dasar yang disarankan server untuk jarak tertentu.
+  ///
+  /// Satu tempat untuk formula ini, supaya planner, kartu rute, dan dialog
+  /// penyesuaian tidak menghitungnya sendiri-sendiri dari konstanta yang
+  /// berbeda. Nilainya berasal dari `game_config`; konstanta hanya fallback
+  /// saat config belum termuat.
+  double baseTicketPrice(double distanceKm) {
+    return ticketBaseFare + (distanceKm * ticketPerKMRate);
+  }
 
   factory SimulationState.initial(DateTime initialTime, double initialCash) {
     return SimulationState(
@@ -77,6 +100,8 @@ class SimulationState with Equatable {
     int? recoveryStreakDays,
     double? bankruptcyCashThreshold,
     int? bankruptcyNegativeDaysThreshold,
+    double? ticketBaseFare,
+    double? ticketPerKMRate,
     List<Map<String, dynamic>>? lastUnlockedAchievements,
     Object? errorMessage = _unset,
   }) {
@@ -98,6 +123,8 @@ class SimulationState with Equatable {
           bankruptcyCashThreshold ?? this.bankruptcyCashThreshold,
       bankruptcyNegativeDaysThreshold:
           bankruptcyNegativeDaysThreshold ?? this.bankruptcyNegativeDaysThreshold,
+      ticketBaseFare: ticketBaseFare ?? this.ticketBaseFare,
+      ticketPerKMRate: ticketPerKMRate ?? this.ticketPerKMRate,
       lastUnlockedAchievements:
           lastUnlockedAchievements ?? this.lastUnlockedAchievements,
       errorMessage: identical(errorMessage, _unset)
