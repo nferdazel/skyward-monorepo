@@ -3,7 +3,6 @@ package engine
 
 import (
 	"context"
-	"errors"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -75,12 +74,9 @@ func (s *SettingsService) Reset(ctx context.Context, userID string) (*MutationRe
 		return nil, false, nil
 	})
 	if err != nil {
-		// Kesalahan Begin/Commit dulu dipetakan ke pesan pemain, bukan error Go.
-		// Pesannya dibedakan seperti sebelumnya supaya tidak ada penurunan.
-		if errors.Is(err, ErrTxCommit) {
-			return &MutationResult{Success: false, Message: "commit failed"}, nil
-		}
-		return &MutationResult{Success: false, Message: "transaction error"}, nil
+		// Kesalahan Begin/Commit dipetakan ke pesan pemain, bukan error Go,
+		// dengan tahapnya tetap dibedakan seperti sebelumnya.
+		return &MutationResult{Success: false, Message: txFailureMessage(err)}, nil
 	}
 	if result != nil {
 		return result, nil

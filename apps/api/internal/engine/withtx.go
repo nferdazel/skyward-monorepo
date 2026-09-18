@@ -71,5 +71,20 @@ func withTx[T any](
 	return result, nil
 }
 
-// isNoRows — singkatan yang dipakai beberapa pemanggil.
-func isNoRows(err error) bool { return errors.Is(err, pgx.ErrNoRows) }
+// txFailureMessage memetakan kegagalan `withTx` ke pesan pemain.
+//
+// Sebelum helper ini, setiap pemanggil menulis pemeriksaannya sendiri dan enam
+// di antaranya lupa membedakan tahap, sehingga kegagalan Commit tampil sebagai
+// "transaction error" alih-alih "commit failed" — padahal pesan itu
+// player-visible lewat `MutationResult.Message`. Menaruh pemetaannya di sini
+// membuat perbedaan itu tidak bisa terlewat lagi.
+//
+// Hanya tahap transaksi yang dipetakan. Error lain (kegagalan SQL di dalam
+// transaksi) bukan urusan fungsi ini: pemanggil yang memutuskan apakah ia jadi
+// pesan pemain atau error sistem.
+func txFailureMessage(err error) string {
+	if errors.Is(err, ErrTxCommit) {
+		return "commit failed"
+	}
+	return "transaction error"
+}

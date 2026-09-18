@@ -142,7 +142,7 @@ func (f *FleetService) Purchase(ctx context.Context, userID string, p PurchasePa
 		return &MutationResult{Success: true, Message: fmt.Sprintf("Successfully purchased %s [%s]", modelName, tail), NewCash: newCash}, false, nil
 	})
 	if err != nil {
-		return &MutationResult{Success: false, Message: "transaction error", NewCash: cash}, nil
+		return &MutationResult{Success: false, Message: txFailureMessage(err), NewCash: cash}, nil
 	}
 	return result, nil
 }
@@ -207,7 +207,7 @@ func (f *FleetService) Sell(ctx context.Context, userID, fleetID string) (*Mutat
 		return &MutationResult{Success: true, Message: fmt.Sprintf("Aircraft sold for $%.2f.", saleValue), NewCash: newCash}, false, nil
 	})
 	if err != nil {
-		return &MutationResult{Success: false, Message: "transaction error"}, nil
+		return &MutationResult{Success: false, Message: txFailureMessage(err)}, nil
 	}
 	return result, nil
 }
@@ -252,7 +252,7 @@ func (f *FleetService) Repair(ctx context.Context, userID, fleetID string) (*Mut
 		return &MutationResult{Success: true, Message: "Aircraft maintenance complete. Health restored to 100%!", NewCash: newCash}, false, nil
 	})
 	if err != nil {
-		return &MutationResult{Success: false, Message: "transaction error"}, nil
+		return &MutationResult{Success: false, Message: txFailureMessage(err)}, nil
 	}
 	return result, nil
 }
@@ -346,7 +346,7 @@ func (f *FleetService) Lease(ctx context.Context, userID string, p LeaseParams) 
 		return nil, false, nil
 	})
 	if err != nil {
-		return &MutationResult{false, "transaction error", cash}, nil
+		return &MutationResult{false, txFailureMessage(err), cash}, nil
 	}
 	if result != nil {
 		return result, nil
@@ -410,7 +410,7 @@ func (f *FleetService) TerminateLease(ctx context.Context, userID, fleetID strin
 		return &MutationResult{true, "Lease terminated successfully!", newCash}, false, nil
 	})
 	if err != nil {
-		return &MutationResult{false, "transaction error", cash}, nil
+		return &MutationResult{false, txFailureMessage(err), cash}, nil
 	}
 	return result, nil
 }

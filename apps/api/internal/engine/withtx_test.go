@@ -198,3 +198,19 @@ func TestWithTxErrorSentinels(t *testing.T) {
 		t.Error("error bisnis tidak boleh terdeteksi sebagai kegagalan transaksi")
 	}
 }
+
+// TestTxFailureMessage membuktikan pemetaan pesan pemain membedakan tahap.
+// Tanpa ini, kegagalan Commit tampil sebagai "transaction error" dan pemain
+// (serta log) kehilangan informasi tahap mana yang gagal.
+func TestTxFailureMessage(t *testing.T) {
+	if got := txFailureMessage(fmt.Errorf("%w: %w", ErrTxCommit, errors.New("x"))); got != "commit failed" {
+		t.Errorf("ErrTxCommit -> %q, mau \"commit failed\"", got)
+	}
+	if got := txFailureMessage(fmt.Errorf("%w: %w", ErrTxBegin, errors.New("x"))); got != "transaction error" {
+		t.Errorf("ErrTxBegin -> %q, mau \"transaction error\"", got)
+	}
+	// Error lain yang sampai ke sini juga tidak boleh salah diklasifikasi.
+	if got := txFailureMessage(errors.New("apa saja")); got != "transaction error" {
+		t.Errorf("error umum -> %q, mau \"transaction error\"", got)
+	}
+}

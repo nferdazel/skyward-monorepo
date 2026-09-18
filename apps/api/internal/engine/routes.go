@@ -156,7 +156,7 @@ func (r *RoutesService) Assign(ctx context.Context, userID, routeID, aircraftID 
 		return &MutationResult{true, "Aircraft assigned to route.", 0}, false, nil
 	})
 	if err != nil {
-		return &MutationResult{false, "transaction error", 0}, nil
+		return &MutationResult{false, txFailureMessage(err), 0}, nil
 	}
 	return result, nil
 }
