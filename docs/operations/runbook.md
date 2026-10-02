@@ -455,32 +455,22 @@ curl -s -X POST -H "Authorization: Bearer $SKYWARD_ADMIN_TOKEN" \
 
 Deployment manifests and Caddy snippets live under [`deploy/`](../../deploy).
 `deploy/deploy-vps.sh` is the active webhook-driven deploy path; the API runs
-as a native systemd user unit at `/srv/qouver/apps/skyward/bin/skyward-api`
-(not a container — `skyward-api.container` is aspirational). The script keeps
-the previous binary at `bin/skyward-api.prev`, gates the restart on
-`GET /readyz` and rolls back automatically if it fails, swaps the web build
-atomically via `web.new` → `web` (keeping `web.prev`), and skips the API restart
-entirely when `apps/api/` did not change. `scripts/deploy.sh`
-is deprecated for updates but its `setup` mode still installs the quadlet unit:
+as a native systemd user unit at `/srv/qouver/apps/skyward/bin/skyward-api`.
+The script keeps the previous binary at `bin/skyward-api.prev`, gates the
+restart on `GET /readyz` and rolls back automatically if it fails, swaps the
+web build atomically via `web.new` → `web` (keeping `web.prev`), and skips the
+API restart entirely when `apps/api/` did not change.
 
-```bash
-export VPS=user@host        # WAJIB: lihat catatan di bawah
-scripts/deploy.sh setup     # once: install quadlet unit + enable service
-scripts/deploy.sh           # deprecated update path; prefer deploy/deploy-vps.sh
-```
-
-`scripts/deploy.sh` **tidak lagi memuat host produksi**. Repo ini publik, jadi
-menaruh user/host di skrip berarti memaparkan host, user, dan fakta bahwa auth
-memakai SSH key. Isi `VPS` dari environment atau shell profile; jangan
-commit nilainya. Kalau `VPS` kosong, skrip menolak berjalan.
+> **Dihapus 2026-10-02:** `deploy/skyward-api.container` (aspirational, tidak
+> pernah dipakai) dan `scripts/deploy.sh` (legacy, mode `setup`-nya membaca file
+> yang sama). Jalur deploy satu-satunya adalah `deploy/deploy-vps.sh` via webhook.
 
 Prod API base: `https://api.qouver.com/skyward`; dev defaults to
 `127.0.0.1:8090` (`PORT`, `HOST`).
 
 ## 5. Reset / Reseed Operations
 
-`scripts/` holds `deploy.sh` (deprecated for updates), `migrate.sh`,
-`backup-db.sh`, and `dump-reference-data.sh`. There are **no player-seeding**
+`scripts/` holds `migrate.sh`, `backup-db.sh`, and `dump-reference-data.sh`. There are **no player-seeding**
 scripts — player state is created through the app.
 
 **Bootstrap reality (corrected 2026-09-16; reference data landed):** the

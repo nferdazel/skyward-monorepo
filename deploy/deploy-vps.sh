@@ -1,9 +1,16 @@
 #!/bin/bash
 set -euo pipefail
 REPO="${1:-skyward-monorepo}"
+REF="${2:-}"
 LOG="/srv/qouver/apps/skyward/logs/deploy.log"
 mkdir -p /srv/qouver/apps/skyward/logs
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] deploy trigger: $REPO" | tee -a "$LOG"
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] deploy trigger: $REPO ref=$REF" | tee -a "$LOG"
+
+# Fail-closed: hanya deploy untuk push ke branch main
+if [ -n "$REF" ] && [ "$REF" != "refs/heads/main" ]; then
+  echo "==> skip: ref=$REF (bukan main)" | tee -a "$LOG"
+  exit 0
+fi
 
 if [ "$REPO" = "skyward-monorepo" ] || [ "$REPO" = "skyward" ]; then
   MONO_DIR="/srv/qouver/apps/skyward/monorepo"
